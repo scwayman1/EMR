@@ -67,6 +67,8 @@ services:
 
 databases:
   - name: emr-postgres
-    plan: starter
+    # basic-256mb is the cheapest currently-supported Render Postgres plan.
+    # Legacy names like `starter` are no longer accepted for new databases.
+    plan: basic-256mb
     databaseName: emr
     user: emr
