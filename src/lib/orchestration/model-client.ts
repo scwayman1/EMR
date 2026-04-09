@@ -6,7 +6,6 @@ import type { ModelClient } from "./types";
  */
 export class StubModelClient implements ModelClient {
   async complete(prompt: string, _options?: { maxTokens?: number; temperature?: number }) {
-    // A very small set of heuristics to produce believable-ish output.
     const trimmed = prompt.trim().slice(0, 240);
     if (/summar(y|ize)/i.test(prompt)) {
       return `Summary draft (stub): ${trimmed}`;
@@ -22,25 +21,83 @@ export class StubModelClient implements ModelClient {
 }
 
 /**
- * Claude model client. Lazily imports the SDK so it is not required for
- * local dev. Configured via ANTHROPIC_API_KEY.
+ * OpenRouter model client.
+ *
+ * OpenRouter exposes a single OpenAI-compatible endpoint that can route to
+ * dozens of providers (Anthropic, OpenAI, Meta, Google, etc.). That keeps
+ * the agent harness provider-agnostic and the model choice driven by env.
+ *
+ * Configure with:
+ *   OPENROUTER_API_KEY   — required
+ *   OPENROUTER_MODEL     — optional, defaults to anthropic/claude-sonnet-4.5
+ *   OPENROUTER_SITE_URL  — optional, for OpenRouter attribution
+ *   OPENROUTER_APP_NAME  — optional, for OpenRouter attribution
  */
-export class ClaudeModelClient implements ModelClient {
-  async complete(prompt: string, options?: { maxTokens?: number; temperature?: number }) {
-    // We deliberately do not import @anthropic-ai/sdk at module load so the
-    // stub client works without the dep installed. Projects wiring this up
-    // for real should add the SDK and replace this body.
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY is required for ClaudeModelClient");
+export class OpenRouterModelClient implements ModelClient {
+  private readonly endpoint = "https://openrouter.ai/api/v1/chat/completions";
+  private readonly model: string;
+  private readonly apiKey: string;
+  private readonly siteUrl: string | undefined;
+  private readonly appName: string;
+
+  constructor() {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENROUTER_API_KEY is required for OpenRouterModelClient");
     }
-    // Placeholder: real implementation would call the Messages API.
-    // Kept minimal to avoid pulling the SDK into V1.
-    return `[claude stub — wire SDK] ${prompt.slice(0, 120)}`;
+    this.apiKey = apiKey;
+    this.model = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4.5";
+    this.siteUrl = process.env.OPENROUTER_SITE_URL;
+    this.appName = process.env.OPENROUTER_APP_NAME ?? "Cannabis Care Platform";
+  }
+
+  async complete(
+    prompt: string,
+    options?: { maxTokens?: number; temperature?: number }
+  ): Promise<string> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
+      "X-Title": this.appName,
+    };
+    // OpenRouter recommends these attribution headers but they are optional.
+    if (this.siteUrl) headers["HTTP-Referer"] = this.siteUrl;
+
+    const response = await fetch(this.endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: this.model,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: options?.maxTokens ?? 1024,
+        temperature: options?.temperature ?? 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(
+        `OpenRouter error ${response.status}: ${body.slice(0, 500)}`
+      );
+    }
+
+    const json = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const content = json.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || content.length === 0) {
+      throw new Error("OpenRouter returned an empty response");
+    }
+    return content;
   }
 }
 
+/**
+ * Resolve the active model client based on environment. Defaults to the
+ * deterministic stub so the harness is always runnable, even without keys.
+ */
 export function resolveModelClient(): ModelClient {
-  const kind = process.env.AGENT_MODEL_CLIENT ?? "stub";
-  if (kind === "claude") return new ClaudeModelClient();
+  const kind = (process.env.AGENT_MODEL_CLIENT ?? "stub").toLowerCase();
+  if (kind === "openrouter") return new OpenRouterModelClient();
   return new StubModelClient();
 }

@@ -23,9 +23,13 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: AGENT_MODEL_CLIENT
-        value: stub
-      - key: ANTHROPIC_API_KEY
+        value: openrouter
+      - key: OPENROUTER_API_KEY
         sync: false
+      - key: OPENROUTER_MODEL
+        value: anthropic/claude-sonnet-4.5
+      - key: OPENROUTER_APP_NAME
+        value: Cannabis Care Platform
 
   # -----------------------------------------------------------------
   # Worker — long-running agent runner
@@ -44,9 +48,13 @@ services:
           name: emr-postgres
           property: connectionString
       - key: AGENT_MODEL_CLIENT
-        value: stub
-      - key: ANTHROPIC_API_KEY
+        value: openrouter
+      - key: OPENROUTER_API_KEY
         sync: false
+      - key: OPENROUTER_MODEL
+        value: anthropic/claude-sonnet-4.5
+      - key: OPENROUTER_APP_NAME
+        value: Cannabis Care Platform
 
   # -----------------------------------------------------------------
   # Scheduler — cron that enqueues recurring workflows
