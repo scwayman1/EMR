@@ -1,21 +1,61 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
-import { formatRelative } from "@/lib/utils/format";
+import { MetricTile } from "@/components/ui/metric-tile";
+import { PatientsClient } from "./patients-client";
 
 export const metadata = { title: "Patients" };
 
-export default async function OpsPatientsPage() {
+export default async function OpsPatientsPage({
+  searchParams,
+}: {
+  searchParams: { status?: string };
+}) {
   const user = await requireUser();
-  const patients = await prisma.patient.findMany({
-    where: { organizationId: user.organizationId!, deletedAt: null },
-    include: { chartSummary: true, tasks: { where: { status: "open" } } },
-    orderBy: { updatedAt: "desc" },
-  });
+  const orgId = user.organizationId!;
+  const statusFilter = searchParams.status ?? "all";
+
+  const statusWhere =
+    statusFilter !== "all" ? { status: statusFilter as any } : {};
+
+  const [patients, counts] = await Promise.all([
+    prisma.patient.findMany({
+      where: { organizationId: orgId, deletedAt: null, ...statusWhere },
+      include: {
+        chartSummary: true,
+        tasks: { where: { status: "open" } },
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.patient.groupBy({
+      by: ["status"],
+      where: { organizationId: orgId, deletedAt: null },
+      _count: true,
+    }),
+  ]);
+
+  const countByStatus = Object.fromEntries(
+    counts.map((c) => [c.status, c._count])
+  );
+  const totalCount = Object.values(countByStatus).reduce(
+    (a, b) => a + b,
+    0
+  );
+
+  const serializedPatients = patients.map((p) => ({
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+    status: p.status,
+    email: p.email,
+    phone: p.phone,
+    chartReadiness: p.chartSummary?.completenessScore ?? null,
+    missingFields: p.chartSummary?.missingFields ?? [],
+    openTaskCount: p.tasks.length,
+    updatedAt: p.updatedAt.toISOString(),
+    createdAt: p.createdAt.toISOString(),
+    intakeProgress: estimateIntakeProgress(p),
+  }));
 
   return (
     <PageShell maxWidth="max-w-[1280px]">
@@ -24,38 +64,43 @@ export default async function OpsPatientsPage() {
         title="Intake funnel"
         description="Every patient in the system, sorted by most recent activity."
       />
-      <Card>
-        <CardContent className="pt-4">
-          <ul className="divide-y divide-border -mx-6">
-            {patients.map((p) => (
-              <li key={p.id} className="px-6 py-4">
-                <div className="flex items-center gap-4">
-                  <Avatar firstName={p.firstName} lastName={p.lastName} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-text">
-                        {p.firstName} {p.lastName}
-                      </p>
-                      <Badge tone="neutral">{p.status}</Badge>
-                      {p.chartSummary && (
-                        <Badge tone="accent">Chart {p.chartSummary.completenessScore}%</Badge>
-                      )}
-                      {p.tasks.length > 0 && (
-                        <Badge tone="warning">
-                          {p.tasks.length} open task{p.tasks.length === 1 ? "" : "s"}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-text-subtle mt-1">
-                      Updated {formatRelative(p.updatedAt)}
-                    </p>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+
+      {/* ---- Summary tiles ---- */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <MetricTile label="Total" value={totalCount} />
+        <MetricTile
+          label="Prospects"
+          value={countByStatus.prospect ?? 0}
+          accent="amber"
+        />
+        <MetricTile
+          label="Active"
+          value={countByStatus.active ?? 0}
+          accent="forest"
+        />
+        <MetricTile
+          label="Inactive"
+          value={(countByStatus.inactive ?? 0) + (countByStatus.archived ?? 0)}
+        />
+      </div>
+
+      <PatientsClient
+        patients={serializedPatients}
+        activeFilter={statusFilter}
+      />
     </PageShell>
   );
+}
+
+function estimateIntakeProgress(patient: {
+  intakeAnswers: unknown;
+  chartSummary: { completenessScore: number } | null;
+}): number {
+  if (patient.chartSummary?.completenessScore) {
+    return patient.chartSummary.completenessScore;
+  }
+  const answers = patient.intakeAnswers as Record<string, unknown> | null;
+  if (!answers) return 0;
+  const count = Object.keys(answers).length;
+  return Math.min(count * 10, 100);
 }
