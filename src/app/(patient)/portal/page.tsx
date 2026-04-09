@@ -2,16 +2,27 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
-import { PageHeader, PageShell } from "@/components/shell/PageHeader";
+import { PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
+import { AmbientOrb } from "@/components/ui/hero-art";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 
 export const metadata = { title: "Home" };
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Still up";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Hello";
+}
 
 export default async function PatientHome() {
   const user = await requireRole("patient");
@@ -52,26 +63,52 @@ export default async function PatientHome() {
 
   const nextVisit = patient.encounters[0];
   const intakeComplete = patient.chartSummary?.completenessScore ?? 0;
+  const latestPain = painSeries[painSeries.length - 1];
+  const latestSleep = sleepSeries[sleepSeries.length - 1];
 
   return (
-    <PageShell maxWidth="max-w-[960px]">
-      <PageHeader
-        eyebrow={`Welcome back, ${patient.firstName}`}
-        title="How are you feeling today?"
-        description="A quick check-in helps your care team see how things are trending between visits."
-        actions={
-          <Link href="/portal/outcomes/new">
-            <Button size="md">Log a check-in</Button>
-          </Link>
-        }
-      />
+    <PageShell maxWidth="max-w-[1040px]">
+      {/* ------------------ Hero greeting card ------------------ */}
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised ambient mb-10">
+        <AmbientOrb className="absolute -right-10 top-0 h-[260px] w-[480px] opacity-90" />
+        <div className="relative px-8 md:px-12 py-12 md:py-14 max-w-2xl">
+          <Eyebrow className="mb-4">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </Eyebrow>
+          <h1 className="font-display text-4xl md:text-5xl leading-[1.05] tracking-tight text-text">
+            {greeting()},{" "}
+            <span className="italic text-accent">{patient.firstName}</span>.
+          </h1>
+          <p className="text-[15px] text-text-muted mt-4 leading-relaxed max-w-lg">
+            A quick check-in helps your care team see how things are trending
+            between visits. It only takes a minute.
+          </p>
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link href="/portal/outcomes">
+              <Button size="lg">Log today&apos;s check-in</Button>
+            </Link>
+            <Link href="/portal/messages">
+              <Button size="lg" variant="secondary">
+                Message your team
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
 
-      {/* Top row: next action cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <Card>
+      {/* ------------------ Next visit + chart readiness ------------------ */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+        <Card tone="raised" className="card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Next visit</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <LeafSprig size={16} className="text-accent/80" />
+                Next visit
+              </CardTitle>
               {nextVisit ? (
                 <Badge tone="accent">Confirmed</Badge>
               ) : (
@@ -82,14 +119,16 @@ export default async function PatientHome() {
           <CardContent>
             {nextVisit ? (
               <>
-                <p className="text-base font-medium text-text">
+                <p className="font-display text-2xl text-text tracking-tight">
                   {formatDate(nextVisit.scheduledFor)}
                 </p>
-                <p className="text-sm text-text-muted mt-1">
-                  {nextVisit.modality === "video" ? "Video visit" : "In-person visit"}
+                <p className="text-sm text-text-muted mt-1.5">
+                  {nextVisit.modality === "video"
+                    ? "Video visit"
+                    : "In-person visit"}
                   {nextVisit.reason ? ` · ${nextVisit.reason}` : ""}
                 </p>
-                <div className="mt-4 flex items-center gap-2">
+                <div className="mt-5 flex items-center gap-2">
                   <Button size="sm" variant="secondary">
                     View details
                   </Button>
@@ -100,16 +139,20 @@ export default async function PatientHome() {
               </>
             ) : (
               <p className="text-sm text-text-muted">
-                Once your intake is complete, your care team will help you find a time.
+                Once your intake is complete, your care team will help you find
+                a time that works.
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card tone="raised" className="card-hover">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Chart readiness</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <LeafSprig size={16} className="text-accent/80" />
+                Chart readiness
+              </CardTitle>
               <Badge tone={intakeComplete >= 80 ? "success" : "warning"}>
                 {intakeComplete}%
               </Badge>
@@ -119,13 +162,13 @@ export default async function PatientHome() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-2 bg-surface-muted rounded-full overflow-hidden">
+            <div className="relative h-2.5 bg-surface-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-accent transition-all"
+                className="h-full bg-gradient-to-r from-accent to-[#3A8560] rounded-full transition-all duration-700 ease-smooth"
                 style={{ width: `${intakeComplete}%` }}
               />
             </div>
-            <div className="mt-4">
+            <div className="mt-5">
               <Link href="/portal/intake">
                 <Button size="sm" variant="secondary">
                   {intakeComplete >= 100 ? "Review intake" : "Continue intake"}
@@ -136,43 +179,41 @@ export default async function PatientHome() {
         </Card>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      {/* ------------------ Metrics ------------------ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
         <MetricTile
           label="Pain"
-          value={
-            painSeries.length > 0
-              ? (painSeries[painSeries.length - 1]).toFixed(1)
-              : "—"
-          }
-          hint="Last 30 days"
+          accent="forest"
+          value={latestPain !== undefined ? latestPain.toFixed(1) : "—"}
+          hint="Last 30 days · 0-10 scale"
         />
         <MetricTile
           label="Sleep"
-          value={
-            sleepSeries.length > 0
-              ? (sleepSeries[sleepSeries.length - 1]).toFixed(1)
-              : "—"
-          }
-          hint="Last 30 days"
+          accent="amber"
+          value={latestSleep !== undefined ? latestSleep.toFixed(1) : "—"}
+          hint="Last 30 days · 0-10 scale"
         />
-        <div className="bg-surface border border-border rounded-lg p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-text-subtle">
+        <div className="relative bg-surface-raised border border-border rounded-xl p-5 shadow-sm overflow-hidden">
+          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-3">
             Trend
           </p>
-          <div className="mt-3 flex items-center gap-3">
-            <Sparkline data={painSeries.length > 1 ? painSeries : [3, 4, 4, 3, 3, 2]} />
-          </div>
+          <Sparkline
+            data={painSeries.length > 1 ? painSeries : [3, 4, 4, 3, 3, 2]}
+            width={240}
+            height={56}
+          />
           <p className="text-xs text-text-subtle mt-2">Pain score trend</p>
         </div>
       </div>
 
-      {/* Tasks + last message */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ------------------ Tasks + last message ------------------ */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Your next steps</CardTitle>
-            <CardDescription>Short, focused actions from your care team.</CardDescription>
+            <CardDescription>
+              Short, focused actions from your care team.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {patient.tasks.length === 0 ? (
@@ -181,19 +222,22 @@ export default async function PatientHome() {
                 description="We'll let you know when there's something new."
               />
             ) : (
-              <ul className="divide-y divide-border -mx-6">
+              <ul className="divide-y divide-border/70 -mx-6">
                 {patient.tasks.map((task) => (
                   <li
                     key={task.id}
-                    className="px-6 py-4 flex items-start justify-between gap-4"
+                    className="px-6 py-4 flex items-start justify-between gap-4 hover:bg-surface-muted/40 transition-colors"
                   >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-text">{task.title}</p>
-                      {task.dueAt && (
-                        <p className="text-xs text-text-subtle mt-1">
-                          Due {formatDate(task.dueAt)}
-                        </p>
-                      )}
+                    <div className="flex gap-3 min-w-0">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text">{task.title}</p>
+                        {task.dueAt && (
+                          <p className="text-xs text-text-subtle mt-1">
+                            Due {formatDate(task.dueAt)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <Button size="sm" variant="secondary">
                       Open
@@ -215,21 +259,24 @@ export default async function PatientHome() {
                 <p className="text-sm font-medium text-text">
                   {patient.messageThreads[0].subject}
                 </p>
-                <p className="text-sm text-text-muted mt-2 line-clamp-3">
+                <p className="text-sm text-text-muted mt-2 line-clamp-3 leading-relaxed">
                   {patient.messageThreads[0].messages[0]?.body ?? "No messages yet."}
                 </p>
                 <p className="text-xs text-text-subtle mt-3">
                   {formatRelative(patient.messageThreads[0].lastMessageAt)}
                 </p>
-                <div className="mt-4">
+                <div className="mt-5">
                   <Link href="/portal/messages">
-                    <Button size="sm" variant="secondary">Open thread</Button>
+                    <Button size="sm" variant="secondary">
+                      Open thread
+                    </Button>
                   </Link>
                 </div>
               </>
             ) : (
-              <p className="text-sm text-text-muted">
-                No messages yet. Your care team will reach out after your first visit.
+              <p className="text-sm text-text-muted leading-relaxed">
+                No messages yet. Your care team will reach out after your first
+                visit.
               </p>
             )}
           </CardContent>

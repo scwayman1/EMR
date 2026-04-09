@@ -1,21 +1,23 @@
 import Link from "next/link";
 import { SignupForm } from "./signup-form";
+import { Eyebrow } from "@/components/ui/ornament";
 
 export const metadata = { title: "Create your account" };
 
 export default function SignupPage() {
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-text tracking-tight">
-          Create your account
-        </h1>
-        <p className="text-sm text-text-muted mt-1.5">
-          Your care starts with a simple, private account.
-        </p>
+      <Eyebrow className="mb-4">Get started</Eyebrow>
+      <h1 className="font-display text-3xl text-text tracking-tight leading-[1.1]">
+        Create your account.
+      </h1>
+      <p className="text-sm text-text-muted mt-2.5">
+        Your care starts with a simple, private account. Takes under a minute.
+      </p>
+      <div className="mt-8">
+        <SignupForm />
       </div>
-      <SignupForm />
-      <p className="text-sm text-text-muted mt-6 text-center">
+      <p className="text-sm text-text-muted mt-8 text-center">
         Already have an account?{" "}
         <Link href="/login" className="text-accent font-medium hover:underline">
           Sign in

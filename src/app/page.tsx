@@ -1,25 +1,35 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Wordmark } from "@/components/ui/logo";
+import { HeroArt } from "@/components/ui/hero-art";
+import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 
-// Public marketing / acquisition home page. Deliberately distinct from the
-// authenticated app shell — no nav chrome, generous whitespace, premium tone.
+// Public marketing / acquisition home page. Editorial, warm, botanical.
+// Intentionally distinct from the authenticated app shell — no nav chrome,
+// generous whitespace, serif display type, custom SVG artwork.
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-bg">
+    <div className="min-h-screen bg-bg relative overflow-hidden">
+      {/* Global ambient wash behind the whole page */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 50% at 85% 10%, var(--highlight-soft), transparent 65%)," +
+            "radial-gradient(ellipse 50% 60% at 10% 90%, var(--accent-soft), transparent 60%)",
+        }}
+      />
+
       {/* Top nav */}
-      <nav className="max-w-[1200px] mx-auto flex items-center justify-between px-6 lg:px-10 h-16">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-md bg-accent flex items-center justify-center text-white font-semibold text-sm">
-            GP
-          </div>
-          <span className="text-base font-semibold text-text tracking-tight">
-            Green Path Health
-          </span>
+      <nav className="max-w-[1280px] mx-auto flex items-center justify-between px-6 lg:px-12 h-20">
+        <Link href="/">
+          <Wordmark size="md" />
         </Link>
         <div className="flex items-center gap-2">
           <Link
             href="/login"
-            className="text-sm text-text-muted hover:text-text px-3 py-2"
+            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
           >
             Sign in
           </Link>
@@ -30,72 +40,154 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-[1200px] mx-auto px-6 lg:px-10 pt-16 pb-24">
-        <div className="max-w-3xl">
-          <p className="text-xs font-medium uppercase tracking-[0.14em] text-accent mb-5">
-            Modern cannabis medicine
-          </p>
-          <h1 className="text-4xl md:text-[56px] leading-[1.05] font-semibold text-text tracking-tight">
-            A calm, modern home for your care.
-          </h1>
-          <p className="text-lg text-text-muted mt-6 max-w-2xl leading-relaxed">
-            One place to meet your care team, track how you're feeling, message
-            securely, and see your plan. Built for patients and clinicians who
-            expect software to feel like the rest of their lives.
-          </p>
-          <div className="mt-8 flex items-center gap-3">
-            <Link href="/signup">
-              <Button size="lg">Create your account</Button>
-            </Link>
-            <Link href="/login">
-              <Button size="lg" variant="secondary">
-                I already have an account
-              </Button>
-            </Link>
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-10 pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+          {/* Left: copy */}
+          <div className="lg:col-span-7 order-2 lg:order-1">
+            <Eyebrow className="mb-6">Modern cannabis medicine</Eyebrow>
+            <h1 className="font-display text-5xl md:text-6xl lg:text-7xl leading-[1.02] tracking-tight text-text">
+              A calmer, warmer home for your care.
+            </h1>
+            <p className="text-[17px] md:text-lg text-text-muted mt-7 max-w-xl leading-relaxed">
+              Meet your care team, keep your records organized, track how
+              you&apos;re actually feeling, and send a message whenever you
+              need one. Designed to feel as considered as the care itself.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              <Link href="/signup">
+                <Button size="lg">Create your account</Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="secondary">
+                  I already have an account
+                </Button>
+              </Link>
+            </div>
+
+            {/* Quiet trust row */}
+            <div className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-xs text-text-subtle">
+              <span className="inline-flex items-center gap-2">
+                <LeafSprig size={14} className="text-accent/70" />
+                Physician-led care
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <LeafSprig size={14} className="text-accent/70" />
+                HIPAA-ready infrastructure
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <LeafSprig size={14} className="text-accent/70" />
+                Secure by design
+              </span>
+            </div>
+          </div>
+
+          {/* Right: hero artwork */}
+          <div className="lg:col-span-5 order-1 lg:order-2">
+            <div className="relative mx-auto max-w-[540px]">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-6 rounded-[32px] bg-surface-raised/40 backdrop-blur-sm"
+              />
+              <div className="relative rounded-[28px] overflow-hidden border border-border shadow-lg">
+                <HeroArt />
+              </div>
+              {/* Floating pill callouts */}
+              <div className="absolute -left-4 top-10 hidden md:block bg-surface-raised border border-border rounded-full shadow-md px-4 py-2 text-xs font-medium text-text">
+                <span className="font-display text-sm mr-1">7d</span>
+                <span className="text-text-muted">pain trend</span>
+              </div>
+              <div className="absolute -right-6 bottom-16 hidden md:flex items-center gap-2 bg-surface-raised border border-border rounded-full shadow-md px-4 py-2 text-xs font-medium text-text">
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                Scribe draft ready
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      <EditorialRule className="max-w-[1280px] mx-auto px-6 lg:px-12" />
+
       {/* Trust panels */}
-      <section className="max-w-[1200px] mx-auto px-6 lg:px-10 pb-24">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              title: "Your records in one place",
-              body: "Upload notes, labs, and letters. We organize them so your care team is ready for your first visit.",
-            },
-            {
-              title: "Symptoms you can track",
-              body: "Short, fast check-ins that build a real picture of how things are going — not a static form in a folder.",
-            },
-            {
-              title: "A care team that responds",
-              body: "Secure messaging keeps everything in one thread. No phone tag. No portal maze.",
-            },
-          ].map((item) => (
-            <div
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 py-20">
+        <div className="max-w-2xl mb-14">
+          <Eyebrow className="mb-4">What&apos;s inside</Eyebrow>
+          <h2 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
+            Everything for your care — in one calm place.
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {FEATURES.map((item, i) => (
+            <article
               key={item.title}
-              className="bg-surface rounded-lg border border-border p-6 shadow-sm"
+              className="relative bg-surface-raised rounded-2xl border border-border p-7 shadow-sm overflow-hidden card-hover"
             >
-              <h3 className="text-base font-semibold text-text">{item.title}</h3>
-              <p className="text-sm text-text-muted mt-2 leading-relaxed">
+              {/* quiet number in the corner */}
+              <span className="absolute top-5 right-6 font-display text-[40px] leading-none text-border-strong/70 select-none">
+                0{i + 1}
+              </span>
+              <LeafSprig size={22} className="text-accent mb-5" />
+              <h3 className="font-display text-xl text-text tracking-tight">
+                {item.title}
+              </h3>
+              <p className="text-sm text-text-muted mt-3 leading-relaxed pr-10">
                 {item.body}
               </p>
-            </div>
+            </article>
           ))}
         </div>
       </section>
 
+      {/* Closing / CTA strip */}
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pb-24">
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised p-10 md:p-14 ambient">
+          <div className="relative max-w-2xl">
+            <Eyebrow className="mb-4">Ready when you are</Eyebrow>
+            <h2 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
+              Care, kept close.
+            </h2>
+            <p className="text-[15px] text-text-muted mt-4 leading-relaxed">
+              Creating an account takes under a minute. We&apos;ll guide you
+              through everything else.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/signup">
+                <Button size="lg">Create your account</Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="ghost">
+                  Sign in instead
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer className="border-t border-border">
-        <div className="max-w-[1200px] mx-auto px-6 lg:px-10 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <Wordmark size="sm" />
           <p className="text-xs text-text-subtle">
-            &copy; {new Date().getFullYear()} Green Path Health. All rights reserved.
-          </p>
-          <p className="text-xs text-text-subtle">
-            This platform is a demonstration product and is not a substitute for medical advice.
+            &copy; {new Date().getFullYear()} Green Path Health. A demonstration product —
+            not a substitute for medical advice.
           </p>
         </div>
       </footer>
     </div>
   );
 }
+
+const FEATURES = [
+  {
+    title: "Your records, in order",
+    body: "Upload notes, labs, and letters. We organize, label, and keep them close — ready for every visit.",
+  },
+  {
+    title: "Symptoms you can see",
+    body: "Short check-ins that reveal real trends. Your care team sees how things are actually going, not just how you felt in the waiting room.",
+  },
+  {
+    title: "A care team that answers",
+    body: "Secure messaging in one thread. No phone tag, no portal maze, no guesswork about what to do next.",
+  },
+];
