@@ -9,6 +9,8 @@ import { codingReadinessAgent } from "./coding-readiness-agent";
 import { practiceLaunchAgent } from "./practice-launch-agent";
 import { registryAgent } from "./registry-agent";
 import { schedulingAgent } from "./scheduling-agent";
+import { physicianNudgeAgent } from "./physician-nudge-agent";
+import { patientOutreachAgent } from "./patient-outreach-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -25,6 +27,8 @@ export const agentRegistry = {
   practiceLaunch: practiceLaunchAgent,
   registry: registryAgent,
   scheduling: schedulingAgent,
+  physicianNudge: physicianNudgeAgent,
+  patientOutreach: patientOutreachAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;

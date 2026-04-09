@@ -84,7 +84,13 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     },
   });
 
-  // Dispatch note.finalized to trigger the Coding Readiness Agent
+  // Also mark the encounter as complete
+  await prisma.encounter.update({
+    where: { id: note.encounterId },
+    data: { status: "complete", completedAt: new Date() },
+  });
+
+  // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
     name: "note.finalized",
     noteId,
@@ -92,9 +98,17 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     finalizedBy: user.id,
   });
 
+  // Dispatch encounter.completed → triggers Patient Outreach Agent
+  await dispatch({
+    name: "encounter.completed",
+    encounterId: note.encounterId,
+    patientId: encounter.patientId,
+    completedAt: new Date(),
+  });
+
   // In dev, run the queue inline so coding suggestions appear immediately
   if (process.env.NODE_ENV !== "production") {
-    await runTick("inline-dev", 2);
+    await runTick("inline-dev", 4);
   }
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
@@ -134,6 +148,13 @@ export async function saveAndFinalizeNote(
     },
   });
 
+  // Also mark the encounter as complete
+  await prisma.encounter.update({
+    where: { id: note.encounterId },
+    data: { status: "complete", completedAt: new Date() },
+  });
+
+  // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
     name: "note.finalized",
     noteId,
@@ -141,8 +162,16 @@ export async function saveAndFinalizeNote(
     finalizedBy: user.id,
   });
 
+  // Dispatch encounter.completed → triggers Patient Outreach Agent
+  await dispatch({
+    name: "encounter.completed",
+    encounterId: note.encounterId,
+    patientId: encounter.patientId,
+    completedAt: new Date(),
+  });
+
   if (process.env.NODE_ENV !== "production") {
-    await runTick("inline-dev", 2);
+    await runTick("inline-dev", 4);
   }
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);

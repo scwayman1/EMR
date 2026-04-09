@@ -119,6 +119,33 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "physician-nudge",
+    on: ["note.finalized"],
+    steps: [
+      {
+        agent: "physicianNudge",
+        input: (e) => ({
+          noteId: (e as any).noteId,
+          encounterId: (e as any).encounterId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "patient-outreach",
+    on: ["encounter.completed"],
+    steps: [
+      {
+        agent: "patientOutreach",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+          encounterId: (e as any).encounterId,
+        }),
+        requiresApproval: true,
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
