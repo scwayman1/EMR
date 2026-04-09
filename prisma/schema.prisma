@@ -1,0 +1,560 @@
+// Canonical data model for the AI-Native Cannabis Care Platform.
+//
+// Design rules:
+//   1. Favor structured columns; fall back to JSONB only when the shape
+//      is genuinely open (note blocks, intake answers, agent payloads).
+//   2. Every sensitive action writes an AuditLog row.
+//   3. Every async operation goes through AgentJob — one queue to rule them all.
+//   4. Soft-delete by default for patient-owned data via `deletedAt`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------------------
+// Identity & Org
+// --------------------------------------------------------------
+
+enum Role {
+  patient
+  clinician
+  operator
+  practice_owner
+  system
+}
+
+model Organization {
+  id             String       @id @default(cuid())
+  name           String
+  slug           String       @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  memberships    Membership[]
+  patients       Patient[]
+  providers      Provider[]
+  encounters     Encounter[]
+  documents      Document[]
+  auditLogs      AuditLog[]
+  agentJobs      AgentJob[]
+  launchStatus   PracticeLaunchStatus?
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  lastLoginAt    DateTime?
+
+  memberships    Membership[]
+  patientProfile Patient?     @relation("PatientUser")
+  providerProfile Provider?   @relation("ProviderUser")
+  sentMessages   Message[]    @relation("MessageSender")
+  auditLogs      AuditLog[]
+  approvedJobs   AgentJob[]   @relation("JobApprovedBy")
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           Role
+  createdAt      DateTime     @default(now())
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId, role])
+  @@index([organizationId, role])
+}
+
+// --------------------------------------------------------------
+// Patient & Provider
+// --------------------------------------------------------------
+
+enum PatientStatus {
+  prospect
+  active
+  inactive
+  archived
+}
+
+enum QualificationStatus {
+  unknown
+  pending
+  qualified
+  ineligible
+  expired
+}
+
+model Patient {
+  id              String              @id @default(cuid())
+  userId          String?             @unique
+  organizationId  String
+  status          PatientStatus       @default(prospect)
+  // Demographics
+  firstName       String
+  lastName        String
+  dateOfBirth     DateTime?
+  email           String?
+  phone           String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  postalCode      String?
+  // Cannabis + clinical
+  intakeAnswers   Json?               // progressive intake payload
+  cannabisHistory Json?               // prior use, formats, benefits, side effects
+  presentingConcerns String?
+  treatmentGoals  String?
+  qualificationStatus QualificationStatus @default(unknown)
+  qualificationExpiresAt DateTime?
+  // Soft delete
+  deletedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user            User?               @relation("PatientUser", fields: [userId], references: [id])
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chartSummary    ChartSummary?
+  encounters      Encounter[]
+  documents       Document[]
+  assessmentResponses AssessmentResponse[]
+  outcomeLogs     OutcomeLog[]
+  messageThreads  MessageThread[]
+  appointments    Appointment[]
+  tasks           Task[]
+
+  @@index([organizationId, status])
+  @@index([lastName, firstName])
+}
+
+model Provider {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  organizationId  String
+  title           String?      // e.g. "MD, Integrative Oncology"
+  specialties     String[]     @default([])
+  bio             String?
+  active          Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+
+  user            User         @relation("ProviderUser", fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  encounters      Encounter[]
+  appointments    Appointment[]
+
+  @@index([organizationId])
+}
+
+// --------------------------------------------------------------
+// Chart readiness summary (written by Intake Agent)
+// --------------------------------------------------------------
+
+model ChartSummary {
+  id             String   @id @default(cuid())
+  patientId      String   @unique
+  summaryMd      String   // markdown
+  completenessScore Int   // 0-100
+  missingFields  String[] @default([])
+  generatedBy    String   // agent name:version
+  generatedAt    DateTime @default(now())
+
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------
+// Documents
+// --------------------------------------------------------------
+
+enum DocumentKind {
+  note
+  lab
+  image
+  diagnosis
+  letter
+  other
+  unclassified
+}
+
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  patientId      String
+  uploadedById   String?
+  kind           DocumentKind @default(unclassified)
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  storageKey     String       // opaque pointer to object storage
+  tags           String[]     @default([])
+  aiClassified   Boolean      @default(false)
+  aiTags         String[]     @default([])
+  aiConfidence   Float?
+  needsReview    Boolean      @default(false)
+  encounterId    String?
+  deletedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter      Encounter?   @relation(fields: [encounterId], references: [id])
+
+  @@index([patientId, kind])
+  @@index([organizationId, needsReview])
+}
+
+// --------------------------------------------------------------
+// Encounters & Notes
+// --------------------------------------------------------------
+
+enum EncounterStatus {
+  scheduled
+  in_progress
+  complete
+  cancelled
+}
+
+model Encounter {
+  id             String          @id @default(cuid())
+  organizationId String
+  patientId      String
+  providerId     String?
+  status         EncounterStatus @default(scheduled)
+  scheduledFor   DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  modality       String          @default("in_person") // in_person | video | phone
+  reason         String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider       Provider?       @relation(fields: [providerId], references: [id])
+  notes          Note[]
+  documents      Document[]
+
+  @@index([patientId, status])
+  @@index([providerId, scheduledFor])
+}
+
+enum NoteStatus {
+  draft
+  needs_review
+  finalized
+  amended
+}
+
+model Note {
+  id             String     @id @default(cuid())
+  encounterId    String
+  authorUserId   String?    // null when drafted by agent, set when finalized by clinician
+  status         NoteStatus @default(draft)
+  // Structured note blocks — see src/lib/domain/notes.ts for the canonical block types.
+  blocks         Json
+  narrative      String?    // free-form fallback text
+  aiDrafted      Boolean    @default(false)
+  aiConfidence   Float?
+  finalizedAt    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  encounter      Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  codingSuggestion CodingSuggestion?
+
+  @@index([encounterId, status])
+}
+
+model CodingSuggestion {
+  id             String   @id @default(cuid())
+  noteId         String   @unique
+  icd10          Json     // [{ code, label, confidence }]
+  emLevel        String?
+  rationale      String?
+  generatedAt    DateTime @default(now())
+
+  note           Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------
+// Assessments & Outcomes
+// --------------------------------------------------------------
+
+model Assessment {
+  id             String   @id @default(cuid())
+  slug           String   @unique // "phq-9", "gad-7", "pain-vas"
+  title          String
+  description    String?
+  // Form schema — see src/lib/domain/assessments.ts
+  schema         Json
+  scoringRules   Json?
+  createdAt      DateTime @default(now())
+
+  responses      AssessmentResponse[]
+}
+
+model AssessmentResponse {
+  id             String   @id @default(cuid())
+  assessmentId   String
+  patientId      String
+  answers        Json
+  score          Float?
+  interpretation String?
+  submittedAt    DateTime @default(now())
+
+  assessment     Assessment @relation(fields: [assessmentId], references: [id])
+  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, submittedAt])
+}
+
+enum OutcomeMetric {
+  pain
+  sleep
+  anxiety
+  mood
+  nausea
+  appetite
+  energy
+  adherence
+  side_effects
+}
+
+model OutcomeLog {
+  id             String        @id @default(cuid())
+  patientId      String
+  metric         OutcomeMetric
+  value          Float         // normalized 0-10
+  note           String?
+  loggedAt       DateTime      @default(now())
+
+  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, metric, loggedAt])
+}
+
+// --------------------------------------------------------------
+// Messaging
+// --------------------------------------------------------------
+
+model MessageThread {
+  id             String    @id @default(cuid())
+  patientId      String
+  subject        String
+  lastMessageAt  DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  messages       Message[]
+
+  @@index([patientId, lastMessageAt])
+}
+
+enum MessageStatus {
+  draft
+  sent
+  read
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  threadId       String
+  senderUserId   String?       // null when agent-drafted
+  senderAgent    String?       // agent name:version if AI-drafted
+  status         MessageStatus @default(draft)
+  body           String
+  aiDrafted      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  sentAt         DateTime?
+
+  thread         MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender         User?         @relation("MessageSender", fields: [senderUserId], references: [id])
+
+  @@index([threadId, createdAt])
+}
+
+// --------------------------------------------------------------
+// Scheduling
+// --------------------------------------------------------------
+
+enum AppointmentStatus {
+  requested
+  confirmed
+  cancelled
+  completed
+  no_show
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  patientId      String
+  providerId     String?
+  status         AppointmentStatus @default(requested)
+  startAt        DateTime
+  endAt          DateTime
+  modality       String            @default("video")
+  notes          String?
+  createdAt      DateTime          @default(now())
+
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider       Provider? @relation(fields: [providerId], references: [id])
+
+  @@index([providerId, startAt])
+  @@index([patientId, startAt])
+}
+
+// --------------------------------------------------------------
+// Tasks (human or agent-owned work items)
+// --------------------------------------------------------------
+
+enum TaskStatus {
+  open
+  in_progress
+  done
+  snoozed
+  cancelled
+}
+
+model Task {
+  id             String     @id @default(cuid())
+  organizationId String
+  patientId      String?
+  title          String
+  description    String?
+  status         TaskStatus @default(open)
+  assigneeRole   Role?
+  assigneeUserId String?
+  dueAt          DateTime?
+  createdAt      DateTime   @default(now())
+  completedAt    DateTime?
+
+  patient        Patient?   @relation(fields: [patientId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([assigneeUserId, status])
+}
+
+// --------------------------------------------------------------
+// Orchestration queue
+// --------------------------------------------------------------
+
+enum AgentJobStatus {
+  pending
+  claimed
+  running
+  needs_approval
+  succeeded
+  failed
+  cancelled
+}
+
+model AgentJob {
+  id             String         @id @default(cuid())
+  organizationId String?
+  workflowName   String
+  agentName      String
+  eventName      String
+  input          Json
+  output         Json?
+  status         AgentJobStatus @default(pending)
+  attempts       Int            @default(0)
+  maxAttempts    Int            @default(3)
+  lastError      String?
+  logs           Json           @default("[]")
+  requiresApproval Boolean      @default(false)
+  approvalRequiredAt DateTime?
+  approvedById   String?
+  approvedAt     DateTime?
+  claimedAt      DateTime?
+  claimedBy      String?        // worker id
+  runAfter       DateTime       @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  approvedBy     User?          @relation("JobApprovedBy", fields: [approvedById], references: [id])
+
+  @@index([status, runAfter])
+  @@index([organizationId, status])
+  @@index([workflowName, status])
+}
+
+// --------------------------------------------------------------
+// Audit log (append-only)
+// --------------------------------------------------------------
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  actorUserId    String?
+  actorAgent     String?  // "agent:scribe@1.0.0"
+  action         String   // e.g. "patient.read", "note.finalized"
+  subjectType    String?
+  subjectId      String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  actor          User?         @relation(fields: [actorUserId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([subjectType, subjectId])
+}
+
+// --------------------------------------------------------------
+// Research (stubbed for V1)
+// --------------------------------------------------------------
+
+model ResearchQuery {
+  id             String   @id @default(cuid())
+  userId         String?
+  patientId      String?
+  queryText      String
+  createdAt      DateTime @default(now())
+
+  results        ResearchResult[]
+
+  @@index([userId, createdAt])
+}
+
+model ResearchResult {
+  id             String   @id @default(cuid())
+  queryId        String
+  title          String
+  source         String
+  year           Int?
+  summary        String
+  citation       String
+  quantitativeFindings Json?
+  rank           Int      @default(0)
+
+  query          ResearchQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------
+// Practice launch readiness
+// --------------------------------------------------------------
+
+model PracticeLaunchStatus {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  readinessScore Int      @default(0)
+  blockers       Json     @default("[]")
+  nextSteps      Json     @default("[]")
+  goLiveAt       DateTime?
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
