@@ -138,9 +138,17 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
 
             {/* Quick actions */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
-              <Button variant="secondary" size="sm">
-                Message
-              </Button>
+              <Link
+                href={
+                  patient.messageThreads[0]
+                    ? `/clinic/messages?thread=${patient.messageThreads[0].id}`
+                    : "/clinic/messages"
+                }
+              >
+                <Button variant="secondary" size="sm">
+                  Message
+                </Button>
+              </Link>
               <Link href={`/clinic/patients/${params.id}?tab=documents`}>
                 <Button variant="secondary" size="sm">
                   View records

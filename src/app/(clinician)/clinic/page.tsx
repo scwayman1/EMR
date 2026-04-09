@@ -30,7 +30,7 @@ export default async function ClinicHomePage() {
   const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const endOfDay = new Date(startOfDay.getTime() + 86400000);
 
-  const [todaysEncounters, recentPatients, openNotes, activePatientCount] =
+  const [todaysEncounters, recentPatients, openNotes, activePatientCount, unreadThreads] =
     await Promise.all([
       prisma.encounter.findMany({
         where: {
@@ -49,6 +49,12 @@ export default async function ClinicHomePage() {
         where: { status: "draft", encounter: { organizationId } },
       }),
       prisma.patient.count({ where: { organizationId, status: "active" } }),
+      prisma.messageThread.count({
+        where: {
+          patient: { organizationId },
+          messages: { some: { status: "sent" } },
+        },
+      }),
     ]);
 
   return (
@@ -103,7 +109,7 @@ export default async function ClinicHomePage() {
         <MetricTile label="Active patients" value={activePatientCount} />
         <MetricTile label="Today's visits" value={todaysEncounters.length} />
         <MetricTile label="Notes in draft" value={openNotes} />
-        <MetricTile label="Unread messages" value="—" />
+        <MetricTile label="Active threads" value={unreadThreads} />
       </div>
 
       {/* ------------------ Schedule + recent patients ------------------ */}
