@@ -2,16 +2,26 @@ import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { MetricTile } from "@/components/ui/metric-tile";
+import { Sparkline } from "@/components/ui/sparkline";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
-import { AmbientOrb } from "@/components/ui/hero-art";
-import { formatDate } from "@/lib/utils/format";
+import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { formatRelative } from "@/lib/utils/format";
 
-export const metadata = { title: "Today" };
+export const metadata = { title: "Mission Control" };
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -22,156 +32,604 @@ function greeting(): string {
   return "Hello";
 }
 
+function modalityLabel(m: string): string {
+  switch (m) {
+    case "video":
+      return "Video";
+    case "phone":
+      return "Phone";
+    case "in_person":
+      return "In-person";
+    default:
+      return m;
+  }
+}
+
+function modalityTone(m: string): "accent" | "info" | "neutral" {
+  switch (m) {
+    case "video":
+      return "info";
+    case "phone":
+      return "neutral";
+    case "in_person":
+      return "accent";
+    default:
+      return "neutral";
+  }
+}
+
+/** Circular progress ring rendered as a tiny SVG. */
+function ChartReadinessRing({
+  percent,
+  size = 28,
+}: {
+  percent: number;
+  size?: number;
+}) {
+  const r = (size - 4) / 2;
+  const c = 2 * Math.PI * r;
+  const offset = c - (percent / 100) * c;
+  const color = percent >= 80 ? "var(--success)" : percent >= 50 ? "var(--highlight)" : "var(--text-subtle)";
+
+  return (
+    <svg width={size} height={size} className="shrink-0" aria-label={`${percent}% ready`}>
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="var(--border)"
+        strokeWidth="2.5"
+      />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray={c}
+        strokeDashoffset={offset}
+        transform={`rotate(-90 ${size / 2} ${size / 2})`}
+      />
+      <text
+        x={size / 2}
+        y={size / 2}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="var(--text-muted)"
+        fontSize="8"
+        fontWeight="500"
+        fontFamily="var(--font-sans)"
+      >
+        {percent}
+      </text>
+    </svg>
+  );
+}
+
+/** Status dot with optional pulse animation. */
+function StatusDot({
+  color,
+  pulse = false,
+  label,
+  count,
+}: {
+  color: string;
+  pulse?: boolean;
+  label: string;
+  count: number;
+}) {
+  return (
+    <div className="flex items-center gap-2" title={label}>
+      <span className="relative flex h-2.5 w-2.5">
+        {pulse && (
+          <span
+            className="absolute inset-0 rounded-full animate-ping opacity-50"
+            style={{ backgroundColor: color }}
+          />
+        )}
+        <span
+          className="relative inline-flex h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      </span>
+      <span className="font-display text-lg font-medium tabular-nums leading-none text-text">
+        {count}
+      </span>
+      <span className="text-[11px] text-text-subtle tracking-wide hidden sm:inline">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/** Patient readiness status from chart completeness. */
+function readinessStatus(score: number | null | undefined): {
+  color: string;
+  label: string;
+} {
+  if (score == null) return { color: "var(--text-subtle)", label: "Not started" };
+  if (score >= 80) return { color: "var(--success)", label: "Ready" };
+  if (score >= 40) return { color: "var(--highlight)", label: "Incomplete intake" };
+  return { color: "var(--text-subtle)", label: "Not started" };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Activity feed item types                                           */
+/* ------------------------------------------------------------------ */
+
+interface ActivityItem {
+  id: string;
+  type: "encounter" | "note_finalized" | "note_draft" | "assessment" | "message" | "document";
+  description: string;
+  timestamp: Date;
+  href: string;
+  dotColor: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page                                                               */
+/* ------------------------------------------------------------------ */
+
 export default async function ClinicHomePage() {
   const user = await requireUser();
   const organizationId = user.organizationId!;
 
   const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfDay = new Date(startOfDay.getTime() + 86400000);
+  const startOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
+  const startOfWeek = new Date(startOfDay);
+  startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 
-  const [todaysEncounters, recentPatients, openNotes, activePatientCount, unreadThreads] =
-    await Promise.all([
-      prisma.encounter.findMany({
-        where: {
-          organizationId,
-          scheduledFor: { gte: startOfDay, lt: endOfDay },
+  /* ---- Parallel data fetches ---- */
+  const [
+    todaysEncounters,
+    openNotes,
+    needsReviewNotes,
+    approvalJobs,
+    activeThreads,
+    activePatientCount,
+    weekVisits,
+    weekFinalizedNotes,
+    recentEncounters,
+    recentFinalizedNotes,
+    recentAssessments,
+    recentMessages,
+    recentDocuments,
+    allChartSummaries,
+    dailyEncounterCounts,
+    needsReviewCount,
+  ] = await Promise.all([
+    // 1. Today's encounters
+    prisma.encounter.findMany({
+      where: {
+        organizationId,
+        scheduledFor: { gte: startOfDay, lt: endOfDay },
+      },
+      include: { patient: { include: { chartSummary: true } } },
+      orderBy: { scheduledFor: "asc" },
+    }),
+
+    // 2. Draft notes count
+    prisma.note.count({
+      where: { status: "draft", encounter: { organizationId } },
+    }),
+
+    // 3. Notes needing review (full list for sidebar)
+    prisma.note.findMany({
+      where: {
+        status: { in: ["draft", "needs_review"] },
+        encounter: { organizationId },
+      },
+      include: {
+        encounter: {
+          include: { patient: { select: { id: true, firstName: true, lastName: true } } },
         },
-        include: { patient: { include: { chartSummary: true } } },
-        orderBy: { scheduledFor: "asc" },
-      }),
-      prisma.patient.findMany({
-        where: { organizationId, status: "active" },
-        orderBy: { updatedAt: "desc" },
-        take: 6,
-      }),
-      prisma.note.count({
-        where: { status: "draft", encounter: { organizationId } },
-      }),
-      prisma.patient.count({ where: { organizationId, status: "active" } }),
-      prisma.messageThread.count({
-        where: {
-          patient: { organizationId },
-          messages: { some: { status: "sent" } },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 10,
+    }),
+
+    // 4. Agent jobs needing approval
+    prisma.agentJob.count({
+      where: { organizationId, status: "needs_approval" },
+    }),
+
+    // 5. Active message threads
+    prisma.messageThread.count({
+      where: {
+        patient: { organizationId },
+        messages: { some: { status: "sent" } },
+      },
+    }),
+
+    // 6. Active patient count
+    prisma.patient.count({
+      where: { organizationId, status: "active" },
+    }),
+
+    // 7. This week's visits
+    prisma.encounter.count({
+      where: {
+        organizationId,
+        scheduledFor: { gte: startOfWeek, lt: endOfDay },
+      },
+    }),
+
+    // 8. Notes finalized this week
+    prisma.note.count({
+      where: {
+        status: "finalized",
+        finalizedAt: { gte: startOfWeek },
+        encounter: { organizationId },
+      },
+    }),
+
+    // 9. Recent completed encounters (activity feed)
+    prisma.encounter.findMany({
+      where: { organizationId, status: "complete" },
+      include: { patient: { select: { id: true, firstName: true, lastName: true } } },
+      orderBy: { completedAt: "desc" },
+      take: 5,
+    }),
+
+    // 10. Recently finalized notes (activity feed)
+    prisma.note.findMany({
+      where: { status: "finalized", encounter: { organizationId } },
+      include: {
+        encounter: {
+          include: { patient: { select: { id: true, firstName: true, lastName: true } } },
         },
-      }),
-    ]);
+      },
+      orderBy: { finalizedAt: "desc" },
+      take: 5,
+    }),
+
+    // 11. Recent assessment responses (activity feed)
+    prisma.assessmentResponse.findMany({
+      where: { patient: { organizationId } },
+      include: {
+        assessment: { select: { title: true } },
+        patient: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+      take: 5,
+    }),
+
+    // 12. Recent messages (activity feed)
+    prisma.message.findMany({
+      where: {
+        status: "sent",
+        thread: { patient: { organizationId } },
+      },
+      include: {
+        thread: {
+          include: {
+            patient: { select: { id: true, firstName: true, lastName: true } },
+          },
+        },
+      },
+      orderBy: { sentAt: "desc" },
+      take: 5,
+    }),
+
+    // 13. Recent documents (activity feed)
+    prisma.document.findMany({
+      where: { organizationId, deletedAt: null },
+      include: {
+        patient: { select: { id: true, firstName: true, lastName: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+
+    // 14. Chart summaries for avg readiness
+    prisma.chartSummary.findMany({
+      where: { patient: { organizationId, status: "active" } },
+      select: { completenessScore: true },
+    }),
+
+    // 15. Daily encounter counts for sparkline (last 7 days)
+    Promise.all(
+      Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(startOfDay);
+        d.setDate(d.getDate() - (6 - i));
+        const next = new Date(d.getTime() + 86_400_000);
+        return prisma.encounter.count({
+          where: {
+            organizationId,
+            scheduledFor: { gte: d, lt: next },
+          },
+        });
+      })
+    ),
+
+    // 16. Notes in needs_review status (for command strip count)
+    prisma.note.count({
+      where: { status: "needs_review", encounter: { organizationId } },
+    }),
+  ]);
+
+  /* ---- Derived values ---- */
+  const notesToSign = openNotes + needsReviewCount;
+
+  const avgReadiness =
+    allChartSummaries.length > 0
+      ? Math.round(
+          allChartSummaries.reduce((s, c) => s + c.completenessScore, 0) /
+            allChartSummaries.length
+        )
+      : 0;
+
+  /* ---- Build unified activity feed ---- */
+  const activityFeed: ActivityItem[] = [];
+
+  for (const enc of recentEncounters) {
+    activityFeed.push({
+      id: `enc-${enc.id}`,
+      type: "encounter",
+      description: `${enc.patient.firstName} ${enc.patient.lastName} — encounter completed`,
+      timestamp: enc.completedAt ?? enc.updatedAt,
+      href: `/clinic/patients/${enc.patient.id}`,
+      dotColor: "var(--accent)",
+    });
+  }
+
+  for (const note of recentFinalizedNotes) {
+    activityFeed.push({
+      id: `note-${note.id}`,
+      type: "note_finalized",
+      description: `${note.encounter.patient.firstName} ${note.encounter.patient.lastName} — note finalized`,
+      timestamp: note.finalizedAt ?? note.updatedAt,
+      href: `/clinic/patients/${note.encounter.patient.id}/notes/${note.id}`,
+      dotColor: "var(--accent)",
+    });
+  }
+
+  for (const ar of recentAssessments) {
+    const scorePart = ar.score != null ? ` (score: ${ar.score})` : "";
+    activityFeed.push({
+      id: `assess-${ar.id}`,
+      type: "assessment",
+      description: `${ar.patient.firstName} ${ar.patient.lastName} — ${ar.assessment.title} submitted${scorePart}`,
+      timestamp: ar.submittedAt,
+      href: `/clinic/patients/${ar.patient.id}`,
+      dotColor: "var(--info)",
+    });
+  }
+
+  for (const msg of recentMessages) {
+    activityFeed.push({
+      id: `msg-${msg.id}`,
+      type: "message",
+      description: `${msg.thread.patient.firstName} ${msg.thread.patient.lastName} — message received`,
+      timestamp: msg.sentAt ?? msg.createdAt,
+      href: `/clinic/patients/${msg.thread.patient.id}`,
+      dotColor: "var(--info)",
+    });
+  }
+
+  for (const doc of recentDocuments) {
+    activityFeed.push({
+      id: `doc-${doc.id}`,
+      type: "document",
+      description: `${doc.patient.firstName} ${doc.patient.lastName} — ${doc.kind} uploaded`,
+      timestamp: doc.createdAt,
+      href: `/clinic/patients/${doc.patient.id}`,
+      dotColor: "var(--text-subtle)",
+    });
+  }
+
+  // Sort by most recent first, cap at 15
+  activityFeed.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  const feed = activityFeed.slice(0, 15);
+
+  /* ---- Date display ---- */
+  const dateStr = today.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <PageShell maxWidth="max-w-[1320px]">
-      {/* ------------------ Hero greeting ------------------ */}
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised ambient mb-10">
-        <AmbientOrb className="absolute -right-16 -top-4 h-[280px] w-[520px] opacity-90" />
-        <div className="relative px-8 md:px-12 py-12 md:py-14">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-8 max-w-5xl">
-            <div className="max-w-2xl">
-              <Eyebrow className="mb-4">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Eyebrow>
-              <h1 className="font-display text-4xl md:text-5xl leading-[1.05] tracking-tight text-text">
+      {/* ============================================================
+          1. COMMAND STRIP
+          ============================================================ */}
+      <Card
+        tone="raised"
+        className="mb-8 border-l-[3px] border-l-accent"
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 px-6 py-4">
+          {/* Left: Name + date */}
+          <div className="flex items-center gap-3 shrink-0">
+            <LeafSprig size={20} className="text-accent/70 hidden sm:block" />
+            <div>
+              <h1 className="font-display text-xl font-medium text-text tracking-tight leading-tight">
                 {greeting()},{" "}
-                <span className="italic text-accent">{user.firstName}</span>.
+                <span className="text-accent">{user.firstName}</span>
               </h1>
-              <p className="text-[15px] text-text-muted mt-4 leading-relaxed">
-                {todaysEncounters.length === 0
-                  ? "Nothing on your schedule today. A quiet morning to catch up on notes."
-                  : `${todaysEncounters.length} visit${
-                      todaysEncounters.length === 1 ? "" : "s"
-                    } today · ${openNotes} ${
-                      openNotes === 1 ? "note" : "notes"
-                    } in draft.`}
+              <p className="text-[11px] uppercase tracking-[0.14em] text-text-subtle mt-0.5">
+                {dateStr}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4 shrink-0">
-              <MetricTile
-                label="Today"
-                accent="forest"
-                value={todaysEncounters.length}
-                hint="Visits"
+          </div>
+
+          {/* Center: Live status indicators */}
+          <div className="flex items-center gap-6 flex-wrap">
+            <StatusDot
+              color="var(--accent)"
+              count={todaysEncounters.length}
+              label="Patients today"
+            />
+            <StatusDot
+              color="var(--highlight)"
+              pulse={notesToSign > 0}
+              count={notesToSign}
+              label="Notes to sign"
+            />
+            <StatusDot
+              color="var(--highlight)"
+              pulse={approvalJobs > 0}
+              count={approvalJobs}
+              label="Approvals"
+            />
+            <StatusDot
+              color="var(--text-subtle)"
+              count={activeThreads}
+              label="Threads"
+            />
+          </div>
+
+          {/* Right: Quick actions */}
+          <div className="flex items-center gap-3 shrink-0">
+            <form action="/clinic/patients" method="get" className="hidden md:block">
+              <input
+                type="search"
+                name="q"
+                placeholder="Search patients..."
+                className="h-9 w-48 rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/50 transition-colors"
               />
-              <MetricTile
-                label="Drafts"
-                accent="amber"
-                value={openNotes}
-                hint="To complete"
-              />
-            </div>
+            </form>
+            <Link href="/clinic/patients?new=1">
+              <Button size="sm">New visit</Button>
+            </Link>
           </div>
         </div>
+      </Card>
+
+      {/* ============================================================
+          2. PATIENT QUEUE — horizontal scroll rail
+          ============================================================ */}
+      <section className="mb-10">
+        <Eyebrow className="mb-4">Today&apos;s queue</Eyebrow>
+
+        {todaysEncounters.length === 0 ? (
+          <Card tone="outlined" className="py-10 px-6">
+            <div className="flex flex-col items-center text-center">
+              <LeafSprig size={32} className="text-accent/40 mb-3" />
+              <p className="font-display text-lg text-text">
+                Clear schedule.
+              </p>
+              <p className="text-sm text-text-muted mt-1">
+                A good day to catch up on notes.
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
+            {todaysEncounters.map((enc) => {
+              const readiness = enc.patient.chartSummary?.completenessScore ?? null;
+              const status = readinessStatus(readiness);
+
+              return (
+                <Link
+                  key={enc.id}
+                  href={`/clinic/patients/${enc.patient.id}`}
+                  className="shrink-0 snap-start"
+                >
+                  <Card
+                    tone="raised"
+                    className="w-56 h-36 card-hover flex flex-col justify-between p-4 group cursor-pointer"
+                  >
+                    {/* Top: Avatar + name + time */}
+                    <div className="flex items-start gap-3">
+                      <Avatar
+                        firstName={enc.patient.firstName}
+                        lastName={enc.patient.lastName}
+                        size="sm"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-text truncate group-hover:text-accent transition-colors">
+                          {enc.patient.firstName} {enc.patient.lastName}
+                        </p>
+                        <p className="text-xs text-text-subtle tabular-nums mt-0.5">
+                          {enc.scheduledFor?.toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom: modality + readiness + status */}
+                    <div className="flex items-center justify-between mt-auto">
+                      <Badge tone={modalityTone(enc.modality)}>
+                        {modalityLabel(enc.modality)}
+                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {readiness != null && (
+                          <ChartReadinessRing percent={readiness} size={26} />
+                        )}
+                        <span
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: status.color }}
+                          title={status.label}
+                        />
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {/* ------------------ Metrics strip ------------------ */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-        <MetricTile label="Active patients" value={activePatientCount} />
-        <MetricTile label="Today's visits" value={todaysEncounters.length} />
-        <MetricTile label="Notes in draft" value={openNotes} />
-        <MetricTile label="Active threads" value={unreadThreads} />
-      </div>
+      <EditorialRule className="mb-10" />
 
-      {/* ------------------ Schedule + recent patients ------------------ */}
+      {/* ============================================================
+          3. TWO-COLUMN LAYOUT
+          ============================================================ */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Today's schedule */}
-        <Card className="lg:col-span-2" tone="raised">
+        {/* -------- Left column (2/3): Activity feed -------- */}
+        <Card tone="raised" className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LeafSprig size={16} className="text-accent/80" />
-              Today&apos;s schedule
+              Activity
             </CardTitle>
-            <CardDescription>
-              Each visit carries a chart-ready summary from the intake agent.
-            </CardDescription>
           </CardHeader>
           <CardContent>
-            {todaysEncounters.length === 0 ? (
+            {feed.length === 0 ? (
               <EmptyState
-                title="No visits today"
-                description="A quiet day to catch up. Ping your ops team if you want to be booked up faster."
+                title="No recent activity"
+                description="Clinical events will appear here as they happen."
               />
             ) : (
-              <ul className="divide-y divide-border/70 -mx-6">
-                {todaysEncounters.map((e) => (
-                  <li
-                    key={e.id}
-                    className="px-6 py-4 hover:bg-surface-muted/40 transition-colors"
-                  >
+              <ul className="space-y-1 -mx-2">
+                {feed.map((item) => (
+                  <li key={item.id}>
                     <Link
-                      href={`/clinic/patients/${e.patient.id}`}
-                      className="flex items-center gap-4 group"
+                      href={item.href}
+                      className="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-muted/50 transition-colors group"
                     >
-                      <Avatar
-                        firstName={e.patient.firstName}
-                        lastName={e.patient.lastName}
-                        size="md"
+                      {/* Type dot */}
+                      <span
+                        className="mt-1.5 h-2 w-2 rounded-full shrink-0"
+                        style={{ backgroundColor: item.dotColor }}
                       />
+                      {/* Description */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-medium text-text group-hover:text-accent transition-colors">
-                            {e.patient.firstName} {e.patient.lastName}
-                          </p>
-                          <Badge tone="neutral">{e.modality}</Badge>
-                          {e.patient.chartSummary && (
-                            <Badge tone="accent">
-                              Chart {e.patient.chartSummary.completenessScore}%
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-text-subtle mt-1 tabular-nums">
-                          {e.scheduledFor?.toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}{" "}
-                          · {e.reason ?? "Visit"}
+                        <p className="text-sm text-text group-hover:text-accent transition-colors leading-snug">
+                          {item.description}
+                        </p>
+                        <p className="text-[11px] text-text-subtle mt-0.5 tabular-nums">
+                          {formatRelative(item.timestamp)}
                         </p>
                       </div>
+                      {/* Arrow */}
                       <span
                         aria-hidden="true"
-                        className="text-text-subtle group-hover:text-accent transition-colors"
+                        className="text-text-subtle group-hover:text-accent transition-colors mt-0.5 text-sm"
                       >
-                        →
+                        &rarr;
                       </span>
                     </Link>
                   </li>
@@ -181,39 +639,119 @@ export default async function ClinicHomePage() {
           </CardContent>
         </Card>
 
-        {/* Recent patients */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent patients</CardTitle>
-            <CardDescription>Your most recently active patients.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentPatients.length === 0 ? (
-              <EmptyState title="No patients yet" />
-            ) : (
-              <ul className="space-y-1 -mx-1">
-                {recentPatients.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/clinic/patients/${p.id}`}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-surface-muted transition-colors group"
-                    >
-                      <Avatar firstName={p.firstName} lastName={p.lastName} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-text truncate group-hover:text-accent transition-colors">
-                          {p.firstName} {p.lastName}
-                        </p>
-                        <p className="text-xs text-text-subtle truncate">
-                          Updated {formatDate(p.updatedAt)}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        {/* -------- Right column (1/3): Stats + Drafts + Research -------- */}
+        <div className="space-y-6">
+          {/* Quick stats */}
+          <div className="grid grid-cols-2 gap-3">
+            <MetricTile
+              label="Active patients"
+              value={activePatientCount}
+              accent="forest"
+            />
+            <MetricTile
+              label="This week"
+              value={weekVisits}
+              hint="Visits"
+              accent="forest"
+            />
+            <MetricTile
+              label="Finalized"
+              value={weekFinalizedNotes}
+              hint="Notes this week"
+              accent="amber"
+            />
+            <MetricTile
+              label="Chart ready"
+              value={`${avgReadiness}%`}
+              hint="Avg readiness"
+              accent="none"
+            />
+          </div>
+
+          {/* Weekly visits sparkline */}
+          <Card tone="default" className="p-4">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">
+              Visits — last 7 days
+            </p>
+            <Sparkline
+              data={dailyEncounterCounts}
+              width={280}
+              height={48}
+              color="var(--accent)"
+              fill="var(--accent-soft)"
+            />
+          </Card>
+
+          {/* Notes needing attention */}
+          <Card tone="default">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span
+                  className="h-2 w-2 rounded-full bg-highlight"
+                  aria-hidden="true"
+                />
+                Notes needing attention
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {needsReviewNotes.length === 0 ? (
+                <p className="text-sm text-text-muted py-4 text-center">
+                  All clear. No notes need attention.
+                </p>
+              ) : (
+                <ul className="space-y-1 -mx-2">
+                  {needsReviewNotes.map((note) => (
+                    <li key={note.id}>
+                      <Link
+                        href={`/clinic/patients/${note.encounter.patient.id}/notes/${note.id}`}
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-muted/50 transition-colors group"
+                      >
+                        <Avatar
+                          firstName={note.encounter.patient.firstName}
+                          lastName={note.encounter.patient.lastName}
+                          size="sm"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text truncate group-hover:text-accent transition-colors">
+                            {note.encounter.patient.firstName}{" "}
+                            {note.encounter.patient.lastName}
+                          </p>
+                        </div>
+                        <Badge
+                          tone={note.status === "needs_review" ? "warning" : "neutral"}
+                        >
+                          {note.status === "needs_review" ? "Review" : "Draft"}
+                        </Badge>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Research shortcut */}
+          <Card tone="outlined" className="p-4">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">
+              Quick research
+            </p>
+            <form
+              action="/clinic/research"
+              method="get"
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                name="q"
+                placeholder="e.g. CBD for neuropathic pain..."
+                className="flex-1 h-9 rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent/50 transition-colors"
+              />
+              <Button size="sm" variant="secondary" type="submit">
+                Go
+              </Button>
+            </form>
+          </Card>
+        </div>
       </div>
     </PageShell>
   );

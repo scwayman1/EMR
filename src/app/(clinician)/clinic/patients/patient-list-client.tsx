@@ -2,9 +2,17 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { MetricTile } from "@/components/ui/metric-tile";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 interface PatientRow {
   id: string;
@@ -14,19 +22,205 @@ interface PatientRow {
   presentingConcerns: string | null;
   completenessScore: number | null;
   updatedAt: string;
+  lastVisit: string | null;
+  painTrend: number[];
 }
 
-type SortField = "name" | "updated";
-type SortDir = "asc" | "desc";
+interface StatusCounts {
+  all: number;
+  active: number;
+  prospect: number;
+  inactive: number;
+}
 
-export function PatientListClient({ patients }: { patients: PatientRow[] }) {
+interface Props {
+  patients: PatientRow[];
+  statusCounts: StatusCounts;
+  avgReadiness: number;
+  initialStatus: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Status filter config                                               */
+/* ------------------------------------------------------------------ */
+
+const STATUS_FILTERS: { key: string; label: string; countKey: keyof StatusCounts }[] = [
+  { key: "all", label: "All", countKey: "all" },
+  { key: "active", label: "Active", countKey: "active" },
+  { key: "prospect", label: "In Intake", countKey: "prospect" },
+  { key: "inactive", label: "Inactive", countKey: "inactive" },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+function statusTone(status: string): "success" | "warning" | "neutral" {
+  switch (status) {
+    case "active":
+      return "success";
+    case "prospect":
+      return "warning";
+    default:
+      return "neutral";
+  }
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case "active":
+      return "Active";
+    case "prospect":
+      return "In Intake";
+    case "inactive":
+      return "Inactive";
+    case "archived":
+      return "Archived";
+    default:
+      return status;
+  }
+}
+
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mini sparkline (SVG)                                               */
+/* ------------------------------------------------------------------ */
+
+function Sparkline({ data, className }: { data: number[]; className?: string }) {
+  if (data.length < 2) return null;
+
+  const width = 64;
+  const height = 24;
+  const padding = 2;
+  const innerW = width - padding * 2;
+  const innerH = height - padding * 2;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+
+  const points = data.map((v, i) => {
+    const x = padding + (i / (data.length - 1)) * innerW;
+    const y = padding + innerH - ((v - min) / range) * innerH;
+    return `${x},${y}`;
+  });
+
+  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p}`).join(" ");
+
+  // Determine trend color: compare last vs first
+  const trending = data[data.length - 1] <= data[0]; // lower pain = good
+  const strokeColor = trending ? "var(--success)" : "var(--warning)";
+
+  return (
+    <svg
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d={pathD}
+        stroke={strokeColor}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Last point dot */}
+      <circle
+        cx={parseFloat(points[points.length - 1].split(",")[0])}
+        cy={parseFloat(points[points.length - 1].split(",")[1])}
+        r="2"
+        fill={strokeColor}
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Search icon                                                        */
+/* ------------------------------------------------------------------ */
+
+function SearchIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      className="text-text-subtle"
+      aria-hidden="true"
+    >
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3" />
+      <path
+        d="M10.5 10.5L14 14"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Chevron icon                                                       */
+/* ------------------------------------------------------------------ */
+
+function ChevronRight() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      className="text-text-subtle"
+      aria-hidden="true"
+    >
+      <path
+        d="M6 4l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main client component                                              */
+/* ------------------------------------------------------------------ */
+
+export function PatientListClient({
+  patients,
+  statusCounts,
+  avgReadiness,
+  initialStatus,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [sortField, setSortField] = useState<SortField>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const activeStatus = searchParams.get("status") ?? initialStatus;
 
+  /* Filter + search ------------------------------------------------ */
   const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
     let list = patients;
+
+    // Status filter
+    if (activeStatus !== "all") {
+      list = list.filter((p) => p.status === activeStatus);
+    }
+
+    // Name search
+    const q = search.toLowerCase().trim();
     if (q) {
       list = list.filter(
         (p) =>
@@ -35,122 +229,172 @@ export function PatientListClient({ patients }: { patients: PatientRow[] }) {
           `${p.firstName} ${p.lastName}`.toLowerCase().includes(q)
       );
     }
-    list = [...list].sort((a, b) => {
-      if (sortField === "name") {
-        const cmp = `${a.lastName}${a.firstName}`.localeCompare(
-          `${b.lastName}${b.firstName}`
-        );
-        return sortDir === "asc" ? cmp : -cmp;
-      }
-      const cmp =
-        new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
-      return sortDir === "asc" ? cmp : -cmp;
-    });
+
     return list;
-  }, [patients, search, sortField, sortDir]);
+  }, [patients, activeStatus, search]);
 
-  function toggleSort(field: SortField) {
-    if (sortField === field) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+  /* Status pill navigation ----------------------------------------- */
+  function setStatus(key: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (key === "all") {
+      params.delete("status");
     } else {
-      setSortField(field);
-      setSortDir(field === "updated" ? "desc" : "asc");
+      params.set("status", key);
     }
+    router.push(`?${params.toString()}`, { scroll: false });
   }
 
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                           */
+  /* ---------------------------------------------------------------- */
   return (
-    <div className="space-y-4">
-      {/* Search + sort controls */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[240px] max-w-md">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle"
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-          >
-            <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.3" />
-            <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-          </svg>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search patients..."
-            className="w-full h-10 pl-9 pr-4 text-sm bg-surface border border-border rounded-lg focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all text-text placeholder:text-text-subtle"
-          />
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => toggleSort("name")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              sortField === "name"
-                ? "bg-accent-soft text-accent"
-                : "text-text-muted hover:bg-surface-muted"
-            }`}
-          >
-            Name {sortField === "name" && (sortDir === "asc" ? "↑" : "↓")}
-          </button>
-          <button
-            onClick={() => toggleSort("updated")}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              sortField === "updated"
-                ? "bg-accent-soft text-accent"
-                : "text-text-muted hover:bg-surface-muted"
-            }`}
-          >
-            Last updated{" "}
-            {sortField === "updated" && (sortDir === "asc" ? "↑" : "↓")}
-          </button>
-        </div>
+    <div className="space-y-6">
+      {/* Summary metric tiles */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <MetricTile
+          label="Total Patients"
+          value={statusCounts.all}
+          accent="none"
+        />
+        <MetricTile
+          label="Active"
+          value={statusCounts.active}
+          accent="forest"
+        />
+        <MetricTile
+          label="In Intake"
+          value={statusCounts.prospect}
+          accent="amber"
+          hint="Prospects"
+        />
+        <MetricTile
+          label="Avg Readiness"
+          value={`${avgReadiness}%`}
+          accent="forest"
+          hint="Chart completeness"
+        />
       </div>
 
-      {/* Patient list */}
-      <Card>
-        <CardContent className="pt-2 pb-2">
-          {filtered.length === 0 ? (
-            <div className="py-8 text-center">
-              <p className="text-sm text-text-muted">
-                {search ? "No patients match your search." : "No patients on record."}
-              </p>
+      {/* Status filter strip */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {STATUS_FILTERS.map((f) => {
+          const isActive = activeStatus === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setStatus(f.key)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full border transition-colors duration-200 ${
+                isActive
+                  ? "bg-accent text-accent-ink border-accent shadow-sm"
+                  : "bg-surface-raised text-text-muted border-border hover:bg-surface-muted hover:border-border-strong"
+              }`}
+            >
+              {f.label}
+              <span
+                className={`tabular-nums ${
+                  isActive ? "text-accent-ink/70" : "text-text-subtle"
+                }`}
+              >
+                {statusCounts[f.countKey]}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Patient list card */}
+      <Card tone="raised" className="overflow-hidden">
+        {/* Search bar */}
+        <div className="px-5 pt-5 pb-4">
+          <div className="relative max-w-md">
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+              <SearchIcon />
+            </div>
+            <Input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name..."
+              className="pl-9"
+            />
+          </div>
+        </div>
+
+        {/* Patient rows */}
+        <CardContent className="px-0 pb-0">
+          {patients.length === 0 ? (
+            <div className="px-5 pb-6">
+              <EmptyState
+                title="No patients in the system yet"
+                description="Add your first patient to get started with chart management."
+              />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="px-5 pb-6">
+              <EmptyState
+                title="No patients match your search"
+                description="Try adjusting your search terms or changing the status filter."
+              />
             </div>
           ) : (
-            <ul className="divide-y divide-border -mx-6">
+            <ul className="divide-y divide-border/60">
               {filtered.map((p) => (
                 <li key={p.id}>
                   <Link
                     href={`/clinic/patients/${p.id}`}
-                    className="flex items-center gap-4 px-6 py-4 hover:bg-surface-muted transition-colors"
+                    className="card-hover flex items-center gap-4 px-5 py-4 hover:bg-surface-muted/50 transition-colors duration-150 group"
                   >
-                    <Avatar firstName={p.firstName} lastName={p.lastName} />
+                    {/* Avatar */}
+                    <Avatar
+                      firstName={p.firstName}
+                      lastName={p.lastName}
+                      size="md"
+                    />
+
+                    {/* Center info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-text">
-                          {p.firstName} {p.lastName}
+                      <p className="font-display text-base font-medium text-text leading-tight">
+                        {p.firstName} {p.lastName}
+                      </p>
+                      {p.presentingConcerns && (
+                        <p className="text-xs text-text-muted mt-0.5 truncate max-w-md">
+                          {p.presentingConcerns}
                         </p>
-                        <Badge tone="neutral">{p.status}</Badge>
+                      )}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <Badge tone={statusTone(p.status)}>
+                          {statusLabel(p.status)}
+                        </Badge>
                         {p.completenessScore !== null && (
                           <Badge tone="accent">
                             Chart {p.completenessScore}%
                           </Badge>
                         )}
+                        {p.lastVisit && (
+                          <Badge tone="neutral">
+                            Last visit {formatShortDate(p.lastVisit)}
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-xs text-text-subtle mt-1 truncate">
-                        {p.presentingConcerns ?? "—"}
-                      </p>
                     </div>
-                    <p className="text-xs text-text-subtle hidden md:block tabular-nums">
-                      Updated {formatDate(p.updatedAt)}
-                    </p>
+
+                    {/* Sparkline + chevron */}
+                    <div className="hidden md:flex items-center gap-3 shrink-0">
+                      {p.painTrend.length >= 2 && (
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] text-text-subtle uppercase tracking-wider mb-0.5">
+                            Pain
+                          </span>
+                          <Sparkline data={p.painTrend} />
+                        </div>
+                      )}
+                      <ChevronRight />
+                    </div>
+
+                    {/* Mobile chevron */}
+                    <div className="md:hidden shrink-0">
+                      <ChevronRight />
+                    </div>
                   </Link>
                 </li>
               ))}

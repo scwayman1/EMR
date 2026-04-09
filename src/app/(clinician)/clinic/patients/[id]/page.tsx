@@ -3,84 +3,132 @@ import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey } from "./chart-tabs";
+import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { startVisit } from "./actions";
+
+/* ── Types ────────────────────────────────────────────────────── */
 
 interface PageProps {
   params: { id: string };
   searchParams: { tab?: string };
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Page component — server-side data fetch + render
+   ═══════════════════════════════════════════════════════════════════ */
+
 export default async function PatientChartPage({ params, searchParams }: PageProps) {
   const user = await requireUser();
-  const tab = (searchParams.tab as TabKey) || "summary";
+  const tab = (searchParams.tab as TabKey) || "records";
 
-  const patient = await prisma.patient.findFirst({
-    where: {
-      id: params.id,
-      organizationId: user.organizationId!,
-      deletedAt: null,
-    },
-    include: {
-      chartSummary: true,
-      outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 120 },
-      encounters: {
-        orderBy: { scheduledFor: "desc" },
-        include: {
-          notes: {
-            include: { codingSuggestion: true },
-            orderBy: { createdAt: "desc" },
+  /* ── Parallel data fetch ──────────────────────────────────── */
+  const [patient, allNotes, threads, assessmentResponses] = await Promise.all([
+    prisma.patient.findFirst({
+      where: {
+        id: params.id,
+        organizationId: user.organizationId!,
+        deletedAt: null,
+      },
+      include: {
+        chartSummary: true,
+        documents: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: "desc" },
+        },
+        encounters: {
+          orderBy: { scheduledFor: "desc" },
+          include: {
+            notes: {
+              include: { codingSuggestion: true },
+              orderBy: { createdAt: "desc" },
+            },
           },
         },
       },
-      documents: {
-        where: { deletedAt: null },
-        orderBy: { createdAt: "desc" },
+    }),
+    // Flatten notes via encounters (separate query to keep the patient query lean)
+    prisma.note.findMany({
+      where: {
+        encounter: {
+          patientId: params.id,
+          organization: { id: user.organizationId! },
+        },
       },
-      assessmentResponses: {
-        include: { assessment: true },
-        orderBy: { submittedAt: "desc" },
-        take: 10,
+      include: {
+        encounter: true,
       },
-      messageThreads: {
-        orderBy: { lastMessageAt: "desc" },
-        take: 10,
-        include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.messageThread.findMany({
+      where: { patientId: params.id },
+      orderBy: { lastMessageAt: "desc" },
+      take: 20,
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            sender: { select: { firstName: true, lastName: true } },
+          },
+        },
       },
-    },
-  });
+    }),
+    prisma.assessmentResponse.findMany({
+      where: { patientId: params.id },
+      include: { assessment: true },
+      orderBy: { submittedAt: "desc" },
+    }),
+  ]);
 
   if (!patient) notFound();
 
-  // Outcome data by metric
-  const pain = patient.outcomeLogs.filter((l) => l.metric === "pain").map((l) => l.value);
-  const sleep = patient.outcomeLogs.filter((l) => l.metric === "sleep").map((l) => l.value);
-  const anxiety = patient.outcomeLogs.filter((l) => l.metric === "anxiety").map((l) => l.value);
-  const mood = patient.outcomeLogs.filter((l) => l.metric === "mood").map((l) => l.value);
-
-  // All notes flattened
-  const allNotes = patient.encounters.flatMap((e) =>
-    e.notes.map((n) => ({ ...n, encounter: e }))
+  /* ── Partition documents ──────────────────────────────────── */
+  const recordDocs = patient.documents.filter(
+    (d) => d.kind !== "image" && d.kind !== "lab"
   );
-  allNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const imageDocs = patient.documents.filter((d) => d.kind === "image");
+  const labDocs = patient.documents.filter((d) => d.kind === "lab");
 
-  // Bound start visit action
-  const startVisitWithPatient = startVisit.bind(null, params.id);
-
-  // Latest metric values for the summary tile
-  const latestMetric = (metric: string) => {
-    const logs = patient.outcomeLogs.filter((l) => l.metric === metric);
-    return logs.length > 0 ? logs[logs.length - 1].value : null;
+  /* ── Tab counts ───────────────────────────────────────────── */
+  const counts = {
+    records: recordDocs.length,
+    images: imageDocs.length,
+    labs: labDocs.length + assessmentResponses.length,
+    notes: allNotes.length,
+    correspondence: threads.length,
   };
 
+  /* ── Bound start visit action ─────────────────────────────── */
+  const startVisitWithPatient = startVisit.bind(null, params.id);
+
   const completenessScore = patient.chartSummary?.completenessScore ?? 0;
+
+  /* ── Serialize threads for client component ───────────────── */
+  const serializedThreads: SerializedThread[] = threads.map((t) => ({
+    id: t.id,
+    subject: t.subject,
+    lastMessageAt: t.lastMessageAt.toISOString(),
+    messages: t.messages.map((m) => ({
+      id: m.id,
+      body: m.body,
+      status: m.status,
+      aiDrafted: m.aiDrafted,
+      senderUserId: m.senderUserId,
+      senderAgent: m.senderAgent,
+      sender: m.sender
+        ? { firstName: m.sender.firstName, lastName: m.sender.lastName }
+        : null,
+      createdAt: m.createdAt.toISOString(),
+    })),
+  }));
 
   return (
     <PageShell maxWidth="max-w-[1280px]">
@@ -117,11 +165,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   </Badge>
                 )}
                 <span className="text-xs text-text-subtle">
-                  DOB {formatDate(patient.dateOfBirth)} · {patient.email ?? "No email"}
+                  DOB {formatDate(patient.dateOfBirth)} &middot; {patient.email ?? "No email"}
                 </span>
               </div>
 
-              {/* Chart readiness */}
+              {/* Chart readiness bar */}
               <div className="mt-4 max-w-xs">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-text-subtle">Chart readiness</span>
@@ -136,20 +184,9 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
               </div>
             </div>
 
-            {/* Quick actions */}
+            {/* Quick actions — no Message button (correspondence is now a tab) */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
-              <Link
-                href={
-                  patient.messageThreads[0]
-                    ? `/clinic/messages?thread=${patient.messageThreads[0].id}`
-                    : "/clinic/messages"
-                }
-              >
-                <Button variant="secondary" size="sm">
-                  Message
-                </Button>
-              </Link>
-              <Link href={`/clinic/patients/${params.id}?tab=documents`}>
+              <Link href={`/clinic/patients/${params.id}?tab=records`}>
                 <Button variant="secondary" size="sm">
                   View records
                 </Button>
@@ -165,30 +202,30 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       </Card>
 
       {/* ── Tab bar ───────────────────────────────────────── */}
-      <ChartTabs patientId={params.id} />
+      <ChartTabs patientId={params.id} counts={counts} />
 
       {/* ── Tab content ───────────────────────────────────── */}
-      {tab === "summary" && (
-        <SummaryTab
-          patient={patient}
-          pain={pain}
-          sleep={sleep}
-          latestPain={latestMetric("pain")}
-          latestSleep={latestMetric("sleep")}
-          latestAnxiety={latestMetric("anxiety")}
-          latestMood={latestMetric("mood")}
+      {tab === "records" && <RecordsTab documents={recordDocs} />}
+      {tab === "images" && <ImagesTab documents={imageDocs} />}
+      {tab === "labs" && (
+        <LabsTab
+          labDocuments={labDocs}
+          assessmentResponses={assessmentResponses}
         />
       )}
-      {tab === "timeline" && <TimelineTab patient={patient} />}
-      {tab === "notes" && <NotesTab notes={allNotes} patientId={params.id} startVisitAction={startVisitWithPatient} />}
-      {tab === "documents" && <DocumentsTab documents={patient.documents} />}
-      {tab === "outcomes" && (
-        <OutcomesTab
-          outcomeLogs={patient.outcomeLogs}
-          pain={pain}
-          sleep={sleep}
-          anxiety={anxiety}
-          mood={mood}
+      {tab === "notes" && (
+        <NotesTab
+          notes={allNotes}
+          patientId={params.id}
+          startVisitAction={startVisitWithPatient}
+        />
+      )}
+      {tab === "correspondence" && (
+        <CorrespondenceTab
+          threads={serializedThreads}
+          currentUserId={user.id}
+          patientFirstName={patient.firstName}
+          patientLastName={patient.lastName}
         />
       )}
     </PageShell>
@@ -196,261 +233,380 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Summary tab
+   Records tab
    ═══════════════════════════════════════════════════════════════════ */
-function SummaryTab({
-  patient,
-  pain,
-  sleep,
-  latestPain,
-  latestSleep,
-  latestAnxiety,
-  latestMood,
-}: {
-  patient: any;
-  pain: number[];
-  sleep: number[];
-  latestPain: number | null;
-  latestSleep: number | null;
-  latestAnxiety: number | null;
-  latestMood: number | null;
-}) {
+
+function RecordsTab({ documents }: { documents: any[] }) {
   return (
-    <div className="space-y-6">
-      {/* Missing fields callout */}
-      {patient.chartSummary &&
-        patient.chartSummary.missingFields.length > 0 && (
-          <Card tone="outlined">
-            <CardContent className="pt-5 pb-5">
-              <div className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-full bg-highlight-soft flex items-center justify-center shrink-0 mt-0.5">
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[color:var(--highlight)]">
-                    <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM8 5v3.5m0 2h.01" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text">
-                    Missing chart information
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">
-                    {patient.chartSummary.missingFields.join(", ")}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-      {/* Chart summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Chart Summary</CardTitle>
-          <CardDescription>
-            Generated by the intake agent. Refreshed on every intake update.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {patient.chartSummary ? (
-            <div className="prose-clinical whitespace-pre-wrap">
-              {patient.chartSummary.summaryMd}
-            </div>
-          ) : (
-            <p className="text-sm text-text-muted">
-              No chart summary yet. It will be generated as intake is completed.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Metric tiles 2x2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricTile label="Pain" value={latestPain} unit="/10" />
-        <MetricTile label="Sleep" value={latestSleep} unit="/10" />
-        <MetricTile label="Anxiety" value={latestAnxiety} unit="/10" />
-        <MetricTile label="Mood" value={latestMood} unit="/10" />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-display text-xl text-text tracking-tight">
+          Records
+        </h2>
+        <Button variant="secondary" size="sm">
+          Upload
+        </Button>
       </div>
 
-      {/* Sparkline trends */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Pain trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Sparkline data={pain.length > 1 ? pain : [0, 0]} width={400} height={80} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Sleep trend</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Sparkline
-              data={sleep.length > 1 ? sleep : [0, 0]}
-              width={400}
-              height={80}
-              color="var(--highlight)"
-              fill="var(--highlight-soft)"
-            />
-          </CardContent>
-        </Card>
-      </div>
+      {documents.length === 0 ? (
+        <EmptyState
+          title="No records on file yet"
+          description="Upload clinical documents, diagnoses, letters, and other records to build this patient's chart."
+        />
+      ) : (
+        <div className="grid gap-3">
+          {documents.map((doc) => (
+            <Card key={doc.id} tone="raised" className="card-hover">
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <Badge
+                        tone={
+                          doc.kind === "unclassified"
+                            ? "neutral"
+                            : doc.kind === "diagnosis"
+                              ? "warning"
+                              : doc.kind === "letter"
+                                ? "info"
+                                : "accent"
+                        }
+                      >
+                        {doc.kind}
+                      </Badge>
+                      {doc.aiClassified ? (
+                        <Badge tone="success">AI classified</Badge>
+                      ) : doc.needsReview ? (
+                        <Badge tone="warning">Needs review</Badge>
+                      ) : (
+                        <Badge tone="neutral">Pending</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-text truncate">
+                      {doc.originalName}
+                    </p>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      {doc.mimeType} &middot; {formatFileSize(doc.sizeBytes)}
+                    </p>
+                    {doc.tags.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                        {doc.tags.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="text-[10px] text-text-subtle bg-surface-muted px-2 py-0.5 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs text-text-subtle tabular-nums shrink-0 text-right">
+                    <span className="font-display">{formatDate(doc.createdAt)}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function MetricTile({
-  label,
-  value,
-  unit,
-}: {
-  label: string;
-  value: number | null;
-  unit: string;
-}) {
+/* ═══════════════════════════════════════════════════════════════════
+   Images tab
+   ═══════════════════════════════════════════════════════════════════ */
+
+function ImagesTab({ documents }: { documents: any[] }) {
   return (
-    <Card>
-      <CardContent className="pt-5 pb-5 text-center">
-        <p className="text-xs text-text-subtle uppercase tracking-wider mb-1">{label}</p>
-        <p className="font-display text-2xl text-text tracking-tight">
-          {value !== null ? value.toFixed(1) : "—"}
-          <span className="text-sm text-text-muted font-sans ml-0.5">{value !== null ? unit : ""}</span>
-        </p>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-display text-xl text-text tracking-tight">
+          Images
+        </h2>
+        <Button variant="secondary" size="sm">
+          Upload image
+        </Button>
+      </div>
+
+      {documents.length === 0 ? (
+        <EmptyState
+          title="No images uploaded"
+          description="Medical images, X-rays, photos, and scans will appear here once uploaded."
+        />
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {documents.map((doc) => (
+            <Card key={doc.id} tone="raised" className="card-hover overflow-hidden">
+              {/* Thumbnail placeholder */}
+              <div className="aspect-square bg-surface-muted flex flex-col items-center justify-center p-4 rounded-t-xl">
+                <svg
+                  width="40"
+                  height="40"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="text-text-subtle mb-2"
+                >
+                  <rect
+                    x="3"
+                    y="3"
+                    width="18"
+                    height="18"
+                    rx="3"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                  />
+                  <circle cx="8.5" cy="8.5" r="2" stroke="currentColor" strokeWidth="1.2" />
+                  <path
+                    d="M3 16l4.5-4.5a2 2 0 012.8 0L15 16"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M14 15l1.5-1.5a2 2 0 012.8 0L21 16"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <p className="text-[11px] text-text-subtle text-center truncate max-w-full">
+                  {doc.mimeType}
+                </p>
+              </div>
+              <CardContent className="pt-3 pb-3">
+                <p className="text-sm font-medium text-text truncate">
+                  {doc.originalName}
+                </p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  {formatFileSize(doc.sizeBytes)} &middot;{" "}
+                  <span className="font-display">{formatDate(doc.createdAt)}</span>
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* DICOM banner */}
+      <Card tone="outlined" className="mt-6">
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-accent-soft flex items-center justify-center shrink-0">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="text-accent"
+              >
+                <path
+                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text">
+                DICOM viewer coming soon
+              </p>
+              <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+                Images will be viewable directly in the chart without a separate PACS system.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Timeline tab
+   Labs tab
    ═══════════════════════════════════════════════════════════════════ */
-function TimelineTab({ patient }: { patient: any }) {
-  // Build a unified timeline from encounters, documents, messages, and outcome logs
-  type TimelineItem = {
-    type: "encounter" | "document" | "message" | "outcome";
-    date: Date;
-    title: string;
-    description?: string;
-    id: string;
-  };
 
-  const items: TimelineItem[] = [];
+function LabsTab({
+  labDocuments,
+  assessmentResponses,
+}: {
+  labDocuments: any[];
+  assessmentResponses: any[];
+}) {
+  // Group assessment responses by assessment slug for sparklines
+  const assessmentsBySlug: Record<
+    string,
+    { title: string; responses: { score: number | null; date: Date; interpretation: string | null }[] }
+  > = {};
 
-  for (const e of patient.encounters) {
-    items.push({
-      type: "encounter",
-      date: new Date(e.scheduledFor ?? e.createdAt),
-      title: `${e.modality} visit`,
-      description: `${e.status}${e.reason ? ` — ${e.reason}` : ""}${
-        e.notes.length > 0 ? ` · ${e.notes.length} note${e.notes.length > 1 ? "s" : ""}` : ""
-      }`,
-      id: e.id,
-    });
-  }
-
-  for (const d of patient.documents) {
-    items.push({
-      type: "document",
-      date: new Date(d.createdAt),
-      title: d.originalName,
-      description: `${d.kind} · ${formatFileSize(d.sizeBytes)}`,
-      id: d.id,
-    });
-  }
-
-  for (const t of patient.messageThreads) {
-    items.push({
-      type: "message",
-      date: new Date(t.lastMessageAt),
-      title: t.subject,
-      description: t.messages[0]?.body?.slice(0, 80) ?? undefined,
-      id: t.id,
-    });
-  }
-
-  // Recent outcome logs (last 10 unique dates)
-  const recentLogs = patient.outcomeLogs.slice(-10);
-  const logDates = new Set<string>();
-  for (const log of recentLogs) {
-    const dateStr = new Date(log.loggedAt).toDateString();
-    if (!logDates.has(dateStr)) {
-      logDates.add(dateStr);
-      items.push({
-        type: "outcome",
-        date: new Date(log.loggedAt),
-        title: `Outcome logged`,
-        description: `${log.metric}: ${log.value.toFixed(1)}/10`,
-        id: log.id,
-      });
+  for (const resp of assessmentResponses) {
+    const slug = resp.assessment.slug;
+    if (!assessmentsBySlug[slug]) {
+      assessmentsBySlug[slug] = {
+        title: resp.assessment.title,
+        responses: [],
+      };
     }
+    assessmentsBySlug[slug].responses.push({
+      score: resp.score,
+      date: resp.submittedAt,
+      interpretation: resp.interpretation,
+    });
   }
 
-  items.sort((a, b) => b.date.getTime() - a.date.getTime());
+  // Reverse to get chronological order for sparklines
+  for (const slug of Object.keys(assessmentsBySlug)) {
+    assessmentsBySlug[slug].responses.reverse();
+  }
 
-  const dotColor: Record<string, string> = {
-    encounter: "bg-accent",
-    document: "bg-[color:var(--highlight)]",
-    message: "bg-info",
-    outcome: "bg-[color:var(--success)]",
-  };
-
-  const typeLabel: Record<string, string> = {
-    encounter: "Visit",
-    document: "Document",
-    message: "Message",
-    outcome: "Outcome",
-  };
-
-  const badgeTone: Record<string, "accent" | "highlight" | "info" | "success"> = {
-    encounter: "accent",
-    document: "highlight",
-    message: "info",
-    outcome: "success",
+  const interpretationTone = (interp: string | null): "success" | "warning" | "danger" | "neutral" => {
+    if (!interp) return "neutral";
+    const lower = interp.toLowerCase();
+    if (lower.includes("severe") || lower.includes("high")) return "danger";
+    if (lower.includes("moderate") || lower.includes("mild")) return "warning";
+    if (lower.includes("none") || lower.includes("minimal") || lower.includes("normal") || lower.includes("low"))
+      return "success";
+    return "neutral";
   };
 
   return (
-    <div>
-      {items.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 pb-6 text-center">
-            <p className="text-sm text-text-muted">No timeline events yet.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <ul className="space-y-0">
-          {items.map((item, i) => (
-            <li key={`${item.type}-${item.id}`} className="flex gap-4">
-              <div className="w-28 shrink-0 text-xs text-text-subtle tabular-nums pt-1.5 text-right">
-                {formatRelative(item.date)}
-              </div>
-              <div className="flex flex-col items-center">
-                <div className={`h-3 w-3 rounded-full ${dotColor[item.type]} ring-4 ring-surface shrink-0 mt-1.5`} />
-                {i < items.length - 1 && (
-                  <div className="w-px flex-1 bg-border min-h-[2rem]" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0 pb-6">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <Badge tone={badgeTone[item.type]} className="text-[10px]">
-                    {typeLabel[item.type]}
-                  </Badge>
-                  <p className="text-sm font-medium text-text truncate">
-                    {item.title}
-                  </p>
-                </div>
-                {item.description && (
-                  <p className="text-xs text-text-muted mt-0.5 line-clamp-2">
-                    {item.description}
-                  </p>
-                )}
-                <p className="text-[11px] text-text-subtle mt-1">
-                  {formatDate(item.date)}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div className="space-y-8">
+      {/* ── Assessment scores section ────────────────────── */}
+      <section>
+        <h2 className="font-display text-xl text-text tracking-tight mb-4">
+          Assessment Scores
+        </h2>
+
+        {Object.keys(assessmentsBySlug).length === 0 ? (
+          <Card tone="outlined">
+            <CardContent className="pt-5 pb-5 text-center">
+              <p className="text-sm text-text-muted">
+                No assessment responses recorded yet.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {Object.entries(assessmentsBySlug).map(([slug, data]) => {
+              const latest = data.responses[data.responses.length - 1];
+              const scores = data.responses
+                .map((r) => r.score)
+                .filter((s): s is number => s !== null);
+
+              return (
+                <Card key={slug} tone="raised">
+                  <CardContent className="pt-5 pb-5">
+                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-display text-lg font-medium text-text">
+                            {data.title}
+                          </h3>
+                          {latest?.interpretation && (
+                            <Badge tone={interpretationTone(latest.interpretation)}>
+                              {latest.interpretation}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          {latest?.score !== null && latest?.score !== undefined && (
+                            <span className="font-display text-2xl text-text tabular-nums">
+                              {latest.score}
+                            </span>
+                          )}
+                          <span className="text-xs text-text-subtle">
+                            Latest &middot; {formatDate(latest?.date)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-text-subtle mt-1">
+                          {data.responses.length} response{data.responses.length !== 1 ? "s" : ""} recorded
+                        </p>
+                      </div>
+
+                      {/* Sparkline trend */}
+                      {scores.length >= 2 && (
+                        <div className="shrink-0">
+                          <Sparkline
+                            data={scores}
+                            width={180}
+                            height={48}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* ── Lab documents section ────────────────────────── */}
+      <section>
+        <h2 className="font-display text-xl text-text tracking-tight mb-4">
+          Lab Documents
+        </h2>
+
+        {labDocuments.length === 0 ? (
+          <Card tone="outlined">
+            <CardContent className="pt-5 pb-5 text-center">
+              <p className="text-sm text-text-muted">
+                No lab documents uploaded yet.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-3">
+            {labDocuments.map((doc) => (
+              <Card key={doc.id} tone="raised" className="card-hover">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Badge tone="accent">lab</Badge>
+                        {doc.aiClassified ? (
+                          <Badge tone="success">AI classified</Badge>
+                        ) : doc.needsReview ? (
+                          <Badge tone="warning">Needs review</Badge>
+                        ) : (
+                          <Badge tone="neutral">Pending</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-text truncate">
+                        {doc.originalName}
+                      </p>
+                      <p className="text-xs text-text-muted mt-0.5">
+                        {doc.mimeType} &middot; {formatFileSize(doc.sizeBytes)}
+                      </p>
+                      {doc.tags.length > 0 && (
+                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          {doc.tags.map((tag: string) => (
+                            <span
+                              key={tag}
+                              className="text-[10px] text-text-subtle bg-surface-muted px-2 py-0.5 rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-xs text-text-subtle tabular-nums shrink-0 text-right">
+                      <span className="font-display">{formatDate(doc.createdAt)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -458,6 +614,7 @@ function TimelineTab({ patient }: { patient: any }) {
 /* ═══════════════════════════════════════════════════════════════════
    Notes tab
    ═══════════════════════════════════════════════════════════════════ */
+
 function NotesTab({
   notes,
   patientId,
@@ -481,13 +638,10 @@ function NotesTab({
       </div>
 
       {notes.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 pb-6 text-center">
-            <p className="text-sm text-text-muted">
-              No notes yet. Start a visit to draft the first note.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          title="No clinical notes yet"
+          description="Start a visit to generate the first draft. The AI scribe will create structured notes from the encounter."
+        />
       ) : (
         <div className="space-y-3">
           {notes.map((note) => (
@@ -496,11 +650,11 @@ function NotesTab({
               href={`/clinic/patients/${patientId}/notes/${note.id}`}
               className="block"
             >
-              <Card className="card-hover">
+              <Card tone="raised" className="card-hover">
                 <CardContent className="pt-5 pb-5">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <Badge
                           tone={
                             note.status === "finalized"
@@ -513,10 +667,10 @@ function NotesTab({
                           {note.status}
                         </Badge>
                         {note.aiDrafted && (
-                          <Badge tone="highlight">AI-drafted</Badge>
+                          <Badge tone="highlight">AI Draft</Badge>
                         )}
-                        {note.aiConfidence !== null && (
-                          <span className="text-[11px] text-text-subtle">
+                        {note.aiDrafted && note.aiConfidence !== null && (
+                          <span className="text-[11px] text-text-subtle tabular-nums">
                             {Math.round(note.aiConfidence * 100)}% confidence
                           </span>
                         )}
@@ -525,18 +679,23 @@ function NotesTab({
                         {note.encounter.modality} visit note
                       </p>
                       <p className="text-xs text-text-muted mt-0.5">
-                        {note.encounter.reason ?? "General visit"} ·{" "}
+                        {note.encounter.reason ?? "General visit"} &middot;{" "}
                         {formatDate(note.encounter.scheduledFor ?? note.encounter.createdAt)}
                       </p>
-                      {/* Preview first block */}
-                      {Array.isArray(note.blocks) && note.blocks.length > 0 && (
-                        <p className="text-xs text-text-subtle mt-2 line-clamp-2">
-                          {(note.blocks[0] as any).heading}: {(note.blocks[0] as any).body?.slice(0, 120)}
-                        </p>
-                      )}
+                      {/* Preview first block for finalized notes */}
+                      {note.status === "finalized" &&
+                        Array.isArray(note.blocks) &&
+                        note.blocks.length > 0 && (
+                          <p className="text-xs text-text-subtle mt-2 line-clamp-2">
+                            {(note.blocks[0] as any).heading}:{" "}
+                            {(note.blocks[0] as any).body?.slice(0, 120)}
+                          </p>
+                        )}
                     </div>
-                    <div className="text-xs text-text-subtle tabular-nums shrink-0">
-                      {formatDate(note.createdAt)}
+                    <div className="text-right shrink-0">
+                      <span className="font-display text-xs text-text-subtle tabular-nums">
+                        {formatDate(note.createdAt)}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
@@ -550,198 +709,9 @@ function NotesTab({
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Documents tab
-   ═══════════════════════════════════════════════════════════════════ */
-function DocumentsTab({ documents }: { documents: any[] }) {
-  return (
-    <div>
-      <h2 className="font-display text-xl text-text tracking-tight mb-4">
-        Documents
-      </h2>
-
-      {documents.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 pb-6 text-center">
-            <p className="text-sm text-text-muted">No documents uploaded yet.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="pt-2 pb-2">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-xs text-text-subtle font-medium uppercase tracking-wider py-3 px-2">
-                    Document
-                  </th>
-                  <th className="text-left text-xs text-text-subtle font-medium uppercase tracking-wider py-3 px-2">
-                    Kind
-                  </th>
-                  <th className="text-left text-xs text-text-subtle font-medium uppercase tracking-wider py-3 px-2">
-                    Classification
-                  </th>
-                  <th className="text-right text-xs text-text-subtle font-medium uppercase tracking-wider py-3 px-2">
-                    Size
-                  </th>
-                  <th className="text-right text-xs text-text-subtle font-medium uppercase tracking-wider py-3 px-2">
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {documents.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-surface-muted/50 transition-colors">
-                    <td className="py-3 px-2">
-                      <p className="text-sm text-text font-medium truncate max-w-[240px]">
-                        {doc.originalName}
-                      </p>
-                      <p className="text-[11px] text-text-subtle">{doc.mimeType}</p>
-                    </td>
-                    <td className="py-3 px-2">
-                      <Badge
-                        tone={doc.kind === "unclassified" ? "neutral" : "accent"}
-                      >
-                        {doc.kind}
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-2">
-                      {doc.aiClassified ? (
-                        <Badge tone="success">AI classified</Badge>
-                      ) : doc.needsReview ? (
-                        <Badge tone="warning">Needs review</Badge>
-                      ) : (
-                        <Badge tone="neutral">Pending</Badge>
-                      )}
-                    </td>
-                    <td className="py-3 px-2 text-right text-xs text-text-subtle tabular-nums">
-                      {formatFileSize(doc.sizeBytes)}
-                    </td>
-                    <td className="py-3 px-2 text-right text-xs text-text-subtle tabular-nums">
-                      {formatDate(doc.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   Outcomes tab
-   ═══════════════════════════════════════════════════════════════════ */
-function OutcomesTab({
-  outcomeLogs,
-  pain,
-  sleep,
-  anxiety,
-  mood,
-}: {
-  outcomeLogs: any[];
-  pain: number[];
-  sleep: number[];
-  anxiety: number[];
-  mood: number[];
-}) {
-  const energy = outcomeLogs.filter((l: any) => l.metric === "energy").map((l: any) => l.value);
-  const appetite = outcomeLogs.filter((l: any) => l.metric === "appetite").map((l: any) => l.value);
-
-  const sparklines: { label: string; data: number[]; color?: string; fill?: string }[] = [
-    { label: "Pain", data: pain },
-    { label: "Sleep", data: sleep, color: "var(--highlight)", fill: "var(--highlight-soft)" },
-    { label: "Anxiety", data: anxiety, color: "var(--info)", fill: "rgba(46, 91, 140, 0.1)" },
-    { label: "Mood", data: mood, color: "var(--success)", fill: "rgba(58, 133, 96, 0.1)" },
-    { label: "Energy", data: energy, color: "var(--highlight)", fill: "var(--highlight-soft)" },
-    { label: "Appetite", data: appetite },
-  ];
-
-  // Recent logs for the table
-  const recentLogs = [...outcomeLogs].reverse().slice(0, 30);
-
-  return (
-    <div className="space-y-6">
-      <h2 className="font-display text-xl text-text tracking-tight">
-        Outcome Trends
-      </h2>
-
-      {/* Full-size sparkline charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sparklines.map((s) => (
-          <Card key={s.label}>
-            <CardHeader className="pb-1">
-              <CardTitle className="text-base">{s.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Sparkline
-                data={s.data.length > 1 ? s.data : [0, 0]}
-                width={320}
-                height={80}
-                color={s.color}
-                fill={s.fill}
-              />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Recent outcome logs table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Outcome Logs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {recentLogs.length === 0 ? (
-            <p className="text-sm text-text-muted">No outcome logs recorded yet.</p>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left text-xs text-text-subtle font-medium uppercase tracking-wider py-2 px-2">
-                    Date
-                  </th>
-                  <th className="text-left text-xs text-text-subtle font-medium uppercase tracking-wider py-2 px-2">
-                    Metric
-                  </th>
-                  <th className="text-right text-xs text-text-subtle font-medium uppercase tracking-wider py-2 px-2">
-                    Value
-                  </th>
-                  <th className="text-left text-xs text-text-subtle font-medium uppercase tracking-wider py-2 px-2">
-                    Note
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {recentLogs.map((log: any) => (
-                  <tr key={log.id} className="hover:bg-surface-muted/50 transition-colors">
-                    <td className="py-2 px-2 text-xs text-text-subtle tabular-nums">
-                      {formatDate(log.loggedAt)}
-                    </td>
-                    <td className="py-2 px-2">
-                      <Badge tone="neutral">{log.metric}</Badge>
-                    </td>
-                    <td className="py-2 px-2 text-right text-sm text-text tabular-nums font-medium">
-                      {log.value.toFixed(1)}
-                    </td>
-                    <td className="py-2 px-2 text-xs text-text-muted truncate max-w-[200px]">
-                      {log.note ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════
    Utilities
    ═══════════════════════════════════════════════════════════════════ */
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

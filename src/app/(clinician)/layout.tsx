@@ -4,9 +4,9 @@ import { AppShell, type NavItem } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 
 const CLINICIAN_NAV: NavItem[] = [
-  { label: "Today", href: "/clinic" },
-  { label: "Patients", href: "/clinic/patients" },
-  { label: "Messages", href: "/clinic/messages" },
+  { label: "Command", href: "/clinic" },
+  { label: "Roster", href: "/clinic/patients" },
+  { label: "Inbox", href: "/clinic/messages" },
   { label: "Research", href: "/clinic/research" },
 ];
 
@@ -27,7 +27,7 @@ export default async function ClinicianLayout({
       user={user}
       activeRole="clinician"
       nav={CLINICIAN_NAV}
-      roleLabel="Clinician workspace"
+      roleLabel="Provider"
     >
       {children}
     </AppShell>
