@@ -71,7 +71,6 @@ function scoreToLeafColor(
 export async function computePlantHealth(
   patientId: string,
 ): Promise<PlantHealth> {
-  const now = new Date();
   const sevenDaysAgo = daysAgo(7);
   const fourteenDaysAgo = daysAgo(14);
   const thirtyDaysAgo = daysAgo(30);

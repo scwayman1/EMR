@@ -1,12 +1,27 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { createPrescriptionAction, type PrescribeResult } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea, FieldGroup, Label } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input, Textarea, FieldGroup } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { InteractionBadge } from "@/components/ui/interaction-badge";
+import {
+  checkInteractions,
+  type DrugInteraction,
+  type Severity,
+} from "@/lib/domain/drug-interactions";
+
+/* ── Types ──────────────────────────────────────────────────── */
 
 interface Product {
   id: string;
@@ -16,62 +31,305 @@ interface Product {
   route: string;
   thcConcentration: number | null;
   cbdConcentration: number | null;
+  cbnConcentration: number | null;
+  cbgConcentration: number | null;
   thcCbdRatio: string | null;
   concentrationUnit: string;
 }
 
-function SubmitButton() {
+interface Medication {
+  id: string;
+  name: string;
+  genericName: string | null;
+  dosage: string | null;
+  active: boolean;
+}
+
+interface DiagnosisOption {
+  code: string;
+  label: string;
+}
+
+/* ── Constants ──────────────────────────────────────────────── */
+
+const PRODUCT_TYPES = [
+  { value: "tablet", label: "Tablet" },
+  { value: "tincture", label: "Tincture" },
+  { value: "edible", label: "Edible" },
+  { value: "gummy", label: "Gummy" },
+  { value: "flower", label: "Flower" },
+  { value: "grams", label: "Grams" },
+  { value: "mL", label: "mL" },
+  { value: "capsule", label: "Capsule" },
+  { value: "topical", label: "Topical" },
+  { value: "spray", label: "Spray" },
+  { value: "suppository", label: "Suppository" },
+] as const;
+
+const DOSE_UNITS = [
+  { value: "mg", label: "mg" },
+  { value: "mL", label: "mL" },
+  { value: "drops", label: "drops" },
+  { value: "puffs", label: "puffs" },
+  { value: "grams", label: "grams" },
+] as const;
+
+const DIAGNOSIS_OPTIONS: DiagnosisOption[] = [
+  { code: "F41.1", label: "Generalized anxiety disorder" },
+  { code: "F32.9", label: "Major depressive disorder, unspecified" },
+  { code: "I10", label: "Essential hypertension" },
+  { code: "E78.00", label: "Pure hypercholesterolemia, unspecified" },
+  { code: "G47.00", label: "Insomnia, unspecified" },
+  { code: "G89.29", label: "Other chronic pain" },
+  { code: "R11.0", label: "Nausea" },
+  { code: "G43.909", label: "Migraine, unspecified" },
+  { code: "F43.10", label: "PTSD, unspecified" },
+  { code: "C80.1", label: "Malignant neoplasm, unspecified" },
+  { code: "R45.7", label: "State of emotional shock and stress" },
+];
+
+const SELECT_CLASS =
+  "flex w-full rounded-md border border-border-strong bg-surface px-3 h-10 text-sm text-text " +
+  "focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 " +
+  "disabled:opacity-50 disabled:cursor-not-allowed";
+
+/* ── Submit button ──────────────────────────────────────────── */
+
+function SubmitButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="lg" className="w-full" disabled={pending}>
-      {pending ? "Creating prescription…" : "Create prescription"}
+    <Button
+      type="submit"
+      size="lg"
+      className="w-full"
+      disabled={pending || disabled}
+    >
+      {pending ? "Creating prescription..." : "Create prescription"}
     </Button>
   );
 }
+
+/* ── Main form ──────────────────────────────────────────────── */
 
 export function PrescribeForm({
   patientId,
   patientName,
   products,
+  medications,
 }: {
   patientId: string;
   patientName: string;
   products: Product[];
+  medications: Medication[];
 }) {
   const [state, formAction] = useFormState<PrescribeResult | null, FormData>(
     createPrescriptionAction,
     null
   );
 
-  return (
-    <form action={formAction} className="space-y-6">
-      <input type="hidden" name="patientId" value={patientId} />
+  // --- Medication selection ---
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [customProductName, setCustomProductName] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  const [productType, setProductType] = useState("");
 
-      {/* Product selection */}
+  // --- Dosing ---
+  const [volumePerDose, setVolumePerDose] = useState("");
+  const [volumeUnit, setVolumeUnit] = useState("mg");
+  const [frequencyPerDay, setFrequencyPerDay] = useState("1");
+  const [daysSupply, setDaysSupply] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [quantityManual, setQuantityManual] = useState(false);
+  const [refills, setRefills] = useState("0");
+  const [timingInstructions, setTimingInstructions] = useState("");
+
+  // --- Interactions ---
+  const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
+  const [interactionAcknowledged, setInteractionAcknowledged] = useState(false);
+
+  // --- Diagnoses ---
+  const [selectedDiagnoses, setSelectedDiagnoses] = useState<DiagnosisOption[]>(
+    []
+  );
+  const [customIcd10, setCustomIcd10] = useState("");
+
+  // --- Notes ---
+  const [noteToPatient, setNoteToPatient] = useState("");
+  const [noteToPharmacy, setNoteToPharmacy] = useState("");
+
+  // Derived state
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === selectedProductId) ?? null,
+    [products, selectedProductId]
+  );
+
+  const filteredProducts = useMemo(() => {
+    if (!productSearch.trim()) return products;
+    const q = productSearch.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.brand && p.brand.toLowerCase().includes(q))
+    );
+  }, [products, productSearch]);
+
+  const isCustomEntry = !selectedProductId && customProductName.trim().length > 0;
+  const hasProduct = !!selectedProductId || isCustomEntry;
+
+  // Auto-set product type when a formulary product is selected
+  useEffect(() => {
+    if (selectedProduct) {
+      const mappedType = selectedProduct.productType.replace("_", " ");
+      const match = PRODUCT_TYPES.find(
+        (t) =>
+          t.value.toLowerCase() === mappedType.toLowerCase() ||
+          t.value.toLowerCase() === selectedProduct.productType.toLowerCase()
+      );
+      if (match) setProductType(match.value);
+    }
+  }, [selectedProduct]);
+
+  // Auto-calculate quantity from dose x frequency x days supply
+  useEffect(() => {
+    if (!quantityManual && volumePerDose && frequencyPerDay && daysSupply) {
+      const calc =
+        parseFloat(volumePerDose) *
+        parseInt(frequencyPerDay) *
+        parseInt(daysSupply);
+      if (!isNaN(calc) && calc > 0) {
+        setQuantity(calc.toFixed(2).replace(/\.?0+$/, ""));
+      }
+    }
+  }, [volumePerDose, frequencyPerDay, daysSupply, quantityManual]);
+
+  // Run interaction check when a product is selected and patient has medications
+  const runInteractionCheck = useCallback(() => {
+    if (!selectedProduct || medications.length === 0) {
+      setInteractions([]);
+      return;
+    }
+
+    const cannabinoids: string[] = [];
+    if (selectedProduct.thcConcentration && selectedProduct.thcConcentration > 0)
+      cannabinoids.push("THC");
+    if (selectedProduct.cbdConcentration && selectedProduct.cbdConcentration > 0)
+      cannabinoids.push("CBD");
+    if (selectedProduct.cbnConcentration && selectedProduct.cbnConcentration > 0)
+      cannabinoids.push("CBN");
+    if (selectedProduct.cbgConcentration && selectedProduct.cbgConcentration > 0)
+      cannabinoids.push("CBG");
+
+    if (cannabinoids.length === 0) {
+      setInteractions([]);
+      return;
+    }
+
+    const medNames = medications.map((m) => m.name);
+    const results = checkInteractions(medNames, cannabinoids);
+    setInteractions(results);
+    setInteractionAcknowledged(false);
+  }, [selectedProduct, medications]);
+
+  useEffect(() => {
+    runInteractionCheck();
+  }, [runInteractionCheck]);
+
+  const hasRedYellow = interactions.some(
+    (i) => i.severity === "red" || i.severity === "yellow"
+  );
+  const mustAcknowledge = hasRedYellow && !interactionAcknowledged;
+
+  // Toggle diagnosis selection
+  function toggleDiagnosis(dx: DiagnosisOption) {
+    setSelectedDiagnoses((prev) => {
+      const exists = prev.find((d) => d.code === dx.code);
+      if (exists) return prev.filter((d) => d.code !== dx.code);
+      return [...prev, dx];
+    });
+  }
+
+  function addCustomIcd10() {
+    const trimmed = customIcd10.trim();
+    if (!trimmed) return;
+    // Don't add duplicate
+    if (selectedDiagnoses.find((d) => d.code === trimmed)) return;
+    setSelectedDiagnoses((prev) => [
+      ...prev,
+      { code: trimmed, label: "Custom ICD-10" },
+    ]);
+    setCustomIcd10("");
+  }
+
+  function removeCustomDiagnosis(code: string) {
+    setSelectedDiagnoses((prev) => prev.filter((d) => d.code !== code));
+  }
+
+  // Build all diagnosis codes as serialized JSON for the hidden input
+  const diagnosisCodesJson = JSON.stringify(selectedDiagnoses);
+
+  // Summary data
+  const medicationName = selectedProduct
+    ? selectedProduct.name
+    : customProductName || "Not selected";
+
+  const sigSummary =
+    volumePerDose && frequencyPerDay
+      ? `${volumePerDose} ${volumeUnit} x ${frequencyPerDay} time${parseInt(frequencyPerDay) !== 1 ? "s" : ""}/day`
+      : "Not set";
+
+  return (
+    <form action={formAction} className="space-y-8">
+      <input type="hidden" name="patientId" value={patientId} />
+      <input type="hidden" name="diagnosisCodes" value={diagnosisCodesJson} />
+      {interactionAcknowledged && (
+        <input
+          type="hidden"
+          name="interactionAcknowledged"
+          value="true"
+        />
+      )}
+
+      {/* ── Section 1: Medication ──────────────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>Select product</CardTitle>
+          <CardTitle>1. Medication</CardTitle>
           <CardDescription>
-            Choose from your organization&apos;s cannabis formulary.
+            Select from your organization&apos;s formulary or enter a custom
+            medication.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {products.length === 0 ? (
-            <p className="text-sm text-text-muted">
-              No products in the formulary yet. Add products in the ops dashboard.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {products.map((p) => (
+        <CardContent className="space-y-4">
+          {/* Search / filter */}
+          <FieldGroup label="Search products" htmlFor="productSearch">
+            <Input
+              id="productSearch"
+              value={productSearch}
+              onChange={(e) => setProductSearch(e.target.value)}
+              placeholder="Search by name or brand..."
+            />
+          </FieldGroup>
+
+          {/* Product list */}
+          {filteredProducts.length > 0 ? (
+            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+              {filteredProducts.map((p) => (
                 <label
                   key={p.id}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-border hover:border-accent/40 hover:bg-accent-soft/30 transition-colors cursor-pointer has-[:checked]:border-accent has-[:checked]:bg-accent-soft/50"
+                  className={`flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${
+                    selectedProductId === p.id
+                      ? "border-accent bg-accent-soft/50"
+                      : "border-border hover:border-accent/40 hover:bg-accent-soft/30"
+                  }`}
                 >
                   <input
                     type="radio"
                     name="productId"
                     value={p.id}
-                    required
+                    checked={selectedProductId === p.id}
+                    onChange={() => {
+                      setSelectedProductId(p.id);
+                      setCustomProductName("");
+                    }}
                     className="h-4 w-4 text-accent border-border-strong focus:ring-accent/20"
                   />
                   <div className="flex-1 min-w-0">
@@ -79,7 +337,9 @@ export function PrescribeForm({
                       <span className="text-sm font-medium text-text">
                         {p.name}
                       </span>
-                      <Badge tone="neutral">{p.productType.replace("_", " ")}</Badge>
+                      <Badge tone="neutral">
+                        {p.productType.replace("_", " ")}
+                      </Badge>
                       {p.thcCbdRatio && (
                         <Badge tone="highlight">
                           THC:CBD {p.thcCbdRatio}
@@ -87,32 +347,89 @@ export function PrescribeForm({
                       )}
                     </div>
                     <div className="text-xs text-text-muted mt-1">
-                      {p.brand && `${p.brand} · `}
-                      {p.thcConcentration !== null && `THC ${p.thcConcentration} ${p.concentrationUnit}`}
-                      {p.thcConcentration !== null && p.cbdConcentration !== null && " / "}
-                      {p.cbdConcentration !== null && `CBD ${p.cbdConcentration} ${p.concentrationUnit}`}
-                      {" · "}
+                      {p.brand && `${p.brand} \u00B7 `}
+                      {p.thcConcentration !== null &&
+                        `THC ${p.thcConcentration} ${p.concentrationUnit}`}
+                      {p.thcConcentration !== null &&
+                        p.cbdConcentration !== null &&
+                        " / "}
+                      {p.cbdConcentration !== null &&
+                        `CBD ${p.cbdConcentration} ${p.concentrationUnit}`}
+                      {" \u00B7 "}
                       {p.route}
                     </div>
                   </div>
                 </label>
               ))}
             </div>
+          ) : products.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No products in the formulary yet.
+            </p>
+          ) : (
+            <p className="text-sm text-text-muted">
+              No products match your search.
+            </p>
           )}
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 py-2">
+            <div className="flex-1 border-t border-border" />
+            <span className="text-xs text-text-subtle font-medium uppercase tracking-wider">
+              or enter manually
+            </span>
+            <div className="flex-1 border-t border-border" />
+          </div>
+
+          {/* Custom product name */}
+          <FieldGroup label="Custom medication name" htmlFor="customProductName">
+            <Input
+              id="customProductName"
+              name="customProductName"
+              value={customProductName}
+              onChange={(e) => {
+                setCustomProductName(e.target.value);
+                if (e.target.value.trim()) {
+                  setSelectedProductId("");
+                }
+              }}
+              placeholder="Enter medication name..."
+            />
+          </FieldGroup>
+
+          {/* Product type */}
+          <FieldGroup label="Type" htmlFor="productType">
+            <select
+              id="productType"
+              name="productType"
+              required
+              value={productType}
+              onChange={(e) => setProductType(e.target.value)}
+              className={SELECT_CLASS}
+            >
+              <option value="">Select type...</option>
+              {PRODUCT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </FieldGroup>
         </CardContent>
       </Card>
 
-      {/* Dosing */}
+      {/* ── Section 2: Dosing (Sig) ────────────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>Dosing</CardTitle>
+          <CardTitle>2. Dosing (Sig)</CardTitle>
           <CardDescription>
-            Set the dose volume and frequency. The system auto-calculates mg from the product concentration.
+            Set the dose, frequency, supply duration, and quantity.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <FieldGroup label="Volume per dose" htmlFor="volumePerDose">
+        <CardContent className="space-y-4">
+          {/* Dose + unit */}
+          <div className="grid grid-cols-2 gap-4">
+            <FieldGroup label="Dose (amount per dose)" htmlFor="volumePerDose">
               <Input
                 id="volumePerDose"
                 name="volumePerDose"
@@ -120,7 +437,9 @@ export function PrescribeForm({
                 step="0.01"
                 min="0.01"
                 required
-                placeholder="0.5"
+                value={volumePerDose}
+                onChange={(e) => setVolumePerDose(e.target.value)}
+                placeholder="e.g. 10"
               />
             </FieldGroup>
             <FieldGroup label="Unit" htmlFor="volumeUnit">
@@ -128,92 +447,486 @@ export function PrescribeForm({
                 id="volumeUnit"
                 name="volumeUnit"
                 required
-                className="flex w-full rounded-md border border-border-strong bg-surface px-3 h-10 text-sm text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                value={volumeUnit}
+                onChange={(e) => setVolumeUnit(e.target.value)}
+                className={SELECT_CLASS}
               >
-                <option value="mL">mL</option>
-                <option value="drops">drops</option>
-                <option value="puffs">puffs</option>
-                <option value="units">units (capsules)</option>
-                <option value="mg">mg</option>
+                {DOSE_UNITS.map((u) => (
+                  <option key={u.value} value={u.value}>
+                    {u.label}
+                  </option>
+                ))}
               </select>
-            </FieldGroup>
-            <FieldGroup label="Times per day" htmlFor="frequencyPerDay">
-              <Input
-                id="frequencyPerDay"
-                name="frequencyPerDay"
-                type="number"
-                min="1"
-                max="12"
-                required
-                placeholder="2"
-              />
             </FieldGroup>
           </div>
 
-          <div className="mt-4">
-            <FieldGroup
-              label="Timing instructions"
-              htmlFor="timingInstructions"
-              hint="e.g. Morning and 1 hour before bed"
+          {/* Frequency */}
+          <FieldGroup label="Times per day" htmlFor="frequencyPerDay">
+            <select
+              id="frequencyPerDay"
+              name="frequencyPerDay"
+              required
+              value={frequencyPerDay}
+              onChange={(e) => setFrequencyPerDay(e.target.value)}
+              className={SELECT_CLASS}
             >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n} {n === 1 ? "time" : "times"} per day
+                </option>
+              ))}
+            </select>
+          </FieldGroup>
+
+          {/* Days supply, quantity, refills */}
+          <div className="grid grid-cols-3 gap-4">
+            <FieldGroup label="Days supply" htmlFor="daysSupply">
               <Input
-                id="timingInstructions"
-                name="timingInstructions"
-                placeholder="Morning and 1 hour before bed"
+                id="daysSupply"
+                name="daysSupply"
+                type="number"
+                min="1"
+                max="365"
+                required
+                value={daysSupply}
+                onChange={(e) => setDaysSupply(e.target.value)}
+                placeholder="30"
               />
             </FieldGroup>
+            <FieldGroup
+              label="Quantity"
+              htmlFor="quantity"
+              hint={
+                !quantityManual
+                  ? "Auto-calculated"
+                  : "Manually set"
+              }
+            >
+              <Input
+                id="quantity"
+                name="quantity"
+                type="number"
+                step="0.01"
+                min="0.01"
+                required
+                value={quantity}
+                onChange={(e) => {
+                  setQuantity(e.target.value);
+                  setQuantityManual(true);
+                }}
+                placeholder="Auto"
+              />
+            </FieldGroup>
+            <FieldGroup label="Refills" htmlFor="refills">
+              <select
+                id="refills"
+                name="refills"
+                value={refills}
+                onChange={(e) => setRefills(e.target.value)}
+                className={SELECT_CLASS}
+              >
+                {Array.from({ length: 13 }, (_, i) => i).map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </FieldGroup>
           </div>
+
+          {/* Timing instructions */}
+          <FieldGroup
+            label="Timing instructions"
+            htmlFor="timingInstructions"
+            hint='e.g. "Morning and 1 hour before bed"'
+          >
+            <Input
+              id="timingInstructions"
+              name="timingInstructions"
+              value={timingInstructions}
+              onChange={(e) => setTimingInstructions(e.target.value)}
+              placeholder="Morning and 1 hour before bed"
+            />
+          </FieldGroup>
         </CardContent>
       </Card>
 
-      {/* Instructions + notes */}
+      {/* ── Section 3: Drug Interaction Check ──────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>Instructions &amp; notes</CardTitle>
+          <CardTitle>3. Drug Interaction Check</CardTitle>
           <CardDescription>
-            Patient instructions are auto-generated if left blank. Clinician notes are internal only.
+            {medications.length === 0
+              ? "No medications on file for this patient."
+              : `Checking against ${medications.length} medication${medications.length !== 1 ? "s" : ""} on file.`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!selectedProductId && (
+            <p className="text-sm text-text-subtle italic">
+              Select a product from the formulary to run the interaction check.
+            </p>
+          )}
+
+          {selectedProductId && medications.length === 0 && (
+            <p className="text-sm text-text-subtle italic">
+              No conventional medications on file. No interactions to check.
+            </p>
+          )}
+
+          {selectedProductId && medications.length > 0 && interactions.length === 0 && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-accent-soft/50 border border-[color:var(--success)]/20">
+              <InteractionBadge severity="green" />
+              <span className="text-sm text-text">
+                No known drug interactions detected.
+              </span>
+            </div>
+          )}
+
+          {interactions.length > 0 && (
+            <div className="space-y-3">
+              {interactions.map((interaction, idx) => (
+                <InteractionRow key={idx} interaction={interaction} />
+              ))}
+
+              {/* Warning card for red/yellow interactions */}
+              {hasRedYellow && (
+                <div className="mt-4 p-4 rounded-xl border-2 border-[color:var(--danger)] bg-red-50">
+                  <div className="flex items-start gap-3">
+                    <svg
+                      className="h-6 w-6 text-danger shrink-0 mt-0.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                      />
+                    </svg>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-danger">
+                        Drug interaction warning
+                      </p>
+                      <p className="text-sm text-text-muted mt-1">
+                        {interactions.filter((i) => i.severity === "red").length > 0 &&
+                          `${interactions.filter((i) => i.severity === "red").length} contraindicated interaction${interactions.filter((i) => i.severity === "red").length !== 1 ? "s" : ""}. `}
+                        {interactions.filter((i) => i.severity === "yellow").length > 0 &&
+                          `${interactions.filter((i) => i.severity === "yellow").length} caution interaction${interactions.filter((i) => i.severity === "yellow").length !== 1 ? "s" : ""}. `}
+                        You must acknowledge these interactions before proceeding.
+                      </p>
+                      <label className="flex items-center gap-2 mt-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={interactionAcknowledged}
+                          onChange={(e) =>
+                            setInteractionAcknowledged(e.target.checked)
+                          }
+                          className="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent/20"
+                        />
+                        <span className="text-sm font-medium text-text">
+                          I have reviewed the drug interactions and accept the
+                          risks
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Section 4: Diagnosis Linking ───────────────────────── */}
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle>4. Diagnosis Linking</CardTitle>
+          <CardDescription>
+            Link relevant ICD-10 diagnosis codes to this prescription.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Common ICD-10 codes */}
+          <div className="space-y-2">
+            {DIAGNOSIS_OPTIONS.map((dx) => {
+              const isSelected = selectedDiagnoses.some(
+                (d) => d.code === dx.code
+              );
+              return (
+                <label
+                  key={dx.code}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                    isSelected
+                      ? "border-accent bg-accent-soft/50"
+                      : "border-border hover:border-accent/40 hover:bg-accent-soft/20"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleDiagnosis(dx)}
+                    className="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent/20"
+                  />
+                  <span className="text-sm text-text">
+                    <span className="font-mono font-medium text-accent">
+                      {dx.code}
+                    </span>
+                    {" \u2014 "}
+                    {dx.label}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+
+          {/* Custom ICD-10 input */}
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <FieldGroup label="Other ICD-10 code" htmlFor="customIcd10">
+                <Input
+                  id="customIcd10"
+                  value={customIcd10}
+                  onChange={(e) => setCustomIcd10(e.target.value)}
+                  placeholder="e.g. M54.5"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addCustomIcd10();
+                    }
+                  }}
+                />
+              </FieldGroup>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={addCustomIcd10}
+            >
+              Add
+            </Button>
+          </div>
+
+          {/* Selected diagnoses as badges */}
+          {selectedDiagnoses.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {selectedDiagnoses.map((dx) => (
+                <Badge
+                  key={dx.code}
+                  tone="accent"
+                  className="cursor-pointer gap-1.5 pr-1.5"
+                  onClick={() => removeCustomDiagnosis(dx.code)}
+                >
+                  {dx.code}
+                  <svg
+                    className="h-3 w-3 opacity-60 hover:opacity-100"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Section 5: Notes ───────────────────────────────────── */}
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle>5. Notes</CardTitle>
+          <CardDescription>
+            Patient-facing and pharmacy notes for this prescription.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <FieldGroup
-            label="Patient instructions"
-            htmlFor="patientInstructions"
-            hint="Leave blank to auto-generate from dosing details"
+            label="Note to patient"
+            htmlFor="noteToPatient"
+            hint="Shown to the patient on their medications page"
           >
             <Textarea
-              id="patientInstructions"
-              name="patientInstructions"
+              id="noteToPatient"
+              name="noteToPatient"
               rows={3}
-              placeholder="Take 0.5 mL under the tongue twice daily…"
+              value={noteToPatient}
+              onChange={(e) => setNoteToPatient(e.target.value)}
+              placeholder="Take with food. Avoid driving for 2 hours after dose."
             />
           </FieldGroup>
           <FieldGroup
-            label="Clinician notes"
-            htmlFor="clinicianNotes"
-            hint="Internal — not shown to the patient"
+            label="Note to pharmacy"
+            htmlFor="noteToPharmacy"
+            hint="Internal only - not shown to patient"
           >
             <Textarea
-              id="clinicianNotes"
-              name="clinicianNotes"
+              id="noteToPharmacy"
+              name="noteToPharmacy"
               rows={2}
-              placeholder="Starting low dose 1:1 for sleep and pain. Reassess in 2 weeks."
+              value={noteToPharmacy}
+              onChange={(e) => setNoteToPharmacy(e.target.value)}
+              placeholder="Brand medically necessary. Do not substitute."
             />
           </FieldGroup>
         </CardContent>
       </Card>
 
-      {state?.ok === false && (
-        <p className="text-sm text-danger">{state.error}</p>
-      )}
+      {/* ── Section 6: Review & Submit ─────────────────────────── */}
+      <Card tone="ambient">
+        <CardHeader>
+          <CardTitle>6. Review &amp; Submit</CardTitle>
+          <CardDescription>
+            Review the prescription details before creating.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-xl bg-surface/80 border border-border p-5 space-y-4">
+            {/* Summary grid */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              <SummaryRow label="Medication" value={medicationName} />
+              <SummaryRow
+                label="Type"
+                value={
+                  PRODUCT_TYPES.find((t) => t.value === productType)?.label ||
+                  productType ||
+                  "Not set"
+                }
+              />
+              <SummaryRow label="Sig" value={sigSummary} />
+              <SummaryRow
+                label="Days supply"
+                value={daysSupply ? `${daysSupply} days` : "Not set"}
+              />
+              <SummaryRow
+                label="Quantity"
+                value={quantity || "Not set"}
+              />
+              <SummaryRow
+                label="Refills"
+                value={refills}
+              />
+            </div>
 
-      <div className="flex items-center justify-between gap-4">
-        <Link href={`/clinic/patients/${patientId}?tab=rx`}>
-          <Button type="button" variant="ghost">
-            Cancel
-          </Button>
-        </Link>
-        <SubmitButton />
-      </div>
+            {/* Timing */}
+            {timingInstructions && (
+              <div className="pt-2 border-t border-border/60">
+                <SummaryRow label="Timing" value={timingInstructions} />
+              </div>
+            )}
+
+            {/* Diagnoses */}
+            {selectedDiagnoses.length > 0 && (
+              <div className="pt-2 border-t border-border/60">
+                <p className="text-xs font-medium text-text-muted mb-2">
+                  Linked diagnoses
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedDiagnoses.map((dx) => (
+                    <Badge key={dx.code} tone="accent">
+                      {dx.code}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Interaction status */}
+            {selectedProductId && medications.length > 0 && (
+              <div className="pt-2 border-t border-border/60">
+                <p className="text-xs font-medium text-text-muted mb-2">
+                  Interaction status
+                </p>
+                {interactions.length === 0 ? (
+                  <InteractionBadge severity="green" />
+                ) : (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {interactions.some((i) => i.severity === "red") && (
+                      <InteractionBadge severity="red" />
+                    )}
+                    {interactions.some((i) => i.severity === "yellow") && (
+                      <InteractionBadge severity="yellow" />
+                    )}
+                    {interactions.some((i) => i.severity === "green") && (
+                      <InteractionBadge severity="green" />
+                    )}
+                    {interactionAcknowledged && hasRedYellow && (
+                      <span className="text-xs text-text-muted ml-1">
+                        (acknowledged)
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Error display */}
+          {state?.ok === false && (
+            <p className="text-sm text-danger mt-4">{state.error}</p>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-between gap-4 mt-6">
+            <Link href={`/clinic/patients/${patientId}?tab=rx`}>
+              <Button type="button" variant="ghost">
+                Cancel
+              </Button>
+            </Link>
+            <SubmitButton disabled={mustAcknowledge} />
+          </div>
+        </CardContent>
+      </Card>
     </form>
+  );
+}
+
+/* ── Interaction row ────────────────────────────────────────── */
+
+function InteractionRow({ interaction }: { interaction: DrugInteraction }) {
+  const bgClass =
+    interaction.severity === "red"
+      ? "bg-red-50 border-red-200"
+      : interaction.severity === "yellow"
+        ? "bg-highlight-soft border-highlight/30"
+        : "bg-accent-soft/30 border-[color:var(--success)]/20";
+
+  return (
+    <div className={`p-4 rounded-xl border ${bgClass}`}>
+      <div className="flex items-center gap-2 mb-1.5">
+        <InteractionBadge severity={interaction.severity} />
+        <span className="text-sm font-medium text-text">
+          {interaction.drug}
+        </span>
+        <span className="text-xs text-text-muted">
+          + {interaction.cannabinoid}
+        </span>
+      </div>
+      <p className="text-sm text-text-muted">{interaction.mechanism}</p>
+      <p className="text-xs text-text-subtle mt-1">
+        <span className="font-medium">Recommendation:</span>{" "}
+        {interaction.recommendation}
+      </p>
+    </div>
+  );
+}
+
+/* ── Summary row ────────────────────────────────────────────── */
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-text-muted">{label}</p>
+      <p className="text-sm text-text mt-0.5">{value}</p>
+    </div>
   );
 }

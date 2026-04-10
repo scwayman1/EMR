@@ -84,13 +84,28 @@ export async function createPrescriptionAction(
   });
   if (!patient) return { ok: false, error: "Patient not found." };
 
-  // Load the product (if from formulary) to auto-calculate mg
+  // Load the product — required for formulary selections, resolved for custom entries
   let product = null;
+  let resolvedProductId = productId;
+
   if (productId) {
     product = await prisma.cannabisProduct.findFirst({
       where: { id: productId, organizationId: user.organizationId!, active: true },
     });
     if (!product) return { ok: false, error: "Product not found or inactive." };
+  } else if (customProductName) {
+    // For custom/manual entries, create an ad-hoc product record so the FK is satisfied
+    product = await prisma.cannabisProduct.create({
+      data: {
+        organizationId: user.organizationId!,
+        name: customProductName,
+        productType: (productType as any) || "other",
+        route: "oral",
+        concentrationUnit: "mg/unit",
+        active: true,
+      },
+    });
+    resolvedProductId = product.id;
   }
 
   // Check for drug interactions server-side if product is from formulary
@@ -172,7 +187,7 @@ export async function createPrescriptionAction(
   await prisma.dosingRegimen.create({
     data: {
       patientId,
-      productId: productId || "custom",
+      productId: resolvedProductId!,
       prescribedById: user.id,
       volumePerDose,
       volumeUnit,

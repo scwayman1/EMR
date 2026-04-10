@@ -210,6 +210,50 @@ export default async function PatientHome() {
         </div>
       </div>
 
+      {/* ------------------ Plant companion widget ------------------ */}
+      <div className="mb-8">
+        <Link href="/portal/garden" className="block">
+          <Card tone="raised" className="card-hover">
+            <CardContent className="flex items-center gap-6 py-5">
+              <div className="shrink-0">
+                <HealthPlant health={plantHealth} size="sm" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+                  Your plant companion
+                </p>
+                <p className="font-display text-lg text-text tracking-tight">
+                  {STAGE_LABELS[plantHealth.stage]}
+                </p>
+                <p className="text-sm text-text-muted mt-1 leading-relaxed">
+                  {plantHealth.score >= 71
+                    ? "Your plant is thriving because you\u2019ve been consistent with your check-ins and visits."
+                    : plantHealth.score >= 40
+                      ? "Your plant is growing nicely. A few more check-ins would help it flourish."
+                      : "Your plant needs a little love. Try logging how you\u2019re feeling today."}
+                </p>
+                <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                  {plantHealth.healthFactors
+                    .filter((f) => f.status !== "neutral")
+                    .slice(0, 3)
+                    .map((f) => (
+                      <Badge
+                        key={f.label}
+                        tone={f.status === "positive" ? "success" : "warning"}
+                      >
+                        {f.label}
+                      </Badge>
+                    ))}
+                  <span className="text-xs text-accent font-medium ml-1">
+                    See your garden &rarr;
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
       {/* ------------------ Tasks + last message ------------------ */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card className="md:col-span-2">

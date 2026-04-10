@@ -15,7 +15,7 @@ export const metadata = { title: "New Prescription" };
 export default async function PrescribePage({ params }: PageProps) {
   const user = await requireUser();
 
-  const [patient, products] = await Promise.all([
+  const [patient, products, medications] = await Promise.all([
     prisma.patient.findFirst({
       where: {
         id: params.id,
@@ -25,6 +25,10 @@ export default async function PrescribePage({ params }: PageProps) {
     }),
     prisma.cannabisProduct.findMany({
       where: { organizationId: user.organizationId!, active: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.patientMedication.findMany({
+      where: { patientId: params.id, active: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -42,7 +46,7 @@ export default async function PrescribePage({ params }: PageProps) {
               Prescribe for {patient.firstName} {patient.lastName}
             </h1>
             <p className="text-sm text-text-muted mt-1">
-              Select a product, set the dosing, and the system will calculate mg automatically.
+              Complete all sections below to create a new prescription.
             </p>
           </div>
         </div>
@@ -59,8 +63,17 @@ export default async function PrescribePage({ params }: PageProps) {
           route: p.route,
           thcConcentration: p.thcConcentration,
           cbdConcentration: p.cbdConcentration,
+          cbnConcentration: p.cbnConcentration,
+          cbgConcentration: p.cbgConcentration,
           thcCbdRatio: p.thcCbdRatio,
           concentrationUnit: p.concentrationUnit,
+        }))}
+        medications={medications.map((m) => ({
+          id: m.id,
+          name: m.name,
+          genericName: m.genericName,
+          dosage: m.dosage,
+          active: m.active,
         }))}
       />
     </PageShell>
