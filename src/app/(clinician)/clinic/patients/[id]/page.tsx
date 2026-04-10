@@ -214,11 +214,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
               </div>
             </div>
 
-            {/* Quick actions — no Message button (correspondence is now a tab) */}
+            {/* Quick actions */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
-              <Link href={`/clinic/patients/${params.id}?tab=records`}>
-                <Button variant="secondary" size="sm">
-                  View records
+              <Link href={`/clinic/patients/${params.id}/prepare`}>
+                <Button variant="highlight" size="sm">
+                  Prepare for visit
                 </Button>
               </Link>
               <form action={startVisitWithPatient}>
