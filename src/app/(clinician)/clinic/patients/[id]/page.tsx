@@ -862,9 +862,11 @@ function CannabisRxTab({
         <h2 className="font-display text-xl text-text tracking-tight">
           Cannabis Rx
         </h2>
-        <Button variant="primary" size="sm">
-          New prescription
-        </Button>
+        <Link href={`/clinic/patients/${patientId}/prescribe`}>
+          <Button variant="primary" size="sm">
+            New prescription
+          </Button>
+        </Link>
       </div>
 
       {/* ── Daily dosing summary ──────────────────────────── */}
