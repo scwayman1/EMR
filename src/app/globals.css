@@ -135,4 +135,57 @@
     font-feature-settings: "kern", "liga", "calt";
     letter-spacing: -0.015em;
   }
+
+  /* Screen-reader-only utility — visually hidden but announced. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+/* ==========================================================================
+   ADA — High-contrast mode
+   ========================================================================== */
+@media (prefers-contrast: more) {
+  :root {
+    --border: #9E8C5F;
+    --border-strong: #6F5E2E;
+    --text-muted: #3A3530;
+    --text-subtle: #5B534A;
+  }
+  body {
+    font-weight: 500;
+  }
+  *:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* ==========================================================================
+   ADA — Reduced motion: disable ALL transitions and animations globally
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -45,12 +45,13 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
           </p>
         </div>
 
-        <nav className="relative px-3 flex-1 mt-2">
+        <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2">
           <ul className="space-y-0.5">
             {nav.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  aria-label={item.label}
                   className={cn(
                     "group flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-text-muted",
                     "hover:bg-surface-muted hover:text-text transition-colors duration-200 ease-smooth"
@@ -100,7 +101,7 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
           </Link>
           <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
         </header>
-        <main className="flex-1 min-w-0">{children}</main>
+        <main id="main-content" className="flex-1 min-w-0">{children}</main>
       </div>
     </div>
   );
