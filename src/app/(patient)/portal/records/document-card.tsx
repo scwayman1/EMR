@@ -202,6 +202,32 @@ export function DocumentCard({ doc }: { doc: DocumentData }) {
 
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => window.print()}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
+                  <path d="M3.5 5V1.5H10.5V5M3.5 10H2C1.45 10 1 9.55 1 9V6C1 5.45 1.45 5 2 5H12C12.55 5 13 5.45 13 6V9C13 9.55 12.55 10 12 10H10.5M3.5 8H10.5V12.5H3.5V8Z" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                </svg>
+                Print
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const subject = encodeURIComponent(`Document: ${doc.originalName}`);
+                  const body = encodeURIComponent(
+                    `Here is my ${KIND_LABEL[doc.kind].toLowerCase()} document "${doc.originalName}" from Green Path Health.\n\nUploaded: ${formatDate(doc.createdAt)}\nType: ${doc.mimeType}\n\n— Sent from Green Path Health Patient Portal`
+                  );
+                  window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
+                  <path d="M1 3.5L7 7.5L13 3.5M1 3.5V10.5C1 11.05 1.45 11.5 2 11.5H12C12.55 11.5 13 11.05 13 10.5V3.5M1 3.5C1 2.95 1.45 2.5 2 2.5H12C12.55 2.5 13 2.95 13 3.5" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"/>
+                </svg>
+                Email
+              </Button>
+              <Button
                 variant="danger"
                 size="sm"
                 onClick={handleDelete}
