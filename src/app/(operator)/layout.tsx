@@ -7,6 +7,7 @@ const OPS_NAV: NavItem[] = [
   { label: "Overview", href: "/ops" },
   { label: "Mission Control", href: "/ops/mission-control" },
   { label: "Patients", href: "/ops/patients" },
+  { label: "Eligibility", href: "/ops/eligibility" },
   { label: "Practice launch", href: "/ops/launch" },
   { label: "Analytics", href: "/ops/analytics" },
 ];
