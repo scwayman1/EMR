@@ -503,42 +503,42 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 
 | # | Title | Priority | Epic | Status |
 |---|---|---|---|---|
-| 001 | Cannabis Combo Wheel | High | Pharmacology | backlog |
+| 001 | Cannabis Combo Wheel | High | Pharmacology | **done** |
 | 002 | Dispensary Integration & SKU Scanning | High | Pharmacology | backlog |
 | 003 | Milligram-Based Dosing Display | High | Pharmacology | partial |
 | 004 | Dosing Recommendation Engine | Normal | Pharmacology | backlog |
 | 005 | AI-Powered Billing & CPT/ICD-10 | High | Billing | partial |
-| 006 | LIFESTYLE Module | Urgent | Lifestyle | backlog |
+| 006 | LIFESTYLE Module | Urgent | Lifestyle | **done** |
 | 007 | AI-Powered Supply Store | Normal | Supply Store | backlog |
-| 008 | Educational Library | High | Education | backlog |
-| 009 | 3rd-Grade Reading Level Explainer | Normal | Education | backlog |
-| 010 | Visual Health Roadmap | High | Education | backlog |
-| 011 | Personal Vitals Wording | Low | Education | backlog |
+| 008 | Educational Library | High | Education | **done** |
+| 009 | 3rd-Grade Reading Level Explainer | Normal | Education | **done** |
+| 010 | Visual Health Roadmap | High | Education | **done** |
+| 011 | Personal Vitals Wording | Low | Education | **done** |
 | 012 | Scheduling Module + SMS | High | Scheduling | partial |
 | 013 | Conventional EMR Integration | Normal | Integration | backlog |
 | 014 | DICOM Viewer & PACS | Low | Infrastructure | stub |
 | 015 | Justin's UI Feedback | Normal | UI Polish | partial |
-| 016 | Full Prescription Form (Rx v2) | Urgent | Prescribing | backlog |
+| 016 | Full Prescription Form (Rx v2) | Urgent | Prescribing | **done** |
 | 017 | Dispensary Locator (Google Maps) | High | Prescribing | backlog |
 | 018 | Leafly Strain Database Integration | Normal | Pharmacology | backlog |
-| 019 | Full Demographics Tab | High | Demographics | backlog |
-| 020 | APSO Note + Wearable Integration | High | Documentation | backlog |
-| 021 | AI-Recommended Initial Plan | High | Documentation | backlog |
-| 022 | Cannabis Plant Health Companion | High | Gamification | backlog |
-| 023 | Gamify Health (Apple Rings) | Normal | Gamification | backlog |
-| 024 | Positive Input Requirement | Normal | Gamification | backlog |
-| 025 | Cannabis Design Palette | High | Design | backlog |
-| 026 | Cannabis Emojis | Low | Design | backlog |
-| 027 | Platform Disclaimer | Low | Design | backlog |
+| 019 | Full Demographics Tab | High | Demographics | **done** |
+| 020 | APSO Note + Wearable Integration | High | Documentation | **done** |
+| 021 | AI-Recommended Initial Plan | High | Documentation | **done** |
+| 022 | Cannabis Plant Health Companion | High | Gamification | **done** |
+| 023 | Gamify Health (Apple Rings) | Normal | Gamification | **done** |
+| 024 | Positive Input Requirement | Normal | Gamification | **done** |
+| 025 | Cannabis Design Palette | High | Design | **done** |
+| 026 | Cannabis Emojis | Low | Design | **done** |
+| 027 | Platform Disclaimer | Low | Design | **done** |
 | 028 | Split Window / Multi-Tab | High | Platform | backlog |
-| 029 | ADA Compliance | High | Platform | backlog |
-| 030 | Multi-Language Support | Normal | Platform | backlog |
+| 029 | ADA Compliance | High | Platform | **done** |
+| 030 | Multi-Language Support | Normal | Platform | **done** |
 | 031 | Responsive Cross-Device | High | Platform | backlog |
-| 032 | Patient Email/Print Documents | Normal | Platform | backlog |
-| 033 | Physician-to-Physician Portal | High | Communications | backlog |
-| 034 | Phone & Video in Messaging | Normal | Communications | backlog |
-| 035 | Backend Data Dashboard | Normal | Analytics | backlog |
-| 036 | Justin's Book in Library | Low | Education | backlog |
+| 032 | Patient Email/Print Documents | Normal | Platform | **done** |
+| 033 | Physician-to-Physician Portal | High | Communications | **done** |
+| 034 | Phone & Video in Messaging | Normal | Communications | **done** |
+| 035 | Backend Data Dashboard | Normal | Analytics | **done** |
+| 036 | Justin's Book in Library | Low | Education | **done** |
 
 ---
 
@@ -727,25 +727,25 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 001-036 | Original backlog | Various | 20 done, 16 remaining |
+| 001-036 | Original backlog | Various | 31 done, 5 remaining |
 | 037 | Communications Overlay | High | backlog |
 | 038 | Cannabis Book Integration | Normal | backlog |
-| 039 | Product Store + Affiliates | High | backlog |
-| 040 | Cannabis Plant 101 Paragraph | Normal | backlog |
+| 039 | Product Store + Affiliates | High | **done** |
+| 040 | Cannabis Plant 101 Paragraph | Normal | **done** |
 | 041 | Ambient Music | Low | backlog |
 | 042 | MIPS Data Extrapolation | High | backlog |
-| 043 | Animated Plant Companion | High | backlog |
+| 043 | Animated Plant Companion | High | **done** |
 | 044 | Modular Licensable Framework | Urgent | backlog |
 | 045 | Insurance Billing AI Agents | High | backlog |
 | 046 | Insurance Eligibility Checker | High | backlog |
 | 047 | Medicare CBD Framework | Normal | backlog |
-| 048 | About Page — Founders | High | backlog |
-| 049 | Pricing & Tiers | Normal | backlog |
-| 050 | EMR Slogan | Low | backlog |
+| 048 | About Page — Founders | High | **done** |
+| 049 | Pricing & Tiers | Normal | **done** |
+| 050 | EMR Slogan | Low | **done** |
 | 051 | Native Mobile App | High | backlog |
 | 052 | Clinical Trial Matching | High | backlog |
 | 053 | ProHub Integration | High | backlog |
 | 054 | Vet & Psilocybin Expansion | Low | backlog |
-| 055 | Data Ownership Framework | High | backlog |
+| 055 | Data Ownership Framework | High | **done** |
 
-**Total: 55 tickets across 20+ epics. 20 shipped, 35 remaining.**
+**Total: 55 tickets across 20+ epics. 38 shipped, 17 remaining.**
