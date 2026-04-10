@@ -79,9 +79,9 @@ const DEMO_THREADS: DemoThread[] = [
   },
   {
     id: "t2",
-    providerName: "Justin Kander",
-    providerInitials: "JK",
-    providerTitle: "Research Director",
+    providerName: "Dr. Sarah Martinez",
+    providerInitials: "SM",
+    providerTitle: "Consulting Oncologist",
     lastMessage:
       "New study just published on CBG for anxiety — single 20mg dose showed significant reduction. Adding to the corpus now.",
     lastMessageAt: "Yesterday",
@@ -89,8 +89,8 @@ const DEMO_THREADS: DemoThread[] = [
     messages: [
       {
         id: "m4",
-        from: "Justin Kander",
-        fromInitials: "JK",
+        from: "Dr. Sarah Martinez",
+        fromInitials: "SM",
         body: "New study just published on CBG for anxiety — single 20mg dose showed significant reduction. Adding to the corpus now.",
         timestamp: "Yesterday at 4:45 PM",
         isOwn: false,

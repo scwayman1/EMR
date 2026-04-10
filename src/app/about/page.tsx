@@ -24,13 +24,6 @@ const FOUNDERS = [
     initials: "NP",
     gradient: "from-highlight to-highlight-hover",
   },
-  {
-    name: "Justin Kander",
-    title: "Director of Research & Clinical Strategy",
-    bio: "Author, researcher, and one of the world's leading experts on cannabis in oncology. Justin's research corpus — spanning 50+ peer-reviewed studies — forms the clinical backbone of the platform. His work bridges the gap between emerging science and real patient outcomes.",
-    initials: "JK",
-    gradient: "from-accent-strong to-accent",
-  },
 ];
 
 export default function AboutPage() {
@@ -110,7 +103,7 @@ export default function AboutPage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
           {FOUNDERS.map((founder) => (
             <article
               key={founder.name}
