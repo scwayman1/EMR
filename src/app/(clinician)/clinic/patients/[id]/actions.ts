@@ -9,7 +9,8 @@ import { runTick } from "@/lib/orchestration/runner";
 
 /**
  * Start a visit: find or create an in-progress encounter for today,
- * dispatch the scribe draft event, and redirect to the notes tab.
+ * dispatch the scribe draft event, run the agent inline (even in prod
+ * — the clinician is waiting for the draft), and redirect to notes.
  */
 export async function startVisit(patientId: string) {
   const user = await requireUser();
@@ -22,7 +23,10 @@ export async function startVisit(patientId: string) {
       deletedAt: null,
     },
   });
-  if (!patient) throw new Error("Patient not found");
+  if (!patient) {
+    // Instead of throwing (which gives no UI feedback), redirect with error
+    redirect(`/clinic/patients/${patientId}?tab=notes&error=not_found`);
+  }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -60,9 +64,16 @@ export async function startVisit(patientId: string) {
     requestedBy: user.id,
   });
 
-  // In dev, run the queue inline so the draft appears immediately
-  if (process.env.NODE_ENV !== "production") {
-    await runTick("inline-dev", 2);
+  // Run the agent inline — even in production. The clinician is actively
+  // waiting for the draft, so async queue polling (10s) is too slow.
+  // The Scribe Agent typically completes in 2-8s with a real LLM.
+  try {
+    await runTick("inline-visit", 2);
+  } catch (err) {
+    // If the inline run fails, the job stays in the queue and the worker
+    // will pick it up. The clinician sees "No notes yet" briefly, then
+    // the draft appears on next page load.
+    console.error("[startVisit] inline runTick failed:", err);
   }
 
   revalidatePath(`/clinic/patients/${patientId}`);
