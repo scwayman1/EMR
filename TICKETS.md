@@ -539,3 +539,213 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 | 034 | Phone & Video in Messaging | Normal | Communications | backlog |
 | 035 | Backend Data Dashboard | Normal | Analytics | backlog |
 | 036 | Justin's Book in Library | Low | Education | backlog |
+
+---
+
+## Wave 8+ — Dr. Patel's Late Night Vision Drop (April 10)
+
+### EMR-037: End-to-End Communications Overlay
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+- E2E encrypted text messaging with transcription
+- HIPAA-compliant video calls
+- Fax capabilities (send + receive)
+- HIPAA-compliant phone calls
+- AI transcription for phone calls — capture only pertinent medical info, DISCARD personal data
+- Full communication suite within the EMR
+
+---
+
+### EMR-038: Cannabis & Cancer Book Integration
+**Priority:** 3 — Normal
+**Source:** Dr. Patel / Justin Kander
+**Description:**
+Integrate Justin's book (Cannabis and Cancer) into the backend as a reference guide and data source. Parse and index for the Research Agent and educational library. Source: Dropbox link provided.
+
+---
+
+### EMR-039: Product Store with Affiliate Links
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create "Store" button on top right. Include affiliate links for product selections:
+- phytorx.co
+- flowerpoweredproductsllc.com
+- aulv.org
+Disclaimer popup on link open: "Please consult your healthcare provider before considering these products..."
+Full Amazon-style store framework for cannabis products. Joint decision language.
+
+---
+
+### EMR-040: Cannabis Plant 101 — Front Page Feature
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Create a 101-word paragraph on the front page about the beauty, power, healing properties, and sacredness of the cannabis plant. Include that all who use the website shall respect the plant and use it with intention. Highlighted section with beautiful background and typography.
+
+---
+
+### EMR-041: Ambient Classical Music on Front Page
+**Priority:** 4 — Low
+**Source:** Dr. Patel
+**Description:**
+Front page plays beautiful, relaxing classical music (no words) at low volume with a small mute icon. Subtle, non-intrusive. Consider autoplay policies.
+
+---
+
+### EMR-042: MIPS Data Extrapolation
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+AI functionality to extrapolate data from chart notes and messages to obtain MIPS (Merit-based Incentive Payment System) data. Meet all CMS data requirements. Upload entire MIPS requirements and CMS rules around cannabis as Schedule 3.
+
+---
+
+### EMR-043: Animated Plant Companion (Enhanced)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+The health plant needs MOTION — live cartoon feel:
+- Positive actions: container pops up and pours water on plant, sun shines
+- Negative: weather gets cloudy, water dries up, plant starts to wilt
+- Full animation, not static SVG
+- Consider Lottie or CSS animations or Canvas
+
+---
+
+### EMR-044: Modular Licensable EMR Framework
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+Make the entire EMR built on a fully licensable, modular framework:
+- Clients can buy individual modules
+- API-friendly for integration with Cerner, Epic, Practice Fusion
+- Reproducible for selling and scaling
+- Maintains integrity while being customizable
+- Full white-label capability
+
+---
+
+### EMR-045: Insurance Billing AI Agent System
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Build intricate backend insurance/coding/charting system with SEPARATE AI agents that communicate with each other to ensure highest possible billing amount correlating to proper documentation and coding. Maximize reimbursement rates from each major US insurance company.
+
+---
+
+### EMR-046: Insurance Eligibility Checker
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Built-in eligibility software to determine if patient's insurance or conditions qualify them for insurance-reimbursed cannabis products or a state medical cannabis card. Document and note in chart if eligible.
+
+---
+
+### EMR-047: Medicare CBD Reimbursement Framework
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Create entire framework for the upcoming CMS program allowing Medicare recipients to purchase up to $500 of CBD with proper reimbursement. Track eligibility, purchases, and reimbursement status.
+
+---
+
+### EMR-048: About Page — Founders & Mission
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create "About" section showing:
+- Scott Wayman — AI genius, successful entrepreneur, EMR savant (pull bio from LinkedIn)
+- Dr. Neal H Patel — shaman, innovator, visionary, philanthropist, cannabis expert (pull from LinkedIn + PhantomMed.com)
+- Include photos
+- Mission statement: "As doctors and patients, we are done with the current EMR models. It's outdated, archaic, not user friendly, and intimidating. We aim to create a revolutionary new EMR from scratch... This isn't MyChart. This is MyStory. This isn't a patient's medical history. This is a patient's medical journey. This isn't a patient's problem, it's a patient's process. We will not disrupt healthcare. We will destroy it and rebuild it the right way."
+
+---
+
+### EMR-049: Pricing & Subscription Tiers Page
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Create links or side website that breaks down EMR pricing and tiers of subscription options based on client needs. Modular pricing aligned with EMR-044's module structure.
+
+---
+
+### EMR-050: EMR Slogan
+**Priority:** 4 — Low
+**Source:** Dr. Patel
+**Description:**
+Create a slogan for the EMR, max 10 words. Ideas to incorporate: "Personalized cannabis care at your fingertips from an EMR and providers who have heart and soul."
+
+---
+
+### EMR-051: Native Mobile App (iOS, iPad, Android)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create the entire EMR as a NATIVE app for iOS, iPad, and Android with proper dimensions, stretching, and seamless cross-device experience. Consider React Native, Expo, or Capacitor wrapper.
+
+---
+
+### EMR-052: Clinical Trial Matching
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Connect patient chart data to the largest national clinical trial databases (ClinicalTrials.gov). AI determines if patient is eligible for trials based on their data. Send recommendation directly to patient's portal, email, or text — AI-summarized trial info including website, trial type, and what it consists of.
+
+---
+
+### EMR-053: ProHub Integration
+**Priority:** 2 — High
+**Source:** Meeting notes (Ryan Castle, Jim Gerencser)
+**Description:**
+Merge the ProHub's robust backend of dynamic, validated surveys and longitudinal tracking with the EMR's frontend. ProHub was built to be modular and API-friendly. Goal: centralized one-stop shop tying ProHub + Cancer Playbook + EMR into a full ecosystem.
+
+---
+
+### EMR-054: Veterinary & Psilocybin Expansion
+**Priority:** 4 — Low
+**Source:** Meeting notes
+**Description:**
+System architecture should support replication for:
+- Veterinary cannabis care
+- Psilocybin-based therapy platforms
+- Other conditions (breast cancer specific, etc.)
+White-label + modular architecture from EMR-044 enables this.
+
+---
+
+### EMR-055: Data Ownership & Security Framework
+**Priority:** 2 — High
+**Source:** Ryan Castle
+**Description:**
+Ensure proper data ownership — not just access via AWS/GCP but actual proprietary ownership. Document data ownership agreements, implement data sovereignty controls, and ensure the platform's uniqueness is protected even when hosted on cloud infrastructure.
+
+---
+
+## Updated Summary
+
+| # | Title | Priority | Status |
+|---|---|---|---|
+| 001-036 | Original backlog | Various | 20 done, 16 remaining |
+| 037 | Communications Overlay | High | backlog |
+| 038 | Cannabis Book Integration | Normal | backlog |
+| 039 | Product Store + Affiliates | High | backlog |
+| 040 | Cannabis Plant 101 Paragraph | Normal | backlog |
+| 041 | Ambient Music | Low | backlog |
+| 042 | MIPS Data Extrapolation | High | backlog |
+| 043 | Animated Plant Companion | High | backlog |
+| 044 | Modular Licensable Framework | Urgent | backlog |
+| 045 | Insurance Billing AI Agents | High | backlog |
+| 046 | Insurance Eligibility Checker | High | backlog |
+| 047 | Medicare CBD Framework | Normal | backlog |
+| 048 | About Page — Founders | High | backlog |
+| 049 | Pricing & Tiers | Normal | backlog |
+| 050 | EMR Slogan | Low | backlog |
+| 051 | Native Mobile App | High | backlog |
+| 052 | Clinical Trial Matching | High | backlog |
+| 053 | ProHub Integration | High | backlog |
+| 054 | Vet & Psilocybin Expansion | Low | backlog |
+| 055 | Data Ownership Framework | High | backlog |
+
+**Total: 55 tickets across 20+ epics. 20 shipped, 35 remaining.**
