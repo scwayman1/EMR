@@ -255,6 +255,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           regimens={dosingRegimens}
           doseLogs={recentDoseLogs}
           products={cannabisProducts}
+          patientId={params.id}
         />
       )}
     </PageShell>
@@ -779,10 +780,12 @@ function CannabisRxTab({
   regimens,
   doseLogs,
   products,
+  patientId,
 }: {
   regimens: any[];
   doseLogs: any[];
   products: any[];
+  patientId: string;
 }) {
   const activeRegimens = regimens.filter((r) => r.active);
   const inactiveRegimens = regimens.filter((r) => !r.active);
@@ -804,9 +807,11 @@ function CannabisRxTab({
           <h2 className="font-display text-xl text-text tracking-tight">
             Cannabis Rx
           </h2>
-          <Button variant="primary" size="sm">
-            New prescription
-          </Button>
+          <Link href={`/clinic/patients/${patientId}/prescribe`}>
+            <Button variant="primary" size="sm">
+              New prescription
+            </Button>
+          </Link>
         </div>
         <EmptyState
           title="No cannabis prescriptions on file"
