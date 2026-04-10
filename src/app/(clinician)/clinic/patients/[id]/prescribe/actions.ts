@@ -5,16 +5,24 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { checkInteractions } from "@/lib/domain/drug-interactions";
 
 const schema = z.object({
   patientId: z.string(),
-  productId: z.string(),
+  productId: z.string().optional(),
+  customProductName: z.string().max(200).optional(),
+  productType: z.string().min(1),
   volumePerDose: z.coerce.number().positive(),
   volumeUnit: z.string().min(1),
   frequencyPerDay: z.coerce.number().int().min(1).max(12),
+  daysSupply: z.coerce.number().int().min(1).max(365),
+  quantity: z.coerce.number().positive(),
+  refills: z.coerce.number().int().min(0).max(12),
   timingInstructions: z.string().max(500).optional(),
-  patientInstructions: z.string().max(2000).optional(),
-  clinicianNotes: z.string().max(2000).optional(),
+  diagnosisCodes: z.string().optional(), // JSON-encoded array of {code, label}
+  noteToPatient: z.string().max(2000).optional(),
+  noteToPharmacy: z.string().max(2000).optional(),
+  interactionAcknowledged: z.string().optional(), // "true" if acknowledged
 });
 
 export type PrescribeResult = { ok: true } | { ok: false; error: string };
@@ -27,20 +35,48 @@ export async function createPrescriptionAction(
 
   const parsed = schema.safeParse({
     patientId: formData.get("patientId"),
-    productId: formData.get("productId"),
+    productId: formData.get("productId") || undefined,
+    customProductName: formData.get("customProductName") || undefined,
+    productType: formData.get("productType"),
     volumePerDose: formData.get("volumePerDose"),
     volumeUnit: formData.get("volumeUnit"),
     frequencyPerDay: formData.get("frequencyPerDay"),
+    daysSupply: formData.get("daysSupply"),
+    quantity: formData.get("quantity"),
+    refills: formData.get("refills"),
     timingInstructions: formData.get("timingInstructions") || undefined,
-    patientInstructions: formData.get("patientInstructions") || undefined,
-    clinicianNotes: formData.get("clinicianNotes") || undefined,
+    diagnosisCodes: formData.get("diagnosisCodes") || undefined,
+    noteToPatient: formData.get("noteToPatient") || undefined,
+    noteToPharmacy: formData.get("noteToPharmacy") || undefined,
+    interactionAcknowledged: formData.get("interactionAcknowledged") || undefined,
   });
 
   if (!parsed.success) {
     return { ok: false, error: "Please fill all required fields with valid values." };
   }
 
-  const { patientId, productId, volumePerDose, volumeUnit, frequencyPerDay, timingInstructions, patientInstructions, clinicianNotes } = parsed.data;
+  const {
+    patientId,
+    productId,
+    customProductName,
+    productType,
+    volumePerDose,
+    volumeUnit,
+    frequencyPerDay,
+    daysSupply,
+    quantity,
+    refills,
+    timingInstructions,
+    diagnosisCodes,
+    noteToPatient,
+    noteToPharmacy,
+    interactionAcknowledged,
+  } = parsed.data;
+
+  // Must have either a product from formulary or a custom name
+  if (!productId && !customProductName) {
+    return { ok: false, error: "Please select a product or enter a custom medication name." };
+  }
 
   // Verify patient belongs to org
   const patient = await prisma.patient.findFirst({
@@ -48,34 +84,95 @@ export async function createPrescriptionAction(
   });
   if (!patient) return { ok: false, error: "Patient not found." };
 
-  // Load the product to auto-calculate mg
-  const product = await prisma.cannabisProduct.findFirst({
-    where: { id: productId, organizationId: user.organizationId!, active: true },
-  });
-  if (!product) return { ok: false, error: "Product not found or inactive." };
+  // Load the product (if from formulary) to auto-calculate mg
+  let product = null;
+  if (productId) {
+    product = await prisma.cannabisProduct.findFirst({
+      where: { id: productId, organizationId: user.organizationId!, active: true },
+    });
+    if (!product) return { ok: false, error: "Product not found or inactive." };
+  }
+
+  // Check for drug interactions server-side if product is from formulary
+  if (product) {
+    const patientMeds = await prisma.patientMedication.findMany({
+      where: { patientId, active: true },
+    });
+
+    if (patientMeds.length > 0) {
+      const cannabinoids: string[] = [];
+      if (product.thcConcentration && product.thcConcentration > 0) cannabinoids.push("THC");
+      if (product.cbdConcentration && product.cbdConcentration > 0) cannabinoids.push("CBD");
+      if (product.cbnConcentration && product.cbnConcentration > 0) cannabinoids.push("CBN");
+      if (product.cbgConcentration && product.cbgConcentration > 0) cannabinoids.push("CBG");
+
+      const medNames = patientMeds.map((m) => m.name);
+      const interactions = checkInteractions(medNames, cannabinoids);
+      const hasWarnings = interactions.some((i) => i.severity === "red" || i.severity === "yellow");
+
+      if (hasWarnings && interactionAcknowledged !== "true") {
+        return {
+          ok: false,
+          error: "Drug interactions detected. You must acknowledge the interaction warnings before prescribing.",
+        };
+      }
+    }
+  }
 
   // Auto-calculate mg per dose and per day
   let thcMgPerDose: number | null = null;
   let cbdMgPerDose: number | null = null;
 
-  if (product.concentrationUnit === "mg/mL" || product.concentrationUnit === "mg/unit") {
-    thcMgPerDose = product.thcConcentration ? product.thcConcentration * volumePerDose : null;
-    cbdMgPerDose = product.cbdConcentration ? product.cbdConcentration * volumePerDose : null;
+  if (product) {
+    if (product.concentrationUnit === "mg/mL" || product.concentrationUnit === "mg/unit") {
+      thcMgPerDose = product.thcConcentration ? product.thcConcentration * volumePerDose : null;
+      cbdMgPerDose = product.cbdConcentration ? product.cbdConcentration * volumePerDose : null;
+    }
   }
 
   const thcMgPerDay = thcMgPerDose !== null ? thcMgPerDose * frequencyPerDay : null;
   const cbdMgPerDay = cbdMgPerDose !== null ? cbdMgPerDose * frequencyPerDay : null;
 
+  // Parse diagnosis codes
+  let parsedDiagnoses: { code: string; label: string }[] = [];
+  if (diagnosisCodes) {
+    try {
+      parsedDiagnoses = JSON.parse(diagnosisCodes);
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  // Build structured clinician notes with metadata
+  const structuredNotes = JSON.stringify({
+    noteToPharmacy: noteToPharmacy || null,
+    diagnosisCodes: parsedDiagnoses,
+    daysSupply,
+    quantity,
+    refills,
+    productType,
+    customProductName: customProductName || null,
+    interactionAcknowledged: interactionAcknowledged === "true",
+  });
+
   // Auto-generate patient instructions if not provided
-  const autoInstructions = patientInstructions || generateInstructions(
-    product.name, volumePerDose, volumeUnit, frequencyPerDay,
-    thcMgPerDose, cbdMgPerDose, timingInstructions
-  );
+  const productName = product ? product.name : customProductName || "medication";
+  const autoInstructions =
+    noteToPatient ||
+    generateInstructions(
+      productName,
+      volumePerDose,
+      volumeUnit,
+      frequencyPerDay,
+      thcMgPerDose,
+      cbdMgPerDose,
+      timingInstructions
+    );
 
   await prisma.dosingRegimen.create({
     data: {
       patientId,
-      productId,
+      productId: productId || "custom",
       prescribedById: user.id,
       volumePerDose,
       volumeUnit,
@@ -86,7 +183,7 @@ export async function createPrescriptionAction(
       calculatedThcMgPerDay: thcMgPerDay,
       calculatedCbdMgPerDay: cbdMgPerDay,
       patientInstructions: autoInstructions,
-      clinicianNotes: clinicianNotes || null,
+      clinicianNotes: structuredNotes,
       active: true,
     },
   });
@@ -104,7 +201,12 @@ function generateInstructions(
   cbdMg: number | null,
   timing: string | undefined
 ): string {
-  const freqText = frequency === 1 ? "once daily" : frequency === 2 ? "twice daily" : `${frequency} times daily`;
+  const freqText =
+    frequency === 1
+      ? "once daily"
+      : frequency === 2
+        ? "twice daily"
+        : `${frequency} times daily`;
   const mgParts: string[] = [];
   if (thcMg !== null && thcMg > 0) mgParts.push(`${thcMg.toFixed(1)} mg THC`);
   if (cbdMg !== null && cbdMg > 0) mgParts.push(`${cbdMg.toFixed(1)} mg CBD`);
