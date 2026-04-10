@@ -60,6 +60,11 @@ export function HealthPlant({ health, size = "md", className }: HealthPlantProps
   const stemBase = potTop - 8; // stem emerges just above soil line
   const stemTop = stemBase - stemHeight;
 
+  // Weather / mood state
+  const isHealthy = health.score >= 60;
+  const isThriving = health.stage === "thriving";
+  const isStruggling = health.score < 30;
+
   return (
     <svg
       width={width}
@@ -71,6 +76,68 @@ export function HealthPlant({ health, size = "md", className }: HealthPlantProps
       role="img"
       aria-label={`Cannabis plant in ${health.stage} stage with a score of ${health.score}`}
     >
+      {/* ---- CSS Animations embedded ---- */}
+      <style>{`
+        @keyframes sway {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(2.5deg); }
+          75% { transform: rotate(-2.5deg); }
+        }
+        @keyframes sway-reverse {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(-3deg); }
+          75% { transform: rotate(3deg); }
+        }
+        @keyframes droplet-fall {
+          0% { opacity: 0.9; transform: translateY(0); }
+          80% { opacity: 0.6; }
+          100% { opacity: 0; transform: translateY(60px); }
+        }
+        @keyframes sun-pulse {
+          0%, 100% { r: 28; opacity: 0.9; }
+          50% { r: 32; opacity: 1; }
+        }
+        @keyframes sun-ray-spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes cloud-drift {
+          0% { transform: translateX(-10px); opacity: 0.6; }
+          50% { transform: translateX(10px); opacity: 0.8; }
+          100% { transform: translateX(-10px); opacity: 0.6; }
+        }
+        @keyframes sparkle {
+          0%, 100% { opacity: 0; transform: scale(0.5); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes water-pour {
+          0% { opacity: 0; transform: translateY(-8px); }
+          20% { opacity: 0.8; }
+          100% { opacity: 0; transform: translateY(30px); }
+        }
+        @keyframes wilt-droop {
+          0%, 100% { transform: rotate(0deg); }
+          50% { transform: rotate(8deg); }
+        }
+        @keyframes raindrop {
+          0% { opacity: 0; transform: translateY(-20px); }
+          30% { opacity: 0.5; }
+          100% { opacity: 0; transform: translateY(80px); }
+        }
+        .plant-sway {
+          animation: sway 4s ease-in-out infinite;
+          transform-origin: bottom center;
+        }
+        .plant-sway-reverse {
+          animation: sway-reverse 5s ease-in-out infinite;
+          transform-origin: bottom center;
+        }
+        .plant-wilt {
+          animation: wilt-droop 6s ease-in-out infinite;
+          transform-origin: bottom center;
+        }
+      `}</style>
+
       <defs>
         {/* Pot gradient — warm terracotta */}
         <linearGradient id="pot-grad" x1="0" y1="0" x2="1" y2="1">
@@ -120,6 +187,103 @@ export function HealthPlant({ health, size = "md", className }: HealthPlantProps
         </radialGradient>
       </defs>
 
+      {/* ---- Weather: Sun for healthy plants ---- */}
+      {isHealthy && (
+        <g>
+          {/* Sun glow */}
+          <circle
+            cx={42}
+            cy={42}
+            r={28}
+            fill="#F6D365"
+            opacity={0.85}
+          >
+            <animate attributeName="r" values="28;32;28" dur="3s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.85;1;0.85" dur="3s" repeatCount="indefinite" />
+          </circle>
+          {/* Sun outer halo */}
+          <circle cx={42} cy={42} r={40} fill="#F6D365" opacity={0.15}>
+            <animate attributeName="r" values="38;44;38" dur="4s" repeatCount="indefinite" />
+          </circle>
+          {/* Sun rays — rotating */}
+          <g style={{ transformOrigin: "42px 42px", animation: "sun-ray-spin 20s linear infinite" }}>
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => {
+              const rad = (angle * Math.PI) / 180;
+              const x1 = 42 + Math.cos(rad) * 34;
+              const y1 = 42 + Math.sin(rad) * 34;
+              const x2 = 42 + Math.cos(rad) * 42;
+              const y2 = 42 + Math.sin(rad) * 42;
+              return (
+                <line
+                  key={angle}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="#F6D365"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  opacity={0.5}
+                />
+              );
+            })}
+          </g>
+        </g>
+      )}
+
+      {/* ---- Weather: Clouds for struggling plants ---- */}
+      {isStruggling && (
+        <g style={{ animation: "cloud-drift 8s ease-in-out infinite" }}>
+          <ellipse cx={60} cy={30} rx={30} ry={14} fill="#9CA3AF" opacity={0.5} />
+          <ellipse cx={80} cy={24} rx={22} ry={12} fill="#9CA3AF" opacity={0.45} />
+          <ellipse cx={45} cy={26} rx={18} ry={10} fill="#9CA3AF" opacity={0.4} />
+        </g>
+      )}
+      {isStruggling && (
+        <g style={{ animation: "cloud-drift 10s ease-in-out infinite", animationDelay: "2s" }}>
+          <ellipse cx={170} cy={35} rx={26} ry={12} fill="#9CA3AF" opacity={0.45} />
+          <ellipse cx={190} cy={30} rx={20} ry={10} fill="#9CA3AF" opacity={0.4} />
+        </g>
+      )}
+
+      {/* ---- Rain for struggling plants ---- */}
+      {isStruggling && (
+        <g opacity={0.4}>
+          {[50, 80, 110, 140, 170, 65, 95, 125, 155].map((x, i) => (
+            <line
+              key={`rain-${i}`}
+              x1={x}
+              y1={50 + (i % 3) * 10}
+              x2={x - 3}
+              y2={60 + (i % 3) * 10}
+              stroke="#9CA3AF"
+              strokeWidth={1}
+              strokeLinecap="round"
+              opacity={0.6}
+            >
+              <animate
+                attributeName="y1"
+                values={`${50 + (i % 3) * 10};${130 + (i % 3) * 10}`}
+                dur={`${1.5 + (i % 4) * 0.3}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="y2"
+                values={`${60 + (i % 3) * 10};${140 + (i % 3) * 10}`}
+                dur={`${1.5 + (i % 4) * 0.3}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.6;0.3;0"
+                dur={`${1.5 + (i % 4) * 0.3}s`}
+                repeatCount="indefinite"
+              />
+            </line>
+          ))}
+        </g>
+      )}
+
       {/* ---- Thriving aura ---- */}
       {health.stage === "thriving" && (
         <ellipse
@@ -133,64 +297,123 @@ export function HealthPlant({ health, size = "md", className }: HealthPlantProps
         />
       )}
 
-      {/* ---- Main stem ---- */}
-      <Stem
-        x={vw / 2}
-        yBottom={stemBase}
-        yTop={stemTop}
-        color={stemColor}
-        thickness={health.stemCount >= 3 ? 4 : 3}
-      />
-
-      {/* ---- Secondary stems (branches) ---- */}
-      {health.stemCount >= 2 && (
-        <Branch
-          originX={vw / 2}
-          originY={stemBase - stemHeight * 0.35}
-          angle={-35}
-          length={stemHeight * 0.28}
-          color={stemColor}
-        />
-      )}
-      {health.stemCount >= 3 && (
-        <Branch
-          originX={vw / 2}
-          originY={stemBase - stemHeight * 0.5}
-          angle={32}
-          length={stemHeight * 0.25}
-          color={stemColor}
-        />
-      )}
-      {health.stemCount >= 4 && (
-        <Branch
-          originX={vw / 2}
-          originY={stemBase - stemHeight * 0.65}
-          angle={-28}
-          length={stemHeight * 0.22}
-          color={stemColor}
-        />
-      )}
-      {health.stemCount >= 5 && (
-        <Branch
-          originX={vw / 2}
-          originY={stemBase - stemHeight * 0.78}
-          angle={30}
-          length={stemHeight * 0.2}
-          color={stemColor}
-        />
+      {/* ---- Sparkles for thriving plants ---- */}
+      {isThriving && (
+        <g>
+          {[
+            { cx: 80, cy: stemTop + 20, delay: "0s", dur: "2.5s" },
+            { cx: 165, cy: stemTop + 50, delay: "0.8s", dur: "3s" },
+            { cx: 100, cy: stemTop - 10, delay: "1.5s", dur: "2.8s" },
+            { cx: 150, cy: stemTop + 80, delay: "2.2s", dur: "2.2s" },
+            { cx: 70, cy: stemTop + 60, delay: "0.5s", dur: "3.2s" },
+            { cx: 175, cy: stemTop + 30, delay: "1.8s", dur: "2.6s" },
+          ].map((s, i) => (
+            <g key={`sparkle-${i}`} style={{ animation: `sparkle ${s.dur} ease-in-out infinite`, animationDelay: s.delay }}>
+              <circle cx={s.cx} cy={s.cy} r={2} fill="#F6D365" />
+              <line x1={s.cx - 4} y1={s.cy} x2={s.cx + 4} y2={s.cy} stroke="#F6D365" strokeWidth={0.8} />
+              <line x1={s.cx} y1={s.cy - 4} x2={s.cx} y2={s.cy + 4} stroke="#F6D365" strokeWidth={0.8} />
+            </g>
+          ))}
+        </g>
       )}
 
-      {/* ---- Leaves ---- */}
-      <PlantLeaves
-        centerX={vw / 2}
-        stemBase={stemBase}
-        stemHeight={stemHeight}
-        leafCount={health.leafCount}
-        leafColor={leafColor}
-        stemCount={health.stemCount}
-      />
+      {/* ---- Watering can animation for healthy plants ---- */}
+      {isHealthy && !isThriving && (
+        <g>
+          {/* Watering can silhouette */}
+          <g opacity={0.3}>
+            <rect x={vw - 55} y={potTop - 30} width={20} height={14} rx={3} fill="#6B9BD2" />
+            <rect x={vw - 40} y={potTop - 26} width={12} height={4} rx={2} fill="#6B9BD2" />
+          </g>
+          {/* Water drops */}
+          {[0, 1, 2].map((j) => (
+            <ellipse
+              key={`water-${j}`}
+              cx={vw - 38 + j * 4}
+              cy={potTop - 14}
+              rx={1.5}
+              ry={2.5}
+              fill="#6BB8E0"
+              opacity={0.6}
+            >
+              <animate
+                attributeName="cy"
+                values={`${potTop - 14};${potTop + 10}`}
+                dur={`${1.2 + j * 0.3}s`}
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                values="0.7;0.3;0"
+                dur={`${1.2 + j * 0.3}s`}
+                repeatCount="indefinite"
+              />
+            </ellipse>
+          ))}
+        </g>
+      )}
 
-      {/* ---- Flowers ---- */}
+      {/* ---- Main stem + leaves + flowers (with sway animation) ---- */}
+      <g className={isStruggling ? "plant-wilt" : isHealthy ? "plant-sway" : ""} style={{ transformOrigin: `${vw / 2}px ${stemBase}px` }}>
+        <Stem
+          x={vw / 2}
+          yBottom={stemBase}
+          yTop={stemTop}
+          color={stemColor}
+          thickness={health.stemCount >= 3 ? 4 : 3}
+        />
+
+        {/* ---- Secondary stems (branches) ---- */}
+        {health.stemCount >= 2 && (
+          <Branch
+            originX={vw / 2}
+            originY={stemBase - stemHeight * 0.35}
+            angle={-35}
+            length={stemHeight * 0.28}
+            color={stemColor}
+          />
+        )}
+        {health.stemCount >= 3 && (
+          <Branch
+            originX={vw / 2}
+            originY={stemBase - stemHeight * 0.5}
+            angle={32}
+            length={stemHeight * 0.25}
+            color={stemColor}
+          />
+        )}
+        {health.stemCount >= 4 && (
+          <Branch
+            originX={vw / 2}
+            originY={stemBase - stemHeight * 0.65}
+            angle={-28}
+            length={stemHeight * 0.22}
+            color={stemColor}
+          />
+        )}
+        {health.stemCount >= 5 && (
+          <Branch
+            originX={vw / 2}
+            originY={stemBase - stemHeight * 0.78}
+            angle={30}
+            length={stemHeight * 0.2}
+            color={stemColor}
+          />
+        )}
+
+        {/* ---- Leaves (sway independently) ---- */}
+        <g className="plant-sway-reverse" style={{ transformOrigin: `${vw / 2}px ${stemBase - stemHeight * 0.5}px` }}>
+          <PlantLeaves
+            centerX={vw / 2}
+            stemBase={stemBase}
+            stemHeight={stemHeight}
+            leafCount={health.leafCount}
+            leafColor={leafColor}
+            stemCount={health.stemCount}
+          />
+        </g>
+
+        {/* ---- Flowers (with gentle bounce) ---- */}
       {health.hasFlowers && (
         <>
           <Flower cx={vw / 2} cy={stemTop + 4} size={10} />
@@ -211,6 +434,7 @@ export function HealthPlant({ health, size = "md", className }: HealthPlantProps
           )}
         </>
       )}
+      </g>{/* end sway group */}
 
       {/* ---- Pot ---- */}
       <Pot potTop={potTop} vw={vw} vh={vh} />

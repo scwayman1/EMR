@@ -28,6 +28,24 @@ export default function HomePage() {
         </Link>
         <div className="flex items-center gap-2">
           <Link
+            href="/about"
+            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
+          >
+            About
+          </Link>
+          <Link
+            href="/pricing"
+            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/store"
+            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
+          >
+            Store
+          </Link>
+          <Link
             href="/login"
             className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
           >
@@ -101,6 +119,44 @@ export default function HomePage() {
                 Scribe draft ready
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Slogan strip */}
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pb-8">
+        <p className="font-display text-center text-xl md:text-2xl text-accent tracking-tight italic">
+          Personalized cannabis care, powered by heart and soul.
+        </p>
+      </section>
+
+      <EditorialRule className="max-w-[1280px] mx-auto px-6 lg:px-12" />
+
+      {/* Cannabis Plant 101 — a sacred tribute */}
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 py-16">
+        <div className="relative overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/[0.04] via-surface-raised to-highlight/[0.03] p-10 md:p-14">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 40% 60% at 90% 20%, var(--accent-soft), transparent 70%)",
+            }}
+          />
+          <div className="relative max-w-3xl mx-auto text-center">
+            <Eyebrow className="mb-5 justify-center">The sacred plant</Eyebrow>
+            <p className="font-display text-lg md:text-xl text-text leading-relaxed tracking-tight">
+              For thousands of years, the cannabis plant has been a companion to
+              humanity — a healer, a teacher, and a quiet source of relief for
+              those in pain. Its roots reach deep into the soil of ancient
+              medicine, its leaves hold compounds that speak directly to the
+              human body through the endocannabinoid system. Cannabis is not a
+              trend. It is a sacred botanical ally with the power to ease
+              suffering, restore balance, and open pathways to wellness that
+              modern medicine is only beginning to understand. All who use this
+              platform shall respect the plant and use it with intention, care,
+              and reverence for its remarkable healing properties.
+            </p>
           </div>
         </div>
       </section>
