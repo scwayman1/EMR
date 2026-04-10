@@ -184,24 +184,35 @@ export async function createPrescriptionAction(
       timingInstructions
     );
 
-  await prisma.dosingRegimen.create({
-    data: {
-      patientId,
-      productId: resolvedProductId!,
-      prescribedById: user.id,
-      volumePerDose,
-      volumeUnit,
-      frequencyPerDay,
-      timingInstructions: timingInstructions || null,
-      calculatedThcMgPerDose: thcMgPerDose,
-      calculatedCbdMgPerDose: cbdMgPerDose,
-      calculatedThcMgPerDay: thcMgPerDay,
-      calculatedCbdMgPerDay: cbdMgPerDay,
-      patientInstructions: autoInstructions,
-      clinicianNotes: structuredNotes,
-      active: true,
-    },
-  });
+  try {
+    await prisma.dosingRegimen.create({
+      data: {
+        patientId,
+        productId: resolvedProductId!,
+        prescribedById: user.id,
+        volumePerDose,
+        volumeUnit,
+        frequencyPerDay,
+        timingInstructions: timingInstructions || null,
+        calculatedThcMgPerDose: thcMgPerDose,
+        calculatedCbdMgPerDose: cbdMgPerDose,
+        calculatedThcMgPerDay: thcMgPerDay,
+        calculatedCbdMgPerDay: cbdMgPerDay,
+        patientInstructions: autoInstructions,
+        clinicianNotes: structuredNotes,
+        active: true,
+      },
+    });
+  } catch (err) {
+    console.error("[prescribe] failed to create regimen:", err);
+    return {
+      ok: false,
+      error:
+        err instanceof Error
+          ? `Failed to save prescription: ${err.message}`
+          : "Failed to save prescription. Please try again.",
+    };
+  }
 
   revalidatePath(`/clinic/patients/${patientId}`);
   redirect(`/clinic/patients/${patientId}?tab=rx`);

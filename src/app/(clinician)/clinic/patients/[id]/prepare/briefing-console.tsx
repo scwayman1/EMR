@@ -183,6 +183,7 @@ export function BriefingConsole({
 }) {
   const [result, setResult] = useState<BriefingResult | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isStartingVisit, setIsStartingVisit] = useState(false);
   const [simulatedSteps, setSimulatedSteps] = useState<BriefingStep[]>([]);
   const [phase, setPhase] = useState<"idle" | "running" | "done">("idle");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -466,11 +467,30 @@ export function BriefingConsole({
                 </Link>
                 <Button
                   size="sm"
+                  disabled={isStartingVisit}
                   onClick={() => {
-                    startVisitWithBriefing(patientId, result?.briefing ?? undefined);
+                    setIsStartingVisit(true);
+                    startTransition(async () => {
+                      try {
+                        await startVisitWithBriefing(
+                          patientId,
+                          result?.briefing ?? undefined,
+                        );
+                      } catch (err) {
+                        // redirect() throws NEXT_REDIRECT which is expected;
+                        // only show errors for real failures
+                        if (
+                          err instanceof Error &&
+                          !err.message.includes("NEXT_REDIRECT")
+                        ) {
+                          setIsStartingVisit(false);
+                          alert("Failed to start visit: " + err.message);
+                        }
+                      }
+                    });
                   }}
                 >
-                  Start visit with briefing
+                  {isStartingVisit ? "Starting visit..." : "Start visit with briefing"}
                 </Button>
               </div>
             </CardContent>

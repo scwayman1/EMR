@@ -15,6 +15,11 @@ import { runTick } from "@/lib/orchestration/runner";
 export async function startVisit(patientId: string) {
   const user = await requireUser();
 
+  // Only clinicians and practice owners can start visits
+  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
+    redirect(`/clinic/patients/${patientId}?tab=notes&error=unauthorized`);
+  }
+
   const patient = await prisma.patient.findFirst({
     where: {
       id: patientId,

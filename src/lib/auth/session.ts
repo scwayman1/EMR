@@ -9,8 +9,13 @@ export interface SessionData {
   // short-lived; the full user/role is loaded fresh from DB on each request
 }
 
+// Placeholder used ONLY during build-time static analysis. Any runtime
+// request in production must see a real SESSION_SECRET; we enforce that
+// inside getSession() below so the build itself doesn't blow up.
+const BUILD_TIME_PLACEHOLDER = "build-time-placeholder-not-used-at-runtime-32c";
+
 const sessionOptions: SessionOptions = {
-  password: process.env.SESSION_SECRET || "dev-session-secret-change-me-please-at-least-32c",
+  password: process.env.SESSION_SECRET || BUILD_TIME_PLACEHOLDER,
   cookieName: "emr_session",
   cookieOptions: {
     secure: process.env.NODE_ENV === "production",
@@ -21,6 +26,19 @@ const sessionOptions: SessionOptions = {
 };
 
 export async function getSession() {
+  // Runtime check: refuse to use the placeholder secret in production.
+  // Skipped during `next build` (NEXT_PHASE === 'phase-production-build')
+  // because prerender probing runs getSession() with no real env.
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== "phase-production-build" &&
+    !process.env.SESSION_SECRET
+  ) {
+    throw new Error(
+      "SESSION_SECRET environment variable is required in production. " +
+        "Refusing to issue sessions with an insecure default.",
+    );
+  }
   return getIronSession<SessionData>(cookies(), sessionOptions);
 }
 

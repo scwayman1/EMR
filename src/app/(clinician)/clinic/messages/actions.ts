@@ -20,6 +20,11 @@ export async function sendClinicReplyAction(
 ): Promise<ReplyResult> {
   const user = await requireUser();
 
+  // Only clinicians and practice owners can send clinical messages
+  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
+    return { ok: false, error: "Unauthorized — clinician role required." };
+  }
+
   const parsed = replySchema.safeParse({
     threadId: formData.get("threadId") as string,
     body: (formData.get("body") as string)?.trim(),

@@ -246,12 +246,13 @@ model Encounter {
 
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  provider       Provider?       @relation(fields: [providerId], references: [id])
+  provider       Provider?       @relation(fields: [providerId], references: [id], onDelete: SetNull)
   notes          Note[]
   documents      Document[]
 
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
+  @@index([organizationId, status, createdAt])
 }
 
 enum NoteStatus {
@@ -413,7 +414,7 @@ model Appointment {
   createdAt      DateTime          @default(now())
 
   patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  provider       Provider? @relation(fields: [providerId], references: [id])
+  provider       Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([providerId, startAt])
   @@index([patientId, startAt])
