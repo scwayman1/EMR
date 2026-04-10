@@ -234,10 +234,18 @@ export const preVisitIntelligenceAgent: Agent<
       openTasks,
     });
 
-    const raw = await ctx.model.complete(prompt, {
-      maxTokens: 500,
-      temperature: 0.2,
-    });
+    let raw: string;
+    try {
+      raw = await ctx.model.complete(prompt, {
+        maxTokens: 300,
+        temperature: 0.2,
+      });
+    } catch (llmErr) {
+      ctx.log("warn", "LLM call failed — using deterministic briefing", {
+        error: llmErr instanceof Error ? llmErr.message : String(llmErr),
+      });
+      raw = ""; // triggers fallback path below
+    }
 
     // Try to parse structured response; fall back to template
     const parsed = tryParseJSON(raw);
