@@ -250,6 +250,255 @@ Implement DICOM image viewing so physicians don't need a separate PACS system. I
 
 ---
 
+---
+
+## Epic: Prescribing Module v2
+
+### EMR-016: Full Prescription Form with Dropdowns + Manual Input
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+Prescription module with all dropdown menus AND manual data input:
+- NAME of medication (searchable dropdown + free text)
+- Dose (mg, mL, etc.)
+- Sig = amount to take and how many times daily
+- Days supply
+- Quantity
+- Type (tablet, tincture, edible, gummy, flower, grams, mL)
+- Refills (number)
+- Drug interaction warning popup (YELLOW or RED) that MUST be acknowledged and signed off before final submission
+- Two note boxes: "Note to patient" + "Note to pharmacy (internal)"
+- Diagnosis linking button: link cannabis medication to ICD-10 diagnosis (GAD F41.1, MDD F32.9, HTN I10, HLD E78.00, Insomnia G47.00, etc.)
+- On final Rx send: automated text message to patient with exact name/brand, dosing, amount prescribed, and PICKUP LOCATION (store name, address, phone, hours)
+
+---
+
+### EMR-017: Dispensary Locator with Google Maps
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create a Google Maps inlay that locates:
+- All local dispensaries
+- All local cannabis healthcare providers
+Embedded map component with pins, info cards, and directions.
+
+---
+
+### EMR-018: Leafly Strain Database Integration
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Map most common medical issues that cannabis is used for (sleep, anxiety, insomnia, stress, pain, cancer) and map to ALL strains of flower from the Leafly database. Include terpene profiles and cannabinoid profiles for each strain. Create a searchable strain finder that matches patient symptoms to optimal strains.
+
+---
+
+## Epic: Patient Demographics & Identity
+
+### EMR-019: Full Demographics Tab
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Demographics tab including:
+- DOB, age (auto-calculated), SSN (encrypted), sex, race/ethnicity, marital status
+- Home address, email, phone number
+- Alert box (allergies, critical info)
+- Picture box for identity photo
+- 1 unique thing about them (personal touch)
+- "Medical Life Number" (NOT medical record number — find the right term for a lifelong identifier)
+- Insurance information with backend eligibility checking to determine coverage for products
+
+---
+
+## Epic: Clinical Notes & Documentation
+
+### EMR-020: APSO Note Format with Wearable Integration
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create a SOAP note but in the order of: Assessment, Plan, Subjective, Objective (APSO).
+- Allow vital input from wearable technology: Apple Watch, Whoop, Oura Ring
+- Create correlations and extrapolate trends based on cannabis intake and vitals
+- "They are not a patient. This is human care."
+- "They are not the system, they are a story, and every story deserves to be heard."
+
+---
+
+### EMR-021: AI-Recommended Initial Treatment Plan
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create an AI-prompted and recommended initial care plan that physicians can use as a starting point, modify, and then sign off on before giving to patient. The AI uses research corpus + patient data + outcomes to generate evidence-based recommendations. Physician has final authority.
+
+---
+
+## Epic: Gamification & Patient Engagement
+
+### EMR-022: Cannabis Plant Health Companion
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create a virtual cannabis plant that GROWS or DIES based on how well the patient takes care of their health:
+- Exercise done 2x/week = new leaves
+- Exercise done 1 month in a row = new stems
+- Lost 5 lbs in one month = new flowers
+- Water intake = leaves turn yellow (dehydrated) or green (hydrated)
+- Doctor visit completed = new fertilizer
+- Preventive care done (colonoscopy, mammogram, bone density) = more stems, leaves
+- Eat poorly, poor sleep, poor water, stress = plant starts dying
+
+This is the gamification of health. Visual, interactive, emotional.
+
+---
+
+### EMR-023: Gamify Health (Apple Rings Style)
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Gamify health metrics like Apple's activity rings:
+- Exercise workouts completed
+- Water intake
+- Weight trends
+- Vitals comparison (BP, HR, weight, MOOD over time)
+- Streaks, achievements, milestones
+- Cannabis-specific tracking rings (doses taken, outcomes logged)
+
+---
+
+### EMR-024: Positive Input Requirement
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+For every "problem" a patient inputs (poor sleep, pain, stress, digestive issues), prompt that they MUST input one POSITIVE thing about their life/health — family, finance, weather, gratitude, etc.
+"They don't have problems, this is a process."
+Patients should focus on both challenges AND positives.
+
+---
+
+## Epic: Design & Branding
+
+### EMR-025: Cannabis-Themed Design Palette
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Design updates:
+- Cannabis plants in light shade in background
+- Main colors: green, white, purple (similar to cannabis plants)
+- Accents of orange
+- Try different palettes
+- Cannabis-specific visual language throughout
+
+---
+
+### EMR-026: Cannabis Emojis
+**Priority:** 4 — Low
+**Source:** Dr. Patel
+**Description:**
+Create custom cannabis emojis for use in messaging, notes, and the UI:
+stems, leaves, plant, fire, tincture drop, pain icon, sleep icon, anxiety icon, depression icon, cancer ribbon
+
+---
+
+### EMR-027: Platform Disclaimer
+**Priority:** 4 — Low
+**Source:** Dr. Patel
+**Description:**
+Create a disclaimer at the bottom of the platform:
+"Cannabis should be considered a medicine so please use it carefully and judiciously. Do not abuse Cannabis and please respect the plant and its healing properties."
+
+---
+
+## Epic: Platform & Infrastructure
+
+### EMR-028: Split Window / Multi-Tab View
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create split window ability WITHIN the EMR so up to 3 MAX tabs can be open at the same time. Makes it easier to maneuver instead of clicking back and forth. Think Bloomberg Terminal or VS Code split panes — but for clinical workflows.
+
+---
+
+### EMR-029: ADA Compliance
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Maintain American Disability Act (ADA) friendly website:
+- WCAG 2.1 AA compliance
+- Screen reader support
+- Keyboard navigation for all workflows
+- High contrast mode
+- Focus indicators
+- Alt text on all images
+- Semantic HTML throughout
+
+---
+
+### EMR-030: Multi-Language Support
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Create language conversions for:
+English, Spanish, Vietnamese, Gujarati, Hindi, and more.
+i18n framework with per-page translations. AI-assisted translation for dynamic content (notes, messages, care plans).
+
+---
+
+### EMR-031: Responsive Cross-Device Experience
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+"We want the EMR seamless from desktop, phone to iPad."
+Full responsive audit and optimization across all breakpoints. Touch-friendly interactions on mobile. Consider PWA or native app wrapper.
+
+---
+
+### EMR-032: Patient Lab/Document Email & Print
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Allow patients to EMAIL labs, notes, chart documents AND print right from the portal in OCR PDF format. Clean, professional document formatting.
+
+---
+
+## Epic: Communications
+
+### EMR-033: Physician-to-Physician Secure Portal
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create two communication portals:
+1. Patient ↔ Physician portal (already exists — enhance it)
+2. SECURE PRIVATE Physician ↔ Physician portal for internal communication BETWEEN providers about patient care. HIPAA-compliant, separate from patient-facing messages.
+
+---
+
+### EMR-034: Phone & Video Capability in Messaging
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Create phone and video capability + icons within the messaging/inbox tab. Click-to-call, video visit launch, call logging.
+
+---
+
+## Epic: Data & Analytics
+
+### EMR-035: Backend Data Extrapolation Dashboard
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Backend data extrapolation with BOTH identifying and de-identifying information. Allow backend user to click on all applicable fields (DOB, name, age, sex, etc.) to build custom reports and research datasets. Support for de-identified exports for research purposes.
+
+---
+
+## Epic: Educational Resources
+
+### EMR-036: Justin Kander's Book & Free Resources
+**Priority:** 4 — Low
+**Source:** Justin Kander
+**Description:**
+Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a free resource. It's the largest integration of human cases and research demonstrating how cannabis fights cancer. Good resource for patients and providers, even though dosing isn't well-characterized in all cases.
+
+---
+
 ## Summary
 
 | # | Title | Priority | Epic | Status |
@@ -269,3 +518,24 @@ Implement DICOM image viewing so physicians don't need a separate PACS system. I
 | 013 | Conventional EMR Integration | Normal | Integration | backlog |
 | 014 | DICOM Viewer & PACS | Low | Infrastructure | stub |
 | 015 | Justin's UI Feedback | Normal | UI Polish | partial |
+| 016 | Full Prescription Form (Rx v2) | Urgent | Prescribing | backlog |
+| 017 | Dispensary Locator (Google Maps) | High | Prescribing | backlog |
+| 018 | Leafly Strain Database Integration | Normal | Pharmacology | backlog |
+| 019 | Full Demographics Tab | High | Demographics | backlog |
+| 020 | APSO Note + Wearable Integration | High | Documentation | backlog |
+| 021 | AI-Recommended Initial Plan | High | Documentation | backlog |
+| 022 | Cannabis Plant Health Companion | High | Gamification | backlog |
+| 023 | Gamify Health (Apple Rings) | Normal | Gamification | backlog |
+| 024 | Positive Input Requirement | Normal | Gamification | backlog |
+| 025 | Cannabis Design Palette | High | Design | backlog |
+| 026 | Cannabis Emojis | Low | Design | backlog |
+| 027 | Platform Disclaimer | Low | Design | backlog |
+| 028 | Split Window / Multi-Tab | High | Platform | backlog |
+| 029 | ADA Compliance | High | Platform | backlog |
+| 030 | Multi-Language Support | Normal | Platform | backlog |
+| 031 | Responsive Cross-Device | High | Platform | backlog |
+| 032 | Patient Email/Print Documents | Normal | Platform | backlog |
+| 033 | Physician-to-Physician Portal | High | Communications | backlog |
+| 034 | Phone & Video in Messaging | Normal | Communications | backlog |
+| 035 | Backend Data Dashboard | Normal | Analytics | backlog |
+| 036 | Justin's Book in Library | Low | Education | backlog |
