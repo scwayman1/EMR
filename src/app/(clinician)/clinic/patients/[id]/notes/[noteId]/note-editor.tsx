@@ -6,8 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { saveNoteBlocks, saveAndFinalizeNote } from "./actions";
+import { APSO_ORDER, NOTE_BLOCK_LABELS } from "@/lib/domain/notes";
+import type { NoteBlockType } from "@/lib/domain/notes";
 
 interface NoteBlock {
+  type?: NoteBlockType;
   heading: string;
   body: string;
 }
@@ -36,7 +39,21 @@ export function NoteEditor({
   codingSuggestion,
 }: NoteEditorProps) {
   const router = useRouter();
-  const [blocks, setBlocks] = useState<NoteBlock[]>(initialBlocks);
+  const [blocks, setBlocks] = useState<NoteBlock[]>(() => {
+    // Sort initial blocks in APSO order
+    const sorted = [...initialBlocks].sort((a, b) => {
+      const aIdx = a.type ? APSO_ORDER.indexOf(a.type) : APSO_ORDER.length;
+      const bIdx = b.type ? APSO_ORDER.indexOf(b.type) : APSO_ORDER.length;
+      return (aIdx === -1 ? APSO_ORDER.length : aIdx) - (bIdx === -1 ? APSO_ORDER.length : bIdx);
+    });
+    // Apply APSO display labels to headings
+    return sorted.map((block) => ({
+      ...block,
+      heading: block.type && NOTE_BLOCK_LABELS[block.type]
+        ? NOTE_BLOCK_LABELS[block.type]
+        : block.heading,
+    }));
+  });
   const [isPending, startTransition] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState(status);

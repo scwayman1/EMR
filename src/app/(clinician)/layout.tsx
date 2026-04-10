@@ -7,6 +7,7 @@ const CLINICIAN_NAV: NavItem[] = [
   { label: "Command", href: "/clinic" },
   { label: "Roster", href: "/clinic/patients" },
   { label: "Inbox", href: "/clinic/messages" },
+  { label: "Providers", href: "/clinic/providers" },
   { label: "Research", href: "/clinic/research" },
 ];
 
