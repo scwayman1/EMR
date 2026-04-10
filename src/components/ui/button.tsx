@@ -21,7 +21,7 @@ const BASE =
 const VARIANTS: Record<Variant, string> = {
   primary:
     "bg-gradient-to-b from-accent to-accent-strong text-accent-ink shadow-seal " +
-    "hover:brightness-110 hover:shadow-md",
+    "hover:from-accent/90 hover:to-accent hover:shadow-lg hover:scale-[1.02]",
   secondary:
     "bg-surface-raised text-text border border-border-strong/70 shadow-sm " +
     "hover:bg-surface-muted hover:border-border-strong",
@@ -31,7 +31,7 @@ const VARIANTS: Record<Variant, string> = {
     "bg-danger text-white shadow-sm hover:brightness-110",
   highlight:
     "bg-gradient-to-b from-highlight to-highlight-hover text-white shadow-seal " +
-    "hover:brightness-110 hover:shadow-md",
+    "hover:from-highlight/90 hover:to-highlight hover:shadow-lg hover:scale-[1.02]",
 };
 
 const SIZES: Record<Size, string> = {

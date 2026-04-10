@@ -51,11 +51,6 @@ export default async function OutcomesPage() {
         eyebrow="Outcomes"
         title="How you've been feeling"
         description="Your trends over time. Shared with your care team to guide your plan."
-        actions={
-          <Link href="/portal/outcomes/new">
-            <Button size="md">Log a check-in</Button>
-          </Link>
-        }
       />
 
       {/* ---- Hero CTA card ---- */}
