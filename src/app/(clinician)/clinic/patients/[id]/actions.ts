@@ -9,13 +9,12 @@ import { runTick } from "@/lib/orchestration/runner";
 
 /**
  * Start a visit: find or create an in-progress encounter for today,
- * dispatch the scribe draft event, run the agent inline (even in prod
- * — the clinician is waiting for the draft), and redirect to notes.
+ * dispatch the scribe draft event, attempt a quick inline run with a
+ * timeout, and redirect to notes immediately.
  */
 export async function startVisit(patientId: string) {
   const user = await requireUser();
 
-  // Verify the patient belongs to this org
   const patient = await prisma.patient.findFirst({
     where: {
       id: patientId,
@@ -24,7 +23,6 @@ export async function startVisit(patientId: string) {
     },
   });
   if (!patient) {
-    // Instead of throwing (which gives no UI feedback), redirect with error
     redirect(`/clinic/patients/${patientId}?tab=notes&error=not_found`);
   }
 
@@ -33,7 +31,6 @@ export async function startVisit(patientId: string) {
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  // Find or create today's encounter
   let encounter = await prisma.encounter.findFirst({
     where: {
       patientId,
@@ -57,23 +54,28 @@ export async function startVisit(patientId: string) {
     });
   }
 
-  // Dispatch the scribe event
+  // Dispatch the scribe event — this enqueues the job
   await dispatch({
     name: "encounter.note.draft.requested",
     encounterId: encounter.id,
     requestedBy: user.id,
   });
 
-  // Run the agent inline — even in production. The clinician is actively
-  // waiting for the draft, so async queue polling (10s) is too slow.
-  // The Scribe Agent typically completes in 2-8s with a real LLM.
+  // Try to run the agent inline with a 12-second timeout.
+  // If it completes, the draft is ready when the page loads.
+  // If it times out, the job stays in the queue for the background worker.
   try {
-    await runTick("inline-visit", 2);
+    await Promise.race([
+      runTick("inline-visit", 2),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 12000)
+      ),
+    ]);
   } catch (err) {
-    // If the inline run fails, the job stays in the queue and the worker
-    // will pick it up. The clinician sees "No notes yet" briefly, then
-    // the draft appears on next page load.
-    console.error("[startVisit] inline runTick failed:", err);
+    // Timeout or error — the job is still in the queue.
+    // The clinician will see "No notes yet" briefly, then the draft
+    // appears when the background worker picks it up or on page refresh.
+    console.error("[startVisit] inline run:", err instanceof Error ? err.message : err);
   }
 
   revalidatePath(`/clinic/patients/${patientId}`);
