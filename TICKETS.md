@@ -765,3 +765,384 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 - EMR-051: Native Mobile App (React Native / Capacitor)
 - EMR-053: ProHub Integration (needs ProHub API)
 - EMR-054: Vet & Psilocybin Expansion (architecture only)
+
+---
+
+## Wave 9+ — Dr. Patel's Second Vision Drop (April 10 — expanded backlog)
+
+### EMR-056: Seamless Recommendation Engine from All Databases
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Deploy a seamless recommendation engine for products, cannabinoid ratios, doses, and dominant terpenes based on ALL cannabinoid databases from online and well-published books. Goes beyond the current 50-study corpus to ingest:
+- Leafly strain database
+- Open-source cannabis pharmacology papers
+- Published cannabis medicine textbooks
+- International cannabinoid research databases
+- Patient PRO data across the platform
+Returns: cannabinoid ratios, dose ranges, terpene profiles, evidence tier (RCT vs PRO vs experience).
+
+---
+
+### EMR-057: Native Mobile App (iOS, iPad, Android + Projector Support)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Create the entire EMR as a NATIVE app that runs on iOS, iPad, and Android with:
+- Proper dimensions, stretching, and seamless portrait/landscape mode
+- Proper zooming proportions
+- Proper stretching when connected via projector or HDMI
+- Full feature parity with the web app
+- React Native or Capacitor wrapper
+**Supersedes/extends EMR-051.**
+
+---
+
+### EMR-058: Clinical Trial Matching + AI Summary Delivery
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Full framework connecting patient chart to the largest national clinical trial databases (ClinicalTrials.gov). Determines eligibility from patient data and recommends trials directly via:
+- Patient portal message
+- Email
+- SMS
+Each recommendation is AI-summarized and includes website, trial type, what it consists of.
+**Extends EMR-052 (which scaffolded the UI).**
+
+---
+
+### EMR-059: Single-Page Fixed Prescription Module (No Scroll)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Redesign the prescription module to fit on ONE page that is FIXED without scrolling — all necessary parameters (name, dose, sig, days, qty, type, refills, diagnosis linking, interaction check, notes to patient/pharmacy) visible in a dense single-view layout.
+
+---
+
+### EMR-060: Zero-Scroll / Minimal-Click Information Architecture
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Audit the entire EMR to minimize clicks between tabs and eliminate scrolling wherever possible. Patients and providers should see all relevant information in a simple, clean format without scrolling up or down. Think dashboard density over portal-style pagination.
+
+---
+
+### EMR-061: Motivational Quote Pop-ups
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+- Pop-up motivational quote on login
+- Every page has a quote that refreshes on navigation
+- Keywords to sample from: God, love, faith, emotions, energy, happiness, resilience, persistence, not giving up, gratitude, healing, community
+- Rotating quote library with attribution
+
+---
+
+### EMR-062: Ancillary Services Module (OT, PT, Speech, Case Mgmt, Home Health)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Ancillary EMR module covering:
+- Occupational therapy documentation
+- Physical therapy documentation
+- Speech therapy documentation
+- Case management notes
+- Home health notes
+Modular framework that integrates into the main EMR with provider sign-off and seamless communication between all service types.
+
+---
+
+### EMR-063: Pharmacy Communication Module
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Backend pharmacy communication module with direct access to pharmacists for clarifications or medication recommendations. Requires both pharmacist AND provider sign-off to verify and approve any change.
+
+---
+
+### EMR-064: Full Audit Trail & PDF Export
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Complete running log of all documentation, backend clicks, who accessed which chart, timestamps. Exportable as PDF for auditing purposes. HIPAA-compliant audit trail that meets regulatory standards.
+**Note:** AuditLog model already exists — this extends it with the PDF export + comprehensive click tracking.
+
+---
+
+### EMR-065: Automated Compliance Audit AI Agent
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Automated AI agent that continuously audits notes, labs, communication for compliance:
+- CMS standards
+- Major insurance company audit requirements
+- Joint Commission (JACHO) standards
+Cross-checks everything against current regulations and flags non-compliant documentation before submission.
+
+---
+
+### EMR-066: Complete Validated Assessment Library
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Add ALL peer-reviewed validated surveys under the Assessments tab:
+- Pain (PEG, BPI, NRS)
+- Anxiety (GAD-7, STAI) ✓
+- Insomnia (ISI, PSQI)
+- Stress (PSS)
+- Cancer (FACT-G, EORTC QLQ-C30)
+- Depression (PHQ-9) ✓
+- Cognition (MMSE, MoCA)
+- Functional (ODI, WOMAC)
+- And all other medical ailment-specific PROs
+Each with scoring, interpretation, and trend visualization.
+
+---
+
+### EMR-067: Lab Ordering Module (Quest + LabCorp Integration)
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+Full lab ordering module connected to Quest and LabCorp:
+- Cross-references patient's ICD codes for highest use
+- Fully searchable lab database (every letter)
+- User-defined lab sets saved as personal favorites
+  - Example: "normal follow up" = Dx: E78.00, E11.9, Z79.899, I10; Labs: CMP, CBC, LIPID PANEL, A1C, GGT
+- CRITICAL values auto-notify provider with required sign-off + plan of action documentation
+- Patient-facing labs tab: view raw labs, print, download PDF, email, fax to other providers
+- Nature-themed trend visualization: worse labs → worse weather + wilting plant; better labs → better weather + thriving plant
+- All orders cross-referenced with highest-use ICD-10 + insurance coverage
+
+---
+
+### EMR-068: Patient Billing Portal with AI-Explained EOBs
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Full patient billing portal:
+- Access to EOBs and invoices
+- AI summarizes bills in 3rd-grade language (why, how much, what services, how to dispute)
+- Direct payment into system
+- File insurance claim to refute charges (tied to major insurers + CMS)
+- Compliant with state insurance regulations
+- Labs shown in red/yellow/green format (like drug interactions)
+- AI suggestions for abnormal labs that providers can use to guide treatment
+
+---
+
+### EMR-069: AI Fairytale Chart Summary
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Full AI-driven summary of patient's chart as a ONE-PAGE summary that is:
+- Easy for all providers to interpret
+- Easy for the patient to understand
+- Formatted as a BEAUTIFUL FAIRYTALE STORY BOOK that reads seamlessly
+Covers pertinent history, medications, trends, concerns. Think "My Story" but generated on demand for any provider visit.
+
+---
+
+### EMR-070: USPSTF A&B Screening Measures with Emoji Checklist
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+- Implement all USPSTF A and B grade recommended screening measures as part of chart review
+- Each prevention screening is an emoji that shows up if patient is DUE
+- Pop-up prompt to provider: "consider discussing screening measures" with emoji list of pending items (pap smear, colonoscopy, mammogram, DEXA, CT chest screening, etc.)
+- Simple emoji checklist included in AI fairytale summary that patient can take to all providers
+
+---
+
+### EMR-071: DoxGPT AI Chatbot Integration
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+AI chatbot integrating patient information with DoxGPT to obtain properly vetted resources and evidence-based treatment suggestions. Doctor has final say on all recommendations. Tied into messaging and care planning.
+
+---
+
+### EMR-072: Lifestyle Checkboxes → Plant Growth
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Add checkboxes next to every item on the Lifestyle tab:
+- Each check = one new leaf on the plant
+- One item from each of the 7 categories in a day = new stem
+- One from each category every day for a month = flowers
+Ties directly into the existing plant health system. Makes engagement tangible and rewarding.
+
+---
+
+### EMR-073: Customizable Patient Portal
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Let patients customize their portal:
+- Organize tabs (show/hide)
+- Rearrange tab order
+- Change color palette (preset themes or free color picker)
+- Save customization to their profile
+
+---
+
+### EMR-074: Patient Music Integration (Spotify / Apple Music)
+**Priority:** 4 — Low
+**Source:** Dr. Patel
+**Description:**
+Allow patients to connect Spotify or Apple Music to play music while reviewing their chart. AI fairytale summary gets an accompanying soundtrack that can be posted to social media or emailed. Think "Spotify Wrapped" energy for health.
+
+---
+
+### EMR-075: Social Sharing Module
+**Priority:** 4 — Low
+**Source:** Dr. Patel
+**Description:**
+Allow patients to share results and progress on:
+- Lifestyle tab achievements
+- Plant growth milestones
+- Achievement unlocks
+Shareable to Instagram, Facebook, TikTok with templated graphics.
+
+---
+
+### EMR-076: AI-First Prior Authorization Framework
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Prior authorization module where medications requiring PA are handled by AI first:
+- AI pulls all needed data and proper coding
+- Submits to insurance automatically
+- Only if denied a second time does provider get pulled in
+- In-system messaging + calls to insurance company for escalation
+
+---
+
+### EMR-077: Modular EMAR API Framework (All Pharmaceuticals)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Full modular API framework for electronic medication administration record (EMAR) including ALL current prescription medications:
+- Doses, standard amounts, formulations
+- Connected to major pharmaceutical companies
+- Connected to pharmacy networks
+- Real-time availability and pricing
+
+---
+
+### EMR-078: Smart Referral Module with AI Data Curation
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Referral module that lets patient look up specialists in their network by location + ratings. From within the EMR:
+- Click specialist → create appointment OR generate call-patient request
+- AI determines which notes, labs, consults, images are "pertinent" for the referral
+- Auto-sends curated data bundle to the specialist's office
+
+---
+
+### EMR-079: Dementia / Alzheimer's Screening Framework (Mindspan Integration)
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Full dementia/Alzheimer's framework:
+- Connects to Mindspan.co for self-assessment memory tests within the EMR
+- Stores results longitudinally
+- Creates lifestyle plan to reduce dementia risk (exercise, reading upside down, outdoor time, etc.)
+- Post-diagnosis: practical tips for improving quality of life for diagnosed patients
+- Caregiver support module
+
+---
+
+### EMR-080: Cannabis Education Library (Legislation + Research)
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Cannabis education library that includes:
+- All peer-reviewed journal articles (extend corpus)
+- All patient data collected on the platform
+- Current legislation at city, county, state, and federal level
+- Auto-updated legal status by patient location
+- Searchable + filterable
+
+---
+
+### EMR-081: OCR Document Scanning with AI Data Extraction
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Scanned documents (e.g., paper med list a patient brings in) are OCR-scanned and AI extracts:
+- Medications → medication list
+- Supplements → supplement list
+- Surgeries → surgical history
+- Emergency contacts → contact fields
+All populated into proper chart fields in chronological order.
+
+---
+
+### EMR-082: Electronic Record Release Between Providers
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Electronic medical record release capability between doctors:
+- Seamless acquisition of patient charts from other providers
+- Patient electronic signature + provider signature
+- Fully within the EMR — no paper forms
+
+---
+
+### EMR-083: Pediatric Module
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Pediatric module tracking:
+- Growth charts (length, weight, head circumference)
+- Vaccine schedule + history
+- Weight and eating habits
+- Developmental milestones
+All visualized as a happy, cute cartoon theme — not clinical charts.
+
+---
+
+### EMR-084: Military-Grade Encryption, JACHO/CMS Compliance, IP Framework
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+- Military-grade encryption on the entire EMR and prompting system
+- Cannot be copyrighted / reverse-engineered
+- Legal framework for licensing to EPIC, Cerner, outpatient clinics, PT/OT locations, hospitals
+- Meets ALL JACHO, CMS standards, regulations, guidelines for fully functional EMR
+- Patents and trademarks for ALL aspects of the EMR
+- Sample contracts for negotiating use with other entities
+
+---
+
+### EMR-085: Calendar Export (iCal, Google Calendar)
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+All scheduled appointments can be exported and added directly into patient's:
+- Apple iCal
+- Google Calendar
+- Microsoft Outlook
+ICS file generation, direct calendar sync, auto-update on reschedule.
+
+---
+
+## Expanded Summary
+
+| Wave | Range | Status |
+|---|---|---|
+| Waves 1-7 | EMR-001 to EMR-036 (partial) | 33 done |
+| Wave 8+ (Apr 10) | EMR-037 to EMR-055 | 11 done of 19 |
+| Wave 9+ (Apr 10 expanded) | EMR-056 to EMR-085 | 30 new tickets |
+
+**Total: 85 tickets across 30+ epics. 44 shipped, 41 remaining.**
+
+**Product vision vs backlog** — several tickets in Wave 9+ are more product-vision than near-term backlog:
+- EMR-057: Native mobile app (major architectural shift)
+- EMR-077: Full EMAR API framework
+- EMR-084: Military-grade encryption + IP / licensing framework
+- EMR-076: Prior auth AI (needs insurance company integrations)
+- EMR-067: Quest/LabCorp integration (needs partnership)
+
+These are captured as tickets but flagged as strategic roadmap items, not immediate sprint work.
