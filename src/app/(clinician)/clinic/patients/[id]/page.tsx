@@ -15,6 +15,8 @@ import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey } from "./chart-tabs";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { startVisit } from "./actions";
+import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
+import { InteractionBadge } from "@/components/ui/interaction-badge";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -32,7 +34,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const tab = (searchParams.tab as TabKey) || "records";
 
   /* ── Parallel data fetch ──────────────────────────────────── */
-  const [patient, allNotes, threads, assessmentResponses, dosingRegimens, recentDoseLogs, cannabisProducts] = await Promise.all([
+  const [patient, allNotes, threads, assessmentResponses, dosingRegimens, recentDoseLogs, cannabisProducts, patientMedications] = await Promise.all([
     prisma.patient.findFirst({
       where: {
         id: params.id,
@@ -103,6 +105,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     // Organization's cannabis product formulary
     prisma.cannabisProduct.findMany({
       where: { organizationId: user.organizationId!, active: true },
+      orderBy: { name: "asc" },
+    }),
+    // Patient's conventional medications
+    prisma.patientMedication.findMany({
+      where: { patientId: params.id, active: true },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -255,6 +262,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           regimens={dosingRegimens}
           doseLogs={recentDoseLogs}
           products={cannabisProducts}
+          medications={patientMedications}
           patientId={params.id}
         />
       )}
@@ -780,11 +788,13 @@ function CannabisRxTab({
   regimens,
   doseLogs,
   products,
+  medications,
   patientId,
 }: {
   regimens: any[];
   doseLogs: any[];
   products: any[];
+  medications: any[];
   patientId: string;
 }) {
   const activeRegimens = regimens.filter((r) => r.active);
@@ -799,6 +809,25 @@ function CannabisRxTab({
     (sum: number, r: any) => sum + (r.calculatedCbdMgPerDay ?? 0),
     0
   );
+
+  // Extract cannabinoids from active regimens
+  const cannabinoids = new Set<string>();
+  for (const regimen of activeRegimens) {
+    const product = regimen.product;
+    if (product) {
+      if (product.thcConcentration && product.thcConcentration > 0) cannabinoids.add("THC");
+      if (product.cbdConcentration && product.cbdConcentration > 0) cannabinoids.add("CBD");
+      if (product.cbnConcentration && product.cbnConcentration > 0) cannabinoids.add("CBN");
+      if (product.cbgConcentration && product.cbgConcentration > 0) cannabinoids.add("CBG");
+    }
+  }
+
+  // Check interactions between patient medications and cannabinoids
+  const medNames = medications.map((m: any) => m.name);
+  const interactions = checkInteractions(medNames, Array.from(cannabinoids));
+  const redInteractions = interactions.filter((i) => i.severity === "red");
+  const yellowInteractions = interactions.filter((i) => i.severity === "yellow");
+  const greenInteractions = interactions.filter((i) => i.severity === "green");
 
   if (regimens.length === 0 && doseLogs.length === 0) {
     return (
@@ -860,6 +889,88 @@ function CannabisRxTab({
             hint={inactiveRegimens.length > 0 ? `${inactiveRegimens.length} discontinued` : undefined}
           />
         </div>
+      )}
+
+      {/* ── Drug interaction check ──────────────────────────── */}
+      {interactions.length > 0 && (
+        <section>
+          {/* Red alert banner */}
+          {redInteractions.length > 0 && (
+            <div className="rounded-xl border-2 border-red-300 bg-red-50 p-5 mb-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color:var(--danger)] text-white text-xs font-bold" aria-hidden="true">!</span>
+                <h3 className="font-display text-lg font-medium text-danger tracking-tight">
+                  Drug Interaction Alert
+                </h3>
+              </div>
+              <div className="space-y-3">
+                {redInteractions.map((interaction, i) => (
+                  <div key={`red-${i}`} className="rounded-lg bg-white/70 border border-red-200 p-4">
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <p className="font-medium text-text text-sm">
+                        {interaction.drug.charAt(0).toUpperCase() + interaction.drug.slice(1)} + {interaction.cannabinoid}
+                      </p>
+                      <InteractionBadge severity="red" />
+                    </div>
+                    <p className="text-sm text-text-muted leading-relaxed mb-1.5">
+                      {interaction.mechanism}
+                    </p>
+                    <p className="text-xs text-danger font-medium">
+                      {interaction.recommendation}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Yellow and green interactions */}
+          {(yellowInteractions.length > 0 || greenInteractions.length > 0) && (
+            <Card tone="raised" className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Interaction check
+                </CardTitle>
+                <CardDescription>
+                  {medications.length} medication{medications.length !== 1 ? "s" : ""} checked against {cannabinoids.size} cannabinoid{cannabinoids.size !== 1 ? "s" : ""}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="divide-y divide-border/50">
+                  {yellowInteractions.map((interaction, i) => (
+                    <div key={`yellow-${i}`} className="py-3 first:pt-0 last:pb-0">
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <p className="font-medium text-text text-sm">
+                          {interaction.drug.charAt(0).toUpperCase() + interaction.drug.slice(1)} + {interaction.cannabinoid}
+                        </p>
+                        <InteractionBadge severity="yellow" />
+                      </div>
+                      <p className="text-sm text-text-muted leading-relaxed mb-1">
+                        {interaction.mechanism}
+                      </p>
+                      <p className="text-xs text-[color:var(--highlight-hover)] font-medium">
+                        {interaction.recommendation}
+                      </p>
+                    </div>
+                  ))}
+                  {greenInteractions.map((interaction, i) => (
+                    <div key={`green-${i}`} className="py-3 first:pt-0 last:pb-0">
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <p className="font-medium text-text text-sm">
+                          {interaction.drug.charAt(0).toUpperCase() + interaction.drug.slice(1)} + {interaction.cannabinoid}
+                        </p>
+                        <InteractionBadge severity="green" />
+                      </div>
+                      <p className="text-sm text-text-muted leading-relaxed">
+                        {interaction.mechanism}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </section>
       )}
 
       {/* ── Active regimen cards ──────────────────────────── */}

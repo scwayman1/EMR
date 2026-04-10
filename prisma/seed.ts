@@ -18,6 +18,7 @@ import {
   AgentJobStatus,
   ProductType,
   DeliveryRoute,
+  MedicationType,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -49,6 +50,9 @@ async function cleanIdempotent() {
   if (!org) return; // first run — nothing to clean
 
   // Order matters because of FK constraints
+  await prisma.patientMedication.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
   await prisma.doseLog.deleteMany({
     where: { patient: { organizationId: org.id } },
   });
@@ -967,6 +971,51 @@ async function main() {
       route: DeliveryRoute.sublingual,
       note: "Evening dose, slept better",
       loggedAt: daysAgo(1),
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Maya — Conventional Medications
+  // ------------------------------------------------------------------
+  console.log("Seeding Maya's conventional medications...");
+
+  await prisma.patientMedication.create({
+    data: {
+      patientId: maya.id,
+      name: "Sertraline",
+      genericName: "sertraline hydrochloride",
+      type: MedicationType.prescription,
+      dosage: "50mg daily",
+      prescriber: "Dr. Patel (PCP)",
+      active: true,
+      startDate: daysAgo(90),
+      notes: "For anxiety management. Stable dose for 3 months.",
+    },
+  });
+
+  await prisma.patientMedication.create({
+    data: {
+      patientId: maya.id,
+      name: "Melatonin",
+      genericName: "melatonin",
+      type: MedicationType.supplement,
+      dosage: "3mg nightly",
+      active: true,
+      startDate: daysAgo(30),
+      notes: "OTC supplement for sleep onset.",
+    },
+  });
+
+  await prisma.patientMedication.create({
+    data: {
+      patientId: maya.id,
+      name: "Acetaminophen",
+      genericName: "acetaminophen",
+      type: MedicationType.otc,
+      dosage: "500mg as needed",
+      active: true,
+      startDate: daysAgo(60),
+      notes: "PRN for breakthrough pain. Max 4g/day.",
     },
   });
 

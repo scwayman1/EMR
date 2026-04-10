@@ -137,6 +137,7 @@ model Patient {
   tasks           Task[]
   dosingRegimens  DosingRegimen[]
   doseLogs        DoseLog[]
+  medications     PatientMedication[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -622,6 +623,35 @@ model DoseLog {
   regimen           DosingRegimen? @relation(fields: [regimenId], references: [id])
 
   @@index([patientId, loggedAt])
+}
+
+// --------------------------------------------------------------
+// Conventional Medications & Supplements
+// --------------------------------------------------------------
+
+enum MedicationType {
+  prescription
+  otc
+  supplement
+  cannabis
+}
+
+model PatientMedication {
+  id              String         @id @default(cuid())
+  patientId       String
+  name            String         // "Warfarin", "Melatonin", "Vitamin D"
+  genericName     String?        // "warfarin sodium"
+  type            MedicationType
+  dosage          String?        // "5mg daily"
+  prescriber      String?        // who prescribed it (external)
+  active          Boolean        @default(true)
+  startDate       DateTime?
+  notes           String?
+  createdAt       DateTime       @default(now())
+
+  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, active])
 }
 
 // --------------------------------------------------------------
