@@ -18,7 +18,6 @@ import { InteractionBadge } from "@/components/ui/interaction-badge";
 import {
   checkInteractions,
   type DrugInteraction,
-  type Severity,
 } from "@/lib/domain/drug-interactions";
 
 /* ── Types ──────────────────────────────────────────────────── */
