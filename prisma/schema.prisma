@@ -240,6 +240,7 @@ model Encounter {
   completedAt    DateTime?
   modality       String          @default("in_person") // in_person | video | phone
   reason         String?
+  briefingContext Json?           // Pre-visit intelligence briefing (talking points, risk flags, summary)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 

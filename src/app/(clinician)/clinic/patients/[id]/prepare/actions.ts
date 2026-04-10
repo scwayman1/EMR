@@ -1,7 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { dispatch } from "@/lib/orchestration/dispatch";
+import { runTick } from "@/lib/orchestration/runner";
 import { preVisitIntelligenceAgent } from "@/lib/agents/pre-visit-intelligence-agent";
 import { resolveModelClient } from "@/lib/orchestration/model-client";
 import type { AllowedAction, AgentLogEntry } from "@/lib/orchestration/types";
@@ -134,4 +138,88 @@ export async function generateBriefing(patientId: string): Promise<BriefingResul
       totalDurationMs: Date.now() - startTime,
     };
   }
+}
+
+/**
+ * Start a visit with briefing context pre-loaded.
+ *
+ * This creates/finds the encounter, stores the briefing data on it,
+ * dispatches the scribe event, and redirects to notes. The scribe agent
+ * picks up the briefingContext from the encounter and uses it to
+ * pre-seed the note with talking points, risk flags, and assessment.
+ */
+export async function startVisitWithBriefing(
+  patientId: string,
+  briefing: BriefingResult["briefing"],
+) {
+  const user = await requireUser();
+
+  const patient = await prisma.patient.findFirst({
+    where: {
+      id: patientId,
+      organizationId: user.organizationId!,
+      deletedAt: null,
+    },
+  });
+  if (!patient) {
+    redirect(`/clinic/patients/${patientId}?tab=notes&error=not_found`);
+  }
+
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  let encounter = await prisma.encounter.findFirst({
+    where: {
+      patientId,
+      organizationId: user.organizationId!,
+      status: "in_progress",
+      createdAt: { gte: todayStart, lte: todayEnd },
+    },
+  });
+
+  if (!encounter) {
+    encounter = await prisma.encounter.create({
+      data: {
+        organizationId: user.organizationId!,
+        patientId,
+        status: "in_progress",
+        modality: "in_person",
+        reason: "Visit",
+        startedAt: new Date(),
+        scheduledFor: new Date(),
+        // Store the briefing context so the scribe can use it
+        briefingContext: briefing ? (briefing as any) : undefined,
+      },
+    });
+  } else if (briefing) {
+    // Update existing encounter with briefing
+    await prisma.encounter.update({
+      where: { id: encounter.id },
+      data: { briefingContext: briefing as any },
+    });
+  }
+
+  // Dispatch the scribe event
+  await dispatch({
+    name: "encounter.note.draft.requested",
+    encounterId: encounter.id,
+    requestedBy: user.id,
+  });
+
+  // Try to run the agent inline with a 15-second timeout
+  try {
+    await Promise.race([
+      runTick("inline-briefed-visit", 2),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 15000)
+      ),
+    ]);
+  } catch {
+    // Timeout is fine — job stays in the queue for the background worker
+  }
+
+  revalidatePath(`/clinic/patients/${patientId}`);
+  redirect(`/clinic/patients/${patientId}?tab=notes`);
 }

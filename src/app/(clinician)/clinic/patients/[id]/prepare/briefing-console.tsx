@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
-import { generateBriefing, type BriefingResult, type BriefingStep } from "./actions";
+import { generateBriefing, startVisitWithBriefing, type BriefingResult, type BriefingStep } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -464,9 +464,14 @@ export function BriefingConsole({
                     Prescribe
                   </Button>
                 </Link>
-                <Link href={`/clinic/patients/${patientId}?tab=notes`}>
-                  <Button size="sm">Start visit</Button>
-                </Link>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    startVisitWithBriefing(patientId, result?.briefing ?? undefined);
+                  }}
+                >
+                  Start visit with briefing
+                </Button>
               </div>
             </CardContent>
           </Card>

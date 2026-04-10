@@ -221,11 +221,46 @@ ${priorNotesText}
 `.trim();
 
     // ------------------------------------------------------------------
+    // 4b. Check for pre-visit briefing context on the encounter
+    // ------------------------------------------------------------------
+    const briefing = encounter.briefingContext as {
+      patientSummary?: string;
+      talkingPoints?: string[];
+      riskFlags?: string[];
+      sections?: Array<{ title: string; content: string; priority: string }>;
+    } | null;
+
+    let briefingPromptSection = "";
+    if (briefing) {
+      const parts: string[] = ["PRE-VISIT INTELLIGENCE BRIEFING (use this to inform the note):"];
+      if (briefing.patientSummary) {
+        parts.push(`  Summary: ${briefing.patientSummary}`);
+      }
+      if (briefing.riskFlags?.length) {
+        parts.push(`  RISK FLAGS: ${briefing.riskFlags.join("; ")}`);
+      }
+      if (briefing.talkingPoints?.length) {
+        parts.push(`  Talking points: ${briefing.talkingPoints.join("; ")}`);
+      }
+      if (briefing.sections?.length) {
+        const highPriority = briefing.sections.filter((s) => s.priority === "high" || s.priority === "medium");
+        if (highPriority.length > 0) {
+          parts.push(`  Key findings: ${highPriority.map((s) => `${s.title}: ${s.content}`).join("; ")}`);
+        }
+      }
+      briefingPromptSection = "\n\n" + parts.join("\n");
+      ctx.log("info", "Briefing context found — injecting into scribe prompt", {
+        talkingPoints: briefing.talkingPoints?.length ?? 0,
+        riskFlags: briefing.riskFlags?.length ?? 0,
+      });
+    }
+
+    // ------------------------------------------------------------------
     // 5. Compose the prompt and call the model
     // ------------------------------------------------------------------
     const prompt = `You are an AI medical scribe assistant for a cannabis care practice. Draft a clinical visit note based on the patient context below.
 
-${patientContext}
+${patientContext}${briefingPromptSection}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -245,7 +280,8 @@ Important guidelines:
 - Use clinical language appropriate for a medical record
 - Base cannabis recommendations on the patient's reported history and outcomes
 - Include relevant ICD-10 codes in suggestedCodes
-- Set confidence between 0.0 and 1.0 based on how much context was available`;
+- Set confidence between 0.0 and 1.0 based on how much context was available
+- If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.`;
 
     ctx.log("info", "Sending prompt to model", {
       promptLength: prompt.length,
