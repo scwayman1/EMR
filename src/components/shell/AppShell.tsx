@@ -85,6 +85,10 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
               Sign out →
             </button>
           </form>
+          <p className="text-[9px] text-text-subtle italic leading-tight mt-3 px-2 line-clamp-2">
+            Cannabis should be considered a medicine — please use it carefully
+            and judiciously. Respect the plant and its healing properties.
+          </p>
         </div>
       </aside>
 

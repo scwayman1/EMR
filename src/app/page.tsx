@@ -165,12 +165,19 @@ export default function HomePage() {
       </section>
 
       <footer className="border-t border-border">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-          <Wordmark size="sm" />
-          <p className="text-xs text-text-subtle">
-            &copy; {new Date().getFullYear()} Green Path Health. A demonstration product —
-            not a substitute for medical advice.
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col gap-4">
+          <p className="text-xs italic text-text-muted leading-relaxed max-w-2xl">
+            Cannabis should be considered a medicine so please use it carefully
+            and judiciously. Do not abuse Cannabis and please respect the plant
+            and its healing properties.
           </p>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <Wordmark size="sm" />
+            <p className="text-xs text-text-subtle">
+              &copy; {new Date().getFullYear()} Green Path Health. A demonstration product —
+              not a substitute for medical advice.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

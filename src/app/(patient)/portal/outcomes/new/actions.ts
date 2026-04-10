@@ -37,15 +37,25 @@ export async function submitOutcomeAction(
   const noteRaw = (formData.get("note") as string) ?? "";
   const note = noteRaw.trim().slice(0, 2000) || null;
 
+  // Parse required positive note
+  const positiveRaw = (formData.get("positiveNote") as string) ?? "";
+  const positiveNote = positiveRaw.trim().slice(0, 2000);
+  if (!positiveNote) {
+    return { ok: false, error: "Please share something positive before submitting." };
+  }
+
+  // Build a combined note for the first metric that includes the positive reflection
+  const firstNote = [note, `[Positive] ${positiveNote}`].filter(Boolean).join("\n");
+
   // Create all outcome log rows in a transaction
   await prisma.$transaction(
-    entries.map((entry) =>
+    entries.map((entry, idx) =>
       prisma.outcomeLog.create({
         data: {
           patientId: patient.id,
           metric: entry.metric,
           value: entry.value,
-          note,
+          note: idx === 0 ? firstNote : note,
         },
       })
     )

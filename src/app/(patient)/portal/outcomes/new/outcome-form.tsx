@@ -160,7 +160,28 @@ export function OutcomeForm() {
             />
           </div>
         </CardContent>
+      </Card>
 
+      {/* Positive note — required */}
+      <Card className="mt-6 bg-highlight-soft border border-highlight/30">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <LeafSprig size={18} className="text-highlight" />
+            Something good
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-text-muted leading-relaxed mb-3">
+            Before you submit, share one positive thing about your life right
+            now — a person, a moment, a feeling, anything good.
+          </p>
+          <Textarea
+            name="positiveNote"
+            rows={3}
+            required
+            placeholder="My daughter made me laugh today... / The weather was beautiful... / I slept better last night..."
+          />
+        </CardContent>
         <CardFooter>
           {state?.ok === false && (
             <p className="text-sm text-danger">{state.error}</p>
