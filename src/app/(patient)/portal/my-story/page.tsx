@@ -12,6 +12,11 @@ import {
   buildConcernsNarrative,
 } from "./narrative";
 import { ControlBar } from "./control-bar";
+import {
+  simplifyDiagnosis,
+  simpleName,
+  personalizeHistory,
+} from "@/lib/domain/plain-language";
 
 export const metadata = { title: "My Story" };
 
@@ -88,6 +93,128 @@ const METRIC_DISPLAY: Record<string, { label: string; lowLabel: string; highLabe
   anxiety: { label: "Anxiety", lowLabel: "None", highLabel: "Severe" },
   mood: { label: "Mood", lowLabel: "Low", highLabel: "Great" },
 };
+
+// ---------------------------------------------------------------------------
+// Simple-language chapter — EMR-009
+// ---------------------------------------------------------------------------
+
+function SimpleLanguageChapter({
+  presentingConcerns,
+  treatmentGoals,
+}: {
+  presentingConcerns: string | null;
+  treatmentGoals: string | null;
+}) {
+  // Build warm, simplified sentences from the patient's data
+  const parts: string[] = [];
+
+  // Extract individual concern terms from the free-text field
+  const concernTerms = presentingConcerns
+    ? presentingConcerns
+        .split(/[,;]+/)
+        .map((c) => c.trim())
+        .filter(Boolean)
+    : [];
+
+  // Presenting concerns → simplified
+  if (concernTerms.length > 0) {
+    const simplifiedConcerns = concernTerms.map((c) => simpleName(c).toLowerCase());
+    const concernList = formatSimpleList(simplifiedConcerns);
+    parts.push(`You came to Green Path Health because of ${concernList}.`);
+  }
+
+  // Treatment goals → simplified
+  if (treatmentGoals && treatmentGoals.trim()) {
+    const endsWithPunctuation = /[.!?]$/.test(treatmentGoals.trim());
+    const goalsText = treatmentGoals.trim();
+    const looksLikeProse = goalsText.length > 40 && endsWithPunctuation;
+    if (looksLikeProse) {
+      parts.push(`Your goals are: ${goalsText}`);
+    } else {
+      parts.push(
+        `Your goals are to ${goalsText.charAt(0).toLowerCase()}${goalsText.slice(1)}${endsWithPunctuation ? "" : "."}`
+      );
+    }
+    parts.push(
+      "These are good goals \u2014 and we\u2019re working on them together."
+    );
+  }
+
+  // Concerns → simplified history sentence
+  if (concernTerms.length > 0) {
+    const historyLine = personalizeHistory(concernTerms);
+    parts.push(historyLine);
+  }
+
+  // Simplified diagnosis detail cards from presenting concerns
+  const diagnosisDetails: { name: string; explanation: string }[] = [];
+  const seenNames = new Set<string>();
+  for (const term of concernTerms) {
+    const simplified = simplifyDiagnosis(term);
+    // simplifyDiagnosis returns "Name — explanation" if matched
+    if (simplified.includes("\u2014")) {
+      const [name, ...rest] = simplified.split(" \u2014 ");
+      if (!seenNames.has(name)) {
+        seenNames.add(name);
+        diagnosisDetails.push({ name, explanation: rest.join(" \u2014 ") });
+      }
+    }
+  }
+
+  const hasContent = parts.length > 0 || diagnosisDetails.length > 0;
+
+  return (
+    <section className="story-chapter my-16 print:my-0">
+      <ChapterHeader number={1} title="Your health, in simple words" />
+      <div className="prose-clinical space-y-4">
+        {hasContent ? (
+          <>
+            {parts.length > 0 && (
+              <p>{parts.join(" ")}</p>
+            )}
+
+            {diagnosisDetails.length > 0 && (
+              <div className="mt-6 space-y-3">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                  In simple terms
+                </p>
+                {diagnosisDetails.map((d) => (
+                  <div
+                    key={d.name}
+                    className="pl-4 border-l-2 border-accent/25"
+                  >
+                    <p className="text-sm">
+                      <span className="font-medium text-text">{d.name}</span>
+                      <span className="text-text-muted">
+                        {" \u2014 "}
+                        {d.explanation}
+                      </span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <p>
+            Your health story is still coming together. As your care team learns
+            more about you, this chapter will explain your health in everyday
+            words.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function formatSimpleList(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  const head = items.slice(0, -1);
+  const tail = items[items.length - 1];
+  return `${head.join(", ")}, and ${tail}`;
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -276,10 +403,18 @@ export default async function MyStoryPage() {
         </div>
 
         {/* ==============================================================
-            CHAPTER 1: About Me
+            CHAPTER 1: Your health, in simple words
+            ============================================================== */}
+        <SimpleLanguageChapter
+          presentingConcerns={patient?.presentingConcerns ?? null}
+          treatmentGoals={patient?.treatmentGoals ?? null}
+        />
+
+        {/* ==============================================================
+            CHAPTER 2: About Me
             ============================================================== */}
         <section className="story-chapter my-16 print:my-0">
-          <ChapterHeader number={1} title="About Me" />
+          <ChapterHeader number={2} title="About Me" />
           <div className="prose-clinical space-y-4">
             <p>{buildConcernsNarrative(patient?.presentingConcerns ?? null)}</p>
             <p>{buildGoalsNarrative(patient?.treatmentGoals ?? null)}</p>
@@ -294,10 +429,10 @@ export default async function MyStoryPage() {
         </section>
 
         {/* ==============================================================
-            CHAPTER 2: My Cannabis Journey
+            CHAPTER 3: My Cannabis Journey
             ============================================================== */}
         <section className="story-chapter my-16 print:my-0">
-          <ChapterHeader number={2} title="My Cannabis Journey" />
+          <ChapterHeader number={3} title="My Cannabis Journey" />
           <div className="prose-clinical">
             <p>
               {buildCannabisNarrative(
@@ -315,10 +450,10 @@ export default async function MyStoryPage() {
         </section>
 
         {/* ==============================================================
-            CHAPTER 3: How I've Been Feeling
+            CHAPTER 4: How I've Been Feeling
             ============================================================== */}
         <section className="story-chapter my-16 print:my-0">
-          <ChapterHeader number={3} title="How I've Been Feeling" />
+          <ChapterHeader number={4} title="How I've Been Feeling" />
 
           {/* Sparklines for key metrics */}
           {Object.keys(metricGroups).length > 0 ? (
@@ -380,10 +515,10 @@ export default async function MyStoryPage() {
         </section>
 
         {/* ==============================================================
-            CHAPTER 4: My Visits
+            CHAPTER 5: My Visits
             ============================================================== */}
         <section className="story-chapter my-16 print:my-0">
-          <ChapterHeader number={4} title="My Visits" />
+          <ChapterHeader number={5} title="My Visits" />
 
           {(patient?.encounters.length ?? 0) === 0 ? (
             <div className="prose-clinical">
@@ -431,10 +566,10 @@ export default async function MyStoryPage() {
         </section>
 
         {/* ==============================================================
-            CHAPTER 5: What My Assessments Show
+            CHAPTER 6: What My Assessments Show
             ============================================================== */}
         <section className="story-chapter my-16 print:my-0">
-          <ChapterHeader number={5} title="What My Assessments Show" />
+          <ChapterHeader number={6} title="What My Assessments Show" />
 
           {Object.keys(latestBySlug).length === 0 ? (
             <div className="prose-clinical">
@@ -478,10 +613,10 @@ export default async function MyStoryPage() {
         </section>
 
         {/* ==============================================================
-            CHAPTER 6: Messages with My Care Team
+            CHAPTER 7: Messages with My Care Team
             ============================================================== */}
         <section className="story-chapter my-16 print:my-0">
-          <ChapterHeader number={6} title="Messages with My Care Team" />
+          <ChapterHeader number={7} title="Messages with My Care Team" />
 
           {recentMessages.length === 0 ? (
             <div className="prose-clinical">
@@ -536,7 +671,7 @@ export default async function MyStoryPage() {
         <EditorialRule className="my-16 print:my-8" />
 
         <section className="story-reflection my-16 print:my-0">
-          <ChapterHeader number={7} title="My Reflections" />
+          <ChapterHeader number={8} title="My Reflections" />
           <p className="prose-clinical text-text-muted mb-10">
             The pages that follow are yours. Use them however feels right --
             jot down questions before a visit, process how you&apos;re feeling,

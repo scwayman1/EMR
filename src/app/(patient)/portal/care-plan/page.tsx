@@ -122,10 +122,10 @@ export default async function CarePlanPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LeafSprig size={16} className="text-accent/80" />
-              Treatment goals
+              What we&apos;re working toward together
             </CardTitle>
             <CardDescription>
-              What you and your care team are working toward.
+              These goals guide the care plan your team builds with you.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -150,7 +150,7 @@ export default async function CarePlanPage() {
       {/* ==================== Section 2: Your visits ==================== */}
       <section>
         <h2 className="font-display text-2xl text-text tracking-tight mb-6">
-          Your visits
+          Times we&apos;ve connected
         </h2>
 
         {encounters.length === 0 ? (
@@ -254,7 +254,7 @@ export default async function CarePlanPage() {
       {/* ==================== Section 3: Recommended next steps ==================== */}
       <section>
         <h2 className="font-display text-2xl text-text tracking-tight mb-6">
-          Recommended next steps
+          What comes next
         </h2>
 
         {tasks.length === 0 ? (
@@ -323,7 +323,7 @@ export default async function CarePlanPage() {
       {/* ==================== Section 4: Cannabis guidance ==================== */}
       <section className="mb-4">
         <h2 className="font-display text-2xl text-text tracking-tight mb-6">
-          Cannabis guidance
+          Your cannabis journey
         </h2>
 
         {!cannabis || !cannabis.priorUse ? (
