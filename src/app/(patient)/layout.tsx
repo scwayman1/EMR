@@ -9,8 +9,10 @@ const PATIENT_NAV: NavItem[] = [
   { label: "Records", href: "/portal/records" },
   { label: "Assessments", href: "/portal/assessments" },
   { label: "Outcomes", href: "/portal/outcomes" },
+  { label: "Lifestyle", href: "/portal/lifestyle" },
   { label: "Care plan", href: "/portal/care-plan" },
   { label: "Medications", href: "/portal/medications" },
+  { label: "My Garden", href: "/portal/garden" },
   { label: "My Story", href: "/portal/my-story" },
   { label: "Messages", href: "/portal/messages" },
 ];

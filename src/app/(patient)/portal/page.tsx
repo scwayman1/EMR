@@ -11,6 +11,8 @@ import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { AmbientOrb } from "@/components/ui/hero-art";
+import { HealthPlant } from "@/components/ui/health-plant";
+import { computePlantHealth, STAGE_LABELS } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 
 export const metadata = { title: "Home" };
@@ -53,6 +55,8 @@ export default async function PatientHome() {
   if (!patient) {
     redirect("/portal/intake");
   }
+
+  const plantHealth = await computePlantHealth(patient.id);
 
   const painSeries = patient.outcomeLogs
     .filter((l) => l.metric === "pain")
