@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { saveNoteBlocks, saveAndFinalizeNote } from "./actions";
+import { saveNoteBlocks, saveAndFinalizeNote, refineSection, type RefineMode } from "./actions";
 import { APSO_ORDER, NOTE_BLOCK_LABELS } from "@/lib/domain/notes";
 import type { NoteBlockType } from "@/lib/domain/notes";
+import { LeafSprig } from "@/components/ui/ornament";
 
 interface NoteBlock {
   type?: NoteBlockType;
@@ -29,6 +30,14 @@ interface NoteEditorProps {
   } | null;
 }
 
+const REFINE_OPTIONS: { mode: RefineMode; label: string; icon: string }[] = [
+  { mode: "expand", label: "Expand", icon: "+" },
+  { mode: "clinical", label: "Clinical", icon: "Rx" },
+  { mode: "concise", label: "Concise", icon: "-" },
+  { mode: "dosing", label: "Dosing", icon: "mg" },
+  { mode: "clarify", label: "Clarify", icon: "?" },
+];
+
 export function NoteEditor({
   noteId,
   patientId,
@@ -39,6 +48,9 @@ export function NoteEditor({
   codingSuggestion,
 }: NoteEditorProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromBriefing = searchParams.get("from") === "briefing";
+  const [refiningIndex, setRefiningIndex] = useState<number | null>(null);
   const [blocks, setBlocks] = useState<NoteBlock[]>(() => {
     // Sort initial blocks in APSO order
     const sorted = [...initialBlocks].sort((a, b) => {
@@ -93,8 +105,43 @@ export function NoteEditor({
     });
   }
 
+  async function handleRefine(index: number, mode: RefineMode) {
+    setRefiningIndex(index);
+    const block = blocks[index];
+    const result = await refineSection(noteId, block.heading, block.body, mode);
+    if (result.ok) {
+      updateBlock(index, "body", result.refined);
+      setSaveMessage(`${block.heading} refined`);
+      setTimeout(() => setSaveMessage(null), 2000);
+    } else {
+      setSaveMessage(result.error);
+    }
+    setRefiningIndex(null);
+  }
+
   return (
     <div className="space-y-4">
+      {/* Briefing banner */}
+      {fromBriefing && aiDrafted && isEditable && (
+        <Card className="border-l-4 border-l-accent bg-accent/5">
+          <CardContent className="py-4 flex items-start gap-3">
+            <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
+              <span className="text-sm">🧠</span>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-text">
+                This note was pre-seeded from your intelligence briefing
+              </p>
+              <p className="text-xs text-text-muted mt-1 leading-relaxed">
+                The Assessment and Plan already incorporate your talking points
+                and risk flags. Review each section, use the AI refine buttons to
+                adjust, then sign when ready.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Status + AI badges */}
       <div className="flex items-center gap-2 flex-wrap">
         <Badge
@@ -114,6 +161,7 @@ export function NoteEditor({
             Confidence {Math.round(aiConfidence * 100)}%
           </Badge>
         )}
+        {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
       </div>
 
       {/* Note blocks */}
@@ -137,6 +185,32 @@ export function NoteEditor({
                     className="w-full text-sm text-text-muted leading-relaxed bg-transparent border border-border/40 rounded-md p-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all resize-y"
                     placeholder="Note content..."
                   />
+                  {/* AI Refine buttons */}
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <span className="text-[10px] text-text-subtle uppercase tracking-wider mr-1">
+                      AI:
+                    </span>
+                    {REFINE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.mode}
+                        onClick={() => handleRefine(i, opt.mode)}
+                        disabled={refiningIndex !== null}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                          refiningIndex === i
+                            ? "bg-accent/20 text-accent animate-pulse"
+                            : "bg-surface-muted text-text-subtle hover:bg-accent/10 hover:text-accent border border-border/40"
+                        } disabled:opacity-50`}
+                      >
+                        <span className="font-mono text-[9px]">{opt.icon}</span>
+                        {opt.label}
+                      </button>
+                    ))}
+                    {refiningIndex === i && (
+                      <span className="text-[10px] text-accent ml-1 animate-pulse">
+                        Refining...
+                      </span>
+                    )}
+                  </div>
                 </>
               ) : (
                 <>

@@ -209,6 +209,7 @@ export async function startVisitWithBriefing(
   });
 
   // Try to run the agent inline with a 15-second timeout
+  let createdNoteId: string | null = null;
   try {
     await Promise.race([
       runTick("inline-briefed-visit", 2),
@@ -216,10 +217,23 @@ export async function startVisitWithBriefing(
         setTimeout(() => reject(new Error("timeout")), 15000)
       ),
     ]);
+
+    // Find the note that was just created
+    const latestNote = await prisma.note.findFirst({
+      where: { encounterId: encounter.id },
+      orderBy: { createdAt: "desc" },
+    });
+    createdNoteId = latestNote?.id ?? null;
   } catch {
     // Timeout is fine — job stays in the queue for the background worker
   }
 
   revalidatePath(`/clinic/patients/${patientId}`);
-  redirect(`/clinic/patients/${patientId}?tab=notes`);
+
+  // Redirect directly to the note if we have one, otherwise to the notes tab
+  if (createdNoteId) {
+    redirect(`/clinic/patients/${patientId}/notes/${createdNoteId}?from=briefing`);
+  } else {
+    redirect(`/clinic/patients/${patientId}?tab=notes`);
+  }
 }
