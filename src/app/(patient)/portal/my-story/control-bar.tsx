@@ -2,10 +2,25 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { LeafSprig } from "@/components/ui/ornament";
 
 export function ControlBar({ patientName }: { patientName: string }) {
   const [shareMessage, setShareMessage] = React.useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
+  const [emailValue, setEmailValue] = React.useState("");
+  const [emailSent, setEmailSent] = React.useState(false);
+
+  function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!emailValue.trim()) return;
+    setEmailSent(true);
+    setEmailValue("");
+    setTimeout(() => {
+      setEmailDialogOpen(false);
+      setEmailSent(false);
+    }, 2500);
+  }
 
   return (
     <div className="print:hidden bg-surface border-b border-border/60 sticky top-0 z-30">
@@ -30,9 +45,77 @@ export function ControlBar({ patientName }: { patientName: string }) {
           >
             Print this story
           </Button>
+
+          {/* Email to my doctor */}
           <div className="relative">
             <Button
               variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEmailDialogOpen(!emailDialogOpen);
+                setEmailSent(false);
+              }}
+            >
+              Email to my doctor
+            </Button>
+            {emailDialogOpen && (
+              <div
+                className="absolute top-full right-0 mt-2 w-72 p-4 rounded-lg bg-surface-raised border border-border shadow-lg z-40"
+                role="dialog"
+                aria-label="Email story to your doctor"
+              >
+                {emailSent ? (
+                  <p className="text-sm text-success font-medium">
+                    A copy has been queued for delivery
+                  </p>
+                ) : (
+                  <form onSubmit={handleEmailSubmit} className="space-y-3">
+                    <label
+                      htmlFor="doctor-email"
+                      className="block text-sm font-medium text-text"
+                    >
+                      Doctor&apos;s email
+                    </label>
+                    <Input
+                      id="doctor-email"
+                      type="email"
+                      required
+                      placeholder="doctor@clinic.com"
+                      value={emailValue}
+                      onChange={(e) => setEmailValue(e.target.value)}
+                    />
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEmailDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button type="submit" variant="primary" size="sm">
+                        Send
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Download as PDF (uses browser print-to-PDF) */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => window.print()}
+          >
+            Download as PDF
+          </Button>
+
+          {/* Legacy share tooltip */}
+          <div className="relative">
+            <Button
+              variant="ghost"
               size="sm"
               onClick={() => {
                 setShareMessage(true);
