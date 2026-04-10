@@ -161,6 +161,47 @@ export default function LibraryPage() {
         </CardContent>
       </Card>
 
+      {/* Justin Kander's book (EMR-036) */}
+      <Card tone="ambient" className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LeafSprig size={16} className="text-highlight" />
+            Cannabis and Cancer — Justin Kander
+          </CardTitle>
+          <CardDescription>
+            The largest integration of human cases and research demonstrating how
+            cannabis fights cancer. Free resource for clinicians and patients.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start gap-6">
+            <div className="flex-1 space-y-3">
+              <p className="text-sm text-text-muted leading-relaxed">
+                Justin Kander&apos;s comprehensive book covers cannabis in oncology with
+                detailed case studies, dosing protocols, and research summaries across
+                multiple cancer types. While dosing isn&apos;t well-characterized in all
+                cases, this is the most complete clinical resource available on the
+                topic. Recommended for both providers and patients.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="highlight">Free resource</Badge>
+                <Badge tone="neutral">Oncology</Badge>
+                <Badge tone="neutral">Case studies</Badge>
+                <Badge tone="neutral">Research</Badge>
+              </div>
+            </div>
+            <a
+              href="https://FreeCannabisCancerBook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-md text-sm font-medium bg-highlight text-white hover:bg-highlight/90 transition-colors shadow-sm"
+            >
+              Read free online &rarr;
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Research link */}
       <Card>
         <CardContent className="py-6 flex items-center justify-between">

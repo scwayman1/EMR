@@ -36,6 +36,27 @@ const RINGS: RingDef[] = [
     description: "Physical activity logged this week",
   },
   {
+    key: "checkin",
+    label: "Check-in",
+    color: "var(--accent)",
+    trackColor: "var(--surface-muted)",
+    description: "Days you logged outcomes this week",
+  },
+  {
+    key: "doses",
+    label: "Doses",
+    color: "#9B59B6",
+    trackColor: "var(--surface-muted)",
+    description: "Cannabis doses logged this week",
+  },
+  {
+    key: "connect",
+    label: "Connect",
+    color: "var(--success)",
+    trackColor: "var(--surface-muted)",
+    description: "Messages sent & assessments completed",
+  },
+  {
     key: "hydrate",
     label: "Hydrate",
     color: "var(--info)",
@@ -44,18 +65,12 @@ const RINGS: RingDef[] = [
     comingSoon: true,
   },
   {
-    key: "checkin",
-    label: "Check-in",
-    color: "var(--accent)",
+    key: "weight",
+    label: "Weight",
+    color: "#D4944F",
     trackColor: "var(--surface-muted)",
-    description: "Days you logged outcomes this week",
-  },
-  {
-    key: "connect",
-    label: "Connect",
-    color: "var(--success)",
-    trackColor: "var(--surface-muted)",
-    description: "Messages sent & assessments completed",
+    description: "Weight trends logged",
+    comingSoon: true,
   },
 ];
 
@@ -153,6 +168,7 @@ async function getAchievementData(patientId: string) {
     messageCount,
     assessmentCount,
     allOutcomeLogs,
+    doseLogsThisWeek,
   ] = await Promise.all([
     // All outcome logs this week (for check-in days)
     prisma.outcomeLog.findMany({
@@ -184,6 +200,10 @@ async function getAchievementData(patientId: string) {
       select: { loggedAt: true },
       orderBy: { loggedAt: "desc" },
     }),
+    // Cannabis dose logs this week (for Doses ring)
+    prisma.doseLog.count({
+      where: { patientId, loggedAt: { gte: weekStart } },
+    }),
   ]);
 
   // Move: did they log energy metric? (proxy for physical activity)
@@ -198,6 +218,9 @@ async function getAchievementData(patientId: string) {
     100,
     Math.round((uniqueCheckInDays / 7) * 100),
   );
+
+  // Doses: cannabis doses logged this week (goal: 7 for daily dosing)
+  const dosesPercent = Math.min(100, Math.round((doseLogsThisWeek / 7) * 100));
 
   // Connect: messages + assessments (goal: 3 combined actions)
   const connectTotal = messageCount + assessmentCount;
@@ -282,9 +305,11 @@ async function getAchievementData(patientId: string) {
   return {
     percentages: {
       move: movePercent,
-      hydrate: 0, // coming soon
       checkin: checkInPercent,
+      doses: dosesPercent,
       connect: connectPercent,
+      hydrate: 0, // coming soon
+      weight: 0, // coming soon
     } as Record<string, number>,
     streak,
     uniqueCheckInDays,
@@ -323,7 +348,7 @@ export default async function AchievementsPage() {
       />
 
       {/* ---- Rings grid ---- */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-10">
         {RINGS.map((ring) => {
           const pct = ring.comingSoon ? 0 : (data.percentages[ring.key] ?? 0);
           return (

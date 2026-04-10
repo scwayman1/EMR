@@ -31,7 +31,7 @@ interface PageProps {
 
 export default async function PatientChartPage({ params, searchParams }: PageProps) {
   const user = await requireUser();
-  const tab = (searchParams.tab as TabKey) || "records";
+  const tab = (searchParams.tab as TabKey) || "demographics";
 
   /* ── Parallel data fetch ──────────────────────────────────── */
   const [patient, allNotes, threads, assessmentResponses, dosingRegimens, recentDoseLogs, cannabisProducts, patientMedications] = await Promise.all([
@@ -127,6 +127,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const activeRegimens = dosingRegimens.filter((r: any) => r.active);
 
   const counts = {
+    demographics: 1,
     records: recordDocs.length,
     images: imageDocs.length,
     labs: labDocs.length + assessmentResponses.length,
@@ -234,6 +235,12 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       <ChartTabs patientId={params.id} counts={counts} />
 
       {/* ── Tab content ───────────────────────────────────── */}
+      {tab === "demographics" && (
+        <DemographicsTab
+          patient={patient}
+          medications={patientMedications}
+        />
+      )}
       {tab === "records" && <RecordsTab documents={recordDocs} />}
       {tab === "images" && <ImagesTab documents={imageDocs} />}
       {tab === "labs" && (
@@ -267,6 +274,234 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         />
       )}
     </PageShell>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Demographics tab (EMR-019)
+   ═══════════════════════════════════════════════════════════════════ */
+
+function DemographicsTab({
+  patient,
+  medications,
+}: {
+  patient: any;
+  medications: any[];
+}) {
+  const dob = patient.dateOfBirth ? new Date(patient.dateOfBirth) : null;
+  const age = dob
+    ? Math.floor(
+        (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+      )
+    : null;
+
+  const intake = (patient.intakeAnswers ?? {}) as Record<string, any>;
+  const sex = intake.sex ?? intake.gender ?? "Not recorded";
+  const race = intake.race ?? intake.ethnicity ?? "Not recorded";
+  const maritalStatus = intake.maritalStatus ?? "Not recorded";
+  const allergies = intake.allergies ?? patient.chartSummary?.allergies ?? "None documented";
+  const uniqueThing = intake.uniqueThing ?? intake.aboutYou ?? null;
+  const insurancePlan = intake.insurancePlan ?? intake.insurance ?? "Not on file";
+  const insuranceId = intake.insuranceId ?? intake.memberId ?? null;
+  const emergencyContact = intake.emergencyContact ?? null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-display text-xl text-text tracking-tight">
+          Demographics
+        </h2>
+        <Badge tone="accent">Medical Life Profile</Badge>
+      </div>
+
+      {/* Identity & Personal */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Identity</CardTitle>
+            <CardDescription>Personal identification</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+              <DemoField label="Full name" value={`${patient.firstName} ${patient.lastName}`} />
+              <DemoField label="Date of birth" value={dob ? `${formatDate(dob)} (age ${age})` : "Not recorded"} />
+              <DemoField label="Sex" value={sex} />
+              <DemoField label="Race / Ethnicity" value={race} />
+              <DemoField label="Marital status" value={maritalStatus} />
+              <DemoField label="Patient ID" value={patient.id.slice(0, 12).toUpperCase()} mono />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Contact</CardTitle>
+            <CardDescription>How to reach this patient</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-y-4">
+              <DemoField label="Email" value={patient.email ?? "Not on file"} />
+              <DemoField label="Phone" value={patient.phone ?? "Not on file"} />
+              <DemoField
+                label="Address"
+                value={
+                  [patient.addressLine1, patient.addressLine2, patient.city, patient.state, patient.postalCode]
+                    .filter(Boolean)
+                    .join(", ") || "Not on file"
+                }
+              />
+              {emergencyContact && (
+                <DemoField
+                  label="Emergency contact"
+                  value={typeof emergencyContact === "string" ? emergencyContact : `${emergencyContact.name} — ${emergencyContact.phone}`}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Alert box */}
+      <Card tone="raised" className="border-l-4 border-l-[color:var(--warning)]">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <span className="text-[color:var(--warning)]">&#9888;</span>
+            Alerts & Allergies
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-text leading-relaxed">
+            {typeof allergies === "string"
+              ? allergies
+              : Array.isArray(allergies)
+                ? allergies.join(", ")
+                : "None documented"}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Insurance & cannabis qualification */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Insurance</CardTitle>
+            <CardDescription>Coverage information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-y-4">
+              <DemoField label="Plan" value={insurancePlan} />
+              {insuranceId && <DemoField label="Member ID" value={insuranceId} mono />}
+              <DemoField
+                label="Cannabis qualification"
+                value={patient.qualificationStatus === "qualified"
+                  ? `Qualified${patient.qualificationExpiresAt ? ` (expires ${formatDate(patient.qualificationExpiresAt)})` : ""}`
+                  : patient.qualificationStatus === "pending"
+                    ? "Pending review"
+                    : patient.qualificationStatus === "ineligible"
+                      ? "Not eligible"
+                      : "Not assessed"}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Current Medications</CardTitle>
+            <CardDescription>{medications.length} active medication{medications.length !== 1 ? "s" : ""}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {medications.length === 0 ? (
+              <p className="text-sm text-text-muted">No active medications on file.</p>
+            ) : (
+              <div className="space-y-2">
+                {medications.map((med: any) => (
+                  <div key={med.id} className="flex items-center gap-2">
+                    <Badge
+                      tone={
+                        med.type === "prescription"
+                          ? "info"
+                          : med.type === "otc"
+                            ? "neutral"
+                            : "accent"
+                      }
+                      className="text-[10px]"
+                    >
+                      {med.type}
+                    </Badge>
+                    <span className="text-sm text-text">{med.name}</span>
+                    {med.dosage && (
+                      <span className="text-xs text-text-muted">{med.dosage}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Clinical notes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Presenting Concerns</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-text-muted leading-relaxed">
+              {patient.presentingConcerns || "Not yet documented."}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Treatment Goals</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-text-muted leading-relaxed">
+              {patient.treatmentGoals || "Not yet documented."}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Something special about this patient */}
+      {uniqueThing && (
+        <Card tone="ambient">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-start gap-3">
+              <LeafSprig size={20} className="text-accent mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-accent mb-1">
+                  Something special about {patient.firstName}
+                </p>
+                <p className="text-sm text-text leading-relaxed">{uniqueThing}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function DemoField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-medium uppercase tracking-wider text-text-subtle mb-0.5">
+        {label}
+      </p>
+      <p className={`text-sm text-text ${mono ? "font-mono" : ""}`}>{value}</p>
+    </div>
   );
 }
 

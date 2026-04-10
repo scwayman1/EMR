@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 
 const TABS = [
+  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]" },
   { key: "records", label: "Records", dot: "bg-accent" },
   { key: "images", label: "Images", dot: "bg-[color:var(--info)]" },
   { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]" },
