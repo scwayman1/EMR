@@ -16,6 +16,8 @@ import {
   MessageStatus,
   TaskStatus,
   AgentJobStatus,
+  ProductType,
+  DeliveryRoute,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -47,6 +49,15 @@ async function cleanIdempotent() {
   if (!org) return; // first run — nothing to clean
 
   // Order matters because of FK constraints
+  await prisma.doseLog.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
+  await prisma.dosingRegimen.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
+  await prisma.cannabisProduct.deleteMany({
+    where: { organizationId: org.id },
+  });
   await prisma.codingSuggestion.deleteMany({
     where: { note: { encounter: { organizationId: org.id } } },
   });
@@ -843,6 +854,119 @@ async function main() {
         "Invite intake operator",
         "Review consent templates",
       ],
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Cannabis Products
+  // ------------------------------------------------------------------
+  console.log("Seeding cannabis products and dosing data...");
+
+  const thcOil = await prisma.cannabisProduct.create({
+    data: {
+      organizationId: org.id,
+      name: "THC Infused Oil 10mg/mL",
+      productType: ProductType.oil,
+      route: DeliveryRoute.sublingual,
+      thcConcentration: 10,
+      cbdConcentration: 0,
+      thcCbdRatio: "10:0",
+      concentrationUnit: "mg/mL",
+    },
+  });
+
+  const balancedTincture = await prisma.cannabisProduct.create({
+    data: {
+      organizationId: org.id,
+      name: "Balanced THC:CBD Tincture",
+      productType: ProductType.tincture,
+      route: DeliveryRoute.sublingual,
+      thcConcentration: 5,
+      cbdConcentration: 5,
+      thcCbdRatio: "1:1",
+      concentrationUnit: "mg/mL",
+    },
+  });
+
+  const cbdCapsules = await prisma.cannabisProduct.create({
+    data: {
+      organizationId: org.id,
+      name: "CBD Isolate Capsules 25mg",
+      productType: ProductType.capsule,
+      route: DeliveryRoute.oral,
+      thcConcentration: 0,
+      cbdConcentration: 25,
+      thcCbdRatio: "0:1",
+      concentrationUnit: "mg/unit",
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Dosing Regimen for Maya Reyes (balanced tincture)
+  // ------------------------------------------------------------------
+  const mayaRegimen = await prisma.dosingRegimen.create({
+    data: {
+      patientId: maya.id,
+      productId: balancedTincture.id,
+      prescribedById: clinicianUser.id,
+      volumePerDose: 0.5,
+      volumeUnit: "mL",
+      frequencyPerDay: 2,
+      timingInstructions: "Morning and 1 hour before bed",
+      calculatedThcMgPerDose: 2.5,
+      calculatedCbdMgPerDose: 2.5,
+      calculatedThcMgPerDay: 5,
+      calculatedCbdMgPerDay: 5,
+      patientInstructions:
+        "Take 0.5 mL (half a dropper) under the tongue twice daily — once in the morning and once before bed. Hold under tongue for 60 seconds before swallowing. This equals 2.5 mg THC + 2.5 mg CBD per dose (5 mg each per day).",
+      clinicianNotes:
+        "Starting low dose 1:1 for sleep and pain. Reassess in 2 weeks. May titrate up to 1 mL if tolerated.",
+      startDate: daysAgo(3),
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Dose Logs for Maya (past 3 days)
+  // ------------------------------------------------------------------
+  // Day 3 ago — morning dose
+  await prisma.doseLog.create({
+    data: {
+      patientId: maya.id,
+      regimenId: mayaRegimen.id,
+      actualVolume: 0.5,
+      volumeUnit: "mL",
+      estimatedThcMg: 2.5,
+      estimatedCbdMg: 2.5,
+      route: DeliveryRoute.sublingual,
+      note: "First dose, no issues",
+      loggedAt: daysAgo(3),
+    },
+  });
+  // Day 2 ago — morning and evening doses
+  await prisma.doseLog.create({
+    data: {
+      patientId: maya.id,
+      regimenId: mayaRegimen.id,
+      actualVolume: 0.5,
+      volumeUnit: "mL",
+      estimatedThcMg: 2.5,
+      estimatedCbdMg: 2.5,
+      route: DeliveryRoute.sublingual,
+      note: "Morning dose, felt calm",
+      loggedAt: daysAgo(2),
+    },
+  });
+  await prisma.doseLog.create({
+    data: {
+      patientId: maya.id,
+      regimenId: mayaRegimen.id,
+      actualVolume: 0.5,
+      volumeUnit: "mL",
+      estimatedThcMg: 2.5,
+      estimatedCbdMg: 2.5,
+      route: DeliveryRoute.sublingual,
+      note: "Evening dose, slept better",
+      loggedAt: daysAgo(1),
     },
   });
 

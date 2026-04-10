@@ -43,6 +43,7 @@ model Organization {
   auditLogs      AuditLog[]
   agentJobs      AgentJob[]
   launchStatus   PracticeLaunchStatus?
+  cannabisProducts CannabisProduct[]
 }
 
 model User {
@@ -134,6 +135,8 @@ model Patient {
   messageThreads  MessageThread[]
   appointments    Appointment[]
   tasks           Task[]
+  dosingRegimens  DosingRegimen[]
+  doseLogs        DoseLog[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -511,6 +514,114 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@index([subjectType, subjectId])
+}
+
+// --------------------------------------------------------------
+// Cannabis Prescribing / Dosing
+// --------------------------------------------------------------
+
+enum ProductType {
+  oil
+  tincture
+  capsule
+  flower
+  vape_cartridge
+  edible
+  topical
+  suppository
+  spray
+  other
+}
+
+enum DeliveryRoute {
+  oral
+  sublingual
+  inhalation
+  topical
+  rectal
+  vaginal
+}
+
+model CannabisProduct {
+  id                String      @id @default(cuid())
+  organizationId    String
+  name              String        // e.g. "THC Infused Oil 10mg/mL"
+  brand             String?       // e.g. "Green Path Organics"
+  productType       ProductType
+  route             DeliveryRoute
+  // Cannabinoid concentrations (mg per mL, mg per unit, or % for flower)
+  thcConcentration  Float?        // mg/mL for liquids, mg/unit for capsules, % for flower
+  cbdConcentration  Float?
+  cbnConcentration  Float?
+  cbgConcentration  Float?
+  thcCbdRatio       String?       // e.g. "1:1", "20:1", "1:20"
+  // Terpene profile (optional, structured)
+  terpeneProfile    Json?         // { myrcene: 0.5, limonene: 0.3, ... } in %
+  // Units
+  concentrationUnit String       @default("mg/mL") // "mg/mL", "mg/unit", "%", "mg/g"
+  unitSize          Float?        // mL per bottle, units per pack, grams per container
+  // Metadata
+  description       String?
+  active            Boolean       @default(true)
+  createdAt         DateTime      @default(now())
+
+  organization      Organization  @relation(fields: [organizationId], references: [id])
+  regimens          DosingRegimen[]
+
+  @@index([organizationId, active])
+}
+
+model DosingRegimen {
+  id                String      @id @default(cuid())
+  patientId         String
+  productId         String
+  prescribedById    String?     // provider user id
+  // Dosing
+  volumePerDose     Float       // mL, puffs, units, mg
+  volumeUnit        String      @default("mL") // "mL", "puffs", "units", "mg", "drops"
+  frequencyPerDay   Int         @default(1)
+  timingInstructions String?    // e.g. "1 hour before bed", "after meals"
+  // Auto-calculated mg (from product concentration * volume)
+  calculatedThcMgPerDose  Float?
+  calculatedCbdMgPerDose  Float?
+  calculatedThcMgPerDay   Float?
+  calculatedCbdMgPerDay   Float?
+  // Duration
+  startDate         DateTime    @default(now())
+  endDate           DateTime?
+  active            Boolean     @default(true)
+  // Patient-facing instructions
+  patientInstructions String?   // "Take 0.25 mL under the tongue twice daily"
+  // Clinician notes
+  clinicianNotes    String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  patient           Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  product           CannabisProduct @relation(fields: [productId], references: [id])
+  doseLogs          DoseLog[]
+
+  @@index([patientId, active])
+}
+
+model DoseLog {
+  id                String      @id @default(cuid())
+  patientId         String
+  regimenId         String?
+  // What was taken
+  actualVolume      Float       // what they actually took
+  volumeUnit        String      @default("mL")
+  estimatedThcMg    Float?      // auto-calculated from regimen product
+  estimatedCbdMg    Float?
+  route             DeliveryRoute?
+  // Context
+  note              String?
+  loggedAt          DateTime    @default(now())
+
+  patient           Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  regimen           DosingRegimen? @relation(fields: [regimenId], references: [id])
+
+  @@index([patientId, loggedAt])
 }
 
 // --------------------------------------------------------------

@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/ui/sparkline";
+import { MetricTile } from "@/components/ui/metric-tile";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Eyebrow } from "@/components/ui/ornament";
+import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey } from "./chart-tabs";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
@@ -31,7 +32,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const tab = (searchParams.tab as TabKey) || "records";
 
   /* ── Parallel data fetch ──────────────────────────────────── */
-  const [patient, allNotes, threads, assessmentResponses] = await Promise.all([
+  const [patient, allNotes, threads, assessmentResponses, dosingRegimens, recentDoseLogs, cannabisProducts] = await Promise.all([
     prisma.patient.findFirst({
       where: {
         id: params.id,
@@ -86,6 +87,24 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       include: { assessment: true },
       orderBy: { submittedAt: "desc" },
     }),
+    // Cannabis dosing regimens with product info
+    prisma.dosingRegimen.findMany({
+      where: { patientId: params.id },
+      include: { product: true },
+      orderBy: { startDate: "desc" },
+    }),
+    // Recent dose logs
+    prisma.doseLog.findMany({
+      where: { patientId: params.id },
+      include: { regimen: { include: { product: true } } },
+      orderBy: { loggedAt: "desc" },
+      take: 10,
+    }),
+    // Organization's cannabis product formulary
+    prisma.cannabisProduct.findMany({
+      where: { organizationId: user.organizationId!, active: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   if (!patient) notFound();
@@ -98,12 +117,15 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const labDocs = patient.documents.filter((d) => d.kind === "lab");
 
   /* ── Tab counts ───────────────────────────────────────────── */
+  const activeRegimens = dosingRegimens.filter((r: any) => r.active);
+
   const counts = {
     records: recordDocs.length,
     images: imageDocs.length,
     labs: labDocs.length + assessmentResponses.length,
     notes: allNotes.length,
     correspondence: threads.length,
+    rx: activeRegimens.length,
   };
 
   /* ── Bound start visit action ─────────────────────────────── */
@@ -226,6 +248,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           currentUserId={user.id}
           patientFirstName={patient.firstName}
           patientLastName={patient.lastName}
+        />
+      )}
+      {tab === "rx" && (
+        <CannabisRxTab
+          regimens={dosingRegimens}
+          doseLogs={recentDoseLogs}
+          products={cannabisProducts}
         />
       )}
     </PageShell>
@@ -705,6 +734,442 @@ function NotesTab({
         </div>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Cannabis Rx tab
+   ═══════════════════════════════════════════════════════════════════ */
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  oil: "Oil",
+  tincture: "Tincture",
+  capsule: "Capsule",
+  flower: "Flower",
+  vape_cartridge: "Vape",
+  edible: "Edible",
+  topical: "Topical",
+  suppository: "Suppository",
+  spray: "Spray",
+  other: "Other",
+};
+
+const ROUTE_LABELS: Record<string, string> = {
+  oral: "Oral",
+  sublingual: "Sublingual",
+  inhalation: "Inhalation",
+  topical: "Topical",
+  rectal: "Rectal",
+  vaginal: "Vaginal",
+};
+
+function formatRatio(thc: number | null, cbd: number | null): string | null {
+  if (thc == null || cbd == null || (thc === 0 && cbd === 0)) return null;
+  if (cbd === 0) return `${thc}:0 THC:CBD`;
+  if (thc === 0) return `0:${cbd} THC:CBD`;
+  // Normalize to smallest
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  const d = gcd(Math.round(thc * 10), Math.round(cbd * 10));
+  const r1 = Math.round((thc * 10) / d);
+  const r2 = Math.round((cbd * 10) / d);
+  return `${r1}:${r2}`;
+}
+
+function CannabisRxTab({
+  regimens,
+  doseLogs,
+  products,
+}: {
+  regimens: any[];
+  doseLogs: any[];
+  products: any[];
+}) {
+  const activeRegimens = regimens.filter((r) => r.active);
+  const inactiveRegimens = regimens.filter((r) => !r.active);
+
+  // Daily totals across active regimens
+  const totalThcPerDay = activeRegimens.reduce(
+    (sum: number, r: any) => sum + (r.calculatedThcMgPerDay ?? 0),
+    0
+  );
+  const totalCbdPerDay = activeRegimens.reduce(
+    (sum: number, r: any) => sum + (r.calculatedCbdMgPerDay ?? 0),
+    0
+  );
+
+  if (regimens.length === 0 && doseLogs.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="font-display text-xl text-text tracking-tight">
+            Cannabis Rx
+          </h2>
+          <Button variant="primary" size="sm">
+            New prescription
+          </Button>
+        </div>
+        <EmptyState
+          title="No cannabis prescriptions on file"
+          description="Create one to begin structured dosing. You can select from your organization's product formulary and set precise mg-based regimens."
+        />
+
+        {/* Still show formulary even with no regimens */}
+        {products.length > 0 && (
+          <ProductFormulary products={products} />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-display text-xl text-text tracking-tight">
+          Cannabis Rx
+        </h2>
+        <Button variant="primary" size="sm">
+          New prescription
+        </Button>
+      </div>
+
+      {/* ── Daily dosing summary ──────────────────────────── */}
+      {activeRegimens.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <MetricTile
+            label="Total THC / day"
+            value={`${totalThcPerDay.toFixed(1)} mg`}
+            accent="forest"
+            hint="Sum across all active regimens"
+          />
+          <MetricTile
+            label="Total CBD / day"
+            value={`${totalCbdPerDay.toFixed(1)} mg`}
+            accent="amber"
+            hint="Sum across all active regimens"
+          />
+          <MetricTile
+            label="Active regimens"
+            value={activeRegimens.length}
+            accent="none"
+            hint={inactiveRegimens.length > 0 ? `${inactiveRegimens.length} discontinued` : undefined}
+          />
+        </div>
+      )}
+
+      {/* ── Active regimen cards ──────────────────────────── */}
+      {activeRegimens.length > 0 && (
+        <section>
+          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent mb-3">
+            Active regimens
+          </p>
+          <div className="space-y-4">
+            {activeRegimens.map((regimen: any) => (
+              <RegimenCard key={regimen.id} regimen={regimen} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Discontinued regimens (collapsed) ─────────────── */}
+      {inactiveRegimens.length > 0 && (
+        <section>
+          <details className="group">
+            <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.16em] text-text-subtle mb-3 select-none hover:text-text transition-colors">
+              Discontinued regimens ({inactiveRegimens.length})
+              <span className="ml-1 text-[10px] group-open:rotate-90 inline-block transition-transform">&rsaquo;</span>
+            </summary>
+            <div className="space-y-4">
+              {inactiveRegimens.map((regimen: any) => (
+                <RegimenCard key={regimen.id} regimen={regimen} />
+              ))}
+            </div>
+          </details>
+        </section>
+      )}
+
+      {/* ── Recent dose logs ──────────────────────────────── */}
+      {doseLogs.length > 0 && (
+        <section>
+          <h3 className="font-display text-lg text-text tracking-tight mb-4">
+            Recent dose logs
+          </h3>
+          <Card tone="raised">
+            <CardContent className="pt-0 pb-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/60">
+                      <th className="text-left py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                        Date
+                      </th>
+                      <th className="text-left py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                        Product
+                      </th>
+                      <th className="text-right py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                        Volume
+                      </th>
+                      <th className="text-right py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-accent">
+                        THC mg
+                      </th>
+                      <th className="text-right py-3 pr-4 text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--highlight)]">
+                        CBD mg
+                      </th>
+                      <th className="text-left py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                        Notes
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {doseLogs.map((log: any) => (
+                      <tr key={log.id} className="hover:bg-surface-muted/40 transition-colors">
+                        <td className="py-3 pr-4 text-text-muted tabular-nums whitespace-nowrap font-display text-xs">
+                          {formatDate(log.loggedAt)}
+                        </td>
+                        <td className="py-3 pr-4 text-text text-sm">
+                          {log.regimen?.product?.name ?? "Unknown"}
+                        </td>
+                        <td className="py-3 pr-4 text-right text-text tabular-nums">
+                          {log.actualVolume} {log.volumeUnit}
+                        </td>
+                        <td className="py-3 pr-4 text-right text-accent font-medium tabular-nums">
+                          {log.estimatedThcMg != null ? log.estimatedThcMg.toFixed(1) : "—"}
+                        </td>
+                        <td className="py-3 pr-4 text-right text-[color:var(--highlight)] font-medium tabular-nums">
+                          {log.estimatedCbdMg != null ? log.estimatedCbdMg.toFixed(1) : "—"}
+                        </td>
+                        <td className="py-3 text-text-muted text-xs max-w-[200px] truncate">
+                          {log.note || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
+
+      {/* ── Product formulary (collapsed) ─────────────────── */}
+      {products.length > 0 && (
+        <ProductFormulary products={products} />
+      )}
+    </div>
+  );
+}
+
+function RegimenCard({ regimen }: { regimen: any }) {
+  const product = regimen.product;
+  const ratio = formatRatio(
+    regimen.calculatedThcMgPerDose,
+    regimen.calculatedCbdMgPerDose
+  );
+
+  return (
+    <Card tone="raised" className="card-hover">
+      <CardContent className="pt-6 pb-6">
+        <div className="flex flex-col gap-4">
+          {/* ── Top row: product info + badges ──────────── */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                {product && (
+                  <Badge tone="accent">
+                    {PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}
+                  </Badge>
+                )}
+                {ratio && (
+                  <Badge tone="highlight">
+                    {ratio}
+                  </Badge>
+                )}
+                {regimen.active ? (
+                  <Badge tone="success">Active</Badge>
+                ) : (
+                  <Badge tone="neutral">Discontinued</Badge>
+                )}
+                {product?.route && (
+                  <Badge tone="neutral">
+                    {ROUTE_LABELS[product.route] ?? product.route}
+                  </Badge>
+                )}
+              </div>
+              <h4 className="font-display text-lg font-medium text-text tracking-tight">
+                {product?.name ?? "Unknown product"}
+              </h4>
+              {product?.brand && (
+                <p className="text-sm text-text-muted">{product.brand}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="secondary" size="sm">
+                Edit
+              </Button>
+              {regimen.active && (
+                <Button variant="ghost" size="sm">
+                  Discontinue
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* ── Dosing details grid ────────────────────── */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+                Per dose
+              </p>
+              <p className="text-sm text-text font-medium tabular-nums">
+                {regimen.volumePerDose} {regimen.volumeUnit}
+              </p>
+              <p className="text-xs text-text-muted tabular-nums mt-0.5">
+                <span className="text-accent">{regimen.calculatedThcMgPerDose?.toFixed(1) ?? "—"} mg THC</span>
+                {" + "}
+                <span className="text-[color:var(--highlight)]">{regimen.calculatedCbdMgPerDose?.toFixed(1) ?? "—"} mg CBD</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+                Per day
+              </p>
+              <p className="text-sm text-text font-medium tabular-nums">
+                {regimen.frequencyPerDay}x daily
+              </p>
+              <p className="text-xs text-text-muted tabular-nums mt-0.5">
+                <span className="text-accent">{regimen.calculatedThcMgPerDay?.toFixed(1) ?? "—"} mg THC</span>
+                {" + "}
+                <span className="text-[color:var(--highlight)]">{regimen.calculatedCbdMgPerDay?.toFixed(1) ?? "—"} mg CBD</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+                Timing
+              </p>
+              <p className="text-sm text-text-muted">
+                {regimen.timingInstructions ?? "As directed"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+                Start date
+              </p>
+              <p className="text-sm text-text-muted font-display tabular-nums">
+                {formatDate(regimen.startDate)}
+              </p>
+              {regimen.endDate && (
+                <p className="text-xs text-text-subtle mt-0.5">
+                  End: {formatDate(regimen.endDate)}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* ── Patient instructions callout ───────────── */}
+          {regimen.patientInstructions && (
+            <div className="rounded-lg bg-accent-soft border border-accent/15 px-4 py-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <LeafSprig size={14} className="text-accent/70" />
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent">
+                  Patient instructions
+                </p>
+              </div>
+              <p className="text-sm text-text leading-relaxed">
+                {regimen.patientInstructions}
+              </p>
+            </div>
+          )}
+
+          {/* ── Clinician notes ────────────────────────── */}
+          {regimen.clinicianNotes && (
+            <div className="rounded-lg bg-surface-muted/60 border border-border/50 px-4 py-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1.5">
+                Clinician notes
+              </p>
+              <p className="text-sm text-text-muted leading-relaxed">
+                {regimen.clinicianNotes}
+              </p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProductFormulary({ products }: { products: any[] }) {
+  return (
+    <section>
+      <details className="group">
+        <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.16em] text-text-subtle mb-3 select-none hover:text-text transition-colors">
+          Available products ({products.length})
+          <span className="ml-1 text-[10px] group-open:rotate-90 inline-block transition-transform">&rsaquo;</span>
+        </summary>
+        <div className="grid gap-3">
+          {products.map((product: any) => {
+            const ratio = formatRatio(
+              product.thcConcentration,
+              product.cbdConcentration
+            );
+            return (
+              <Card key={product.id}>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <Badge tone="accent">
+                          {PRODUCT_TYPE_LABELS[product.productType] ?? product.productType}
+                        </Badge>
+                        {ratio && (
+                          <Badge tone="highlight">{ratio}</Badge>
+                        )}
+                        {product.route && (
+                          <Badge tone="neutral">
+                            {ROUTE_LABELS[product.route] ?? product.route}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-text">
+                        {product.name}
+                      </p>
+                      {product.brand && (
+                        <p className="text-xs text-text-muted mt-0.5">
+                          {product.brand}
+                        </p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0 space-y-0.5">
+                      {product.thcConcentration != null && (
+                        <p className="text-xs tabular-nums">
+                          <span className="text-accent font-medium">{product.thcConcentration} {product.concentrationUnit ?? "mg/mL"}</span>
+                          <span className="text-text-subtle"> THC</span>
+                        </p>
+                      )}
+                      {product.cbdConcentration != null && (
+                        <p className="text-xs tabular-nums">
+                          <span className="text-[color:var(--highlight)] font-medium">{product.cbdConcentration} {product.concentrationUnit ?? "mg/mL"}</span>
+                          <span className="text-text-subtle"> CBD</span>
+                        </p>
+                      )}
+                      {product.unitSize && (
+                        <p className="text-[11px] text-text-subtle tabular-nums">
+                          {product.unitSize}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {product.description && (
+                    <p className="text-xs text-text-subtle mt-2 leading-relaxed">
+                      {product.description}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </details>
+    </section>
   );
 }
 
