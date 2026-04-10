@@ -237,7 +237,7 @@ export const preVisitIntelligenceAgent: Agent<
     let raw: string;
     try {
       raw = await ctx.model.complete(prompt, {
-        maxTokens: 300,
+        maxTokens: 1024,
         temperature: 0.2,
       });
     } catch (llmErr) {
