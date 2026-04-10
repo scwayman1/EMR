@@ -87,15 +87,15 @@ export default async function ProvidersPage() {
               )}
 
               <div className="mt-4 pt-3 border-t border-border/60">
-                <button
-                  disabled
-                  className="w-full text-sm font-medium text-accent/60 py-2 rounded-md border border-border/60 bg-surface-muted cursor-not-allowed"
+                <a
+                  href="/clinic/providers/messages"
+                  className="flex items-center justify-center gap-2 w-full text-sm font-medium text-accent py-2 rounded-md border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-colors"
                 >
-                  Send message — coming soon
-                </button>
-                <p className="text-[11px] text-text-subtle text-center mt-1.5">
-                  Secure provider messaging is being built
-                </p>
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-accent">
+                    <path d="M12 1H2C1.45 1 1 1.45 1 2V9.5C1 10.05 1.45 10.5 2 10.5H4L7 13L10 10.5H12C12.55 10.5 13 10.05 13 9.5V2C13 1.45 12.55 1 12 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                  </svg>
+                  Secure message
+                </a>
               </div>
             </CardContent>
           </Card>
