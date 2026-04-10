@@ -8,6 +8,7 @@ const OPS_NAV: NavItem[] = [
   { label: "Mission Control", href: "/ops/mission-control" },
   { label: "Patients", href: "/ops/patients" },
   { label: "Practice launch", href: "/ops/launch" },
+  { label: "Analytics", href: "/ops/analytics" },
 ];
 
 export default async function OperatorLayout({
