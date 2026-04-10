@@ -506,8 +506,8 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 | 001 | Cannabis Combo Wheel | High | Pharmacology | **done** |
 | 002 | Dispensary Integration & SKU Scanning | High | Pharmacology | backlog |
 | 003 | Milligram-Based Dosing Display | High | Pharmacology | partial |
-| 004 | Dosing Recommendation Engine | Normal | Pharmacology | backlog |
-| 005 | AI-Powered Billing & CPT/ICD-10 | High | Billing | partial |
+| 004 | Dosing Recommendation Engine | Normal | Pharmacology | **done** |
+| 005 | AI-Powered Billing & CPT/ICD-10 | High | Billing | **done** |
 | 006 | LIFESTYLE Module | Urgent | Lifestyle | **done** |
 | 007 | AI-Powered Supply Store | Normal | Supply Store | backlog |
 | 008 | Educational Library | High | Education | **done** |
@@ -727,25 +727,41 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 001-036 | Original backlog | Various | 31 done, 5 remaining |
+| 001-036 | Original backlog | Various | 33 done, 3 remaining |
 | 037 | Communications Overlay | High | backlog |
 | 038 | Cannabis Book Integration | Normal | backlog |
 | 039 | Product Store + Affiliates | High | **done** |
 | 040 | Cannabis Plant 101 Paragraph | Normal | **done** |
-| 041 | Ambient Music | Low | backlog |
+| 041 | Ambient Music | Low | **done** |
 | 042 | MIPS Data Extrapolation | High | backlog |
 | 043 | Animated Plant Companion | High | **done** |
 | 044 | Modular Licensable Framework | Urgent | backlog |
 | 045 | Insurance Billing AI Agents | High | backlog |
-| 046 | Insurance Eligibility Checker | High | backlog |
-| 047 | Medicare CBD Framework | Normal | backlog |
+| 046 | Insurance Eligibility Checker | High | **done** |
+| 047 | Medicare CBD Framework | Normal | **done** |
 | 048 | About Page — Founders | High | **done** |
 | 049 | Pricing & Tiers | Normal | **done** |
 | 050 | EMR Slogan | Low | **done** |
 | 051 | Native Mobile App | High | backlog |
-| 052 | Clinical Trial Matching | High | backlog |
+| 052 | Clinical Trial Matching | High | **done** |
 | 053 | ProHub Integration | High | backlog |
 | 054 | Vet & Psilocybin Expansion | Low | backlog |
 | 055 | Data Ownership Framework | High | **done** |
 
-**Total: 55 tickets across 20+ epics. 38 shipped, 17 remaining.**
+**Total: 55 tickets across 20+ epics. 44 shipped, 11 remaining.**
+
+### Remaining tickets (require external APIs or infrastructure):
+- EMR-002: Dispensary Integration (needs dispensary API)
+- EMR-013: Conventional EMR Integration (needs HL7 FHIR adapter)
+- EMR-017: Dispensary Locator (needs Google Maps API key)
+- EMR-018: Leafly Strain Database (needs Leafly API)
+- EMR-028: Split Window / Multi-Tab (complex UI architecture)
+- EMR-031: Responsive Cross-Device (audit pass)
+- EMR-037: Communications Overlay (needs Twilio/WebRTC)
+- EMR-038: Cannabis Book Integration (needs content parsing)
+- EMR-042: MIPS Data Extrapolation (needs CMS rules engine)
+- EMR-044: Modular Licensable Framework (architecture documentation)
+- EMR-045: Insurance Billing AI Agents (multi-agent system)
+- EMR-051: Native Mobile App (React Native / Capacitor)
+- EMR-053: ProHub Integration (needs ProHub API)
+- EMR-054: Vet & Psilocybin Expansion (architecture only)
