@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/ui/logo";
 import { HeroArt } from "@/components/ui/hero-art";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { AmbientMusicPlayer } from "@/components/ui/ambient-music";
 
 // Public marketing / acquisition home page. Editorial, warm, botanical.
 // Intentionally distinct from the authenticated app shell — no nav chrome,
@@ -219,6 +220,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Ambient music player — EMR-041 */}
+      <AmbientMusicPlayer />
 
       <footer className="border-t border-border">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col gap-4">
