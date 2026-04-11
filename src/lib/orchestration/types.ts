@@ -7,6 +7,9 @@ export type AllowedAction =
   | "read.document"
   | "read.note"
   | "read.research"
+  | "read.claim"
+  | "read.payment"
+  | "read.statement"
   | "write.chartSummary"
   | "write.document.metadata"
   | "write.note.draft"
@@ -15,7 +18,13 @@ export type AllowedAction =
   | "write.coding"
   | "write.qualification"
   | "write.outcome.reminder"
-  | "write.launchStatus";
+  | "write.launchStatus"
+  | "write.claim.scrub"
+  | "write.claim.status"
+  | "write.financialEvent"
+  | "write.statement"
+  | "write.denial.triage"
+  | "write.payment.match";
 
 export interface AgentLogEntry {
   at: string; // ISO timestamp

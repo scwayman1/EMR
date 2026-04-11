@@ -12,12 +12,22 @@ import { schedulingAgent } from "./scheduling-agent";
 import { physicianNudgeAgent } from "./physician-nudge-agent";
 import { patientOutreachAgent } from "./patient-outreach-agent";
 import { preVisitIntelligenceAgent } from "./pre-visit-intelligence-agent";
+import { fairytaleSummaryAgent } from "./fairytale-summary-agent";
+// Billing agents — Phase 3 of the Revenue Cycle PRD
+import { chargeIntegrityAgent } from "./billing/charge-integrity-agent";
+import { denialTriageAgent } from "./billing/denial-triage-agent";
+import { patientExplanationAgent } from "./billing/patient-explanation-agent";
+import { patientCollectionsAgent } from "./billing/patient-collections-agent";
+import { reconciliationAgent } from "./billing/reconciliation-agent";
+import { agingAgent } from "./billing/aging-agent";
+import { underpaymentDetectionAgent } from "./billing/underpayment-detection-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
  * a workflow definition in src/lib/orchestration/workflows.ts.
  */
 export const agentRegistry = {
+  // Clinical agents
   intake: intakeAgent,
   documentOrganizer: documentOrganizerAgent,
   outcomeTracker: outcomeTrackerAgent,
@@ -31,8 +41,28 @@ export const agentRegistry = {
   physicianNudge: physicianNudgeAgent,
   patientOutreach: patientOutreachAgent,
   preVisitIntelligence: preVisitIntelligenceAgent,
+  fairytaleSummary: fairytaleSummaryAgent,
+  // Billing agents (Phase 3)
+  chargeIntegrity: chargeIntegrityAgent,
+  denialTriage: denialTriageAgent,
+  patientExplanation: patientExplanationAgent,
+  patientCollections: patientCollectionsAgent,
+  reconciliation: reconciliationAgent,
+  aging: agingAgent,
+  underpaymentDetection: underpaymentDetectionAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
 
 export const agentList = Object.values(agentRegistry);
+
+/** Agents tagged as "billing" — used by the billing oversight console. */
+export const BILLING_AGENT_NAMES: AgentName[] = [
+  "chargeIntegrity",
+  "denialTriage",
+  "patientExplanation",
+  "patientCollections",
+  "reconciliation",
+  "aging",
+  "underpaymentDetection",
+];

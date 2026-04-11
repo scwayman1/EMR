@@ -12,6 +12,7 @@ const OPS_NAV: NavItem[] = [
   { label: "Scrub", href: "/ops/scrub" },
   { label: "Denials", href: "/ops/denials" },
   { label: "Aging", href: "/ops/aging" },
+  { label: "Agents", href: "/ops/billing-agents" },
   { label: "Revenue", href: "/ops/revenue" },
   { label: "Eligibility", href: "/ops/eligibility" },
   { label: "Practice launch", href: "/ops/launch" },

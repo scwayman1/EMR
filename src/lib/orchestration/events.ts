@@ -21,7 +21,17 @@ export type DomainEvent =
   | { name: "appointment.created"; appointmentId: string }
   | { name: "appointment.cancelled"; appointmentId: string }
   | { name: "research.query.submitted"; queryId: string; query: string; patientId?: string }
-  | { name: "practice.onboarding.started"; organizationId: string };
+  | { name: "practice.onboarding.started"; organizationId: string }
+  // Billing events — Phase 3
+  | { name: "claim.created"; claimId: string; organizationId: string; patientId: string }
+  | { name: "claim.submitted"; claimId: string; organizationId: string }
+  | { name: "claim.denied"; claimId: string; organizationId: string; patientId: string }
+  | { name: "claim.paid"; claimId: string; organizationId: string; patientId: string }
+  | { name: "payment.received"; paymentId: string; claimId: string; organizationId: string }
+  | { name: "statement.generated"; statementId: string; patientId: string; organizationId: string }
+  | { name: "billing.aging.sweep"; organizationId: string }
+  | { name: "billing.reconciliation.run"; organizationId: string }
+  | { name: "billing.underpayment.scan"; organizationId: string };
 
 export type EventName = DomainEvent["name"];
 export type EventOf<N extends EventName> = Extract<DomainEvent, { name: N }>;

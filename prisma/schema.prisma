@@ -344,6 +344,12 @@ model Claim {
   deniedAt        DateTime?
   denialReason    String?
   notes           String?
+  // Agent-written: scrub issues from Charge Integrity Agent
+  scrubIssues     Json?
+  scrubbedAt      DateTime?
+  // Agent-written: denial triage from Denial Triage Agent
+  denialTriage    Json?
+  triagedAt       DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

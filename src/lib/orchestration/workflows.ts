@@ -146,6 +146,69 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  // ─────────────────────────────────────────────────────────────────
+  // Billing workflows — Phase 3 of the Revenue Cycle PRD
+  // ─────────────────────────────────────────────────────────────────
+  {
+    name: "claim-scrub",
+    on: ["claim.created"],
+    steps: [
+      {
+        agent: "chargeIntegrity",
+        input: (e) => ({ claimId: (e as any).claimId }),
+      },
+    ],
+  },
+  {
+    name: "denial-triage",
+    on: ["claim.denied"],
+    steps: [
+      {
+        agent: "denialTriage",
+        input: (e) => ({ claimId: (e as any).claimId }),
+      },
+    ],
+  },
+  {
+    name: "statement-explanation",
+    on: ["statement.generated"],
+    steps: [
+      {
+        agent: "patientExplanation",
+        input: (e) => ({ statementId: (e as any).statementId }),
+      },
+    ],
+  },
+  {
+    name: "aging-sweep",
+    on: ["billing.aging.sweep"],
+    steps: [
+      {
+        agent: "aging",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "reconciliation-run",
+    on: ["billing.reconciliation.run", "payment.received"],
+    steps: [
+      {
+        agent: "reconciliation",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "underpayment-scan",
+    on: ["billing.underpayment.scan", "claim.paid"],
+    steps: [
+      {
+        agent: "underpaymentDetection",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
