@@ -127,6 +127,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   /* ── Tab counts ───────────────────────────────────────────── */
   const activeRegimens = dosingRegimens.filter((r: any) => r.active);
 
+  const openClaimCount = await prisma.claim.count({
+    where: {
+      patientId: params.id,
+      status: { in: ["draft", "submitted", "pending", "denied", "partial"] },
+    },
+  });
+
   const counts = {
     demographics: 1,
     records: recordDocs.length,
@@ -135,6 +142,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     notes: allNotes.length,
     correspondence: threads.length,
     rx: activeRegimens.length,
+    billing: openClaimCount,
   };
 
   /* ── Bound start visit action ─────────────────────────────── */
@@ -274,6 +282,19 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           medications={patientMedications}
           patientId={params.id}
         />
+      )}
+      {tab === "billing" && (
+        <div className="text-center py-6">
+          <Link
+            href={`/clinic/patients/${params.id}/billing`}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent text-accent-ink text-sm font-medium hover:bg-accent/90 transition-colors"
+          >
+            Open financial cockpit &rarr;
+          </Link>
+          <p className="text-xs text-text-subtle mt-3">
+            Full billing view opens in a dedicated workspace
+          </p>
+        </div>
       )}
     </PageShell>
   );

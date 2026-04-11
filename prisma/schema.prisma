@@ -141,6 +141,11 @@ model Patient {
   doseLogs        DoseLog[]
   medications     PatientMedication[]
   claims          Claim[]
+  financialEvents FinancialEvent[]
+  statements      Statement[]
+  paymentPlans    PaymentPlan[]
+  coverages       PatientCoverage[]
+  paymentMethods  StoredPaymentMethod[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -347,6 +352,7 @@ model Claim {
   encounter       Encounter?    @relation(fields: [encounterId], references: [id], onDelete: SetNull)
   provider        Provider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
   payments        Payment[]
+  financialEvents FinancialEvent[]
 
   @@index([organizationId, status, serviceDate])
   @@index([patientId, serviceDate])
@@ -387,6 +393,199 @@ model FeeScheduleEntry {
 
   @@unique([organizationId, cptCode])
   @@index([organizationId, category])
+}
+
+// --------------------------------------------------------------
+// Ledger, Statements, Payment Plans, Coverage
+// --------------------------------------------------------------
+
+enum FinancialEventType {
+  charge_created
+  charge_voided
+  copay_assessed
+  copay_collected
+  claim_submitted
+  claim_accepted
+  claim_denied
+  insurance_paid
+  contractual_adjustment
+  patient_responsibility_transferred
+  patient_payment
+  refund_issued
+  credit_applied
+  statement_issued
+  statement_viewed
+  payment_plan_created
+  payment_plan_installment
+  write_off
+  chargeback
+}
+
+/// Every money-affecting event lands here as an immutable row.
+/// amountCents is SIGNED: positive = money into practice, negative = money out/owed.
+/// This is the source of truth for all balance calculations.
+model FinancialEvent {
+  id              String              @id @default(cuid())
+  organizationId  String
+  patientId       String
+  claimId         String?
+  encounterId     String?
+  paymentId       String?
+  type            FinancialEventType
+  amountCents     Int                  // signed; + = cash in, - = cash out / balance owed
+  description     String
+  metadata        Json?                // payer, CPT, confidence, agent id, etc.
+  occurredAt      DateTime             @default(now())
+  createdByUserId String?              // null when system/agent
+  createdByAgent  String?              // agent name if automated
+
+  patient         Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  claim           Claim?               @relation(fields: [claimId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, occurredAt])
+  @@index([organizationId, occurredAt])
+  @@index([claimId])
+}
+
+enum StatementStatus {
+  draft
+  sent
+  viewed
+  partially_paid
+  paid
+  overdue
+  disputed
+  voided
+}
+
+model Statement {
+  id                 String          @id @default(cuid())
+  organizationId     String
+  patientId          String
+  statementNumber    String          @unique
+  periodStart        DateTime
+  periodEnd          DateTime
+  dueDate            DateTime
+  totalChargesCents  Int
+  insurancePaidCents Int             @default(0)
+  adjustmentsCents   Int             @default(0)
+  priorBalanceCents  Int             @default(0)
+  amountDueCents     Int
+  paidToDateCents    Int             @default(0)
+  status             StatementStatus @default(draft)
+  deliveryMethod     String          @default("portal") // portal | email | sms | mail
+  sentAt             DateTime?
+  viewedAt           DateTime?
+  paidAt             DateTime?
+  lineItems          Json            // array of { description, amountCents, encounterId, cptCode }
+  plainLanguageSummary String?       // AI-generated explanation
+  createdAt          DateTime        @default(now())
+
+  patient            Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@index([organizationId, status, dueDate])
+}
+
+enum PaymentPlanStatus {
+  active
+  completed
+  cancelled
+  defaulted
+  paused
+}
+
+model PaymentPlan {
+  id                      String             @id @default(cuid())
+  organizationId          String
+  patientId               String
+  totalAmountCents        Int
+  installmentAmountCents  Int
+  frequency               String             // monthly | biweekly | weekly
+  numberOfInstallments    Int
+  installmentsPaid        Int                @default(0)
+  startDate               DateTime
+  nextPaymentDate         DateTime?
+  status                  PaymentPlanStatus  @default(active)
+  paidAmountCents         Int                @default(0)
+  autopayEnabled          Boolean            @default(false)
+  notes                   String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  patient                 Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+}
+
+enum CoverageType {
+  primary
+  secondary
+  tertiary
+  self_pay
+}
+
+enum EligibilityStatus {
+  active
+  inactive
+  pending_verification
+  termed
+  unknown
+}
+
+model PatientCoverage {
+  id                      String             @id @default(cuid())
+  patientId               String
+  type                    CoverageType       @default(primary)
+  payerName               String             // "Blue Cross Blue Shield"
+  payerId                 String?
+  memberId                String
+  groupNumber             String?
+  planName                String?
+  subscriberName          String?
+  relationshipToSubscriber String?           // self | spouse | child | other
+  effectiveDate           DateTime?
+  terminationDate         DateTime?
+  eligibilityStatus       EligibilityStatus  @default(unknown)
+  eligibilityLastCheckedAt DateTime?
+  copayCents              Int?               // default visit copay estimate
+  deductibleCents         Int?               // annual deductible
+  deductibleMetCents      Int                @default(0)
+  outOfPocketMaxCents     Int?
+  outOfPocketMetCents     Int                @default(0)
+  coinsurancePct          Int?               // e.g. 20 for 20%
+  notes                   String?
+  active                  Boolean            @default(true)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  patient                 Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, type, active])
+}
+
+enum StoredPaymentMethodType {
+  card
+  ach
+}
+
+model StoredPaymentMethod {
+  id              String                   @id @default(cuid())
+  patientId       String
+  type            StoredPaymentMethodType
+  last4           String                   // "4242" — never store full PAN
+  brand           String?                  // visa | mastercard | amex | bank name
+  expiryMonth     Int?
+  expiryYear      Int?
+  isDefault       Boolean                  @default(false)
+  tokenReference  String                   // opaque token from processor (Payabli)
+  consentedAt     DateTime                 @default(now())
+  active          Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+
+  patient         Patient                  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, active])
 }
 
 // --------------------------------------------------------------

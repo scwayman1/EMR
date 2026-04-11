@@ -22,6 +22,11 @@ import {
   AppointmentStatus,
   ClaimStatus,
   PaymentSource,
+  FinancialEventType,
+  StatementStatus,
+  PaymentPlanStatus,
+  CoverageType,
+  EligibilityStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -33,6 +38,13 @@ const prisma = new PrismaClient();
 
 const DAY_MS = 86_400_000;
 const now = Date.now();
+
+function formatCents(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
 
 /** Deterministic date relative to "now". */
 function daysAgo(n: number): Date {
@@ -1225,6 +1237,318 @@ async function main() {
   }
 
   console.log("  Practice management: fee schedule + appointments + claims seeded.");
+
+  // ------------------------------------------------------------------
+  // Insurance coverage for each patient
+  // ------------------------------------------------------------------
+
+  await prisma.patientCoverage.create({
+    data: {
+      patientId: maya.id,
+      type: CoverageType.primary,
+      payerName: "Blue Cross Blue Shield",
+      payerId: "BCBS-CA",
+      memberId: "XJA749382105",
+      groupNumber: "GRP-492",
+      planName: "BlueShield PPO Gold",
+      subscriberName: "Maya Reyes",
+      relationshipToSubscriber: "self",
+      effectiveDate: new Date("2026-01-01"),
+      eligibilityStatus: EligibilityStatus.active,
+      eligibilityLastCheckedAt: daysAgo(5),
+      copayCents: 2500,
+      deductibleCents: 150000,
+      deductibleMetCents: 87000,
+      outOfPocketMaxCents: 600000,
+      outOfPocketMetCents: 142000,
+      coinsurancePct: 20,
+    },
+  });
+
+  await prisma.patientCoverage.create({
+    data: {
+      patientId: james.id,
+      type: CoverageType.primary,
+      payerName: "Aetna",
+      payerId: "AETNA-COMM",
+      memberId: "W293847561",
+      groupNumber: "AET-118",
+      planName: "Aetna Open Access Silver",
+      subscriberName: "James Chen",
+      relationshipToSubscriber: "self",
+      effectiveDate: new Date("2026-01-01"),
+      eligibilityStatus: EligibilityStatus.active,
+      eligibilityLastCheckedAt: daysAgo(12),
+      copayCents: 4000,
+      deductibleCents: 300000,
+      deductibleMetCents: 45000,
+      outOfPocketMaxCents: 800000,
+      outOfPocketMetCents: 76000,
+      coinsurancePct: 30,
+    },
+  });
+
+  await prisma.patientCoverage.create({
+    data: {
+      patientId: sarah.id,
+      type: CoverageType.primary,
+      payerName: "UnitedHealthcare",
+      payerId: "UHC-CHOICE",
+      memberId: "UHC78291045",
+      planName: "UHC Choice Plus",
+      subscriberName: "Sarah Thompson",
+      relationshipToSubscriber: "self",
+      effectiveDate: new Date("2026-01-01"),
+      eligibilityStatus: EligibilityStatus.active,
+      eligibilityLastCheckedAt: daysAgo(20),
+      copayCents: 3500,
+      deductibleCents: 250000,
+      deductibleMetCents: 250000,
+      outOfPocketMaxCents: 700000,
+      outOfPocketMetCents: 310000,
+      coinsurancePct: 20,
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Financial ledger events — generate from existing claims
+  // ------------------------------------------------------------------
+  const allClaims = await prisma.claim.findMany({
+    where: { organizationId: org.id },
+    include: { payments: true },
+  });
+
+  for (const claim of allClaims) {
+    // 1. Charge created
+    await prisma.financialEvent.create({
+      data: {
+        organizationId: org.id,
+        patientId: claim.patientId,
+        claimId: claim.id,
+        encounterId: claim.encounterId,
+        type: FinancialEventType.charge_created,
+        amountCents: claim.billedAmountCents,
+        description: `Charge created: ${(claim.cptCodes as any[])[0]?.code ?? "service"}`,
+        occurredAt: claim.serviceDate,
+      },
+    });
+
+    // 2. Claim submitted (if not draft)
+    if (claim.submittedAt) {
+      await prisma.financialEvent.create({
+        data: {
+          organizationId: org.id,
+          patientId: claim.patientId,
+          claimId: claim.id,
+          type: FinancialEventType.claim_submitted,
+          amountCents: 0,
+          description: `Claim submitted to ${claim.payerName ?? "payer"}`,
+          occurredAt: claim.submittedAt,
+          metadata: { payer: claim.payerName, claimNumber: claim.claimNumber },
+        },
+      });
+    }
+
+    // 3. Insurance payments
+    for (const payment of claim.payments) {
+      if (payment.source === PaymentSource.insurance) {
+        await prisma.financialEvent.create({
+          data: {
+            organizationId: org.id,
+            patientId: claim.patientId,
+            claimId: claim.id,
+            paymentId: payment.id,
+            type: FinancialEventType.insurance_paid,
+            amountCents: payment.amountCents,
+            description: `${claim.payerName} paid ${formatCents(payment.amountCents)}`,
+            occurredAt: payment.paymentDate,
+            metadata: { reference: payment.reference },
+          },
+        });
+      }
+    }
+
+    // 4. Contractual adjustment
+    if (claim.allowedAmountCents != null && claim.allowedAmountCents < claim.billedAmountCents) {
+      const adjustment = claim.billedAmountCents - claim.allowedAmountCents;
+      await prisma.financialEvent.create({
+        data: {
+          organizationId: org.id,
+          patientId: claim.patientId,
+          claimId: claim.id,
+          type: FinancialEventType.contractual_adjustment,
+          amountCents: -adjustment,
+          description: `Contractual adjustment: ${formatCents(adjustment)}`,
+          occurredAt: claim.paidAt ?? claim.submittedAt ?? claim.serviceDate,
+        },
+      });
+    }
+
+    // 5. Patient responsibility transfer
+    if (claim.patientRespCents > 0) {
+      await prisma.financialEvent.create({
+        data: {
+          organizationId: org.id,
+          patientId: claim.patientId,
+          claimId: claim.id,
+          type: FinancialEventType.patient_responsibility_transferred,
+          amountCents: claim.patientRespCents,
+          description: `Patient responsibility: ${formatCents(claim.patientRespCents)}`,
+          occurredAt: claim.paidAt ?? claim.submittedAt ?? claim.serviceDate,
+        },
+      });
+    }
+
+    // 6. Denial
+    if (claim.status === ClaimStatus.denied && claim.deniedAt) {
+      await prisma.financialEvent.create({
+        data: {
+          organizationId: org.id,
+          patientId: claim.patientId,
+          claimId: claim.id,
+          type: FinancialEventType.claim_denied,
+          amountCents: 0,
+          description: `Claim denied: ${claim.denialReason ?? "reason not specified"}`,
+          occurredAt: claim.deniedAt,
+          metadata: { denialReason: claim.denialReason },
+        },
+      });
+    }
+  }
+
+  // Copay collected at check-in for Maya (historical)
+  await prisma.financialEvent.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      type: FinancialEventType.copay_assessed,
+      amountCents: 2500,
+      description: "Copay assessed at check-in",
+      occurredAt: daysAgo(30),
+    },
+  });
+  await prisma.financialEvent.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      type: FinancialEventType.copay_collected,
+      amountCents: 2500,
+      description: "Copay collected (card, Visa •4242)",
+      occurredAt: daysAgo(30),
+      metadata: { method: "card", last4: "4242", brand: "Visa" },
+    },
+  });
+
+  // ------------------------------------------------------------------
+  // Statements — one per patient who has outstanding balance
+  // ------------------------------------------------------------------
+
+  // Maya: $36.00 patient resp from paid claim
+  await prisma.statement.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      statementNumber: "STMT-2026-001",
+      periodStart: daysAgo(30),
+      periodEnd: daysAgo(1),
+      dueDate: new Date(Date.now() + 20 * DAY_MS),
+      totalChargesCents: 22500,
+      insurancePaidCents: 14400,
+      adjustmentsCents: 4500,
+      priorBalanceCents: 0,
+      amountDueCents: 3600,
+      paidToDateCents: 0,
+      status: StatementStatus.sent,
+      deliveryMethod: "portal",
+      sentAt: daysAgo(10),
+      viewedAt: daysAgo(8),
+      lineItems: [
+        {
+          description: "Office visit (99214)",
+          amountCents: 22500,
+          date: daysAgo(30).toISOString(),
+          cptCode: "99214",
+          insurancePaid: 14400,
+          adjustment: 4500,
+          patientResponsibility: 3600,
+        },
+      ],
+      plainLanguageSummary:
+        "This is for your visit with Dr. Okafor on " +
+        daysAgo(30).toLocaleDateString("en-US", { month: "long", day: "numeric" }) +
+        ". Your insurance (Blue Cross Blue Shield) paid most of it — $144.00. The remaining $36.00 is your portion, which is your copay and a small coinsurance amount. You can pay online or set up a payment plan.",
+    },
+  });
+
+  // James: $64.00 patient resp from partial paid claim
+  await prisma.statement.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      statementNumber: "STMT-2026-002",
+      periodStart: daysAgo(20),
+      periodEnd: daysAgo(1),
+      dueDate: new Date(Date.now() + 15 * DAY_MS),
+      totalChargesCents: 42500,
+      insurancePaidCents: 25600,
+      adjustmentsCents: 10500,
+      priorBalanceCents: 0,
+      amountDueCents: 6400,
+      paidToDateCents: 0,
+      status: StatementStatus.sent,
+      deliveryMethod: "portal",
+      sentAt: daysAgo(5),
+      lineItems: [
+        {
+          description: "New patient visit (99204)",
+          amountCents: 42500,
+          date: daysAgo(20).toISOString(),
+          cptCode: "99204",
+          insurancePaid: 25600,
+          adjustment: 10500,
+          patientResponsibility: 6400,
+        },
+      ],
+      plainLanguageSummary:
+        "This is for your first visit on " +
+        daysAgo(20).toLocaleDateString("en-US", { month: "long", day: "numeric" }) +
+        ". Aetna covered most of it. Your share is $64.00, which goes toward your deductible. Paying this brings you closer to meeting your annual deductible.",
+    },
+  });
+
+  // Maya: payment plan example
+  await prisma.paymentPlan.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      totalAmountCents: 3600,
+      installmentAmountCents: 1200,
+      frequency: "monthly",
+      numberOfInstallments: 3,
+      installmentsPaid: 0,
+      startDate: new Date(),
+      nextPaymentDate: new Date(Date.now() + 20 * DAY_MS),
+      status: PaymentPlanStatus.active,
+      autopayEnabled: false,
+    },
+  });
+
+  // Stored payment method for Maya
+  await prisma.storedPaymentMethod.create({
+    data: {
+      patientId: maya.id,
+      type: "card",
+      last4: "4242",
+      brand: "Visa",
+      expiryMonth: 11,
+      expiryYear: 2029,
+      isDefault: true,
+      tokenReference: "tok_demo_" + Math.random().toString(36).slice(2, 12),
+      consentedAt: daysAgo(30),
+    },
+  });
+
+  console.log("  Billing: coverage + ledger + statements + payment plans seeded.");
 
   // ------------------------------------------------------------------
   // Done

@@ -1,73 +1,83 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
-import { formatDate } from "@/lib/utils/format";
+import { formatDate, formatRelative } from "@/lib/utils/format";
+import { getPatientFinancialSummary, formatMoney } from "@/lib/domain/billing";
+import { CollectPaymentForm } from "./collect-payment-form";
 
 interface PageProps {
   params: { id: string };
 }
 
-export const metadata = { title: "Billing Worksheet" };
+export const metadata = { title: "Billing" };
 
-export default async function BillingPage({ params }: PageProps) {
+// ---------------------------------------------------------------------------
+// The Patient Billing Tab — Financial Cockpit
+// Per PRD section 10: 7 sections that tell one coherent financial story
+// ---------------------------------------------------------------------------
+
+export default async function PatientBillingPage({ params }: PageProps) {
   const user = await requireUser();
 
-  const [patient, encounters] = await Promise.all([
-    prisma.patient.findFirst({
-      where: {
-        id: params.id,
-        organizationId: user.organizationId!,
-        deletedAt: null,
-      },
-    }),
-    prisma.encounter.findMany({
-      where: {
-        patientId: params.id,
-        organizationId: user.organizationId!,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-      include: {
-        notes: {
-          include: { codingSuggestion: true },
-          orderBy: { createdAt: "desc" },
-        },
-      },
-    }),
-  ]);
+  // Redirect to main patient chart with billing tab active
+  // (This page exists as a standalone too for deep linking)
+
+  const patient = await prisma.patient.findFirst({
+    where: {
+      id: params.id,
+      organizationId: user.organizationId!,
+      deletedAt: null,
+    },
+  });
 
   if (!patient) notFound();
 
-  // Collect all coding suggestions
-  const codingSuggestions = encounters.flatMap((enc) =>
-    enc.notes
-      .filter((n) => n.codingSuggestion)
-      .map((n) => ({
-        noteId: n.id,
-        encounterId: enc.id,
-        encounterDate: enc.scheduledFor ?? enc.createdAt,
-        modality: enc.modality,
-        status: n.status,
-        coding: n.codingSuggestion!,
-      })),
-  );
+  const [
+    summary,
+    claims,
+    statements,
+    coverage,
+    paymentPlan,
+    paymentMethods,
+    events,
+  ] = await Promise.all([
+    getPatientFinancialSummary(params.id),
+    prisma.claim.findMany({
+      where: { patientId: params.id },
+      include: { payments: true, encounter: true },
+      orderBy: { serviceDate: "desc" },
+    }),
+    prisma.statement.findMany({
+      where: { patientId: params.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    prisma.patientCoverage.findFirst({
+      where: { patientId: params.id, type: "primary", active: true },
+    }),
+    prisma.paymentPlan.findFirst({
+      where: { patientId: params.id, status: "active" },
+    }),
+    prisma.storedPaymentMethod.findMany({
+      where: { patientId: params.id, active: true },
+    }),
+    prisma.financialEvent.findMany({
+      where: { patientId: params.id },
+      orderBy: { occurredAt: "desc" },
+      take: 20,
+    }),
+  ]);
 
   return (
-    <PageShell maxWidth="max-w-[1080px]">
+    <PageShell maxWidth="max-w-[1280px]">
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Avatar
@@ -76,198 +86,631 @@ export default async function BillingPage({ params }: PageProps) {
             size="lg"
           />
           <div>
-            <Eyebrow className="mb-2">Billing & Coding</Eyebrow>
+            <Eyebrow className="mb-2">Financial cockpit</Eyebrow>
             <h1 className="font-display text-2xl text-text tracking-tight">
-              Superbill — {patient.firstName} {patient.lastName}
+              Billing — {patient.firstName} {patient.lastName}
             </h1>
+            <p className="text-sm text-text-muted mt-0.5">
+              Complete financial story, plain-language explanations, one-click collection.
+            </p>
           </div>
         </div>
-        <Link href={`/clinic/patients/${params.id}?tab=notes`}>
-          <Button variant="secondary" size="sm">
-            Back to chart
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href={`/clinic/patients/${params.id}`}>
+            <Button variant="secondary" size="sm">
+              Back to chart
+            </Button>
+          </Link>
+        </div>
       </div>
 
-      {codingSuggestions.length === 0 ? (
-        <Card tone="raised" className="text-center py-12">
-          <CardContent>
-            <LeafSprig size={32} className="text-accent/40 mx-auto mb-4" />
-            <h2 className="font-display text-xl text-text tracking-tight">
-              No coding suggestions yet
-            </h2>
-            <p className="text-sm text-text-muted mt-2 max-w-md mx-auto">
-              Start a visit and let the AI scribe generate a note. The Coding
-              Readiness Agent will then produce ICD-10 and E&M suggestions.
-            </p>
-            <Link href={`/clinic/patients/${params.id}?tab=notes`}>
-              <Button className="mt-6">Go to notes</Button>
-            </Link>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {/* Summary card */}
-          <Card tone="ambient">
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/* A. Balance Summary — the financial hero                   */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+        <div className="lg:col-span-2">
+          <Card
+            tone="raised"
+            className={`border-l-4 ${
+              summary.overdueCents > 0
+                ? "border-l-danger"
+                : summary.currentDueCents > 0
+                  ? "border-l-[color:var(--warning)]"
+                  : "border-l-success"
+            }`}
+          >
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <LeafSprig size={16} className="text-accent" />
-                Billing Summary
-              </CardTitle>
-              <CardDescription>
-                AI-generated coding suggestions. Review and approve before
-                submission.
-              </CardDescription>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="text-base">Current balance</CardTitle>
+                  <CardDescription>
+                    {summary.currentDueCents === 0
+                      ? "No balance due"
+                      : `Last payment ${summary.lastPaymentDate ? formatRelative(summary.lastPaymentDate) : "none recorded"}`}
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  {paymentMethods.length > 0 && (
+                    <Badge tone="success">Card on file</Badge>
+                  )}
+                  {paymentPlan && <Badge tone="accent">On payment plan</Badge>}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="font-display text-3xl text-text">
-                    {codingSuggestions.length}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">Encounters coded</p>
-                </div>
-                <div>
-                  <p className="font-display text-3xl text-text">
-                    {codingSuggestions.reduce(
-                      (acc, cs) => acc + ((cs.coding as any).icd10Codes?.length ?? 0),
-                      0,
-                    )}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">ICD-10 codes</p>
-                </div>
-                <div>
-                  <p className="font-display text-3xl text-accent">
-                    {codingSuggestions.filter((cs) => (cs.coding as any).emLevel).length}
-                  </p>
-                  <p className="text-xs text-text-muted mt-1">E&M levels assigned</p>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                <BalanceLine
+                  label="Total balance"
+                  value={formatMoney(summary.totalBalanceCents)}
+                  tone="primary"
+                />
+                <BalanceLine
+                  label="Patient due"
+                  value={formatMoney(summary.currentDueCents)}
+                  tone={summary.currentDueCents > 0 ? "warning" : "neutral"}
+                />
+                <BalanceLine
+                  label="Insurance pending"
+                  value={formatMoney(summary.insurancePendingCents)}
+                  tone="neutral"
+                />
+                <BalanceLine
+                  label="Overdue"
+                  value={formatMoney(summary.overdueCents)}
+                  tone={summary.overdueCents > 0 ? "danger" : "neutral"}
+                />
               </div>
             </CardContent>
           </Card>
+        </div>
 
-          <EditorialRule />
+        {/* Payment center — quick actions */}
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <LeafSprig size={14} className="text-accent" />
+              Payment center
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CollectPaymentForm
+              patientId={params.id}
+              suggestedAmountCents={summary.currentDueCents}
+              hasCardOnFile={paymentMethods.length > 0}
+              cardLast4={paymentMethods[0]?.last4 ?? null}
+              cardBrand={paymentMethods[0]?.brand ?? null}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* Per-encounter worksheets */}
-          {codingSuggestions.map((cs) => {
-            const coding = cs.coding as any;
-            const icd10 = coding.icd10Codes ?? [];
-            const emLevel = coding.emLevel ?? null;
-            const rationale = coding.rationale ?? "";
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/* B. Responsibility Breakdown                               */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">Responsibility breakdown</Eyebrow>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <MiniStat
+            label="Copay collected"
+            value={formatMoney(summary.copayPaidCents)}
+            hint={
+              summary.copayOwedCents > 0
+                ? `${formatMoney(summary.copayOwedCents)} owed`
+                : "Up to date"
+            }
+            tone={summary.copayOwedCents > 0 ? "warning" : "success"}
+          />
+          <MiniStat
+            label="Deductible applied"
+            value={formatMoney(summary.deductibleAppliedCents)}
+            hint={
+              coverage?.deductibleCents
+                ? `of ${formatMoney(coverage.deductibleCents)} annual`
+                : "No plan on file"
+            }
+          />
+          <MiniStat
+            label="Patient responsibility"
+            value={formatMoney(summary.patientResponsibilityCents)}
+            hint="From adjudicated claims"
+            tone={summary.patientResponsibilityCents > 0 ? "warning" : "success"}
+          />
+          <MiniStat
+            label="Credit balance"
+            value={formatMoney(summary.creditBalanceCents)}
+            hint={
+              summary.creditBalanceCents > 0
+                ? "Available to apply"
+                : "None"
+            }
+            tone={summary.creditBalanceCents > 0 ? "accent" : "neutral"}
+          />
+        </div>
+      </div>
 
-            return (
-              <Card key={cs.noteId} tone="raised">
-                <CardHeader>
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <CardTitle className="text-base">
-                      {formatDate(cs.encounterDate)} — {cs.modality === "video" ? "Video" : cs.modality === "phone" ? "Phone" : "In-Person"}
-                    </CardTitle>
-                    <div className="flex gap-2">
-                      {emLevel && (
-                        <Badge tone="accent">{emLevel}</Badge>
-                      )}
-                      <Badge tone={cs.status === "finalized" ? "success" : "warning"}>
-                        {cs.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {/* ICD-10 codes */}
-                  {icd10.length > 0 && (
-                    <div className="mb-4">
-                      <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-2">
-                        ICD-10 Codes
-                      </p>
-                      <div className="space-y-2">
-                        {icd10.map((code: any) => (
-                          <div
-                            key={code.code}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-surface-muted/50"
-                          >
-                            <span className="font-mono text-xs text-accent font-medium whitespace-nowrap">
-                              {code.code}
+      <EditorialRule className="my-10" />
+
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/* C. Encounter Financial Timeline                           */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">Encounter financial timeline</Eyebrow>
+        {claims.length === 0 ? (
+          <Card tone="raised">
+            <CardContent className="py-10 text-center text-text-muted">
+              No claims yet. Finalize a visit note to generate charges.
+            </CardContent>
+          </Card>
+        ) : (
+          <Card tone="raised">
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left">
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider">Date</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider">Service</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider text-right">Charge</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider text-right">Insurance</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider text-right">Adjustment</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider text-right">Patient</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider text-right">Balance</th>
+                      <th className="py-3 px-5 font-medium text-text-subtle text-[10px] uppercase tracking-wider">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {claims.map((claim) => {
+                      const cpts = claim.cptCodes as Array<{ code: string; label: string }>;
+                      const insurancePaid = claim.payments
+                        .filter((p) => p.source === "insurance")
+                        .reduce((a, p) => a + p.amountCents, 0);
+                      const patientPaid = claim.payments
+                        .filter((p) => p.source === "patient")
+                        .reduce((a, p) => a + p.amountCents, 0);
+                      const adjustment =
+                        claim.allowedAmountCents != null
+                          ? claim.billedAmountCents - claim.allowedAmountCents
+                          : 0;
+                      const balance = claim.patientRespCents - patientPaid;
+                      return (
+                        <tr key={claim.id} className="hover:bg-surface-muted/40">
+                          <td className="py-3 px-5 text-text-muted tabular-nums text-xs">
+                            {formatDate(claim.serviceDate)}
+                          </td>
+                          <td className="py-3 px-5">
+                            <div className="flex flex-wrap gap-1">
+                              {cpts.map((c) => (
+                                <span
+                                  key={c.code}
+                                  className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono bg-accent/10 text-accent"
+                                  title={c.label}
+                                >
+                                  {c.code}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3 px-5 text-right tabular-nums text-text">
+                            {formatMoney(claim.billedAmountCents)}
+                          </td>
+                          <td className="py-3 px-5 text-right tabular-nums text-success">
+                            {insurancePaid > 0 ? formatMoney(insurancePaid) : "—"}
+                          </td>
+                          <td className="py-3 px-5 text-right tabular-nums text-text-muted">
+                            {adjustment > 0 ? `(${formatMoney(adjustment)})` : "—"}
+                          </td>
+                          <td className="py-3 px-5 text-right tabular-nums">
+                            {claim.patientRespCents > 0 ? formatMoney(claim.patientRespCents) : "—"}
+                          </td>
+                          <td className="py-3 px-5 text-right tabular-nums font-medium">
+                            <span className={balance > 0 ? "text-[color:var(--warning)]" : "text-text-subtle"}>
+                              {formatMoney(balance)}
                             </span>
-                            <span className="text-sm text-text flex-1">
-                              {code.label}
-                            </span>
-                            {code.confidence != null && (
-                              <Badge
-                                tone={
-                                  code.confidence >= 0.8
-                                    ? "success"
-                                    : code.confidence >= 0.5
+                          </td>
+                          <td className="py-3 px-5">
+                            <Badge
+                              tone={
+                                claim.status === "paid"
+                                  ? "success"
+                                  : claim.status === "denied"
+                                    ? "danger"
+                                    : claim.status === "partial"
                                       ? "accent"
                                       : "warning"
-                                }
-                                className="text-[10px]"
-                              >
-                                {Math.round(code.confidence * 100)}%
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                              }
+                              className="text-[10px]"
+                            >
+                              {claim.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
-                  {/* Cannabis-specific codes */}
-                  <div className="mb-4">
-                    <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-2">
-                      Cannabis-Specific Coding
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                        <span className="font-mono text-xs text-accent font-medium">
-                          Z71.89
-                        </span>
-                        <span className="text-sm text-text-muted">
-                          Cannabis counseling
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/10">
-                        <span className="font-mono text-xs text-accent font-medium">
-                          F12.90
-                        </span>
-                        <span className="text-sm text-text-muted">
-                          Cannabis use, unspecified
-                        </span>
-                      </div>
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/* F. Insurance & Benefits Snapshot                          */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Insurance & benefits</CardTitle>
+            <CardDescription>
+              {coverage?.eligibilityLastCheckedAt
+                ? `Last verified ${formatRelative(coverage.eligibilityLastCheckedAt)}`
+                : "Not yet verified"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {coverage ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge tone={coverage.eligibilityStatus === "active" ? "success" : "warning"}>
+                    {coverage.eligibilityStatus}
+                  </Badge>
+                  <span className="text-sm font-medium text-text">
+                    {coverage.payerName}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-y-3 gap-x-6 text-sm">
+                  <DetailRow label="Plan" value={coverage.planName ?? "—"} />
+                  <DetailRow label="Member ID" value={coverage.memberId} mono />
+                  {coverage.groupNumber && (
+                    <DetailRow label="Group" value={coverage.groupNumber} mono />
+                  )}
+                  {coverage.copayCents != null && (
+                    <DetailRow label="Copay" value={formatMoney(coverage.copayCents)} />
+                  )}
+                  {coverage.deductibleCents != null && (
+                    <DetailRow
+                      label="Deductible"
+                      value={`${formatMoney(coverage.deductibleMetCents)} / ${formatMoney(coverage.deductibleCents)}`}
+                    />
+                  )}
+                  {coverage.outOfPocketMaxCents != null && (
+                    <DetailRow
+                      label="OOP max"
+                      value={`${formatMoney(coverage.outOfPocketMetCents)} / ${formatMoney(coverage.outOfPocketMaxCents)}`}
+                    />
+                  )}
+                  {coverage.coinsurancePct != null && (
+                    <DetailRow label="Coinsurance" value={`${coverage.coinsurancePct}%`} />
+                  )}
+                </div>
+                {coverage.deductibleCents && (
+                  <div>
+                    <div className="flex items-center justify-between text-xs text-text-subtle mb-1">
+                      <span>Deductible progress</span>
+                      <span>
+                        {Math.round(
+                          (coverage.deductibleMetCents / coverage.deductibleCents) * 100,
+                        )}
+                        %
+                      </span>
+                    </div>
+                    <div className="h-2 bg-surface-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-accent to-accent-strong rounded-full"
+                        style={{
+                          width: `${Math.min(100, (coverage.deductibleMetCents / coverage.deductibleCents) * 100)}%`,
+                        }}
+                      />
                     </div>
                   </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">
+                No insurance on file. Patient will be self-pay.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-                  {/* Rationale */}
-                  {rationale && (
-                    <div className="mt-4 pt-4 border-t border-border/60">
-                      <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-                        AI Rationale
+        {/* Payment plan status */}
+        <Card tone="raised">
+          <CardHeader>
+            <CardTitle className="text-base">Payment plan</CardTitle>
+            <CardDescription>
+              {paymentPlan
+                ? "Active installment plan on this account"
+                : "No active payment plan"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {paymentPlan ? (
+              <div className="space-y-4">
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <p className="font-display text-2xl text-text tabular-nums">
+                      {formatMoney(paymentPlan.installmentAmountCents)}
+                    </p>
+                    <p className="text-xs text-text-subtle">
+                      per {paymentPlan.frequency} installment
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-text font-medium">
+                      {paymentPlan.installmentsPaid} / {paymentPlan.numberOfInstallments}
+                    </p>
+                    <p className="text-[10px] text-text-subtle">paid</p>
+                  </div>
+                </div>
+                <div className="h-2 bg-surface-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-accent rounded-full"
+                    style={{
+                      width: `${(paymentPlan.installmentsPaid / paymentPlan.numberOfInstallments) * 100}%`,
+                    }}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <p className="text-text-subtle">Total</p>
+                    <p className="text-text tabular-nums">
+                      {formatMoney(paymentPlan.totalAmountCents)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-text-subtle">Next due</p>
+                    <p className="text-text">
+                      {paymentPlan.nextPaymentDate
+                        ? formatDate(paymentPlan.nextPaymentDate)
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+                {paymentPlan.autopayEnabled && (
+                  <Badge tone="success">Autopay enabled</Badge>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-text-muted mb-3">
+                  Offer a payment plan to break large balances into manageable installments.
+                </p>
+                <Button variant="secondary" size="sm" disabled>
+                  Enroll in payment plan
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/* E. Statement History                                      */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">Statement history</Eyebrow>
+        {statements.length === 0 ? (
+          <Card tone="raised">
+            <CardContent className="py-8 text-center text-text-muted text-sm">
+              No statements yet.
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {statements.map((statement) => (
+              <Card key={statement.id} tone="raised">
+                <CardContent className="py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="shrink-0 w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path
+                          d="M4 2H14V16H4V2Z"
+                          stroke="var(--accent)"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M6 6H12M6 9H12M6 12H10"
+                          stroke="var(--accent)"
+                          strokeWidth="1.2"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-text">
+                          {statement.statementNumber}
+                        </p>
+                        <Badge
+                          tone={
+                            statement.status === "paid"
+                              ? "success"
+                              : statement.status === "overdue"
+                                ? "danger"
+                                : statement.status === "viewed"
+                                  ? "accent"
+                                  : "warning"
+                          }
+                          className="text-[9px]"
+                        >
+                          {statement.status}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-text-subtle mt-0.5">
+                        Sent {statement.sentAt ? formatRelative(statement.sentAt) : "not sent"} · Due {formatDate(statement.dueDate)}
+                        {statement.viewedAt && ` · Viewed ${formatRelative(statement.viewedAt)}`}
                       </p>
-                      <p className="text-sm text-text-muted leading-relaxed">
-                        {rationale}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium text-text tabular-nums">
+                        {formatMoney(statement.amountDueCents)}
+                      </p>
+                      <p className="text-[11px] text-text-subtle">
+                        {statement.deliveryMethod}
+                      </p>
+                    </div>
+                  </div>
+                  {statement.plainLanguageSummary && (
+                    <div className="mt-3 p-3 rounded-lg bg-accent/5 border border-accent/10">
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-accent mb-1">
+                        Plain language summary
+                      </p>
+                      <p className="text-xs text-text-muted leading-relaxed">
+                        {statement.plainLanguageSummary}
                       </p>
                     </div>
                   )}
                 </CardContent>
-                <CardFooter>
-                  <p className="text-[10px] text-text-subtle italic">
-                    AI-generated — physician review required before billing submission.
-                  </p>
-                  <div className="ml-auto flex gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => window.print()}>
-                      Print
-                    </Button>
-                    <Link href={`/clinic/patients/${params.id}/notes/${cs.noteId}`}>
-                      <Button variant="secondary" size="sm">
-                        View note
-                      </Button>
-                    </Link>
-                  </div>
-                </CardFooter>
               </Card>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ═════════════════════════════════════════════════════════ */}
+      {/* G. Audit Trail / Financial Events                         */}
+      {/* ═════════════════════════════════════════════════════════ */}
+      <div>
+        <Eyebrow className="mb-4">Financial event log</Eyebrow>
+        <Card tone="raised">
+          <CardContent className="pt-6 pb-6">
+            {events.length === 0 ? (
+              <p className="text-sm text-text-muted text-center py-4">
+                No financial events recorded.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {events.map((event) => (
+                  <li
+                    key={event.id}
+                    className="flex items-start gap-3 text-sm"
+                  >
+                    <span
+                      className="mt-1.5 h-2 w-2 rounded-full shrink-0"
+                      style={{
+                        backgroundColor: eventColor(event.type),
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <p className="text-text">{event.description}</p>
+                        {event.amountCents !== 0 && (
+                          <span
+                            className={`tabular-nums text-sm font-medium ${
+                              event.amountCents > 0 && (event.type === "patient_payment" || event.type === "insurance_paid")
+                                ? "text-success"
+                                : event.amountCents < 0
+                                  ? "text-text-muted"
+                                  : "text-text"
+                            }`}
+                          >
+                            {event.amountCents > 0 ? "+" : ""}
+                            {formatMoney(event.amountCents)}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-text-subtle mt-0.5">
+                        {formatRelative(event.occurredAt)} · {event.type.replace(/_/g, " ")}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </PageShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function eventColor(type: string): string {
+  if (type.includes("paid") || type.includes("payment")) return "var(--success)";
+  if (type.includes("denied")) return "var(--danger)";
+  if (type.includes("adjustment") || type.includes("write_off")) return "var(--text-subtle)";
+  if (type.includes("copay")) return "var(--highlight)";
+  return "var(--accent)";
+}
+
+function BalanceLine({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "primary" | "warning" | "danger" | "neutral";
+}) {
+  const colors = {
+    primary: "text-text",
+    warning: "text-[color:var(--warning)]",
+    danger: "text-danger",
+    neutral: "text-text-subtle",
+  };
+  return (
+    <div>
+      <p className="text-[10px] text-text-subtle uppercase tracking-wider">
+        {label}
+      </p>
+      <p className={`font-display text-2xl tabular-nums mt-1 ${colors[tone]}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  hint,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "accent" | "success" | "warning" | "neutral";
+}) {
+  const colors = {
+    accent: "text-accent",
+    success: "text-success",
+    warning: "text-[color:var(--warning)]",
+    neutral: "text-text",
+  };
+  return (
+    <Card tone="raised">
+      <CardContent className="pt-4 pb-4">
+        <p className="text-[10px] text-text-subtle uppercase tracking-wider">
+          {label}
+        </p>
+        <p className={`font-display text-xl tabular-nums mt-1 ${colors[tone]}`}>
+          {value}
+        </p>
+        <p className="text-[10px] text-text-subtle mt-1">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] text-text-subtle uppercase tracking-wider">
+        {label}
+      </p>
+      <p className={`text-text ${mono ? "font-mono text-xs" : ""}`}>{value}</p>
+    </div>
   );
 }
