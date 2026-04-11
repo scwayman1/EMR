@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavItem } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
+import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 
 const CLINICIAN_NAV: NavItem[] = [
   { label: "Command", href: "/clinic" },
@@ -31,6 +32,7 @@ export default async function ClinicianLayout({
       nav={CLINICIAN_NAV}
       roleLabel="Provider"
     >
+      <QuoteWelcomeModal userName={user.firstName} />
       {children}
     </AppShell>
   );

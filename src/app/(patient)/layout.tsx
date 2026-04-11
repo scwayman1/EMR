@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavItem } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
+import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 
 const PATIENT_NAV: NavItem[] = [
   { label: "Home", href: "/portal" },
@@ -35,6 +36,7 @@ export default async function PatientLayout({
 
   return (
     <AppShell user={user} activeRole="patient" nav={PATIENT_NAV} roleLabel="Patient portal">
+      <QuoteWelcomeModal userName={user.firstName} />
       {children}
     </AppShell>
   );

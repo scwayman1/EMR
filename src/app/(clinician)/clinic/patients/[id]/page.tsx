@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey } from "./chart-tabs";
+import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { startVisit } from "./actions";
 import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
@@ -466,6 +467,9 @@ function DemographicsTab({
         </Card>
       </div>
 
+      {/* USPSTF preventive screenings due */}
+      <ScreeningReminders age={age} sex={typeof sex === "string" ? sex : null} />
+
       {/* Something special about this patient */}
       {uniqueThing && (
         <Card tone="ambient">
@@ -502,6 +506,60 @@ function DemoField({
       </p>
       <p className={`text-sm text-text ${mono ? "font-mono" : ""}`}>{value}</p>
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   USPSTF Screening Reminders (EMR-070)
+   ═══════════════════════════════════════════════════════════════════ */
+
+function ScreeningReminders({
+  age,
+  sex,
+}: {
+  age: number | null;
+  sex: string | null;
+}) {
+  const due = dueScreenings(age, sex);
+  if (due.length === 0) return null;
+
+  return (
+    <Card tone="raised" className="border-l-4 border-l-[color:var(--highlight)]">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <span>🩺</span>
+            Preventive Screenings Due
+          </CardTitle>
+          <Badge tone="highlight">{due.length} pending</Badge>
+        </div>
+        <CardDescription>
+          USPSTF grade A & B recommendations based on age and sex.
+          Consider discussing with the patient today.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-2">
+          {due.map((screening) => (
+            <div
+              key={screening.id}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-highlight-soft/50 border border-highlight/20 text-xs"
+              title={screening.description}
+            >
+              <span className="text-lg">{screening.emoji}</span>
+              <div>
+                <p className="font-medium text-text leading-tight">
+                  {screening.label}
+                </p>
+                <p className="text-[10px] text-text-subtle">
+                  Grade {screening.grade} · {screening.frequency}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

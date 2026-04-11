@@ -558,20 +558,11 @@ export default async function ClinicHomePage() {
                       </div>
                     </div>
 
-                    {/* Bottom: modality + prepare + readiness + status */}
+                    {/* Bottom: modality + readiness + status */}
                     <div className="flex items-center justify-between mt-auto">
-                      <div className="flex items-center gap-1.5">
-                        <Badge tone={modalityTone(enc.modality)}>
-                          {modalityLabel(enc.modality)}
-                        </Badge>
-                        <Link
-                          href={`/clinic/patients/${enc.patient.id}/prepare`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-highlight/10 text-[color:var(--highlight)] hover:bg-highlight/20 transition-colors"
-                        >
-                          🧠 Prepare
-                        </Link>
-                      </div>
+                      <Badge tone={modalityTone(enc.modality)}>
+                        {modalityLabel(enc.modality)}
+                      </Badge>
                       <div className="flex items-center gap-2">
                         {readiness != null && (
                           <ChartReadinessRing percent={readiness} size={26} />
