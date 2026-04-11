@@ -5,6 +5,45 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
+import { dispatch } from "@/lib/orchestration/dispatch";
+import { runTick } from "@/lib/orchestration/runner";
+
+/**
+ * When a patient sends a message, we dispatch `message.received` so the
+ * correspondenceNurse workflow can triage the thread and draft a reply
+ * for the physician to approve. That dispatch is wrapped in try/catch:
+ * under no circumstances does an agent failure block the patient from
+ * getting their message through. The Constitution (Art. VI §1) requires
+ * clinical features to fail gracefully — a dead agent queue must not
+ * silence a patient.
+ */
+async function triggerNurseTriage(
+  messageId: string,
+  threadId: string,
+  patientId: string,
+  organizationId: string,
+) {
+  try {
+    await dispatch({
+      name: "message.received",
+      messageId,
+      threadId,
+      patientId,
+      organizationId,
+    });
+    // In dev, run the agent queue inline so the draft appears in /clinic/approvals
+    // the moment the clinician refreshes — no worker heartbeat required.
+    if (process.env.NODE_ENV !== "production") {
+      await runTick("inline-dev", 4);
+    }
+  } catch (err) {
+    console.warn("[portal/messages] failed to dispatch message.received", {
+      messageId,
+      threadId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
 
 // ---------- Reply to an existing thread ----------
 
@@ -28,7 +67,10 @@ export async function sendReplyAction(
 
   if (!parsed.success) return { ok: false, error: "Please enter a message." };
 
-  const patient = await prisma.patient.findUnique({ where: { userId: user.id } });
+  const patient = await prisma.patient.findUnique({
+    where: { userId: user.id },
+    select: { id: true, organizationId: true },
+  });
   if (!patient) return { ok: false, error: "No patient profile found." };
 
   // Verify thread belongs to this patient
@@ -39,7 +81,10 @@ export async function sendReplyAction(
 
   const now = new Date();
 
-  await prisma.$transaction([
+  // Create the row, then update the thread timestamp. We capture the
+  // created message's id from the transaction so we can hand it to the
+  // agent dispatch.
+  const [createdMessage] = await prisma.$transaction([
     prisma.message.create({
       data: {
         threadId: parsed.data.threadId,
@@ -54,6 +99,15 @@ export async function sendReplyAction(
       data: { lastMessageAt: now },
     }),
   ]);
+
+  // Fire the agent trigger AFTER the transaction commits so the agent
+  // can read the row. Never inside the transaction.
+  await triggerNurseTriage(
+    createdMessage.id,
+    parsed.data.threadId,
+    patient.id,
+    patient.organizationId,
+  );
 
   revalidatePath("/portal/messages");
   return { ok: true };
@@ -84,11 +138,16 @@ export async function createThreadAction(
   if (!parsed.success)
     return { ok: false, error: "Subject and message are required." };
 
-  const patient = await prisma.patient.findUnique({ where: { userId: user.id } });
+  const patient = await prisma.patient.findUnique({
+    where: { userId: user.id },
+    select: { id: true, organizationId: true },
+  });
   if (!patient) return { ok: false, error: "No patient profile found." };
 
   const now = new Date();
 
+  // Create thread + initial message in a single write, then include the
+  // message back so we have its id for the agent dispatch.
   const thread = await prisma.messageThread.create({
     data: {
       patientId: patient.id,
@@ -103,7 +162,23 @@ export async function createThreadAction(
         },
       },
     },
+    include: {
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
   });
+
+  const initialMessage = thread.messages[0];
+  if (initialMessage) {
+    await triggerNurseTriage(
+      initialMessage.id,
+      thread.id,
+      patient.id,
+      patient.organizationId,
+    );
+  }
 
   revalidatePath("/portal/messages");
   redirect(`/portal/messages?thread=${thread.id}`);
