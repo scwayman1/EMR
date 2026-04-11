@@ -3,26 +3,27 @@
 import { useEffect, useState } from "react";
 
 /**
- * A visually "live" agent console mockup for the landing page hero.
- * It cycles through the pre-visit intelligence agent steps on a loop
- * to give the impression of the agent running in real time.
+ * Liquid glass pre-visit intelligence preview for the landing page hero.
+ *
+ * Design language: frosted translucent surfaces, soft luminous gradients,
+ * refined monospace numerals, layered depth. Think Apple visionOS meets
+ * clinical instrumentation.
  */
 
 const STEPS = [
-  { icon: "👤", label: "Loading patient profile..." },
-  { icon: "📋", label: "Reviewing recent encounters..." },
-  { icon: "📈", label: "Analyzing outcome trends..." },
-  { icon: "💊", label: "Checking medication adherence..." },
-  { icon: "💬", label: "Scanning messages & assessments..." },
-  { icon: "🧠", label: "Generating briefing via LLM..." },
+  { label: "Patient profile", detail: "synthesizing" },
+  { label: "Recent encounters", detail: "3 visits" },
+  { label: "Outcome trends", detail: "30 days" },
+  { label: "Medication adherence", detail: "92%" },
+  { label: "Messages & assessments", detail: "5 items" },
+  { label: "Intelligence synthesis", detail: "Claude 4.5" },
 ];
 
-const OUTPUTS = [
-  "pain trending ↓ 40%",
-  "sleep improving",
-  "adherence 92%",
-  "1 risk flag",
-  "3 talking points",
+const INSIGHTS = [
+  { label: "Pain trend", value: "↓ 40%", tone: "positive" as const },
+  { label: "Sleep quality", value: "improving", tone: "positive" as const },
+  { label: "Adherence", value: "92%", tone: "positive" as const },
+  { label: "Risk flags", value: "1", tone: "warning" as const },
 ];
 
 export function LiveConsole() {
@@ -32,16 +33,16 @@ export function LiveConsole() {
   useEffect(() => {
     if (phase === "running") {
       if (currentStep < STEPS.length - 1) {
-        const t = setTimeout(() => setCurrentStep((s) => s + 1), 900);
+        const t = setTimeout(() => setCurrentStep((s) => s + 1), 750);
         return () => clearTimeout(t);
       } else {
-        const t = setTimeout(() => setPhase("done"), 900);
+        const t = setTimeout(() => setPhase("done"), 800);
         return () => clearTimeout(t);
       }
     }
 
     if (phase === "done") {
-      const t = setTimeout(() => setPhase("resetting"), 3500);
+      const t = setTimeout(() => setPhase("resetting"), 4500);
       return () => clearTimeout(t);
     }
 
@@ -49,139 +50,251 @@ export function LiveConsole() {
       const t = setTimeout(() => {
         setCurrentStep(0);
         setPhase("running");
-      }, 600);
+      }, 800);
       return () => clearTimeout(t);
     }
   }, [currentStep, phase]);
 
   return (
     <div className="relative">
-      {/* Terminal window chrome */}
-      <div className="rounded-2xl overflow-hidden border border-border shadow-2xl bg-[#0D1117]">
-        {/* Window header */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-[#161B22] border-b border-[#21262D]">
-          <div className="flex gap-1.5">
-            <div className="h-3 w-3 rounded-full bg-[#FF5F57]" />
-            <div className="h-3 w-3 rounded-full bg-[#FEBC2E]" />
-            <div className="h-3 w-3 rounded-full bg-[#28C840]" />
+      {/* Ambient light behind the glass card */}
+      <div
+        aria-hidden="true"
+        className="absolute -inset-10 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(ellipse 50% 50% at 30% 20%, rgba(95, 165, 120, 0.25), transparent 70%)," +
+            "radial-gradient(ellipse 60% 60% at 80% 80%, rgba(222, 184, 135, 0.18), transparent 70%)",
+          filter: "blur(40px)",
+        }}
+      />
+
+      {/* Main glass card */}
+      <div
+        className="relative rounded-[28px] overflow-hidden border border-white/30 shadow-[0_20px_80px_-20px_rgba(30,60,45,0.25),0_0_0_1px_rgba(255,255,255,0.1)_inset]"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35))",
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
+        }}
+      >
+        {/* Inner highlight ring */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 rounded-[28px] pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 30%, transparent 70%, rgba(255,255,255,0.1) 100%)",
+            mixBlendMode: "overlay",
+          }}
+        />
+
+        {/* Top status bar */}
+        <div className="relative px-7 pt-6 pb-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative h-7 w-7 rounded-xl overflow-hidden bg-gradient-to-br from-accent/80 to-accent-strong/90 shadow-sm flex items-center justify-center">
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 rounded-xl"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 50%)",
+                }}
+              />
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="relative">
+                <path
+                  d="M7 1C9 3 9.5 6 7 11C4.5 6 5 3 7 1Z"
+                  stroke="white"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-text tracking-wide">
+                Pre-Visit Intelligence
+              </p>
+              <p className="text-[10px] text-text-subtle font-mono tracking-wide">
+                agent · v1.0
+              </p>
+            </div>
           </div>
-          <div className="flex-1 text-center">
-            <span className="text-xs text-[#8B949E] font-mono">
-              pre-visit-intelligence — agent console
+
+          {/* Live indicator */}
+          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/50 border border-white/60">
+            <div className="relative">
+              <div className="h-1.5 w-1.5 rounded-full bg-accent" />
+              <div className="absolute inset-0 h-1.5 w-1.5 rounded-full bg-accent animate-ping opacity-60" />
+            </div>
+            <span className="text-[9px] font-medium text-accent uppercase tracking-[0.14em]">
+              {phase === "done" ? "Ready" : "Processing"}
             </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="h-1.5 w-1.5 rounded-full bg-[#3FB950] animate-pulse" />
-            <span className="text-[10px] text-[#3FB950] font-mono">LIVE</span>
           </div>
         </div>
 
-        {/* Terminal body */}
-        <div className="p-6 min-h-[360px]">
-          {/* Command line */}
-          <div className="font-mono text-xs text-[#8B949E] mb-4 flex items-center gap-2">
-            <span className="text-accent">$</span>
-            <span>agent run preVisitIntelligence --patient maya-r</span>
-          </div>
+        {/* Divider */}
+        <div className="relative mx-7 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
-          {/* Steps */}
-          <div className="space-y-2">
-            {STEPS.map((step, i) => {
-              const isDone = phase === "done" || i < currentStep;
-              const isRunning = phase === "running" && i === currentStep;
-              const isPending = phase === "running" && i > currentStep;
+        {/* Steps */}
+        <div className="relative px-7 py-5 space-y-1.5 min-h-[300px]">
+          {STEPS.map((step, i) => {
+            const isDone = phase === "done" || i < currentStep;
+            const isRunning = phase === "running" && i === currentStep;
+            const isPending = phase === "running" && i > currentStep;
 
-              return (
-                <div
-                  key={i}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${
-                    isRunning
-                      ? "bg-accent/10 border border-accent/30"
-                      : isDone
-                        ? "bg-[#161B22]"
-                        : "opacity-40"
-                  }`}
-                >
-                  {/* Status indicator */}
-                  <div className="shrink-0 w-5 flex items-center justify-center">
-                    {isRunning ? (
-                      <div className="h-4 w-4 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-                    ) : isDone ? (
-                      <div className="h-4 w-4 rounded-full bg-accent flex items-center justify-center">
-                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
-                          <path
-                            d="M2 5L4.5 7.5L8 2.5"
-                            stroke="white"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                    ) : (
-                      <div className="h-4 w-4 rounded-full border border-[#30363D]" />
-                    )}
-                  </div>
+            return (
+              <div
+                key={i}
+                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-500 ${
+                  isRunning
+                    ? "bg-white/60 border border-white/70 shadow-sm scale-[1.01]"
+                    : isDone
+                      ? "bg-white/20 border border-white/30"
+                      : "border border-transparent"
+                }`}
+                style={{
+                  opacity: isPending ? 0.35 : 1,
+                  backdropFilter: isRunning || isDone ? "blur(8px)" : "none",
+                  WebkitBackdropFilter: isRunning || isDone ? "blur(8px)" : "none",
+                }}
+              >
+                {/* Status dot */}
+                <div className="shrink-0 relative w-4 h-4">
+                  {isRunning ? (
+                    <>
+                      <div className="absolute inset-0 rounded-full border border-accent/30" />
+                      <div
+                        className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin"
+                        style={{ animationDuration: "0.9s" }}
+                      />
+                    </>
+                  ) : isDone ? (
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent to-accent-strong flex items-center justify-center shadow-sm">
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                        <path
+                          d="M1.5 4L3 5.5L6.5 2"
+                          stroke="white"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="absolute inset-0 rounded-full border border-text-subtle/25" />
+                  )}
+                </div>
 
-                  <span className="text-base shrink-0">{step.icon}</span>
+                {/* Label */}
+                <div className="flex-1 flex items-center justify-between min-w-0">
                   <span
-                    className={`text-sm font-mono ${
+                    className={`text-[13px] font-medium transition-colors ${
                       isRunning
-                        ? "text-accent"
+                        ? "text-text"
                         : isDone
-                          ? "text-[#C9D1D9]"
-                          : "text-[#6E7681]"
+                          ? "text-text"
+                          : "text-text-subtle"
                     }`}
                   >
                     {step.label}
                   </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Result */}
-          {phase === "done" && (
-            <div className="mt-5 pt-4 border-t border-[#21262D] animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#3FB950]" />
-                <span className="text-[10px] text-[#3FB950] font-mono uppercase tracking-wider">
-                  briefing ready · 2.3s · 94% confidence
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {OUTPUTS.map((o, i) => (
                   <span
-                    key={o}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-accent/10 border border-accent/20 text-[10px] text-accent font-mono"
-                    style={{
-                      animation: `fadeInUp 0.4s ease-out ${i * 0.08}s both`,
-                    }}
+                    className={`text-[10px] font-mono tabular-nums transition-colors ${
+                      isRunning
+                        ? "text-accent"
+                        : isDone
+                          ? "text-text-subtle"
+                          : "text-text-subtle/50"
+                    }`}
                   >
-                    {o}
+                    {isRunning ? step.detail : isDone ? "✓" : "—"}
                   </span>
-                ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })}
         </div>
+
+        {/* Result insights */}
+        {phase === "done" && (
+          <div
+            className="relative mx-7 mb-7 p-4 rounded-2xl border border-white/50 overflow-hidden"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3))",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              animation: "fadeSlideUp 0.6s ease-out",
+            }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent">
+                Briefing ready
+              </span>
+              <span className="text-[10px] font-mono text-text-subtle tabular-nums">
+                2.3s · 94% confidence
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {INSIGHTS.map((insight, i) => (
+                <div
+                  key={insight.label}
+                  className="flex items-baseline justify-between px-3 py-2 rounded-lg bg-white/40 border border-white/40"
+                  style={{
+                    animation: `fadeSlideUp 0.5s ease-out ${i * 0.08}s both`,
+                  }}
+                >
+                  <span className="text-[10px] text-text-subtle">
+                    {insight.label}
+                  </span>
+                  <span
+                    className={`text-[11px] font-medium tabular-nums ${
+                      insight.tone === "warning"
+                        ? "text-[color:var(--warning)]"
+                        : "text-accent"
+                    }`}
+                  >
+                    {insight.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Floating pill callouts outside the terminal */}
-      <div className="absolute -left-4 top-16 hidden md:block bg-surface-raised border border-border rounded-full shadow-xl px-3 py-1.5 text-[11px] font-medium text-text animate-float">
-        <span className="font-display text-sm text-accent mr-1">2.3s</span>
-        <span className="text-text-muted">briefing time</span>
+      {/* Floating glass callouts */}
+      <div
+        className="absolute -left-3 top-16 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium shadow-lg animate-float"
+        style={{
+          background: "rgba(255,255,255,0.75)",
+          backdropFilter: "blur(16px) saturate(180%)",
+          WebkitBackdropFilter: "blur(16px) saturate(180%)",
+          border: "1px solid rgba(255,255,255,0.6)",
+        }}
+      >
+        <span className="font-display text-accent">2.3s</span>
+        <span className="text-text-muted">briefing</span>
       </div>
-      <div className="absolute -right-6 bottom-24 hidden md:flex items-center gap-2 bg-surface-raised border border-border rounded-full shadow-xl px-3 py-1.5 text-[11px] font-medium text-text animate-float-delayed">
-        <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-        Claude Sonnet 4.5
+      <div
+        className="absolute -right-4 bottom-24 hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium shadow-lg animate-float-delayed"
+        style={{
+          background: "rgba(255,255,255,0.75)",
+          backdropFilter: "blur(16px) saturate(180%)",
+          WebkitBackdropFilter: "blur(16px) saturate(180%)",
+          border: "1px solid rgba(255,255,255,0.6)",
+        }}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+        <span className="text-text-muted">Claude 4.5</span>
       </div>
 
       <style jsx>{`
-        @keyframes fadeInUp {
+        @keyframes fadeSlideUp {
           from {
             opacity: 0;
-            transform: translateY(4px);
+            transform: translateY(8px);
           }
           to {
             opacity: 1;
@@ -194,14 +307,14 @@ export function LiveConsole() {
             transform: translateY(0);
           }
           50% {
-            transform: translateY(-4px);
+            transform: translateY(-6px);
           }
         }
         .animate-float {
-          animation: float 4s ease-in-out infinite;
+          animation: float 5s ease-in-out infinite;
         }
         .animate-float-delayed {
-          animation: float 4s ease-in-out 2s infinite;
+          animation: float 5s ease-in-out 2.5s infinite;
         }
       `}</style>
     </div>
