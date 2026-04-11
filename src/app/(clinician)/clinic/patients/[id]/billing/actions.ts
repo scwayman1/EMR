@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { resolvePaymentGateway } from "@/lib/payments";
 
 // ---------------------------------------------------------------------------
 // Collect payment — records a patient payment against open balance
@@ -16,10 +17,11 @@ const collectSchema = z.object({
   reference: z.string().optional(),
   claimId: z.string().optional(),
   notes: z.string().optional(),
+  storedMethodToken: z.string().optional(),
 });
 
 export type CollectResult =
-  | { ok: true; paymentId: string }
+  | { ok: true; paymentId: string; gatewayIntentId?: string }
   | { ok: false; error: string };
 
 export async function collectPayment(
@@ -39,6 +41,7 @@ export async function collectPayment(
     reference: formData.get("reference") || undefined,
     claimId: formData.get("claimId") || undefined,
     notes: formData.get("notes") || undefined,
+    storedMethodToken: formData.get("storedMethodToken") || undefined,
   });
 
   if (!parsed.success) {
@@ -72,18 +75,74 @@ export async function collectPayment(
     return { ok: false, error: "No open balance to apply payment to" };
   }
 
+  // ── Route through the payment gateway ────────────────────────
+  const gateway = resolvePaymentGateway();
+  const clientReferenceId = `pmt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+  let gatewayIntentId: string | undefined;
+  let gatewayLast4: string | undefined;
+  let gatewayBrand: string | undefined;
+
+  try {
+    let intent;
+
+    if (parsed.data.storedMethodToken) {
+      // Card on file flow
+      intent = await gateway.chargeStoredMethod({
+        token: parsed.data.storedMethodToken,
+        amountCents: parsed.data.amountCents,
+        clientReferenceId,
+        description: `Payment for patient ${patient.firstName} ${patient.lastName}`,
+        patientId: patient.id,
+      });
+    } else {
+      // New payment intent (card/ACH/cash/check)
+      intent = await gateway.createPaymentIntent({
+        amountCents: parsed.data.amountCents,
+        method: parsed.data.method,
+        clientReferenceId,
+        description: `Payment for patient ${patient.firstName} ${patient.lastName}`,
+        patientId: patient.id,
+        metadata: {
+          claimId: targetClaimId,
+          collectedByUserId: user.id,
+        },
+      });
+    }
+
+    if (intent.status === "failed") {
+      return {
+        ok: false,
+        error: intent.errorMessage ?? "Payment declined by processor",
+      };
+    }
+
+    gatewayIntentId = intent.id;
+    gatewayLast4 = intent.last4;
+    gatewayBrand = intent.brand;
+  } catch (err) {
+    console.error("[collectPayment] gateway error:", err);
+    return {
+      ok: false,
+      error:
+        err instanceof Error
+          ? `Payment gateway error: ${err.message}`
+          : "Payment gateway error",
+    };
+  }
+
+  // ── Persist to ledger ─────────────────────────────────────────
   try {
     const payment = await prisma.payment.create({
       data: {
         claimId: targetClaimId,
         source: "patient",
         amountCents: parsed.data.amountCents,
-        reference: parsed.data.reference ?? null,
+        reference: gatewayIntentId ?? parsed.data.reference ?? null,
         notes: parsed.data.notes ?? null,
       },
     });
 
-    // Log financial event
     await prisma.financialEvent.create({
       data: {
         organizationId: user.organizationId!,
@@ -92,13 +151,20 @@ export async function collectPayment(
         paymentId: payment.id,
         type: "patient_payment",
         amountCents: parsed.data.amountCents,
-        description: `Patient payment ${parsed.data.amountCents / 100} via ${parsed.data.method}`,
-        metadata: { method: parsed.data.method, reference: parsed.data.reference },
+        description: `Patient payment ${(parsed.data.amountCents / 100).toFixed(2)} via ${parsed.data.method}${gatewayBrand && gatewayLast4 ? ` (${gatewayBrand} •${gatewayLast4})` : ""}`,
+        metadata: {
+          method: parsed.data.method,
+          reference: parsed.data.reference,
+          gateway: gateway.name,
+          gatewayIntentId,
+          last4: gatewayLast4,
+          brand: gatewayBrand,
+          clientReferenceId,
+        },
         createdByUserId: user.id,
       },
     });
 
-    // Update claim paid amount
     await prisma.claim.update({
       where: { id: targetClaimId },
       data: {
@@ -108,12 +174,12 @@ export async function collectPayment(
 
     revalidatePath(`/clinic/patients/${parsed.data.patientId}`);
     revalidatePath(`/ops/billing`);
-    return { ok: true, paymentId: payment.id };
+    return { ok: true, paymentId: payment.id, gatewayIntentId };
   } catch (err) {
-    console.error("[collectPayment]", err);
+    console.error("[collectPayment] persistence error:", err);
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Payment failed",
+      error: err instanceof Error ? err.message : "Payment persistence failed",
     };
   }
 }

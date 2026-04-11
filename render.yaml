@@ -30,6 +30,17 @@ services:
         value: anthropic/claude-sonnet-4.5
       - key: OPENROUTER_APP_NAME
         value: Cannabis Care Platform
+      # Payment gateway — defaults to "stub" until Payabli credentials are wired
+      - key: PAYMENT_GATEWAY
+        value: stub
+      - key: PAYABLI_API_TOKEN
+        sync: false
+      - key: PAYABLI_ENTRY_POINT
+        sync: false
+      - key: PAYABLI_ENVIRONMENT
+        value: sandbox
+      - key: PAYABLI_WEBHOOK_SECRET
+        sync: false
 
   # -----------------------------------------------------------------
   # Worker — long-running agent runner
