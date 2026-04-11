@@ -11,17 +11,17 @@ export const metadata = {
 
 const FOUNDERS = [
   {
-    name: "Scott Wayman",
+    name: "Dr. Neal H. Patel",
     title: "Co-Founder & CEO",
-    bio: "AI architect, serial entrepreneur, and EMR visionary. Scott brings deep expertise in artificial intelligence and enterprise software to reimagine what a medical record system can be. His mission: build technology that serves the human, not the other way around.",
-    initials: "SW",
+    bio: "Physician, innovator, and cannabis medicine pioneer. Dr. Patel combines decades of clinical experience with a fearless vision for patient-centered care. A true shaman of modern medicine — blending evidence-based practice with deep compassion for every patient's journey.",
+    initials: "NP",
     gradient: "from-accent to-accent-strong",
   },
   {
-    name: "Dr. Neal H. Patel",
-    title: "Co-Founder & Chief Medical Officer",
-    bio: "Physician, innovator, and cannabis medicine pioneer. Dr. Patel combines decades of clinical experience with a fearless vision for patient-centered care. A true shaman of modern medicine — blending evidence-based practice with deep compassion for every patient's journey.",
-    initials: "NP",
+    name: "Scott Wayman",
+    title: "Co-Founder & Chief Product and Technology Officer",
+    bio: "AI architect, serial entrepreneur, and EMR visionary. Scott brings deep expertise in artificial intelligence and enterprise software to reimagine what a medical record system can be. His mission: build technology that serves the human, not the other way around.",
+    initials: "SW",
     gradient: "from-highlight to-highlight-hover",
   },
 ];

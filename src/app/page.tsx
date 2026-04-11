@@ -370,7 +370,7 @@ export default function HomePage() {
                     Dr. Neal H. Patel
                   </p>
                   <p className="text-xs text-text-subtle">
-                    Co-Founder &amp; Chief Medical Officer
+                    Co-Founder &amp; CEO
                   </p>
                 </div>
               </div>
