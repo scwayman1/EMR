@@ -31,12 +31,26 @@ export class ModelError extends Error {
   readonly friendly: string;
   /** Raw provider body, if any. Safe to log, not safe to render. */
   readonly providerBody: string | null;
+  /** The model slug we attempted (e.g. "anthropic/claude-sonnet-4.5"). */
+  readonly model: string | null;
+  /** The max_tokens we asked for. Useful for credit-gate diagnostics. */
+  readonly requestedMaxTokens: number | null;
+  /**
+   * The number of output tokens the provider said we could "afford" for
+   * this request. Parsed from 402 error bodies like:
+   *   "You requested up to 512 tokens, but can only afford 313"
+   * null if not present.
+   */
+  readonly affordableMaxTokens: number | null;
 
   constructor(opts: {
     code: ModelErrorCode;
     status?: number | null;
     friendly: string;
     providerBody?: string | null;
+    model?: string | null;
+    requestedMaxTokens?: number | null;
+    affordableMaxTokens?: number | null;
   }) {
     super(opts.friendly);
     this.name = "ModelError";
@@ -44,6 +58,9 @@ export class ModelError extends Error {
     this.status = opts.status ?? null;
     this.friendly = opts.friendly;
     this.providerBody = opts.providerBody ?? null;
+    this.model = opts.model ?? null;
+    this.requestedMaxTokens = opts.requestedMaxTokens ?? null;
+    this.affordableMaxTokens = opts.affordableMaxTokens ?? null;
   }
 }
 
@@ -121,6 +138,8 @@ export class OpenRouterModelClient implements ModelClient {
     // OpenRouter recommends these attribution headers but they are optional.
     if (this.siteUrl) headers["HTTP-Referer"] = this.siteUrl;
 
+    const requestedMaxTokens = options?.maxTokens ?? 1024;
+
     let response: Response;
     try {
       response = await fetch(this.endpoint, {
@@ -129,7 +148,7 @@ export class OpenRouterModelClient implements ModelClient {
         body: JSON.stringify({
           model: this.model,
           messages: [{ role: "user", content: prompt }],
-          max_tokens: options?.maxTokens ?? 1024,
+          max_tokens: requestedMaxTokens,
           temperature: options?.temperature ?? 0.3,
         }),
       });
@@ -139,12 +158,19 @@ export class OpenRouterModelClient implements ModelClient {
         friendly:
           "Couldn't reach the AI provider. Check your connection and try again.",
         providerBody: err instanceof Error ? err.message : String(err),
+        model: this.model,
+        requestedMaxTokens,
       });
     }
 
     if (!response.ok) {
       const body = await response.text().catch(() => "");
-      throw classifyOpenRouterError(response.status, body);
+      throw classifyOpenRouterError(
+        response.status,
+        body,
+        this.model,
+        requestedMaxTokens,
+      );
     }
 
     const json = (await response.json()) as {
@@ -156,6 +182,8 @@ export class OpenRouterModelClient implements ModelClient {
         code: "empty_response",
         friendly:
           "The AI provider returned an empty response. Try again — if it keeps happening, try a different refinement mode.",
+        model: this.model,
+        requestedMaxTokens,
       });
     }
     return content;
@@ -167,8 +195,20 @@ export class OpenRouterModelClient implements ModelClient {
  * user-friendly message. We deliberately do NOT leak provider JSON into
  * the `friendly` field — that's rendered to clinicians and should read
  * like a human wrote it.
+ *
+ * For 402s we also parse the "can only afford N" number out of the error
+ * body. That number has nothing to do with the account balance — it's
+ * OpenRouter's per-request cost ceiling divided by the output token rate.
+ * When we see it, we log the model + requested tokens + affordable tokens
+ * together so a human can diagnose whether the cap is per-key, per-request,
+ * or daily-budget.
  */
-function classifyOpenRouterError(status: number, body: string): ModelError {
+function classifyOpenRouterError(
+  status: number,
+  body: string,
+  model: string,
+  requestedMaxTokens: number,
+): ModelError {
   // Best-effort parse of the provider error message for the log trail.
   let providerMessage: string | null = null;
   try {
@@ -180,13 +220,44 @@ function classifyOpenRouterError(status: number, body: string): ModelError {
     providerMessage = body.slice(0, 500) || null;
   }
 
+  // Parse "can only afford 313" style messages out of the provider body.
+  // This is OpenRouter's way of saying: "given the per-request cost ceiling
+  // on your key or account, the output budget for this call is N tokens."
+  // It is NOT your account balance.
+  const affordMatch = providerMessage?.match(/afford\s+(\d+)/i);
+  const affordable = affordMatch ? parseInt(affordMatch[1], 10) : null;
+
+  // Log the full diagnostic shape once per failure. This is the only place
+  // a human can see exactly which model + which token budget hit the cap.
   if (status === 402) {
+    console.warn("[OpenRouter 402 diagnosis]", {
+      model,
+      requestedMaxTokens,
+      affordableMaxTokens: affordable,
+      providerMessage,
+      likelyCause:
+        affordable !== null
+          ? "Per-key credit limit or per-request cost ceiling. Check https://openrouter.ai/settings/keys for a credit limit on this key, and https://openrouter.ai/settings/preferences for per-request / daily spend caps. Account balance is NOT the cause when 'afford N' appears in the message."
+          : "Account credit exhausted, per-key limit, or per-request ceiling. Check OpenRouter dashboard.",
+    });
+  }
+
+  if (status === 402) {
+    // Prefer a diagnosis-forward friendly message when we can extract the
+    // "afford N" number — it points admins at the real culprit instead of
+    // making them chase a phantom "low balance".
+    const friendly =
+      affordable !== null
+        ? `AI refinement is blocked by a per-request cost ceiling on this OpenRouter key (budget allows ~${affordable} output tokens). Your account balance is fine — check the key's "Credit limit" at openrouter.ai/settings/keys.`
+        : "AI is temporarily unavailable — the provider rejected the request on a credit check. Check OpenRouter key limits and account preferences.";
     return new ModelError({
       code: "credit_limit",
       status,
-      friendly:
-        "AI is temporarily unavailable — the account has reached its credit limit. Drafting still works, just without inline AI refinements right now.",
+      friendly,
       providerBody: providerMessage,
+      model,
+      requestedMaxTokens,
+      affordableMaxTokens: affordable,
     });
   }
   if (status === 429) {
@@ -196,6 +267,8 @@ function classifyOpenRouterError(status: number, body: string): ModelError {
       friendly:
         "The AI provider is rate-limited right now. Wait a few seconds and try again.",
       providerBody: providerMessage,
+      model,
+      requestedMaxTokens,
     });
   }
   if (status === 401 || status === 403) {
@@ -205,6 +278,8 @@ function classifyOpenRouterError(status: number, body: string): ModelError {
       friendly:
         "AI is temporarily unavailable — the provider credentials need attention. An admin has been notified.",
       providerBody: providerMessage,
+      model,
+      requestedMaxTokens,
     });
   }
   if (status === 400) {
@@ -214,6 +289,8 @@ function classifyOpenRouterError(status: number, body: string): ModelError {
       friendly:
         "AI couldn't process this request. Try a different refinement mode, or shorten the section before retrying.",
       providerBody: providerMessage,
+      model,
+      requestedMaxTokens,
     });
   }
   if (status >= 500) {
@@ -223,6 +300,8 @@ function classifyOpenRouterError(status: number, body: string): ModelError {
       friendly:
         "The AI provider had a hiccup. Try again in a moment.",
       providerBody: providerMessage,
+      model,
+      requestedMaxTokens,
     });
   }
   return new ModelError({
@@ -231,6 +310,8 @@ function classifyOpenRouterError(status: number, body: string): ModelError {
     friendly:
       "AI refinement failed. Try again in a moment.",
     providerBody: providerMessage,
+    model,
+    requestedMaxTokens,
   });
 }
 
