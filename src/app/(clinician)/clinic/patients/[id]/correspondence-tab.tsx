@@ -2,12 +2,15 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AgentSignal } from "@/components/ui/agent-signal";
+import { resolveAgentMeta } from "@/lib/agents/ui-registry";
 import { formatRelative } from "@/lib/utils/format";
 import { sendChartReply, type ChartReplyResult } from "./correspondence-actions";
 
@@ -167,9 +170,10 @@ export function CorrespondenceTab({
             {threads.map((t) => {
               const isActive = t.id === activeThreadId;
               const lastMsg = t.messages[0];
-              const hasAiDraft = t.messages.some(
+              const aiDraftMsg = t.messages.find(
                 (m) => m.status === "draft" && m.aiDrafted,
               );
+              const hasAiDraft = Boolean(aiDraftMsg);
               const urgency = t.triageUrgency ?? "";
               const urgencyTone = URGENCY_TONES[urgency];
               return (
@@ -216,10 +220,12 @@ export function CorrespondenceTab({
                         {CATEGORY_LABELS[t.triageCategory] ?? t.triageCategory}
                       </Badge>
                     )}
-                    {hasAiDraft && (
-                      <Badge tone="highlight" className="text-[9px]">
-                        Draft ready
-                      </Badge>
+                    {hasAiDraft && aiDraftMsg && (
+                      <AgentSignal
+                        agent={aiDraftMsg.senderAgent}
+                        label="draft ready"
+                        showPopover={false}
+                      />
                     )}
                   </div>
                 </button>
@@ -285,9 +291,11 @@ export function CorrespondenceTab({
                         activeThread.triageCategory}
                     </Badge>
                   )}
-                  <span className="text-[10px] text-text-subtle ml-1">
-                    triaged by correspondenceNurse v1.0
-                  </span>
+                  <AgentSignal
+                    agent="correspondenceNurse:1.0.0"
+                    label="triaged this thread"
+                    className="ml-1"
+                  />
                 </div>
               )}
 
@@ -359,24 +367,43 @@ export function CorrespondenceTab({
                       <div>
                         <div
                           className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                            isOwn
-                              ? "bg-accent-soft text-text"
-                              : "bg-surface-raised text-text border border-border/60"
+                            msg.aiDrafted && msg.status === "draft"
+                              ? "bg-highlight-soft/40 text-text border border-highlight/30 border-dashed"
+                              : isOwn
+                                ? "bg-accent-soft text-text"
+                                : "bg-surface-raised text-text border border-border/60"
                           }`}
                         >
                           {msg.body}
                         </div>
                         <div
-                          className={`flex items-center gap-2 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}
+                          className={`flex items-center gap-2 mt-1 flex-wrap ${isOwn ? "justify-end" : "justify-start"}`}
                         >
                           <span className="text-xs text-text-subtle">
-                            {senderName}
+                            {msg.aiDrafted
+                              ? resolveAgentMeta(msg.senderAgent).displayName
+                              : senderName}
                           </span>
                           <span className="text-xs text-text-subtle">
                             {formatRelative(msg.createdAt)}
                           </span>
                           {msg.aiDrafted && (
-                            <Badge tone="highlight">AI Draft</Badge>
+                            <AgentSignal
+                              agent={msg.senderAgent}
+                              label={
+                                msg.status === "draft"
+                                  ? "awaiting approval"
+                                  : "drafted this"
+                              }
+                            />
+                          )}
+                          {msg.aiDrafted && msg.status === "draft" && (
+                            <Link
+                              href="/clinic/approvals"
+                              className="text-[11px] text-accent hover:underline"
+                            >
+                              Review in approvals →
+                            </Link>
                           )}
                         </div>
                       </div>

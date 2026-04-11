@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AgentSignal } from "@/components/ui/agent-signal";
+import { resolveAgentMeta } from "@/lib/agents/ui-registry";
 import { ClinicReplyCompose } from "./compose";
 import { formatRelative } from "@/lib/utils/format";
 
@@ -249,24 +251,43 @@ export function ClinicMessagesView({ threads, currentUserId }: Props) {
                       <div>
                         <div
                           className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                            isOwn
-                              ? "bg-accent-soft text-text"
-                              : "bg-surface-raised text-text border border-border/60"
+                            msg.aiDrafted && msg.status === "draft"
+                              ? "bg-highlight-soft/40 text-text border border-highlight/30 border-dashed"
+                              : isOwn
+                                ? "bg-accent-soft text-text"
+                                : "bg-surface-raised text-text border border-border/60"
                           }`}
                         >
                           {msg.body}
                         </div>
                         <div
-                          className={`flex items-center gap-2 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}
+                          className={`flex items-center gap-2 mt-1 flex-wrap ${isOwn ? "justify-end" : "justify-start"}`}
                         >
                           <span className="text-xs text-text-subtle">
-                            {senderName}
+                            {msg.aiDrafted
+                              ? resolveAgentMeta(msg.senderAgent).displayName
+                              : senderName}
                           </span>
                           <span className="text-xs text-text-subtle">
                             {formatRelative(msg.createdAt)}
                           </span>
                           {msg.aiDrafted && (
-                            <Badge tone="highlight">AI Draft</Badge>
+                            <AgentSignal
+                              agent={msg.senderAgent}
+                              label={
+                                msg.status === "draft"
+                                  ? "awaiting approval"
+                                  : "drafted this"
+                              }
+                            />
+                          )}
+                          {msg.aiDrafted && msg.status === "draft" && (
+                            <Link
+                              href="/clinic/approvals"
+                              className="text-[11px] text-accent hover:underline"
+                            >
+                              Review →
+                            </Link>
                           )}
                         </div>
                       </div>

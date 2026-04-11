@@ -11,6 +11,16 @@ export interface NavItem {
   label: string;
   href: string;
   icon?: React.ReactNode;
+  /**
+   * Optional live count shown as a pill next to the nav label. Use for
+   * "needs your attention" counters like pending approvals. Hidden when 0.
+   */
+  count?: number;
+  /**
+   * Optional tone hint for the count pill. Defaults to "highlight" (warm
+   * call-to-action). Use "danger" for emergencies in the queue.
+   */
+  countTone?: "highlight" | "danger" | "accent";
 }
 
 export interface AppShellProps {
@@ -47,24 +57,48 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
 
         <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2">
           <ul className="space-y-0.5">
-            {nav.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  aria-label={item.label}
-                  className={cn(
-                    "group flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-text-muted",
-                    "hover:bg-surface-muted hover:text-text transition-colors duration-200 ease-smooth"
-                  )}
-                >
-                  <span
-                    aria-hidden="true"
-                    className="h-1 w-1 rounded-full bg-border-strong group-hover:bg-accent transition-colors"
-                  />
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {nav.map((item) => {
+              const count = item.count ?? 0;
+              const tone = item.countTone ?? "highlight";
+              const toneClass =
+                tone === "danger"
+                  ? "bg-danger/10 text-danger border-danger/30 animate-pulse"
+                  : tone === "accent"
+                    ? "bg-accent-soft text-accent border-accent/25"
+                    : "bg-highlight-soft text-[color:var(--highlight-hover)] border-highlight/30";
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-label={
+                      count > 0
+                        ? `${item.label} (${count} waiting)`
+                        : item.label
+                    }
+                    className={cn(
+                      "group flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-text-muted",
+                      "hover:bg-surface-muted hover:text-text transition-colors duration-200 ease-smooth"
+                    )}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-1 w-1 rounded-full bg-border-strong group-hover:bg-accent transition-colors"
+                    />
+                    <span className="flex-1">{item.label}</span>
+                    {count > 0 && (
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold leading-none rounded-full border px-1.5 py-0.5 tabular-nums",
+                          toneClass
+                        )}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 

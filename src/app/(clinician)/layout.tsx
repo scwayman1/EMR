@@ -3,15 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavItem } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
-
-const CLINICIAN_NAV: NavItem[] = [
-  { label: "Command", href: "/clinic" },
-  { label: "Roster", href: "/clinic/patients" },
-  { label: "Inbox", href: "/clinic/messages" },
-  { label: "Providers", href: "/clinic/providers" },
-  { label: "Research", href: "/clinic/research" },
-  { label: "Library", href: "/clinic/library" },
-];
+import { prisma } from "@/lib/db/prisma";
 
 export default async function ClinicianLayout({
   children,
@@ -25,11 +17,51 @@ export default async function ClinicianLayout({
     redirect(ROLE_HOME[primary] ?? "/");
   }
 
+  // Live counts so the nav can telegraph agent activity the moment you log in.
+  // Pending AI drafts = Nurse Nora (et al.) needs your sign-off.
+  // Emergency count promotes the pill to red + pulse.
+  const [pendingCount, emergencyCount] = user.organizationId
+    ? await Promise.all([
+        prisma.message.count({
+          where: {
+            status: "draft",
+            aiDrafted: true,
+            thread: { patient: { organizationId: user.organizationId } },
+          },
+        }),
+        prisma.message.count({
+          where: {
+            status: "draft",
+            aiDrafted: true,
+            thread: {
+              triageUrgency: "emergency",
+              patient: { organizationId: user.organizationId },
+            },
+          },
+        }),
+      ])
+    : [0, 0];
+
+  const nav: NavItem[] = [
+    { label: "Command", href: "/clinic" },
+    { label: "Roster", href: "/clinic/patients" },
+    { label: "Inbox", href: "/clinic/messages" },
+    {
+      label: "Approvals",
+      href: "/clinic/approvals",
+      count: pendingCount,
+      countTone: emergencyCount > 0 ? "danger" : "highlight",
+    },
+    { label: "Providers", href: "/clinic/providers" },
+    { label: "Research", href: "/clinic/research" },
+    { label: "Library", href: "/clinic/library" },
+  ];
+
   return (
     <AppShell
       user={user}
       activeRole="clinician"
-      nav={CLINICIAN_NAV}
+      nav={nav}
       roleLabel="Provider"
     >
       <QuoteWelcomeModal userName={user.firstName} />
