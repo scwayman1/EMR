@@ -185,9 +185,15 @@ function MetaField({
   mono?: boolean;
 }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle">{label}</p>
-      <p className={`text-sm text-text mt-0.5 ${mono ? "font-mono text-xs" : ""}`}>{value}</p>
+      <p
+        className={`text-sm text-text mt-0.5 leading-tight ${
+          mono ? "font-mono text-xs break-all" : ""
+        }`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
