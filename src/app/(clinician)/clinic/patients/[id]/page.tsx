@@ -23,7 +23,7 @@ import { InteractionBadge } from "@/components/ui/interaction-badge";
 
 interface PageProps {
   params: { id: string };
-  searchParams: { tab?: string };
+  searchParams: { tab?: string; scribe?: string };
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -255,6 +255,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           notes={allNotes}
           patientId={params.id}
           startVisitAction={startVisitWithPatient}
+          scribeProcessing={searchParams.scribe === "processing"}
         />
       )}
       {tab === "correspondence" && (
@@ -950,10 +951,12 @@ function NotesTab({
   notes,
   patientId,
   startVisitAction,
+  scribeProcessing = false,
 }: {
   notes: any[];
   patientId: string;
   startVisitAction: () => Promise<void>;
+  scribeProcessing?: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -968,12 +971,30 @@ function NotesTab({
         </form>
       </div>
 
-      {notes.length === 0 ? (
+      {scribeProcessing && notes.length === 0 && (
+        <Card tone="raised" className="border-l-4 border-l-accent">
+          <CardContent className="py-5">
+            <div className="flex items-center gap-3">
+              <div className="h-5 w-5 rounded-full border-2 border-accent border-t-transparent animate-spin shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-text">
+                  The scribe is drafting your note...
+                </p>
+                <p className="text-xs text-text-muted mt-0.5">
+                  This takes 10–30 seconds. Refresh this page in a moment — the draft will appear here.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {notes.length === 0 && !scribeProcessing ? (
         <EmptyState
           title="No clinical notes yet"
           description="Start a visit to generate the first draft. The AI scribe will create structured notes from the encounter."
         />
-      ) : (
+      ) : notes.length === 0 ? null : (
         <div className="space-y-3">
           {notes.map((note) => (
             <Link

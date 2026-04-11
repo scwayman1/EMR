@@ -66,23 +66,34 @@ export async function startVisit(patientId: string) {
     requestedBy: user.id,
   });
 
-  // Try to run the agent inline with a 12-second timeout.
+  // Try to run the agent inline with a 15-second timeout.
   // If it completes, the draft is ready when the page loads.
   // If it times out, the job stays in the queue for the background worker.
   try {
     await Promise.race([
       runTick("inline-visit", 2),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 12000)
+        setTimeout(() => reject(new Error("timeout")), 15000)
       ),
     ]);
   } catch (err) {
     // Timeout or error — the job is still in the queue.
-    // The clinician will see "No notes yet" briefly, then the draft
-    // appears when the background worker picks it up or on page refresh.
     console.error("[startVisit] inline run:", err instanceof Error ? err.message : err);
   }
 
+  // Query for the note the scribe just created (if any) and redirect
+  // directly to it. If none exists yet, fall back to the notes tab
+  // with a message so the clinician knows the scribe is processing.
+  const latestNote = await prisma.note.findFirst({
+    where: { encounterId: encounter.id },
+    orderBy: { createdAt: "desc" },
+  });
+
   revalidatePath(`/clinic/patients/${patientId}`);
-  redirect(`/clinic/patients/${patientId}?tab=notes`);
+
+  if (latestNote) {
+    redirect(`/clinic/patients/${patientId}/notes/${latestNote.id}`);
+  } else {
+    redirect(`/clinic/patients/${patientId}?tab=notes&scribe=processing`);
+  }
 }

@@ -287,10 +287,21 @@ Important guidelines:
       promptLength: prompt.length,
     });
 
-    const modelResponse = await ctx.model.complete(prompt, {
-      maxTokens: 1024,
-      temperature: 0.3,
-    });
+    // Call the LLM, but gracefully fall back to a deterministic template
+    // if the model fails (credits, timeout, network). We still create a
+    // draft note so the clinician always sees something after Start Visit.
+    let modelResponse = "";
+    try {
+      modelResponse = await ctx.model.complete(prompt, {
+        maxTokens: 1024,
+        temperature: 0.3,
+      });
+    } catch (err) {
+      ctx.log("warn", "Scribe LLM call failed — using deterministic draft", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      modelResponse = "";
+    }
 
     // ------------------------------------------------------------------
     // 6. Parse model response (structured JSON or fallback)
