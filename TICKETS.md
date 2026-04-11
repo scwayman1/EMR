@@ -1199,9 +1199,9 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 086 | Community Resource Connector | High | backlog |
+| 086 | Community Resource Connector | High | **done** |
 | 087 | Legislative Advocacy Portal | Normal | backlog |
-| 088 | Cannabis Contraindication Override | Urgent | backlog |
+| 088 | Cannabis Contraindication Override | Urgent | **done** |
 | 089 | Cannabis-Infused Recipe Library | Normal | backlog |
 | 090 | ER Admission Notification + Inpatient EMR | Urgent | backlog |
 | 091 | Medical Cannabis Dispensary Module | Urgent | backlog |
@@ -1226,10 +1226,10 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 | 063 | Pharmacy Communication | High | backlog |
 | 064 | Audit Log PDF Export | Normal | backlog |
 | 065 | AI Compliance Auditing Agent | High | backlog |
-| 066 | Validated Assessment Library Expansion | High | backlog |
+| 066 | Validated Assessment Library Expansion | High | **done** |
 | 067 | Lab Ordering (Quest/LabCorp) | High | backlog |
 | 068 | Patient Billing Portal | High | backlog |
-| 069 | AI Fairytale Chart Summary | High | backlog |
+| 069 | AI Fairytale Chart Summary | High | **done** |
 | 070 | USPSTF Screening Reminders | High | backlog |
 | 071 | AI Chatbot + DoxGPT | Normal | backlog |
 | 072 | Lifestyle Checkboxes → Plant Growth | High | backlog |
@@ -1245,7 +1245,7 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 | 082 | Electronic Record Release | High | backlog |
 | 083 | Pediatric Module | High | backlog |
 | 084 | Military Encryption + Legal Framework | Urgent | backlog |
-| 085 | iCal / Google Calendar Export | Normal | backlog |
+| 085 | iCal / Google Calendar Export | Normal | **done** |
 
 **Grand total: 85 tickets. 44 shipped, 41 remaining.**
 

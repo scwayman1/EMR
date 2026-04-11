@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow } from "@/components/ui/ornament";
+import { StatCard } from "@/components/ui/stat-card";
 import { formatDate } from "@/lib/utils/format";
 
 export const metadata = { title: "Billing Workqueue" };
@@ -117,24 +118,28 @@ export default async function BillingPage({
           label="Total billed"
           value={formatMoney(totalBilled)}
           hint={`${totalCount} claims`}
+          size="md"
         />
         <StatCard
           label="Collected"
           value={formatMoney(totalPaid)}
           tone="success"
           hint={`${totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 100) : 0}% of billed`}
+          size="md"
         />
         <StatCard
           label="Pending revenue"
           value={formatMoney(pendingRevenueCents)}
           tone="accent"
           hint="Submitted or in process"
+          size="md"
         />
         <StatCard
           label="Outstanding"
           value={formatMoney(outstandingCents)}
           tone="warning"
           hint={denialCount > 0 ? `${denialCount} denials need action` : "No denials"}
+          size="md"
         />
       </div>
 
@@ -297,40 +302,6 @@ export default async function BillingPage({
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function StatCard({
-  label,
-  value,
-  hint,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "accent" | "success" | "warning" | "neutral";
-}) {
-  const colors = {
-    accent: "text-accent",
-    success: "text-success",
-    warning: "text-[color:var(--warning)]",
-    neutral: "text-text",
-  };
-  return (
-    <Card tone="raised">
-      <CardContent className="pt-5 pb-5">
-        <p className="text-xs text-text-subtle uppercase tracking-wider">
-          {label}
-        </p>
-        <p className={`font-display text-2xl tabular-nums mt-1 ${colors[tone]}`}>
-          {value}
-        </p>
-        {hint && (
-          <p className="text-[11px] text-text-subtle mt-1.5">{hint}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 function FilterTab({
   label,
