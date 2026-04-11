@@ -1070,8 +1070,25 @@ async function main() {
     });
   }
 
-  // Upcoming appointments for today + this week (demo schedule)
-  const appointmentSeeds = [
+  // ──────────────────────────────────────────────────────────────────
+  // Everything below this point uses .create() (not upsert) and is
+  // expensive to deduplicate row-by-row. Gate the whole block on
+  // appointment count so the seed is idempotent across deploys —
+  // Render runs db:seed on every deploy and would otherwise crash on
+  // unique constraint violations (Statement.statementNumber, etc.)
+  // and balloon the row count of the demo data.
+  // ──────────────────────────────────────────────────────────────────
+  const existingAppointments = await prisma.appointment.count({
+    where: { patient: { organizationId: org.id } },
+  });
+
+  if (existingAppointments > 0) {
+    console.log(
+      "  Practice management already seeded — skipping appointments, claims, statements.",
+    );
+  } else {
+    // Upcoming appointments for today + this week (demo schedule)
+    const appointmentSeeds = [
     // Today
     { patientId: maya.id, hoursFromNow: -2, durationMin: 30, modality: "in_person", status: AppointmentStatus.completed },
     { patientId: james.id, hoursFromNow: 1, durationMin: 45, modality: "video", status: AppointmentStatus.confirmed },
@@ -1657,7 +1674,8 @@ async function main() {
     },
   });
 
-  console.log("  Billing: coverage + ledger + statements + payment plans seeded.");
+    console.log("  Billing: coverage + ledger + statements + payment plans seeded.");
+  } // end of practice-management idempotency guard
 
   // ------------------------------------------------------------------
   // Done
