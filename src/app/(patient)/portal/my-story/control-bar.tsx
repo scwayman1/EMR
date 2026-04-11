@@ -24,26 +24,25 @@ export function ControlBar({ patientName }: { patientName: string }) {
 
   return (
     <div className="print:hidden bg-surface border-b border-border/60 sticky top-0 z-30">
-      <div className="max-w-[700px] mx-auto px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="max-w-[700px] mx-auto px-6 lg:px-8 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <LeafSprig size={20} className="text-accent shrink-0" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-sm font-medium text-text truncate">
               {patientName}&apos;s Story
             </h1>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Your care story, formatted as a book you can print, share, or
-              keep.
+            <p className="text-xs text-text-muted leading-snug">
+              Your care story, formatted to print, share, or keep.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0 relative">
+        <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap lg:shrink-0 relative">
           <Button
             variant="primary"
             size="sm"
             onClick={() => window.print()}
           >
-            Print this story
+            Print
           </Button>
 
           {/* Email to my doctor */}
@@ -56,7 +55,7 @@ export function ControlBar({ patientName }: { patientName: string }) {
                 setEmailSent(false);
               }}
             >
-              Email to my doctor
+              Email to doctor
             </Button>
             {emailDialogOpen && (
               <div
@@ -109,7 +108,7 @@ export function ControlBar({ patientName }: { patientName: string }) {
             size="sm"
             onClick={() => window.print()}
           >
-            Download as PDF
+            PDF
           </Button>
 
           {/* Legacy share tooltip */}
@@ -122,7 +121,7 @@ export function ControlBar({ patientName }: { patientName: string }) {
                 setTimeout(() => setShareMessage(false), 3000);
               }}
             >
-              Share with your doctor
+              Share
             </Button>
             {shareMessage && (
               <div className="absolute top-full right-0 mt-2 w-64 p-3 rounded-lg bg-surface-raised border border-border shadow-md text-xs text-text-muted leading-relaxed z-40">
