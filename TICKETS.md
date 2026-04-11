@@ -1029,6 +1029,188 @@ Ties directly into My Garden plant companion.
 
 ---
 
+## Wave 15+ — Dr. Patel's Product Drop #3 (April 11, later)
+
+### EMR-086: Community Resource Connector
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+Modular framework to connect patients to trusted community resources and organizations based on their current medical conditions, within a 50-mile radius.
+
+Example: A patient with Dementia in Orange County gets connected to:
+- UCI MIND clinic
+- HOAG Neurosciences
+- Alzheimer's OC
+- Local support groups
+- Caregiver respite services
+
+**Implementation:**
+- Curated database of resource organizations keyed by condition + geography
+- Geo-lookup based on patient address
+- AI-generated resource packets: what the organization offers, how to connect, what to expect
+- Deliverable to patient via portal, email, or SMS
+- Starts with dementia + cancer + chronic pain + mental health; expands by region
+
+---
+
+### EMR-087: Legislative Advocacy Portal
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Patient-facing module to message and email local representatives and congress members advocating for cannabis reform.
+
+**Features:**
+- Lookup representatives by patient address (OpenStates or Google Civic API)
+- AI-generated advocacy letters tailored to patient's story and condition
+- Templates for different asks: reclassification, research funding, insurance coverage, patient access, veteran access
+- Send via portal with one click (integrates with email/SMS)
+- Track which patients have contacted which reps
+- Log as audit trail to show engagement
+
+---
+
+### EMR-088: Cannabis Contraindication Override Warning
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+Pop-up warning during prescribing when patient has a major cannabis contraindication.
+
+**Contraindications to flag:**
+- History of schizophrenia or psychotic disorder
+- Bipolar disorder (especially type I)
+- Severe cardiovascular disease
+- Pregnancy / breastfeeding
+- Active substance use disorder
+- Severe liver dysfunction
+- Children / adolescents (for high-THC products)
+- History of cannabis hyperemesis syndrome
+- Recent MI or unstable angina
+
+**Required action:**
+- Provider MUST document override reasoning before proceeding
+- Override reason stored in chart + audit log
+- Prescription cannot be submitted until override is signed
+- Dual sign-off optional for high-risk overrides
+- Integrates with existing drug-interaction stoplight system
+
+---
+
+### EMR-089: Cannabis-Infused Recipe Library
+**Priority:** 3 — Normal
+**Source:** Dr. Patel
+**Description:**
+Curated "food as medicine" recipe library on the Lifestyle tab. 5-20 minute recipes for breakfast, lunch, dinner, snacks, and appetizers — each infused with cannabis and aligned to a dietary philosophy.
+
+**Dietary styles to support:**
+- Mediterranean diet
+- Ayurvedic diet
+- Mexican cuisine
+- Italian cuisine
+- Vegetarian
+- Vegan
+- Keto / low-carb (optional)
+
+**Each recipe includes:**
+- Prep + cook time
+- mg of THC/CBD per serving
+- Ingredients with optional dispensary pickup
+- Step-by-step instructions
+- Nutrition info
+- Companion education on decarboxylation + infusion basics
+
+---
+
+### EMR-090: ER/Hospital Admission Notification + Inpatient EMR Module
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+**Part 1 — Notification:**
+- Text notification sent to the primary care provider when a patient is sent to the ER or admitted to the hospital
+- Source: HL7 ADT feed, state health information exchange, or patient self-report
+- Includes hospital name, chief complaint if available, admission time
+- Creates a task in the provider's inbox
+
+**Part 2 — Inpatient EMR Module:**
+- Full modular hospital EMR within the Green Path framework
+- Inpatient workflows: admission H&P, progress notes, discharge summary
+- Synchronizes between outpatient and inpatient treatment — same patient, same chart, different care setting
+- Care transitions automatically documented when patient moves between settings
+- Inpatient medications reconciled against outpatient med list on discharge
+
+---
+
+### EMR-091: Medical Cannabis Dispensary Module
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel
+**Description:**
+Full medical-cannabis dispensary integration. **Medicinal use only — recreational is explicitly excluded.**
+
+**Dispensary side:**
+- Dispensaries can register and log in
+- External link to current product inventory cross-referenced with SKU
+- Budtender electronic signature required on every dispense
+
+**Provider side:**
+- Provider "prescribes" cannabis directly from the dispensary's live inventory
+- Electronic Rx sent to dispensary for approval
+- Running log of patient visits to dispensary (medical only)
+
+**Patient side:**
+- Must have a valid medical marijuana card to use the module
+- Purchased products auto-populate into the patient's medication list
+- Product name, SKU, purchase date, quantity documented
+- Data forwarded to the state medical cannabis registry
+
+**CURES integration (optional):**
+- For patients at high abuse potential or on scheduled meds, run through cures.doj.gov (California CURES) to check PDMP
+- Flag conflicting scripts, early refills, multiple prescribers
+
+**What this does NOT do:**
+- Recreational cannabis — completely separate, not handled by this module
+- Non-card-holding patients — cannot use dispensary flow
+
+---
+
+### EMR-092: Dual Treatment Protocols — Western + Eastern (Holistic) Medicine
+**Priority:** 2 — High
+**Source:** Dr. Patel
+**Description:**
+For EVERY medical diagnosis in the system, provide TWO treatment protocols side-by-side:
+
+**1. Standard pharmaceutical algorithm:**
+- Evidence-based first-line, second-line, third-line pharmacotherapy
+- Dosing, titration, monitoring parameters
+- Guideline source (UpToDate, ACC/AHA, USPSTF, etc.)
+
+**2. Holistic / alternative protocol:**
+- Over-the-counter products and supplements
+- Lifestyle interventions (diet, exercise, sleep, stress)
+- Traditional modalities: acupuncture, massage, yoga, meditation
+- Herbal medicine (Ayurvedic, TCM, Western herbalism)
+- Mind-body therapies (CBT, breathwork, biofeedback)
+
+**Goal:** Comprehensive all-inclusive treatment plan that blends eastern and western medicine. Physician selects the blend that fits the patient. Patient sees both paths and can discuss preferences with their provider.
+
+**Starts with the most common cannabis care conditions:** chronic pain, anxiety, insomnia, depression, PTSD, migraine, IBS, fibromyalgia, nausea/CINV, cancer, MS, Parkinson's, epilepsy.
+
+---
+
+## Updated Summary (after Wave 15 backlog expansion)
+
+| # | Title | Priority | Status |
+|---|---|---|---|
+| 086 | Community Resource Connector | High | backlog |
+| 087 | Legislative Advocacy Portal | Normal | backlog |
+| 088 | Cannabis Contraindication Override | Urgent | backlog |
+| 089 | Cannabis-Infused Recipe Library | Normal | backlog |
+| 090 | ER Admission Notification + Inpatient EMR | Urgent | backlog |
+| 091 | Medical Cannabis Dispensary Module | Urgent | backlog |
+| 092 | Dual Treatment Protocols (Western + Eastern) | High | backlog |
+
+**Grand total: 92 tickets. ~50 shipped, 42 remaining.**
+
+---
+
 ## Updated Summary (after Wave 14 backlog expansion)
 
 | # | Title | Priority | Status |
