@@ -502,21 +502,31 @@ async function main() {
     },
   });
 
-  // Maya — Message thread (3 messages back and forth)
+  // ────────────────────────────────────────────────────────────
+  // Maya — 4 distinct message threads showcasing Correspondence Nurse
+  // triage (dosing, side effect, gratitude, refill)
+  // ────────────────────────────────────────────────────────────
+
+  // Thread 1: Dosing question (resolved) — shows a classic back-and-forth
   const mayaThread = await prisma.messageThread.create({
     data: {
       patientId: maya.id,
-      subject: "Welcome to Green Path Health",
+      subject: "Dosing question — tincture + evening ibuprofen",
       lastMessageAt: daysAgo(2),
+      triageUrgency: "routine",
+      triageCategory: "dosing_question",
+      triageSafetyFlags: [],
+      triageSummary:
+        "Maya asked about route of administration for her THC:CBD tincture and whether it's safe with her evening ibuprofen. Resolved.",
+      triagedAt: daysAgo(3),
     },
   });
-
   await prisma.message.create({
     data: {
       threadId: mayaThread.id,
       senderUserId: clinicianUser.id,
       status: MessageStatus.read,
-      body: "Hi Maya! Welcome to Green Path Health. I'm Dr. Okafor and I'll be your care provider. Feel free to reach out any time with questions about your treatment plan or cannabis therapy in general.",
+      body: "Hi Maya! Welcome to Green Path Health. I'm Dr. Okafor and I'll be your care provider. Feel free to reach out any time with questions about your treatment plan.",
       aiDrafted: false,
       sentAt: daysAgo(5),
       createdAt: daysAgo(5),
@@ -527,7 +537,7 @@ async function main() {
       threadId: mayaThread.id,
       senderUserId: mayaUser.id,
       status: MessageStatus.read,
-      body: "Thank you Dr. Okafor! I had a quick question — for the tincture you recommended, should I take it sublingually or can I add it to tea? Also, is it okay to take it with my evening ibuprofen?",
+      body: "Thank you Dr. Okafor! Quick question — for the tincture you recommended, should I take it sublingually or can I add it to tea? Also, is it okay to take it with my evening ibuprofen?",
       aiDrafted: false,
       sentAt: daysAgo(3),
       createdAt: daysAgo(3),
@@ -538,10 +548,119 @@ async function main() {
       threadId: mayaThread.id,
       senderUserId: clinicianUser.id,
       status: MessageStatus.sent,
-      body: "Great questions! Sublingual is preferred — hold it under your tongue for 60-90 seconds before swallowing for the fastest absorption. Adding it to tea works too but onset will be slower (45-60 min vs 15-20 min). Taking it alongside ibuprofen is fine; no known interactions at this dosage. Let me know how your first week goes!",
+      body: "Great questions! Sublingual is preferred — hold it under your tongue for 60-90 seconds before swallowing for the fastest absorption (15-20 min to onset). Adding it to tea works too but onset will be slower (45-60 min). Taking it alongside ibuprofen is fine at this dose. Let me know how your first week goes.",
       aiDrafted: false,
       sentAt: daysAgo(2),
       createdAt: daysAgo(2),
+    },
+  });
+
+  // Thread 2: Side effect report — NEEDS PROVIDER REVIEW (AI draft ready)
+  const mayaSideEffectThread = await prisma.messageThread.create({
+    data: {
+      patientId: maya.id,
+      subject: "Feeling groggy in the mornings",
+      lastMessageAt: daysAgo(0),
+      triageUrgency: "high",
+      triageCategory: "side_effect",
+      triageSafetyFlags: [],
+      triageSummary:
+        "Maya reports morning grogginess on her current 5mg THC + 2.5mg CBN bedtime tincture. Pain is improving but she feels 'drugged' until 10am. May need dose reduction or earlier timing.",
+      triagedAt: daysAgo(0),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: mayaSideEffectThread.id,
+      senderUserId: mayaUser.id,
+      status: MessageStatus.sent,
+      body: "Hi Dr. Okafor, I wanted to check in. The tincture has been helping my pain a lot (down to about a 3 from a 6), and I'm sleeping better too — thank you! But I've been feeling pretty groggy in the mornings, like I can't shake it until 10am or so. Is this normal? Should I be worried?",
+      aiDrafted: false,
+      sentAt: daysAgo(0),
+      createdAt: daysAgo(0),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: mayaSideEffectThread.id,
+      status: MessageStatus.draft,
+      body: "Hi Maya — really glad to hear your pain is down to a 3 and your sleep is improving. The morning grogginess you're describing is a common effect of the CBN in your bedtime tincture, especially in the first 1-2 weeks as your body adjusts. A few things we can try: (1) move your dose to 60-90 min before bed instead of right before sleep — this gives the CBN more time to peak and wear off by morning, (2) if it's still happening next week, we can drop the CBN component by half. Nothing to worry about, but I want to hear how it's going. Can you give it a few nights with the earlier timing and message me on Monday?",
+      aiDrafted: true,
+      senderAgent: "correspondenceNurse:1.0.0",
+      createdAt: daysAgo(0),
+    },
+  });
+
+  // Thread 3: Gratitude / positive update — LOW urgency
+  const mayaGratitudeThread = await prisma.messageThread.create({
+    data: {
+      patientId: maya.id,
+      subject: "First pain-free day!",
+      lastMessageAt: daysAgo(6),
+      triageUrgency: "low",
+      triageCategory: "gratitude",
+      triageSafetyFlags: [],
+      triageSummary:
+        "Maya reports her first pain-free day since starting cannabis therapy. Positive update — reinforce and encourage.",
+      triagedAt: daysAgo(6),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: mayaGratitudeThread.id,
+      senderUserId: mayaUser.id,
+      status: MessageStatus.read,
+      body: "I had to share — yesterday was my first pain-free day in 8 months. I took my daughter to the park and walked 3 miles without stopping. I literally cried in the car afterward. Thank you for everything.",
+      aiDrafted: false,
+      sentAt: daysAgo(7),
+      createdAt: daysAgo(7),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: mayaGratitudeThread.id,
+      senderUserId: clinicianUser.id,
+      status: MessageStatus.sent,
+      body: "Maya, this message made my whole week. Three miles with your daughter — that's exactly what this is all for. Keep logging your check-ins so we can see the pattern. So proud of you.",
+      aiDrafted: false,
+      sentAt: daysAgo(6),
+      createdAt: daysAgo(6),
+    },
+  });
+
+  // Thread 4: Refill request — ROUTINE
+  const mayaRefillThread = await prisma.messageThread.create({
+    data: {
+      patientId: maya.id,
+      subject: "Running low on my tincture",
+      lastMessageAt: daysAgo(1),
+      triageUrgency: "routine",
+      triageCategory: "refill_request",
+      triageSafetyFlags: [],
+      triageSummary:
+        "Maya has about 5 days of tincture left. Standard refill. Last 30-day adherence was 92% (good). Safe to refill.",
+      triagedAt: daysAgo(1),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: mayaRefillThread.id,
+      senderUserId: mayaUser.id,
+      status: MessageStatus.sent,
+      body: "Hi! I have about 5 days of tincture left and wanted to request a refill. Same pharmacy as last time. Thanks!",
+      aiDrafted: false,
+      sentAt: daysAgo(1),
+      createdAt: daysAgo(1),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: mayaRefillThread.id,
+      status: MessageStatus.draft,
+      body: "Hi Maya, refill authorized and being sent to your usual pharmacy today — should be ready tomorrow afternoon. Your adherence has been excellent (92% the last 30 days, which is impressive) and your pain trend is moving in the right direction, so we'll keep the regimen exactly as-is. You'll get a text from the pharmacy when it's ready.",
+      aiDrafted: true,
+      senderAgent: "correspondenceNurse:1.0.0",
+      createdAt: daysAgo(1),
     },
   });
 
@@ -720,24 +839,113 @@ async function main() {
     });
   }
 
-  // James — Message thread (1 welcome message)
+  // ────────────────────────────────────────────────────────────
+  // James — 3 threads showcasing the full triage spectrum including
+  // an EMERGENCY flag (the single most important demonstration)
+  // ────────────────────────────────────────────────────────────
+
+  // Thread 1: Welcome / intake follow-up
   const jamesThread = await prisma.messageThread.create({
     data: {
       patientId: james.id,
       subject: "Welcome to Green Path Health",
       lastMessageAt: daysAgo(1),
+      triageUrgency: "routine",
+      triageCategory: "general_question",
+      triageSafetyFlags: [],
+      triageSummary: "New patient welcome thread. Intake in progress.",
+      triagedAt: daysAgo(1),
     },
   });
-
   await prisma.message.create({
     data: {
       threadId: jamesThread.id,
       senderUserId: clinicianUser.id,
       status: MessageStatus.sent,
-      body: "Hi James, welcome to Green Path Health! I'm Dr. Okafor. I've reviewed your intake information and I'm looking forward to our upcoming consultation. In the meantime, please continue logging your sleep and anxiety levels daily so we have good baseline data to work with.",
+      body: "Hi James, welcome to Green Path Health! I'm Dr. Okafor. I've reviewed your intake so far and I'm looking forward to our consultation. In the meantime, please continue logging your sleep and anxiety levels daily so we have good baseline data.",
       aiDrafted: false,
       sentAt: daysAgo(1),
       createdAt: daysAgo(1),
+    },
+  });
+
+  // Thread 2: EMERGENCY — the headline demonstration
+  // Patient mentions chest pain + shortness of breath. The Correspondence
+  // Nurse MUST catch this and force "emergency" urgency regardless of
+  // anything else. The draft must instruct the patient to call 911.
+  const jamesEmergencyThread = await prisma.messageThread.create({
+    data: {
+      patientId: james.id,
+      subject: "Chest pain — should I be worried?",
+      lastMessageAt: new Date(Date.now() - 15 * 60 * 1000), // 15 min ago
+      triageUrgency: "emergency",
+      triageCategory: "symptom_report",
+      triageSafetyFlags: [
+        '🚨 Emergency keyword: "chest pain"',
+        '🚨 Emergency keyword: "difficulty breathing"',
+      ],
+      triageSummary:
+        "🚨 EMERGENCY — James reports chest pain and difficulty catching his breath after his morning dose. Must instruct him to call 911 or go to the ER immediately. Do not attempt to manage this in messaging.",
+      triagedAt: new Date(Date.now() - 15 * 60 * 1000),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: jamesEmergencyThread.id,
+      senderUserId: jamesUser.id,
+      status: MessageStatus.sent,
+      body: "I'm feeling some chest pain and having a little difficulty catching my breath. It started about 20 minutes after I took my morning dose. Should I be worried? Should I stop the medication?",
+      aiDrafted: false,
+      sentAt: new Date(Date.now() - 20 * 60 * 1000),
+      createdAt: new Date(Date.now() - 20 * 60 * 1000),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: jamesEmergencyThread.id,
+      status: MessageStatus.draft,
+      body:
+        "James — I want you to stop what you're doing and call 911 or go to the nearest emergency room RIGHT NOW. Chest pain plus difficulty breathing can be a sign of a serious problem that I can't safely evaluate through a message. Don't drive yourself — call 911 or have someone drive you.\n\nOnce you're being seen, please have someone message me so I know you're safe. We'll figure out what happened and adjust your care together afterward, but the priority right now is getting you in front of an ER doctor.",
+      aiDrafted: true,
+      senderAgent: "correspondenceNurse:1.0.0",
+      createdAt: new Date(Date.now() - 15 * 60 * 1000),
+    },
+  });
+
+  // Thread 3: Billing question — routine
+  const jamesBillingThread = await prisma.messageThread.create({
+    data: {
+      patientId: james.id,
+      subject: "Question about my bill",
+      lastMessageAt: daysAgo(4),
+      triageUrgency: "routine",
+      triageCategory: "billing_question",
+      triageSafetyFlags: [],
+      triageSummary:
+        "James is confused about a $64 patient responsibility charge on his recent Aetna EOB. This is his plan's deductible share on a 99204 visit. Needs plain-language explanation.",
+      triagedAt: daysAgo(4),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: jamesBillingThread.id,
+      senderUserId: jamesUser.id,
+      status: MessageStatus.read,
+      body: "Hi, I got a bill for $64 from my visit a few weeks ago and I'm confused. I thought Aetna covered everything. Can someone explain what this is for?",
+      aiDrafted: false,
+      sentAt: daysAgo(5),
+      createdAt: daysAgo(5),
+    },
+  });
+  await prisma.message.create({
+    data: {
+      threadId: jamesBillingThread.id,
+      senderUserId: clinicianUser.id,
+      status: MessageStatus.sent,
+      body: "Hi James, totally understandable question. Your plan with Aetna has a $3,000 annual deductible — that means you pay the first $3,000 before your plan starts fully covering things. The $64 goes toward that deductible, not to us beyond the network-allowed rate. Every dollar you pay counts toward meeting your deductible for the year. You can pay it directly through your patient portal billing tab. Let me know if you have other questions.",
+      aiDrafted: false,
+      sentAt: daysAgo(4),
+      createdAt: daysAgo(4),
     },
   });
 

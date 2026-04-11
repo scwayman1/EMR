@@ -151,11 +151,18 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const completenessScore = patient.chartSummary?.completenessScore ?? 0;
 
   /* ── Serialize threads for client component ───────────────── */
-  const serializedThreads: SerializedThread[] = threads.map((t) => ({
+  const serializedThreads: SerializedThread[] = threads.map((t: any) => ({
     id: t.id,
     subject: t.subject,
     lastMessageAt: t.lastMessageAt.toISOString(),
-    messages: t.messages.map((m) => ({
+    triageUrgency: t.triageUrgency ?? null,
+    triageCategory: t.triageCategory ?? null,
+    triageSafetyFlags: Array.isArray(t.triageSafetyFlags)
+      ? (t.triageSafetyFlags as string[])
+      : null,
+    triageSummary: t.triageSummary ?? null,
+    triagedAt: t.triagedAt ? t.triagedAt.toISOString() : null,
+    messages: t.messages.map((m: any) => ({
       id: m.id,
       body: m.body,
       status: m.status,

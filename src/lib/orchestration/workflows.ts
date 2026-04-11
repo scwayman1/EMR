@@ -87,7 +87,7 @@ export const workflows: WorkflowDefinition[] = [
   },
   {
     name: "message-draft",
-    on: ["message.draft.requested", "patient.intake.stalled"],
+    on: ["message.draft.requested"],
     steps: [
       {
         agent: "messagingAssistant",
@@ -95,6 +95,19 @@ export const workflows: WorkflowDefinition[] = [
           patientId: (e as any).patientId,
           intent: (e as any).intent ?? "follow_up",
         }),
+        requiresApproval: true,
+      },
+    ],
+  },
+  // Correspondence Nurse — triages every inbound patient message and
+  // drafts a clinically appropriate response. Approval-gated.
+  {
+    name: "correspondence-triage",
+    on: ["message.received"],
+    steps: [
+      {
+        agent: "correspondenceNurse",
+        input: (e) => ({ threadId: (e as any).threadId }),
         requiresApproval: true,
       },
     ],

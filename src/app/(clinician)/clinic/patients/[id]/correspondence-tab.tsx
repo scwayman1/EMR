@@ -29,7 +29,52 @@ export interface SerializedThread {
   subject: string;
   lastMessageAt: string;
   messages: SerializedMessage[];
+  triageUrgency: string | null;
+  triageCategory: string | null;
+  triageSafetyFlags: string[] | null;
+  triageSummary: string | null;
+  triagedAt: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Triage rendering helpers
+// ---------------------------------------------------------------------------
+
+const URGENCY_TONES: Record<string, { badge: "danger" | "warning" | "accent" | "success" | "neutral"; border: string; label: string }> = {
+  emergency: {
+    badge: "danger",
+    border: "border-l-danger bg-danger/[0.03]",
+    label: "🚨 EMERGENCY",
+  },
+  high: {
+    badge: "warning",
+    border: "border-l-[color:var(--warning)] bg-[color:var(--warning)]/[0.03]",
+    label: "⚠ High urgency",
+  },
+  routine: {
+    badge: "accent",
+    border: "border-l-accent",
+    label: "Routine",
+  },
+  low: {
+    badge: "success",
+    border: "border-l-success/60",
+    label: "Low",
+  },
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  symptom_report: "Symptom report",
+  side_effect: "Side effect",
+  refill_request: "Refill request",
+  appointment_question: "Appointment",
+  billing_question: "Billing",
+  dosing_question: "Dosing",
+  result_inquiry: "Lab/Result",
+  general_question: "General",
+  gratitude: "Gratitude",
+  unknown: "Unclassified",
+};
 
 interface CorrespondenceTabProps {
   threads: SerializedThread[];
@@ -116,35 +161,67 @@ export function CorrespondenceTab({
   return (
     <div className="flex flex-col md:flex-row gap-4 min-h-[480px]">
       {/* ── Thread list ──────────────────────────────────── */}
-      <div className="md:w-[280px] shrink-0">
+      <div className="md:w-[300px] shrink-0">
         <Card className="overflow-hidden">
-          <div className="overflow-y-auto max-h-[560px]">
+          <div className="overflow-y-auto max-h-[720px]">
             {threads.map((t) => {
               const isActive = t.id === activeThreadId;
               const lastMsg = t.messages[0];
+              const hasAiDraft = t.messages.some(
+                (m) => m.status === "draft" && m.aiDrafted,
+              );
+              const urgency = t.triageUrgency ?? "";
+              const urgencyTone = URGENCY_TONES[urgency];
               return (
                 <button
                   key={t.id}
                   onClick={() => setActiveThreadId(t.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted ${
+                  className={`w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted border-l-[3px] ${
                     isActive
-                      ? "bg-surface-muted border-l-2 border-l-accent"
-                      : "border-l-2 border-l-transparent"
+                      ? "bg-surface-muted"
+                      : ""
+                  } ${
+                    urgency === "emergency"
+                      ? "border-l-danger"
+                      : urgency === "high"
+                        ? "border-l-[color:var(--warning)]"
+                        : urgency === "routine"
+                          ? "border-l-accent/60"
+                          : urgency === "low"
+                            ? "border-l-success/40"
+                            : "border-l-transparent"
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <div className="flex items-center justify-between gap-2 mb-1">
                     <p className="text-sm font-medium text-text truncate">
                       {t.subject}
                     </p>
-                    <span className="text-[11px] text-text-subtle whitespace-nowrap">
+                    <span className="text-[11px] text-text-subtle whitespace-nowrap shrink-0">
                       {formatRelative(t.lastMessageAt)}
                     </span>
                   </div>
                   {lastMsg && (
-                    <p className="text-xs text-text-subtle line-clamp-1">
+                    <p className="text-xs text-text-subtle line-clamp-1 mb-1.5">
                       {lastMsg.body}
                     </p>
                   )}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {urgencyTone && urgency !== "low" && (
+                      <Badge tone={urgencyTone.badge} className="text-[9px]">
+                        {urgencyTone.label}
+                      </Badge>
+                    )}
+                    {t.triageCategory && (
+                      <Badge tone="neutral" className="text-[9px]">
+                        {CATEGORY_LABELS[t.triageCategory] ?? t.triageCategory}
+                      </Badge>
+                    )}
+                    {hasAiDraft && (
+                      <Badge tone="highlight" className="text-[9px]">
+                        Draft ready
+                      </Badge>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -153,28 +230,98 @@ export function CorrespondenceTab({
       </div>
 
       {/* ── Active thread detail ─────────────────────────── */}
-      <Card className="flex-1 flex flex-col overflow-hidden">
+      <Card
+        className={`flex-1 flex flex-col overflow-hidden ${
+          activeThread?.triageUrgency === "emergency"
+            ? "border-l-4 border-l-danger"
+            : activeThread?.triageUrgency === "high"
+              ? "border-l-4 border-l-[color:var(--warning)]"
+              : ""
+        }`}
+      >
         {activeThread ? (
           <>
             {/* Thread header */}
             <div className="px-5 py-4 border-b border-border">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mb-3">
                 <Avatar
                   firstName={patientFirstName}
                   lastName={patientLastName}
                   size="sm"
                 />
-                <div>
-                  <h3 className="font-display text-lg text-text leading-tight">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display text-lg text-text leading-tight truncate">
                     {activeThread.subject}
                   </h3>
                   <p className="text-xs text-text-muted">
                     {patientFirstName} {patientLastName} &middot;{" "}
                     {activeThread.messages.length} message
                     {activeThread.messages.length !== 1 ? "s" : ""}
+                    {activeThread.triagedAt && (
+                      <>
+                        {" · triaged "}
+                        {formatRelative(activeThread.triagedAt)}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
+
+              {/* Triage row */}
+              {(activeThread.triageUrgency || activeThread.triageCategory) && (
+                <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                  {activeThread.triageUrgency &&
+                    URGENCY_TONES[activeThread.triageUrgency] && (
+                      <Badge
+                        tone={URGENCY_TONES[activeThread.triageUrgency].badge}
+                        className="text-[10px] font-semibold"
+                      >
+                        {URGENCY_TONES[activeThread.triageUrgency].label}
+                      </Badge>
+                    )}
+                  {activeThread.triageCategory && (
+                    <Badge tone="neutral" className="text-[10px]">
+                      {CATEGORY_LABELS[activeThread.triageCategory] ??
+                        activeThread.triageCategory}
+                    </Badge>
+                  )}
+                  <span className="text-[10px] text-text-subtle ml-1">
+                    triaged by correspondenceNurse v1.0
+                  </span>
+                </div>
+              )}
+
+              {/* AI summary of the thread */}
+              {activeThread.triageSummary && (
+                <div className="rounded-lg bg-accent/[0.04] border border-accent/15 px-3 py-2.5 mb-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-accent mb-1">
+                    Thread summary
+                  </p>
+                  <p className="text-xs text-text leading-relaxed">
+                    {activeThread.triageSummary}
+                  </p>
+                </div>
+              )}
+
+              {/* Safety flags — always prominent if present */}
+              {activeThread.triageSafetyFlags &&
+                activeThread.triageSafetyFlags.length > 0 && (
+                  <div className="rounded-lg bg-danger/[0.06] border border-danger/30 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-danger mb-1">
+                      Safety flags — review immediately
+                    </p>
+                    <ul className="space-y-0.5">
+                      {activeThread.triageSafetyFlags.map((flag, i) => (
+                        <li
+                          key={i}
+                          className="text-xs text-danger leading-relaxed"
+                        >
+                          {flag}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
             </div>
 
             {/* Messages area (chronological) */}

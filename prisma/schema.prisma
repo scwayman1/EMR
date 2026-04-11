@@ -661,11 +661,18 @@ model MessageThread {
   subject        String
   lastMessageAt  DateTime  @default(now())
   createdAt      DateTime  @default(now())
+  // Correspondence Nurse Agent triage metadata
+  triageUrgency   String?   // "emergency" | "high" | "routine" | "low"
+  triageCategory  String?   // "symptom_report" | "refill_request" | etc.
+  triageSafetyFlags Json?   // string[] of red-flag symptoms
+  triageSummary   String?   // 1-2 sentence AI summary of the thread
+  triagedAt       DateTime?
 
   patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   messages       Message[]
 
   @@index([patientId, lastMessageAt])
+  @@index([triageUrgency])
 }
 
 enum MessageStatus {

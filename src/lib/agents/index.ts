@@ -13,6 +13,7 @@ import { physicianNudgeAgent } from "./physician-nudge-agent";
 import { patientOutreachAgent } from "./patient-outreach-agent";
 import { preVisitIntelligenceAgent } from "./pre-visit-intelligence-agent";
 import { fairytaleSummaryAgent } from "./fairytale-summary-agent";
+import { correspondenceNurseAgent } from "./correspondence-nurse-agent";
 // Billing agents — Phase 3 of the Revenue Cycle PRD
 import { chargeIntegrityAgent } from "./billing/charge-integrity-agent";
 import { denialTriageAgent } from "./billing/denial-triage-agent";
@@ -45,6 +46,7 @@ export const agentRegistry = {
   patientOutreach: patientOutreachAgent,
   preVisitIntelligence: preVisitIntelligenceAgent,
   fairytaleSummary: fairytaleSummaryAgent,
+  correspondenceNurse: correspondenceNurseAgent,
   // Billing agents (Phase 3)
   chargeIntegrity: chargeIntegrityAgent,
   denialTriage: denialTriageAgent,

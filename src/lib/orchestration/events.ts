@@ -18,6 +18,7 @@ export type DomainEvent =
   | { name: "note.finalized"; noteId: string; encounterId: string; finalizedBy: string }
   | { name: "message.draft.requested"; patientId: string; intent: string; organizationId: string }
   | { name: "message.sent"; messageId: string; threadId: string }
+  | { name: "message.received"; messageId: string; threadId: string; patientId: string; organizationId: string }
   | { name: "appointment.created"; appointmentId: string }
   | { name: "appointment.cancelled"; appointmentId: string }
   | { name: "research.query.submitted"; queryId: string; query: string; patientId?: string }
