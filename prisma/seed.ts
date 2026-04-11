@@ -19,6 +19,9 @@ import {
   ProductType,
   DeliveryRoute,
   MedicationType,
+  AppointmentStatus,
+  ClaimStatus,
+  PaymentSource,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -1018,6 +1021,210 @@ async function main() {
       notes: "PRN for breakthrough pain. Max 4g/day.",
     },
   });
+
+  // ------------------------------------------------------------------
+  // Practice Management — Fee Schedule, Appointments, Claims, Payments
+  // ------------------------------------------------------------------
+
+  // Fee schedule — common E&M and cannabis counseling codes
+  const feeScheduleEntries = [
+    { cptCode: "99203", description: "New patient visit, 30-44 min", defaultChargeCents: 28500, category: "E&M" },
+    { cptCode: "99204", description: "New patient visit, 45-59 min", defaultChargeCents: 42500, category: "E&M" },
+    { cptCode: "99205", description: "New patient visit, 60-74 min", defaultChargeCents: 56500, category: "E&M" },
+    { cptCode: "99213", description: "Established patient visit, 20-29 min", defaultChargeCents: 15500, category: "E&M" },
+    { cptCode: "99214", description: "Established patient visit, 30-39 min", defaultChargeCents: 22500, category: "E&M" },
+    { cptCode: "99215", description: "Established patient visit, 40-54 min", defaultChargeCents: 32500, category: "E&M" },
+    { cptCode: "99406", description: "Tobacco cessation counseling, 3-10 min", defaultChargeCents: 2500, category: "Counseling" },
+    { cptCode: "99407", description: "Tobacco cessation counseling, >10 min", defaultChargeCents: 4500, category: "Counseling" },
+    { cptCode: "G0447", description: "Behavioral counseling for obesity, 15 min", defaultChargeCents: 3500, category: "Counseling" },
+    { cptCode: "96160", description: "Health risk assessment, patient-focused", defaultChargeCents: 1500, category: "Assessment" },
+    { cptCode: "99401", description: "Preventive counseling, 15 min", defaultChargeCents: 5500, category: "Counseling" },
+    { cptCode: "99402", description: "Preventive counseling, 30 min", defaultChargeCents: 10500, category: "Counseling" },
+  ];
+
+  for (const entry of feeScheduleEntries) {
+    await prisma.feeScheduleEntry.upsert({
+      where: {
+        organizationId_cptCode: {
+          organizationId: org.id,
+          cptCode: entry.cptCode,
+        },
+      },
+      update: {},
+      create: {
+        organizationId: org.id,
+        ...entry,
+      },
+    });
+  }
+
+  // Upcoming appointments for today + this week (demo schedule)
+  const appointmentSeeds = [
+    // Today
+    { patientId: maya.id, hoursFromNow: -2, durationMin: 30, modality: "in_person", status: AppointmentStatus.completed },
+    { patientId: james.id, hoursFromNow: 1, durationMin: 45, modality: "video", status: AppointmentStatus.confirmed },
+    { patientId: sarah.id, hoursFromNow: 3, durationMin: 30, modality: "in_person", status: AppointmentStatus.confirmed },
+    // Tomorrow
+    { patientId: maya.id, hoursFromNow: 26, durationMin: 30, modality: "video", status: AppointmentStatus.confirmed },
+    { patientId: james.id, hoursFromNow: 28, durationMin: 30, modality: "in_person", status: AppointmentStatus.confirmed },
+    // Day after
+    { patientId: sarah.id, hoursFromNow: 50, durationMin: 45, modality: "in_person", status: AppointmentStatus.confirmed },
+    { patientId: maya.id, hoursFromNow: 52, durationMin: 30, modality: "phone", status: AppointmentStatus.requested },
+    // Next week
+    { patientId: james.id, hoursFromNow: 170, durationMin: 30, modality: "video", status: AppointmentStatus.confirmed },
+    { patientId: maya.id, hoursFromNow: 172, durationMin: 30, modality: "in_person", status: AppointmentStatus.confirmed },
+  ];
+
+  for (const appt of appointmentSeeds) {
+    const start = new Date(Date.now() + appt.hoursFromNow * 60 * 60 * 1000);
+    const end = new Date(start.getTime() + appt.durationMin * 60 * 1000);
+    await prisma.appointment.create({
+      data: {
+        patientId: appt.patientId,
+        providerId: provider.id,
+        status: appt.status,
+        startAt: start,
+        endAt: end,
+        modality: appt.modality,
+      },
+    });
+  }
+
+  // Claims — full lifecycle representation
+  const claimSeeds = [
+    // Paid claim (Maya, 30 days ago)
+    {
+      patient: maya,
+      encounter: mayaCompletedEncounter,
+      status: ClaimStatus.paid,
+      cptCodes: [{ code: "99214", label: "Established patient, 30-39 min", units: 1, chargeAmount: 22500 }],
+      icd10: [{ code: "G89.29", label: "Other chronic pain" }, { code: "F41.1", label: "Generalized anxiety disorder" }],
+      billedAmount: 22500,
+      allowedAmount: 18000,
+      paidAmount: 14400,
+      patientResp: 3600,
+      payerName: "Blue Cross Blue Shield",
+      serviceDaysAgo: 30,
+      paidDaysAgo: 12,
+    },
+    // Pending claim (Maya, 10 days ago)
+    {
+      patient: maya,
+      encounter: null as any,
+      status: ClaimStatus.pending,
+      cptCodes: [{ code: "99213", label: "Established patient, 20-29 min", units: 1, chargeAmount: 15500 }],
+      icd10: [{ code: "G47.00", label: "Insomnia, unspecified" }],
+      billedAmount: 15500,
+      allowedAmount: null,
+      paidAmount: 0,
+      patientResp: 0,
+      payerName: "Blue Cross Blue Shield",
+      serviceDaysAgo: 10,
+      paidDaysAgo: null,
+    },
+    // Partially paid with patient balance
+    {
+      patient: james,
+      encounter: null as any,
+      status: ClaimStatus.partial,
+      cptCodes: [{ code: "99204", label: "New patient visit, 45-59 min", units: 1, chargeAmount: 42500 }],
+      icd10: [{ code: "F41.1", label: "Generalized anxiety disorder" }, { code: "F32.9", label: "Major depressive disorder" }],
+      billedAmount: 42500,
+      allowedAmount: 32000,
+      paidAmount: 25600,
+      patientResp: 6400,
+      payerName: "Aetna",
+      serviceDaysAgo: 20,
+      paidDaysAgo: 5,
+    },
+    // Denied claim (needs action)
+    {
+      patient: sarah,
+      encounter: null as any,
+      status: ClaimStatus.denied,
+      cptCodes: [{ code: "99215", label: "Established patient, 40-54 min", units: 1, chargeAmount: 32500 }],
+      icd10: [{ code: "M54.5", label: "Low back pain" }],
+      billedAmount: 32500,
+      allowedAmount: null,
+      paidAmount: 0,
+      patientResp: 0,
+      payerName: "UnitedHealthcare",
+      serviceDaysAgo: 15,
+      paidDaysAgo: null,
+      denialReason: "Missing prior authorization for extended visit",
+    },
+    // Submitted, awaiting response
+    {
+      patient: james,
+      encounter: null as any,
+      status: ClaimStatus.submitted,
+      cptCodes: [{ code: "99213", label: "Established patient, 20-29 min", units: 1, chargeAmount: 15500 }],
+      icd10: [{ code: "F41.1", label: "Generalized anxiety disorder" }],
+      billedAmount: 15500,
+      allowedAmount: null,
+      paidAmount: 0,
+      patientResp: 0,
+      payerName: "Aetna",
+      serviceDaysAgo: 3,
+      paidDaysAgo: null,
+    },
+    // Draft (ready to bill — note exists but claim not submitted)
+    {
+      patient: maya,
+      encounter: null as any,
+      status: ClaimStatus.draft,
+      cptCodes: [{ code: "99214", label: "Established patient, 30-39 min", units: 1, chargeAmount: 22500 }],
+      icd10: [{ code: "G89.29", label: "Other chronic pain" }],
+      billedAmount: 22500,
+      allowedAmount: null,
+      paidAmount: 0,
+      patientResp: 0,
+      payerName: "Blue Cross Blue Shield",
+      serviceDaysAgo: 1,
+      paidDaysAgo: null,
+    },
+  ];
+
+  for (const claimData of claimSeeds) {
+    const serviceDate = new Date(Date.now() - claimData.serviceDaysAgo * 24 * 60 * 60 * 1000);
+    const claim = await prisma.claim.create({
+      data: {
+        organizationId: org.id,
+        patientId: claimData.patient.id,
+        encounterId: claimData.encounter?.id ?? null,
+        providerId: provider.id,
+        status: claimData.status,
+        cptCodes: claimData.cptCodes,
+        icd10Codes: claimData.icd10,
+        billedAmountCents: claimData.billedAmount,
+        allowedAmountCents: claimData.allowedAmount,
+        paidAmountCents: claimData.paidAmount,
+        patientRespCents: claimData.patientResp,
+        payerName: claimData.payerName,
+        claimNumber: `CLM-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
+        serviceDate,
+        submittedAt: claimData.status !== ClaimStatus.draft ? new Date(serviceDate.getTime() + 24 * 60 * 60 * 1000) : null,
+        paidAt: claimData.paidDaysAgo != null ? new Date(Date.now() - claimData.paidDaysAgo * 24 * 60 * 60 * 1000) : null,
+        deniedAt: claimData.status === ClaimStatus.denied ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) : null,
+        denialReason: claimData.denialReason ?? null,
+      },
+    });
+
+    // Create payment records for paid/partial claims
+    if (claimData.paidAmount > 0) {
+      await prisma.payment.create({
+        data: {
+          claimId: claim.id,
+          source: PaymentSource.insurance,
+          amountCents: claimData.paidAmount,
+          paymentDate: new Date(Date.now() - (claimData.paidDaysAgo ?? 10) * 24 * 60 * 60 * 1000),
+          reference: `EFT${Math.random().toString(36).slice(2, 12).toUpperCase()}`,
+        },
+      });
+    }
+  }
+
+  console.log("  Practice management: fee schedule + appointments + claims seeded.");
 
   // ------------------------------------------------------------------
   // Done

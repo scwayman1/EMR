@@ -6,7 +6,10 @@ import { ROLE_HOME } from "@/lib/rbac/roles";
 const OPS_NAV: NavItem[] = [
   { label: "Overview", href: "/ops" },
   { label: "Mission Control", href: "/ops/mission-control" },
+  { label: "Schedule", href: "/ops/schedule" },
   { label: "Patients", href: "/ops/patients" },
+  { label: "Billing", href: "/ops/billing" },
+  { label: "Revenue", href: "/ops/revenue" },
   { label: "Eligibility", href: "/ops/eligibility" },
   { label: "Practice launch", href: "/ops/launch" },
   { label: "Analytics", href: "/ops/analytics" },

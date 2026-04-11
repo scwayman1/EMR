@@ -44,6 +44,8 @@ model Organization {
   agentJobs      AgentJob[]
   launchStatus   PracticeLaunchStatus?
   cannabisProducts CannabisProduct[]
+  claims         Claim[]
+  feeSchedule    FeeScheduleEntry[]
 }
 
 model User {
@@ -138,6 +140,7 @@ model Patient {
   dosingRegimens  DosingRegimen[]
   doseLogs        DoseLog[]
   medications     PatientMedication[]
+  claims          Claim[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -157,6 +160,7 @@ model Provider {
   organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   encounters      Encounter[]
   appointments    Appointment[]
+  claims          Claim[]
 
   @@index([organizationId])
 }
@@ -249,6 +253,7 @@ model Encounter {
   provider       Provider?       @relation(fields: [providerId], references: [id], onDelete: SetNull)
   notes          Note[]
   documents      Document[]
+  claims         Claim[]
 
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
@@ -291,6 +296,97 @@ model CodingSuggestion {
   generatedAt    DateTime @default(now())
 
   note           Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------
+// Billing — Claims, Payments, Fee Schedule
+// --------------------------------------------------------------
+
+enum ClaimStatus {
+  draft          // not yet submitted
+  submitted      // sent to payer
+  pending        // payer processing
+  paid           // fully paid
+  partial        // partially paid, balance due
+  denied         // payer denied
+  appealed       // under appeal
+  written_off    // written off
+}
+
+model Claim {
+  id              String       @id @default(cuid())
+  organizationId  String
+  patientId       String
+  encounterId     String?
+  providerId      String?
+  status          ClaimStatus  @default(draft)
+  // Coding
+  cptCodes        Json         // [{ code, label, units, chargeAmount }]
+  icd10Codes      Json         // [{ code, label }]
+  // Financials (in cents to avoid float rounding)
+  billedAmountCents   Int
+  allowedAmountCents  Int?
+  paidAmountCents     Int       @default(0)
+  patientRespCents    Int       @default(0)
+  // Payer
+  payerName       String?       // "Blue Cross Blue Shield", "Aetna", etc.
+  payerId         String?       // payer's claim id
+  claimNumber     String?       // our internal claim number
+  // Lifecycle
+  serviceDate     DateTime
+  submittedAt     DateTime?
+  paidAt          DateTime?
+  deniedAt        DateTime?
+  denialReason    String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter       Encounter?    @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  provider        Provider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  payments        Payment[]
+
+  @@index([organizationId, status, serviceDate])
+  @@index([patientId, serviceDate])
+  @@index([providerId, serviceDate])
+}
+
+enum PaymentSource {
+  patient
+  insurance
+  adjustment
+}
+
+model Payment {
+  id              String         @id @default(cuid())
+  claimId         String
+  source          PaymentSource
+  amountCents     Int
+  paymentDate     DateTime       @default(now())
+  reference       String?        // check #, EFT trace, last4 of card
+  notes           String?
+
+  claim           Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId, paymentDate])
+}
+
+model FeeScheduleEntry {
+  id              String        @id @default(cuid())
+  organizationId  String
+  cptCode         String
+  description     String
+  defaultChargeCents Int
+  category        String?        // "E&M", "Procedure", "Cannabis Counseling", etc.
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, cptCode])
+  @@index([organizationId, category])
 }
 
 // --------------------------------------------------------------
