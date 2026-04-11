@@ -102,6 +102,32 @@ async function cleanIdempotent() {
   await prisma.appointment.deleteMany({
     where: { patient: { organizationId: org.id } },
   });
+
+  // ── Billing tables (Phase 1-3) ─────────────────────────────────
+  // FK order: payments → financial events → claims → statements →
+  // payment plans → coverage → stored payment methods.
+  // Statement.statementNumber has @unique so we MUST clean these up
+  // or the seed crashes on duplicate inserts every deploy.
+  await prisma.payment.deleteMany({
+    where: { claim: { organizationId: org.id } },
+  });
+  await prisma.financialEvent.deleteMany({
+    where: { organizationId: org.id },
+  });
+  await prisma.claim.deleteMany({ where: { organizationId: org.id } });
+  await prisma.statement.deleteMany({ where: { organizationId: org.id } });
+  await prisma.paymentPlan.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
+  await prisma.patientCoverage.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
+  await prisma.storedPaymentMethod.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
+  await prisma.feeScheduleEntry.deleteMany({
+    where: { organizationId: org.id },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1070,25 +1096,13 @@ async function main() {
     });
   }
 
-  // ──────────────────────────────────────────────────────────────────
-  // Everything below this point uses .create() (not upsert) and is
-  // expensive to deduplicate row-by-row. Gate the whole block on
-  // appointment count so the seed is idempotent across deploys —
-  // Render runs db:seed on every deploy and would otherwise crash on
-  // unique constraint violations (Statement.statementNumber, etc.)
-  // and balloon the row count of the demo data.
-  // ──────────────────────────────────────────────────────────────────
-  const existingAppointments = await prisma.appointment.count({
-    where: { patient: { organizationId: org.id } },
-  });
+  // Idempotency: cleanIdempotent() at the top of main() wipes all of
+  // the billing tables (payments, financial events, claims, statements,
+  // payment plans, coverage, stored payment methods) so we can safely
+  // recreate them with .create() on every deploy.
 
-  if (existingAppointments > 0) {
-    console.log(
-      "  Practice management already seeded — skipping appointments, claims, statements.",
-    );
-  } else {
-    // Upcoming appointments for today + this week (demo schedule)
-    const appointmentSeeds = [
+  // Upcoming appointments for today + this week (demo schedule)
+  const appointmentSeeds = [
     // Today
     { patientId: maya.id, hoursFromNow: -2, durationMin: 30, modality: "in_person", status: AppointmentStatus.completed },
     { patientId: james.id, hoursFromNow: 1, durationMin: 45, modality: "video", status: AppointmentStatus.confirmed },
@@ -1674,8 +1688,7 @@ async function main() {
     },
   });
 
-    console.log("  Billing: coverage + ledger + statements + payment plans seeded.");
-  } // end of practice-management idempotency guard
+  console.log("  Billing: coverage + ledger + statements + payment plans seeded.");
 
   // ------------------------------------------------------------------
   // Done
