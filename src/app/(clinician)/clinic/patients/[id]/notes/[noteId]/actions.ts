@@ -5,7 +5,11 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { dispatch } from "@/lib/orchestration/dispatch";
 import { runTick } from "@/lib/orchestration/runner";
-import { resolveModelClient } from "@/lib/orchestration/model-client";
+import {
+  resolveModelClient,
+  isModelError,
+  type ModelErrorCode,
+} from "@/lib/orchestration/model-client";
 import { z } from "zod";
 
 const blockSchema = z.object({
@@ -195,7 +199,7 @@ const REFINE_INSTRUCTIONS: Record<RefineMode, string> = {
 
 export type RefineResult =
   | { ok: true; refined: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code: ModelErrorCode | "not_found" | "unauthorized" };
 
 export async function refineSection(
   noteId: string,
@@ -213,12 +217,12 @@ export async function refineSection(
       },
     },
   });
-  if (!note) return { ok: false, error: "Note not found" };
+  if (!note) return { ok: false, error: "Note not found", code: "not_found" };
 
   const encounter = await prisma.encounter.findFirst({
     where: { id: note.encounterId, organizationId: user.organizationId! },
   });
-  if (!encounter) return { ok: false, error: "Unauthorized" };
+  if (!encounter) return { ok: false, error: "Unauthorized", code: "unauthorized" };
 
   const patient = note.encounter.patient;
   const instruction = REFINE_INSTRUCTIONS[mode];
@@ -239,15 +243,31 @@ Return ONLY the refined text — no JSON, no markdown, no explanation. Just the 
   const model = resolveModelClient();
 
   try {
+    // Note sections are short paragraphs; 256 is plenty and keeps us well
+    // under common credit ceilings. A generous SOAP subsection is ~200 words
+    // which is ~260 tokens.
     const refined = await model.complete(prompt, {
-      maxTokens: 512,
+      maxTokens: 256,
       temperature: 0.25,
     });
     return { ok: true, refined: refined.trim() };
   } catch (err) {
+    // Log the full provider detail for our own debugging — but send ONLY
+    // the friendly message to the client. Raw provider JSON must never
+    // reach the clinician's screen (Art. VI §2: "no cryptic error messages").
+    if (isModelError(err)) {
+      console.warn("[refineSection] model error", {
+        code: err.code,
+        status: err.status,
+        providerBody: err.providerBody,
+      });
+      return { ok: false, error: err.friendly, code: err.code };
+    }
+    console.warn("[refineSection] unexpected error", err);
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "AI refinement failed",
+      error: "AI refinement failed. Try again in a moment.",
+      code: "unknown",
     };
   }
 }

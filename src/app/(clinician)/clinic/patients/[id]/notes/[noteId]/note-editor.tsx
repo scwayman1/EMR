@@ -38,6 +38,28 @@ const REFINE_OPTIONS: { mode: RefineMode; label: string; icon: string }[] = [
   { mode: "clarify", label: "Clarify", icon: "?" },
 ];
 
+/**
+ * Defensive scrub for anything displayed in the Save/Finalize status slot.
+ *
+ * If a raw provider error body somehow slips in (for example from a legacy
+ * code path that pre-dates our ModelError classification), collapse it to
+ * a single human-friendly sentence. We never want to see `{"error":{...}}`
+ * JSON next to the Save and Finalize buttons again.
+ */
+function scrubMessage(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  // Detect a JSON-looking error dump
+  if (trimmed.startsWith("{") && trimmed.includes('"error"')) {
+    return "Something went wrong. Please try again.";
+  }
+  // Detect the legacy `OpenRouter error NNN: {...}` prefix
+  if (/OpenRouter error \d+/i.test(trimmed)) {
+    return "AI is temporarily unavailable. Please try again in a moment.";
+  }
+  return trimmed;
+}
+
 export function NoteEditor({
   noteId,
   patientId,
@@ -51,6 +73,11 @@ export function NoteEditor({
   const searchParams = useSearchParams();
   const fromBriefing = searchParams.get("from") === "briefing";
   const [refiningIndex, setRefiningIndex] = useState<number | null>(null);
+  // Refine errors are per-section so a single failed refinement never
+  // contaminates the Save/Finalize button row. Map of blockIndex -> friendly
+  // message. The message is pre-scrubbed by the server action — raw provider
+  // JSON never reaches here.
+  const [refineErrors, setRefineErrors] = useState<Record<number, string>>({});
   const [blocks, setBlocks] = useState<NoteBlock[]>(() => {
     // Sort initial blocks in APSO order
     const sorted = [...initialBlocks].sort((a, b) => {
@@ -107,6 +134,13 @@ export function NoteEditor({
 
   async function handleRefine(index: number, mode: RefineMode) {
     setRefiningIndex(index);
+    // Clear any prior error for this section before we try again.
+    setRefineErrors((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
     const block = blocks[index];
     const result = await refineSection(noteId, block.heading, block.body, mode);
     if (result.ok) {
@@ -114,9 +148,19 @@ export function NoteEditor({
       setSaveMessage(`${block.heading} refined`);
       setTimeout(() => setSaveMessage(null), 2000);
     } else {
-      setSaveMessage(result.error);
+      // Scoped per-section error — never leaks into the Save/Finalize row.
+      setRefineErrors((prev) => ({ ...prev, [index]: result.error }));
     }
     setRefiningIndex(null);
+  }
+
+  function dismissRefineError(index: number) {
+    setRefineErrors((prev) => {
+      if (!(index in prev)) return prev;
+      const next = { ...prev };
+      delete next[index];
+      return next;
+    });
   }
 
   return (
@@ -211,6 +255,25 @@ export function NoteEditor({
                       </span>
                     )}
                   </div>
+                  {refineErrors[i] && (
+                    <div
+                      role="alert"
+                      className="mt-2 flex items-start gap-2 rounded-md border border-highlight/30 bg-highlight-soft/50 px-3 py-2 text-[11px] text-[color:var(--highlight-hover)]"
+                    >
+                      <span aria-hidden="true" className="shrink-0 mt-0.5">⚠</span>
+                      <span className="flex-1 leading-relaxed">
+                        {refineErrors[i]}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => dismissRefineError(i)}
+                        aria-label="Dismiss"
+                        className="shrink-0 text-text-subtle hover:text-text transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -237,7 +300,9 @@ export function NoteEditor({
             {isPending ? "Finalizing..." : "Finalize & sign"}
           </Button>
           {saveMessage && (
-            <span className="text-sm text-text-muted">{saveMessage}</span>
+            <span className="text-sm text-text-muted">
+              {scrubMessage(saveMessage)}
+            </span>
           )}
         </div>
       )}
