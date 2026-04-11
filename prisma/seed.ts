@@ -453,6 +453,24 @@ async function main() {
     },
   });
 
+  // EMR-066: validated assessment library expansion
+  const expandedAssessments = [
+    { slug: "isi", title: "ISI (Insomnia)", description: "Insomnia Severity Index — 7-item sleep difficulty screen.", schema: { items: 7, scale: "0-4" } },
+    { slug: "pss-10", title: "PSS-10 (Stress)", description: "Perceived Stress Scale — 10 items, past month.", schema: { items: 10, scale: "0-4" } },
+    { slug: "epworth", title: "Epworth Sleepiness Scale", description: "Daytime sleepiness across 8 daily situations.", schema: { items: 8, scale: "0-3" } },
+    { slug: "audit-c", title: "AUDIT-C (Alcohol)", description: "3-item alcohol use screen.", schema: { items: 3, scale: "0-4" } },
+    { slug: "cudit-r", title: "CUDIT-R (Cannabis Use)", description: "Cannabis Use Disorders Identification Test (revised).", schema: { items: 8, scale: "0-4" } },
+    { slug: "promis-pain", title: "PROMIS Pain Interference", description: "6-item pain interference, past week.", schema: { items: 6, scale: "1-5" } },
+    { slug: "phq-2", title: "PHQ-2 (Quick Depression Screen)", description: "Two-question rapid depression screen.", schema: { items: 2, scale: "0-3" } },
+  ];
+  for (const a of expandedAssessments) {
+    await prisma.assessment.upsert({
+      where: { slug: a.slug },
+      update: {},
+      create: a,
+    });
+  }
+
   await prisma.assessmentResponse.create({
     data: {
       assessmentId: phq9.id,
