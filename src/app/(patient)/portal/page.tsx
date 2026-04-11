@@ -132,13 +132,18 @@ export default async function PatientHome() {
                     : "In-person visit"}
                   {nextVisit.reason ? ` · ${nextVisit.reason}` : ""}
                 </p>
-                <div className="mt-5 flex items-center gap-2">
+                <div className="mt-5 flex items-center gap-2 flex-wrap">
                   <Button size="sm" variant="secondary">
                     View details
                   </Button>
                   <Button size="sm" variant="ghost">
                     Reschedule
                   </Button>
+                  <a href="/api/appointments/ical" download>
+                    <Button size="sm" variant="ghost">
+                      Add to calendar
+                    </Button>
+                  </a>
                 </div>
               </>
             ) : (
