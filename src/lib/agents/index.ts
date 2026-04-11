@@ -21,6 +21,9 @@ import { patientCollectionsAgent } from "./billing/patient-collections-agent";
 import { reconciliationAgent } from "./billing/reconciliation-agent";
 import { agingAgent } from "./billing/aging-agent";
 import { underpaymentDetectionAgent } from "./billing/underpayment-detection-agent";
+// Phase 4
+import { refundCreditAgent } from "./billing/refund-credit-agent";
+import { revenueCommandAgent } from "./billing/revenue-command-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -50,6 +53,9 @@ export const agentRegistry = {
   reconciliation: reconciliationAgent,
   aging: agingAgent,
   underpaymentDetection: underpaymentDetectionAgent,
+  // Billing agents (Phase 4)
+  refundCredit: refundCreditAgent,
+  revenueCommand: revenueCommandAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
@@ -65,4 +71,6 @@ export const BILLING_AGENT_NAMES: AgentName[] = [
   "reconciliation",
   "aging",
   "underpaymentDetection",
+  "refundCredit",
+  "revenueCommand",
 ];

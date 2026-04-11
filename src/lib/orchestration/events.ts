@@ -31,7 +31,9 @@ export type DomainEvent =
   | { name: "statement.generated"; statementId: string; patientId: string; organizationId: string }
   | { name: "billing.aging.sweep"; organizationId: string }
   | { name: "billing.reconciliation.run"; organizationId: string }
-  | { name: "billing.underpayment.scan"; organizationId: string };
+  | { name: "billing.underpayment.scan"; organizationId: string }
+  | { name: "billing.credit.scan"; organizationId: string }
+  | { name: "billing.command.brief"; organizationId: string };
 
 export type EventName = DomainEvent["name"];
 export type EventOf<N extends EventName> = Extract<DomainEvent, { name: N }>;

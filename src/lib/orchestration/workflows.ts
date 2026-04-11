@@ -209,6 +209,26 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "credit-scan",
+    on: ["billing.credit.scan", "payment.received"],
+    steps: [
+      {
+        agent: "refundCredit",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "revenue-command-brief",
+    on: ["billing.command.brief"],
+    steps: [
+      {
+        agent: "revenueCommand",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
