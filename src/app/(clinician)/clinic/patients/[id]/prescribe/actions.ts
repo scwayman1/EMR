@@ -23,6 +23,10 @@ const schema = z.object({
   noteToPatient: z.string().max(2000).optional(),
   noteToPharmacy: z.string().max(2000).optional(),
   interactionAcknowledged: z.string().optional(), // "true" if acknowledged
+  // EMR-088: contraindication override fields
+  contraindicationAcknowledged: z.string().optional(),
+  contraindicationOverrideReason: z.string().max(2000).optional(),
+  contraindicationIds: z.string().optional(), // JSON array of ids
 });
 
 export type PrescribeResult = { ok: true } | { ok: false; error: string };
@@ -184,8 +188,33 @@ export async function createPrescriptionAction(
       timingInstructions
     );
 
+  // EMR-088: persist contraindication override if present
+  let contraindicationOverride: any = undefined;
+  if (parsed.data.contraindicationAcknowledged === "true") {
+    const reason = parsed.data.contraindicationOverrideReason?.trim() ?? "";
+    if (reason.length < 20) {
+      return {
+        ok: false,
+        error:
+          "Contraindication override requires at least 20 characters of clinical reasoning.",
+      };
+    }
+    let ids: string[] = [];
+    try {
+      ids = JSON.parse(parsed.data.contraindicationIds ?? "[]");
+    } catch {
+      ids = [];
+    }
+    contraindicationOverride = {
+      contraindicationIds: ids,
+      reason,
+      overriddenByUserId: user.id,
+      overriddenAt: new Date().toISOString(),
+    };
+  }
+
   try {
-    await prisma.dosingRegimen.create({
+    const regimen = await prisma.dosingRegimen.create({
       data: {
         patientId,
         productId: resolvedProductId!,
@@ -201,8 +230,23 @@ export async function createPrescriptionAction(
         patientInstructions: autoInstructions,
         clinicianNotes: structuredNotes,
         active: true,
+        contraindicationOverride,
       },
     });
+
+    // Audit log the override if present — clinical safety requires this
+    if (contraindicationOverride) {
+      await prisma.auditLog.create({
+        data: {
+          organizationId: user.organizationId!,
+          actorUserId: user.id,
+          action: "cannabis.contraindication.override",
+          subjectType: "DosingRegimen",
+          subjectId: regimen.id,
+          metadata: contraindicationOverride,
+        },
+      });
+    }
   } catch (err) {
     console.error("[prescribe] failed to create regimen:", err);
     return {

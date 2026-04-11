@@ -110,16 +110,27 @@ function SubmitButton({ disabled }: { disabled?: boolean }) {
 
 /* ── Main form ──────────────────────────────────────────────── */
 
+interface ContraindicationMatch {
+  id: string;
+  label: string;
+  severity: "absolute" | "relative" | "caution";
+  rationale: string;
+  requiresOverride: boolean;
+  matchedOn: string;
+}
+
 export function PrescribeForm({
   patientId,
   patientName,
   products,
   medications,
+  contraindicationMatches = [],
 }: {
   patientId: string;
   patientName: string;
   products: Product[];
   medications: Medication[];
+  contraindicationMatches?: ContraindicationMatch[];
 }) {
   const [state, formAction] = useFormState<PrescribeResult | null, FormData>(
     createPrescriptionAction,
@@ -145,6 +156,14 @@ export function PrescribeForm({
   // --- Interactions ---
   const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
   const [interactionAcknowledged, setInteractionAcknowledged] = useState(false);
+
+  // --- Contraindications (EMR-088) ---
+  const blockingContraindications = contraindicationMatches.filter(
+    (m) => m.requiresOverride,
+  );
+  const hasBlockingContraindication = blockingContraindications.length > 0;
+  const [contraindicationOverrideReason, setContraindicationOverrideReason] = useState("");
+  const [contraindicationAcknowledged, setContraindicationAcknowledged] = useState(false);
 
   // --- Diagnoses ---
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<DiagnosisOption[]>(
@@ -236,7 +255,11 @@ export function PrescribeForm({
   const hasRedYellow = interactions.some(
     (i) => i.severity === "red" || i.severity === "yellow"
   );
-  const mustAcknowledge = hasRedYellow && !interactionAcknowledged;
+  const mustAcknowledgeInteraction = hasRedYellow && !interactionAcknowledged;
+  const mustAcknowledgeContraindication =
+    hasBlockingContraindication &&
+    (!contraindicationAcknowledged || contraindicationOverrideReason.trim().length < 20);
+  const mustAcknowledge = mustAcknowledgeInteraction || mustAcknowledgeContraindication;
 
   // Toggle diagnosis selection
   function toggleDiagnosis(dx: DiagnosisOption) {
@@ -286,6 +309,114 @@ export function PrescribeForm({
           name="interactionAcknowledged"
           value="true"
         />
+      )}
+      {contraindicationAcknowledged && (
+        <>
+          <input type="hidden" name="contraindicationAcknowledged" value="true" />
+          <input
+            type="hidden"
+            name="contraindicationOverrideReason"
+            value={contraindicationOverrideReason}
+          />
+          <input
+            type="hidden"
+            name="contraindicationIds"
+            value={JSON.stringify(blockingContraindications.map((c) => c.id))}
+          />
+        </>
+      )}
+
+      {/* ── EMR-088: Cannabis contraindication warning ─────────── */}
+      {contraindicationMatches.length > 0 && (
+        <Card
+          className={
+            hasBlockingContraindication
+              ? "border-l-4 border-l-danger bg-danger/[0.04]"
+              : "border-l-4 border-l-[color:var(--warning)] bg-[color:var(--warning)]/[0.04]"
+          }
+        >
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <span className="text-2xl">⚠️</span>
+              Cannabis contraindication{contraindicationMatches.length !== 1 ? "s" : ""} detected
+            </CardTitle>
+            <CardDescription>
+              {hasBlockingContraindication
+                ? "This patient has one or more contraindications that require physician override before prescribing. Document your clinical reasoning below."
+                : "This patient has conditions that warrant extra caution. Review the warnings below before prescribing."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 mb-4">
+              {contraindicationMatches.map((m) => (
+                <div
+                  key={m.id}
+                  className="rounded-lg bg-surface-raised border border-border p-4"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <p className="font-display text-sm font-medium text-text">
+                      {m.label}
+                    </p>
+                    <Badge
+                      tone={
+                        m.severity === "absolute"
+                          ? "danger"
+                          : m.severity === "relative"
+                            ? "warning"
+                            : "neutral"
+                      }
+                      className="text-[10px] uppercase shrink-0"
+                    >
+                      {m.severity}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-text-muted leading-relaxed mb-2">
+                    {m.rationale}
+                  </p>
+                  <p className="text-[11px] text-text-subtle italic">
+                    Matched on: {m.matchedOn}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {hasBlockingContraindication && (
+              <div className="border-t border-border pt-4">
+                <label className="block text-xs font-medium uppercase tracking-wider text-text-subtle mb-2">
+                  Override reasoning (required, min 20 characters)
+                </label>
+                <textarea
+                  value={contraindicationOverrideReason}
+                  onChange={(e) =>
+                    setContraindicationOverrideReason(e.target.value)
+                  }
+                  rows={4}
+                  placeholder="Explain why prescribing is clinically appropriate despite the contraindication. This will be permanently recorded in the patient chart and audit log."
+                  className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-[10px] text-text-subtle">
+                    {contraindicationOverrideReason.trim().length}/20 characters minimum
+                  </p>
+                  <label className="flex items-center gap-2 text-xs text-text">
+                    <input
+                      type="checkbox"
+                      checked={contraindicationAcknowledged}
+                      onChange={(e) =>
+                        setContraindicationAcknowledged(e.target.checked)
+                      }
+                      disabled={
+                        contraindicationOverrideReason.trim().length < 20
+                      }
+                      className="h-4 w-4 rounded border-border-strong accent-accent disabled:opacity-50"
+                    />
+                    I take clinical responsibility for this override
+                  </label>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* ── Section 1: Medication ──────────────────────────────── */}

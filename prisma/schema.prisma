@@ -898,6 +898,10 @@ model DosingRegimen {
   patientInstructions String?   // "Take 0.25 mL under the tongue twice daily"
   // Clinician notes
   clinicianNotes    String?
+  // EMR-088: contraindication override — populated when prescribing despite
+  // a flagged contraindication. Contains: { contraindicationIds, reason,
+  // overriddenByUserId, overriddenAt }
+  contraindicationOverride Json?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
