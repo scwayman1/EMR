@@ -20,6 +20,7 @@ const PATIENT_NAV: NavItem[] = [
   { label: "My Roadmap", href: "/portal/roadmap" },
   { label: "My Story", href: "/portal/my-story" },
   { label: "Storybook", href: "/portal/storybook" },
+  { label: "Community", href: "/portal/community" },
   { label: "Messages", href: "/portal/messages" },
 ];
 
