@@ -2153,5 +2153,54 @@ We are trying to build something no one has built before. The people who use thi
 | 126 | Provider CME Credits via Research | High | backlog |
 | 127 | Green Path Charitable Fund + Transparent Ledger | High | backlog |
 | 128 | Universal Feedback Icon with Annotation | High | backlog |
+| 129 | Provider Breathing Break Popup (30-min timer) | Normal | backlog |
+| 130 | My Garden Cannabis Grow Guide + Community | High | backlog |
+| 131 | AI Clinic Notes with Guardrails + Snapshot + APSO | High | backlog |
+| 132 | Charting Timer (selling point vs other EMRs) | Normal | backlog |
+| 133 | Patient Medication Explainer (3rd grade + cartoons) | High | backlog |
+| 134 | Emotional Vitals Emoji Scale in APSO Notes | Normal | backlog |
+| 135 | Voice Dictation (better than Dragon) | High | backlog |
+| 136 | AI Consciousness Overlay — WE ARE THE COMPETITION | Normal | backlog |
+| 137 | Fitness Module with Personal Trainers + Care Team | High | backlog |
+| 138 | Mindfulness Emojis for Lifestyle | Normal | backlog |
+| 139 | Food Photo OCR + Barcode + Macro Tracking | High | backlog |
+| 140 | DICOM Viewer with Provider Annotations | High | backlog |
+| 141 | Patient Imaging Tab (Read-Only Annotations) | High | backlog |
+| 142 | Legal Module + AI Medico-Legal Library | Normal | aspirational |
+| 143 | HIPAA-Compliant Zoom Integration | High | backlog |
+| 144 | Emergency QR Code + NFC + Apple Wallet | High | backlog |
+| 145 | Cannabis Dispensary Billing + CMS $500 Reimbursement | High | backlog |
+| 146 | HIPAA Voicemail with Transcript | Normal | backlog |
+| 147 | Modular EMR Licensing Menu (Michelin-style PDF) | High | backlog |
+| 148 | Multi-Medication Prescribing + Double-Check | High | backlog |
+| 149 | Read-Only Patient Story Share Link (ER/travel) | High | backlog |
+| 150 | Cannabis Combo Wheel on Patient Tab + Landing Page | High | backlog |
+| 151 | Symptom/Diagnosis Supplement Combo Wheel | High | backlog |
+| 152 | Heart-Centric EMR Consciousness (Art. IV) | Normal | backlog |
+| 153 | Marketing + Business Plan + Target Groups | High | backlog |
+| 154 | FDA Rx Database + Cannabis Rx + Supplement Rec Module | Urgent | backlog |
+| 155 | Hover-Over Lab/Result Explanations (Canopy/Enterprise) | High | backlog |
+| 156 | Subscription Pricing vs EPIC/Cerner/Practice Fusion | High | backlog |
+| 157 | Fix Claude Processing GIF Scroll Glitch | Urgent | backlog |
+| 158 | Collapsible/Expandable Patient Outcomes Check-Ins | High | backlog |
+| 159 | Remove or Merge "Care Plan" Patient Tab | Normal | backlog |
+| 160 | Rethink "Assessments" Tab (physician-first workflow) | Normal | backlog |
+| 161 | Merge Achievements + Lifestyle + Wearable Integration | High | backlog |
+| 162 | Rework My Story → Focus on Storybook | High | backlog |
+| 163 | Create "My Results" Patient Tab | High | backlog |
+| 164 | Imaging Access with Radiologist Report + Image Toggle | High | backlog |
+| 165 | Doctor Sign-Off Workflow for Patient Results | High | backlog |
+| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | backlog |
+| 167 | Full Offline + Airplane Mode Operation | High | aspirational |
+| 168 | International Access Regardless of Country | High | aspirational |
+| 169 | Full Dentistry Module | Normal | aspirational |
+| 170 | C-Suite About Page Skeleton | Normal | backlog |
+| 171 | Paramedic ↔ ER System Module | Normal | aspirational |
+| 172 | Patient Mail/Fax OCR Scan + Insurance Cross-Check | High | backlog |
+| 173 | 15-Day Cannabis EMR Launch Readiness | Urgent | backlog |
+| 174 | Direct Insurance Company Phone Lines for Patients | Normal | aspirational |
+| 175 | Military-Grade Cybersecurity + AI Self-Audit Suite | High | aspirational |
+| 176 | Make EMR Fun and Engaging for ALL Users | Normal | backlog |
 
-**Grand total: 124 tickets.** 32 new ones from Dr. Patel's Product Drop #4.
+**Grand total: 176 tickets.** Product Drops #5 + #6 (48 new).
+Neal, some of these are aspirational and we marked them that way — the spirit is right, the sequencing matters.
