@@ -278,6 +278,24 @@ export const workflows: WorkflowDefinition[] = [
   // ─────────────────────────────────────────────────────────────────
   // RCM Fleet — Phase 7 post-adjudication loop (Layer 8, Flows 3-4)
   // ─────────────────────────────────────────────────────────────────
+  // denial.detected → Denial Resolution v2 (CARC-based decision tree)
+  {
+    name: "denial-resolution",
+    on: ["denial.detected"],
+    steps: [
+      {
+        agent: "denialResolution",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          denialEventId: (e as any).denialEventId,
+          carcCode: (e as any).carcCode,
+          groupCode: (e as any).groupCode,
+          amountDeniedCents: (e as any).amountDeniedCents,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
   // adjudication.received → Adjudication Interpretation → payment/denial routing
   {
     name: "adjudication-interpretation",

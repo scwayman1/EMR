@@ -32,6 +32,7 @@ import { claimConstructionAgent } from "./billing/claim-construction-agent";
 // RCM Fleet — Phase 7 (post-adjudication loop)
 import { adjudicationInterpretationAgent } from "./billing/adjudication-interpretation-agent";
 import { appealsGenerationAgent } from "./billing/appeals-generation-agent";
+import { denialResolutionAgent } from "./billing/denial-resolution-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -72,6 +73,7 @@ export const agentRegistry = {
   // RCM Fleet — Phase 7 (post-adjudication loop)
   adjudicationInterpretation: adjudicationInterpretationAgent,
   appealsGeneration: appealsGenerationAgent,
+  denialResolution: denialResolutionAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
@@ -85,6 +87,7 @@ export const BILLING_AGENT_NAMES: AgentName[] = [
   "claimConstruction",
   "adjudicationInterpretation",
   "appealsGeneration",
+  "denialResolution",
   "chargeIntegrity",
   "denialTriage",
   "patientExplanation",

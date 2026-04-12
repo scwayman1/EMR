@@ -224,6 +224,15 @@ export const AGENT_UI: Record<string, AgentUIMeta> = {
     glyph: "AR",
     tone: "warning",
   },
+  denialResolution: {
+    key: "denialResolution",
+    displayName: "Denial Resolver",
+    role: "Denial Resolution",
+    blurb:
+      "Classifies denials by CARC code and routes to the right action: auto-correct + resubmit, appeal, contractual adjustment, or human escalation. Learns payer patterns over time.",
+    glyph: "DR",
+    tone: "warning",
+  },
   appealsGeneration: {
     key: "appealsGeneration",
     displayName: "Appeals",
