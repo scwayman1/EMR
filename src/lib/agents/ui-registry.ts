@@ -224,6 +224,24 @@ export const AGENT_UI: Record<string, AgentUIMeta> = {
     glyph: "AR",
     tone: "warning",
   },
+  eligibilityBenefits: {
+    key: "eligibilityBenefits",
+    displayName: "Eligibility Check",
+    role: "Eligibility & Benefits",
+    blurb:
+      "Verifies patient insurance coverage before claims enter the pipeline. Catches eligibility-based denials at the source.",
+    glyph: "EB",
+    tone: "info",
+  },
+  complianceAudit: {
+    key: "complianceAudit",
+    displayName: "Compliance",
+    role: "Compliance & Audit",
+    blurb:
+      "Monitors billing patterns for upcoding, modifier abuse, and frequency anomalies. Flags risks for human review — never blocks claims alone.",
+    glyph: "CA",
+    tone: "warning",
+  },
   denialResolution: {
     key: "denialResolution",
     displayName: "Denial Resolver",

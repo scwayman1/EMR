@@ -245,6 +245,34 @@ export const workflows: WorkflowDefinition[] = [
   // ─────────────────────────────────────────────────────────────────
   // RCM Fleet — Phase 5 pre-submission pipeline (Layer 8, Flow 1)
   // ─────────────────────────────────────────────────────────────────
+  // encounter.completed → Eligibility & Benefits → eligibility.checked
+  {
+    name: "eligibility-check",
+    on: ["encounter.completed"],
+    steps: [
+      {
+        agent: "eligibilityBenefits",
+        input: (e) => ({
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  // claim.created → Compliance & Audit (runs alongside scrubbing)
+  {
+    name: "compliance-audit",
+    on: ["claim.created"],
+    steps: [
+      {
+        agent: "complianceAudit",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
   // encounter.completed → Encounter Intelligence → charge.created
   {
     name: "encounter-charge-extraction",
