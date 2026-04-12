@@ -105,12 +105,6 @@ export default function StorePage() {
             About
           </Link>
           <Link
-            href="/pricing"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
             href="/login"
             className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
           >

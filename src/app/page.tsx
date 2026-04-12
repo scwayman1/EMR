@@ -35,12 +35,6 @@ export default function HomePage() {
             About
           </Link>
           <Link
-            href="/pricing"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Pricing
-          </Link>
-          <Link
             href="/security"
             className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors hidden md:inline-block"
           >
@@ -464,7 +458,6 @@ export default function HomePage() {
               <Wordmark size="sm" />
               <div className="hidden md:flex items-center gap-5 text-xs text-text-subtle">
                 <Link href="/about" className="hover:text-text transition-colors">About</Link>
-                <Link href="/pricing" className="hover:text-text transition-colors">Pricing</Link>
                 <Link href="/security" className="hover:text-text transition-colors">Security</Link>
                 <Link href="/store" className="hover:text-text transition-colors">Store</Link>
               </div>
