@@ -3,8 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Green Path — Modern cannabis care",
-    template: "%s · Green Path",
+    default: "Leafjourney — Modern cannabis care",
+    template: "%s · Leafjourney",
   },
   description:
     "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",

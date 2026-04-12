@@ -206,7 +206,7 @@ export default async function CommunityPage() {
                 These are independent organizations
               </p>
               <p className="text-xs text-text-muted mt-1 leading-relaxed">
-                Green Path Health doesn&apos;t run these resources — we just
+                Leafjourney doesn&apos;t run these resources — we just
                 connect you to them. Each organization has its own enrollment,
                 policies, and confidentiality practices. If you have questions
                 about whether one is right for you, message your care team.

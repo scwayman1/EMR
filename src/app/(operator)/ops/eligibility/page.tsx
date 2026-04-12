@@ -344,7 +344,7 @@ export default function EligibilityPage() {
             <p className="text-sm text-text-muted leading-relaxed">
               With cannabis reclassified to Schedule 3, CMS is developing a program
               allowing Medicare recipients to purchase up to <strong>$500 of CBD products
-              annually</strong> with proper reimbursement. Green Path Health is built to
+              annually</strong> with proper reimbursement. Leafjourney is built to
               track eligibility, purchases, and reimbursement status.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

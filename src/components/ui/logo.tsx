@@ -83,7 +83,7 @@ export function Wordmark({
       <LogoMark size={markSize} />
       <div className="flex flex-col gap-[3px]">
         <span className={cn("font-display text-text tracking-tight", textClass)}>
-          Green Path
+          Leafjourney
         </span>
         <span
           className={cn(

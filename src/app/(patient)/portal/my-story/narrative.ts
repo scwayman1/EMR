@@ -167,10 +167,10 @@ export function buildConcernsNarrative(concerns: string | null): string {
   const looksLikeProse = trimmed.length > 40 && endsWithPunctuation;
 
   if (looksLikeProse) {
-    return `You came to Green Path Health because: "${trimmed}"`;
+    return `You came to Leafjourney because: "${trimmed}"`;
   }
 
-  return `You came to Green Path Health seeking help with ${lowercaseFirst(trimmed)}${endsWithPunctuation ? "" : "."}`;
+  return `You came to Leafjourney seeking help with ${lowercaseFirst(trimmed)}${endsWithPunctuation ? "" : "."}`;
 }
 
 // ---------------------------------------------------------------------------

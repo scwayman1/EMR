@@ -120,7 +120,7 @@ function SimpleLanguageChapter({
   if (concernTerms.length > 0) {
     const simplifiedConcerns = concernTerms.map((c) => simpleName(c).toLowerCase());
     const concernList = formatSimpleList(simplifiedConcerns);
-    parts.push(`You came to Green Path Health because of ${concernList}.`);
+    parts.push(`You came to Leafjourney because of ${concernList}.`);
   }
 
   // Treatment goals → simplified
@@ -396,7 +396,7 @@ export default async function MyStoryPage() {
           <div className="flex items-center justify-center gap-2.5 mb-4">
             <LogoMark size={28} />
             <span className="font-display text-base text-text tracking-tight">
-              Green Path Health
+              Leafjourney
             </span>
           </div>
           <p className="text-sm text-text-subtle">{today}</p>
@@ -741,7 +741,7 @@ export default async function MyStoryPage() {
           <div className="flex items-center justify-center gap-2.5 mb-3">
             <LogoMark size={24} />
             <span className="font-display text-sm text-text tracking-tight">
-              Prepared by Green Path Health
+              Prepared by Leafjourney
             </span>
           </div>
           <p className="text-sm text-text-subtle mb-8">Generated {today}</p>

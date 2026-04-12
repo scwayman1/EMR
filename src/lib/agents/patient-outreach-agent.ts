@@ -100,7 +100,7 @@ Guidelines:
 - Reference something specific from the visit (not generic boilerplate)
 - Include clear next steps (e.g., "log your sleep daily", "try the tincture at bedtime", "reach out if pain worsens")
 - End with reassurance and availability
-- Sign off as "Your care team at Green Path Health"`;
+- Sign off as "Your care team at Leafjourney"`;
 
     // ── Call the model and parse ─────────────────────────────────────
     const raw = await ctx.model.complete(prompt, { maxTokens: 512, temperature: 0.6 });
@@ -113,7 +113,7 @@ Guidelines:
       const reason = encounter.reason ?? patient.treatmentGoals ?? "your care";
       parsed = {
         subject: "Following up after your visit",
-        body: `Hi ${patient.firstName}, thank you for your visit today. We discussed your ${reason} and I'm glad we could make some progress. Remember to keep tracking your symptoms and reach out if anything comes up between now and your next visit. Don't hesitate to message us with any questions.\n\n— Your care team at Green Path Health`,
+        body: `Hi ${patient.firstName}, thank you for your visit today. We discussed your ${reason} and I'm glad we could make some progress. Remember to keep tracking your symptoms and reach out if anything comes up between now and your next visit. Don't hesitate to message us with any questions.\n\n— Your care team at Leafjourney`,
         tone: "warm",
       };
     }

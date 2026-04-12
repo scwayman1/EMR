@@ -126,7 +126,7 @@ export default function StorePage() {
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-12 pb-10 text-center">
         <Eyebrow className="mb-6 justify-center">Curated wellness</Eyebrow>
         <h1 className="font-display text-4xl md:text-5xl lg:text-6xl leading-[1.05] tracking-tight text-text max-w-3xl mx-auto">
-          The <span className="text-accent">Green Path</span> Store
+          The <span className="text-accent">Leafjourney</span> Store
         </h1>
         <p className="text-[17px] md:text-lg text-text-muted mt-6 max-w-xl mx-auto leading-relaxed">
           Physician-curated cannabis wellness products from trusted partners.
@@ -233,7 +233,7 @@ export default function StorePage() {
               </h3>
             </div>
             <p className="text-sm text-text-muted leading-relaxed mb-6">
-              You are leaving Green Path Health to visit a partner website.
+              You are leaving Leafjourney to visit a partner website.
               Please consult your healthcare provider before considering
               these products. Cannabis products are not FDA-approved
               medications and individual results may vary. This is a joint
@@ -274,7 +274,7 @@ export default function StorePage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <Wordmark size="sm" />
             <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Green Path Health. A
+              &copy; {new Date().getFullYear()} Leafjourney. A
               demonstration product — not a substitute for medical advice.
             </p>
           </div>

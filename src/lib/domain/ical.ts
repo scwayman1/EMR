@@ -73,8 +73,8 @@ export function buildIcs(
   options: { calendarName?: string; productId?: string } = {},
 ): string {
   const productId =
-    options.productId ?? "-//Green Path Health//Patient Portal//EN";
-  const calendarName = options.calendarName ?? "Green Path Appointments";
+    options.productId ?? "-//Leafjourney//Patient Portal//EN";
+  const calendarName = options.calendarName ?? "Leafjourney Appointments";
   const now = formatIcsDate(new Date());
 
   const lines: string[] = [

@@ -1,6 +1,6 @@
 # Layer 1 — Economic Truth
 
-> What "winning" means financially for Green Path Health.
+> What "winning" means financially for Leafjourney.
 > Every agent, every workflow, every escalation decision downstream
 > references this document as ground truth.
 
@@ -46,7 +46,7 @@ These are not the same thing.
 - **Maximum reimbursement** = the highest possible payment for every encounter. This is what aggressive billing shops chase. It leads to upcoding, modifier abuse, and audit risk.
 - **Compliant reimbursement** = the highest payment that is **fully supported by the clinical documentation**. No more, no less.
 
-**Green Path optimizes for compliant reimbursement.** The system should:
+**Leafjourney optimizes for compliant reimbursement.** The system should:
 
 - Suggest the code that best matches the documentation, not the code that pays the most
 - Flag when documentation *could* support a higher code, and prompt the provider to add detail — not auto-upcode

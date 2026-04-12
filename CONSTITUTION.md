@@ -1,9 +1,9 @@
-# The Green Path Health Constitution
+# The Leafjourney Constitution
 
 > Draft — April 11, 2026
 > Co-founders: Dr. Neal H. Patel (CEO) and Scott Wayman (CPTO)
 >
-> This document is the foundational agreement of what Green Path Health
+> This document is the foundational agreement of what Leafjourney
 > is, what it is not, and what everyone who touches it — builders,
 > clinicians, patients, partners, researchers — pledges to uphold.
 
@@ -19,7 +19,7 @@ watched companies treat healthcare as an extraction industry.
 
 We are done with that model.
 
-Green Path Health exists to give that time back. To return the
+Leafjourney exists to give that time back. To return the
 patient's story to the patient. To turn technology into an ally of
 care, not a tax on it. And to build something that is remembered as a
 turning point — not a product.
@@ -28,7 +28,7 @@ This Constitution is our promise.
 
 ---
 
-## Article I — What Green Path Health Is
+## Article I — What Leafjourney Is
 
 1. **An AI-native platform for cannabis care, medical practice, and
    human-centered health operations.**
@@ -46,9 +46,9 @@ This Constitution is our promise.
 
 ---
 
-## Article II — What Green Path Health Is Not
+## Article II — What Leafjourney Is Not
 
-1. **Not for sale to the public.** The ownership of Green Path Health
+1. **Not for sale to the public.** The ownership of Leafjourney
    is and will remain fully private. We do not intend to go public, to
    IPO, to tokenize, or to otherwise create a public equity market in
    our company.
@@ -75,7 +75,7 @@ This Constitution is our promise.
 ## Article III — The Data Covenant
 
 1. **This is YOUR data.** Every patient's data belongs to the patient.
-   Green Path Health stores it, protects it, and makes it useful — but
+   Leafjourney stores it, protects it, and makes it useful — but
    does not own it.
 
 2. **Portability is a right.** Any patient may export their full
@@ -104,7 +104,7 @@ This Constitution is our promise.
 
 ## Article IV — The Human Pledge
 
-Anyone who uses Green Path Health — patient, clinician, operator,
+Anyone who uses Leafjourney — patient, clinician, operator,
 researcher, builder — pledges the following:
 
 1. **To be a better person** for themselves, their families, and
@@ -129,7 +129,7 @@ researcher, builder — pledges the following:
 
 ## Article V — The Clinical Pledge
 
-Every clinician who uses Green Path Health agrees:
+Every clinician who uses Leafjourney agrees:
 
 1. **To practice evidence-based medicine** grounded in the research
    corpus, their clinical training, and the unique needs of each
@@ -151,7 +151,7 @@ Every clinician who uses Green Path Health agrees:
 
 ## Article VI — The Builder Pledge
 
-Every engineer, designer, and product person who builds Green Path
+Every engineer, designer, and product person who builds Leafjourney
 Health agrees:
 
 1. **To build with safety first.** Clinical features affect real human
@@ -174,7 +174,7 @@ Health agrees:
 
 ## Article VII — The Volunteer + Charity Commitment
 
-Green Path Health is built on the idea that healthcare is a community
+Leafjourney is built on the idea that healthcare is a community
 act, not a transaction.
 
 1. **Volunteer hours are tracked** as a first-class feature of the
@@ -188,13 +188,13 @@ act, not a transaction.
 
 3. **Providers and admin staff earn platform discounts** tied to their
    volunteer engagement. The more they give, the less they pay for
-   Green Path.
+   Leafjourney.
 
 4. **All charities on our registry are audited daily** by an AI
    compliance framework to protect against fraudulent activity. Only
    vetted, reputable organizations remain listed.
 
-5. **Green Path Health operates its own charitable fund** that
+5. **Leafjourney operates its own charitable fund** that
    distributes to reputable cannabis advocacy and medical charities
    globally. The ledger is fully transparent and public — similar to a
    blockchain-style append-only record that anyone can audit.
@@ -244,7 +244,7 @@ This Constitution may be amended only by:
 3. Publication of the change and the rationale in a permanent
    changelog.
 
-No amendment may be made that weakens Articles II (What Green Path
+No amendment may be made that weakens Articles II (What Leafjourney
 Health Is Not), III (The Data Covenant), or VII (Volunteer +
 Charity Commitment) without affirmative approval of the Patient
 Advisory Board and the Clinical Advisory Board.
@@ -253,7 +253,7 @@ Advisory Board and the Clinical Advisory Board.
 
 ## Article X — Signatories
 
-By using, building, or supporting Green Path Health, you affirm this
+By using, building, or supporting Leafjourney, you affirm this
 Constitution.
 
 Signed in principle by the founding team:

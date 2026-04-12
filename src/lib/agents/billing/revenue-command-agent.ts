@@ -155,7 +155,7 @@ export const revenueCommandAgent: Agent<
     // ── Generate executive briefing via LLM ───────────────────────
     const prompt = `You are the chief financial officer of a modern cannabis care medical practice writing the daily revenue briefing for the practice owner. Be concise, direct, and useful. No filler.
 
-PRACTICE: Green Path Health
+PRACTICE: Leafjourney
 DATE: ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
 
 KPIs:

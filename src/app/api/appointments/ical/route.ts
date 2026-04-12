@@ -60,7 +60,7 @@ export async function GET() {
           : "In-person visit";
 
     return {
-      uid: `appt-${appt.id}@green-path-health.com`,
+      uid: `appt-${appt.id}@leafjourney.com`,
       start: appt.startAt,
       end: appt.endAt,
       summary: `${modalityLabel} with ${providerName}`,
@@ -69,20 +69,20 @@ export async function GET() {
         `Modality: ${modalityLabel}\n` +
         `Status: ${appt.status}\n` +
         (appt.notes ? `Notes: ${appt.notes}\n` : "") +
-        `\nView in Green Path: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://leafjourney.com"}/portal`,
-      location: appt.modality === "in_person" ? "Green Path Clinic" : undefined,
+        `\nView in Leafjourney: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://leafjourney.com"}/portal`,
+      location: appt.modality === "in_person" ? "Leafjourney Clinic" : undefined,
     };
   });
 
   const ics = buildIcs(events, {
-    calendarName: `${patient.firstName}'s Green Path Appointments`,
+    calendarName: `${patient.firstName}'s Leafjourney Appointments`,
   });
 
   return new NextResponse(ics, {
     status: 200,
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="green-path-appointments.ics"`,
+      "Content-Disposition": `attachment; filename="leafjourney-appointments.ics"`,
       "Cache-Control": "no-store",
     },
   });

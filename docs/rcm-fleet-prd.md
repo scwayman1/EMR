@@ -1,11 +1,11 @@
-# GreenPath EMR — Agentic Revenue Cycle Management Fleet PRD
+# Leafjourney EMR — Agentic Revenue Cycle Management Fleet PRD
 
 > Source: Scott Wayman (CPTO), April 2026
 > Classification: Implementation-grade specification
 > Execution model: 4-pass agent swarm
 
 This document is the founding product requirements document for the
-GreenPath RCM Fleet. It was provided by Scott as the target
+Leafjourney RCM Fleet. It was provided by Scott as the target
 architecture for the revenue cycle agent swarm. Everything below
 is the brief — the architecture spec, agent manifests, event
 contracts, and build backlog are generated from this.
@@ -14,7 +14,7 @@ contracts, and build backlog are generated from this.
 
 ## Primary Objective
 
-Design the GreenPath EMR Agentic Revenue Cycle Management Fleet to
+Design the Leafjourney EMR Agentic Revenue Cycle Management Fleet to
 autonomously manage the complete medical billing lifecycle:
 
 1. Encounter interpretation
@@ -48,12 +48,12 @@ cycle team for physician office and ambulatory practice billing.
 ## Product Thesis
 
 Traditional billing systems are systems of record.
-GreenPath must be a **system of execution**.
+Leafjourney must be a **system of execution**.
 
 Legacy RCM platforms wait for users to assign codes, fix rejections,
 chase denials, reconcile payments, track patient balances.
 
-GreenPath should actively:
+Leafjourney should actively:
 - Infer billing intent from clinical activity
 - Generate and optimize claims
 - Scrub claims before submission
@@ -154,7 +154,7 @@ technical tasks, dependencies, risks, and acceptance criteria.
 
 ## Existing Platform Capabilities
 
-The fleet sits inside the GreenPath agentic harness which already
+The fleet sits inside the Leafjourney agentic harness which already
 provides:
 - Agent registry (`src/lib/agents/index.ts`)
 - Orchestration engine (`src/lib/orchestration/`)

@@ -199,7 +199,7 @@ export default function HomePage() {
               Thirteen agents, <span className="text-accent italic">one platform</span>.
             </h2>
             <p className="text-[17px] text-text-muted mt-5 leading-relaxed">
-              Every workflow in Green Path is backed by a specialized AI agent —
+              Every workflow in Leafjourney is backed by a specialized AI agent —
               not a single chatbot, but a fleet of experts working together,
               with humans always in the loop.
             </p>
@@ -426,7 +426,7 @@ export default function HomePage() {
                 <span className="text-accent italic">So are we.</span>
               </h2>
               <p className="text-[17px] text-text-muted mt-7 leading-relaxed max-w-2xl">
-                Green Path Health is in active development with partner
+                Leafjourney is in active development with partner
                 practices. If you&apos;re a clinician, an investor, or a
                 patient who believes healthcare deserves better — we&apos;d love
                 to talk.
@@ -470,7 +470,7 @@ export default function HomePage() {
               </div>
             </div>
             <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Green Path Health. A demonstration product —
+              &copy; {new Date().getFullYear()} Leafjourney. A demonstration product —
               not a substitute for medical advice.
             </p>
           </div>

@@ -1131,7 +1131,7 @@ Curated "food as medicine" recipe library on the Lifestyle tab. 5-20 minute reci
 - Creates a task in the provider's inbox
 
 **Part 2 — Inpatient EMR Module:**
-- Full modular hospital EMR within the Green Path framework
+- Full modular hospital EMR within the Leafjourney framework
 - Inpatient workflows: admission H&P, progress notes, discharge summary
 - Synchronizes between outpatient and inpatient treatment — same patient, same chart, different care setting
 - Care transitions automatically documented when patient moves between settings
@@ -2009,7 +2009,7 @@ Entirely new authentication role: "researcher / scientist." Features:
 - AI overlay for natural-language search across the data (keywords, phrases, cohort queries)
 - Create custom datasets + questionnaires within the portal
 
-This is the research ecosystem layer that turns Green Path into a longitudinal cannabis care research platform, not just an EMR.
+This is the research ecosystem layer that turns Leafjourney into a longitudinal cannabis care research platform, not just an EMR.
 
 ---
 
@@ -2024,7 +2024,7 @@ This is the research ecosystem layer that turns Green Path into a longitudinal c
 **Priority:** 1 — Urgent (Constitutional Article VII)
 **Source:** Scott Wayman (Constitution pledge)
 **Description:**
-The beating heart of Green Path Health's community commitment. A full volunteer and donation tracking system baked into both the patient and provider portals.
+The beating heart of Leafjourney's community commitment. A full volunteer and donation tracking system baked into both the patient and provider portals.
 
 **Core mechanics:**
 - **Geographic registry**: Patients and providers see vetted volunteer opportunities within a 30-mile radius of their home address
@@ -2035,12 +2035,12 @@ The beating heart of Green Path Health's community commitment. A full volunteer 
 
 **Financial integration:**
 - **Patient discount framework**: Patients who complete their quarterly volunteer hours are eligible for reduced medical bills OR may elect to donate the difference directly to a charity on our registry
-- **Provider platform discount**: Providers and admin staff earn reduced platform fees tied to their volunteer engagement — the more they give, the less they pay for Green Path
+- **Provider platform discount**: Providers and admin staff earn reduced platform fees tied to their volunteer engagement — the more they give, the less they pay for Leafjourney
 - **Insurance carrier integration**: Formal engagement with payers to recognize volunteer work as an offset against patient responsibility. Any payer denial of a volunteer offset must be justified in writing and the justification logged in the platform for advocacy and transparency tracking
 
 **Delight + motivation:**
 - **Plant-growth integration**: Each logged hour animates a visible "growing plant" on the user's dashboard — a living, breathing visualization of their contribution. Over time the plant matures, branches, flowers
-- **Certification generation**: Auto-generated beautiful certificates of volunteer service, shareable to LinkedIn, printable for personal records, and annotated with Green Path branding
+- **Certification generation**: Auto-generated beautiful certificates of volunteer service, shareable to LinkedIn, printable for personal records, and annotated with Leafjourney branding
 - **Leaderboards (opt-in)**: Community boards celebrating top contributors, with privacy controls
 
 **Tagline baked into the UI**: "We are not just creating a better EMR. We are creating better humans."
@@ -2053,7 +2053,7 @@ This is Article VII of the Constitution in code form. Must ship before the Patie
 **Priority:** 2 — High
 **Source:** Dr. Patel
 **Description:**
-Automatically award CME (Continuing Medical Education) credits to providers when they conduct cannabis-related medical research inside Green Path — literature searches, study reviews, research corpus queries, de-identified data exploration.
+Automatically award CME (Continuing Medical Education) credits to providers when they conduct cannabis-related medical research inside Leafjourney — literature searches, study reviews, research corpus queries, de-identified data exploration.
 
 **Mechanics:**
 - Each substantive research session (time-on-task, query depth, references cited) accrues CME credit at a published rate
@@ -2063,15 +2063,15 @@ Automatically award CME (Continuing Medical Education) credits to providers when
 - "CME Ledger" page in the provider portal showing earned, pending, and submitted credits
 - Annual summary PDF for tax and license renewal documentation
 
-This turns every minute a provider spends researching cannabis medicine inside Green Path into professional value — making the platform not just a workflow tool but a career-development engine. Also a major recruitment lever.
+This turns every minute a provider spends researching cannabis medicine inside Leafjourney into professional value — making the platform not just a workflow tool but a career-development engine. Also a major recruitment lever.
 
 ---
 
-### EMR-127: Green Path Health Charitable Fund + Transparent Ledger
+### EMR-127: Leafjourney Charitable Fund + Transparent Ledger
 **Priority:** 2 — High (Constitutional Article VII, §5)
 **Source:** Scott Wayman (Constitution pledge)
 **Description:**
-Green Path Health operates its **own** charitable fund. A portion of platform revenue, volunteer-offset donations, and voluntary contributions flow into the fund, which distributes to reputable cannabis advocacy organizations and medical charities globally.
+Leafjourney operates its **own** charitable fund. A portion of platform revenue, volunteer-offset donations, and voluntary contributions flow into the fund, which distributes to reputable cannabis advocacy organizations and medical charities globally.
 
 **Transparency requirements:**
 - **Append-only public ledger** — blockchain-style design (signed, hash-chained, immutable). Anyone on the internet can view and verify every inflow and outflow
@@ -2083,7 +2083,7 @@ Green Path Health operates its **own** charitable fund. A portion of platform re
 **Distribution governance:**
 - Recipient charities must already be on the EMR-125 vetted registry
 - Distributions proposed by co-founders, reviewed quarterly by Patient Advisory Board + Clinical Advisory Board
-- No distribution to any organization with board overlap to Green Path leadership (hard conflict-of-interest rule)
+- No distribution to any organization with board overlap to Leafjourney leadership (hard conflict-of-interest rule)
 
 This is how we prove — not claim — that we are not an extraction engine. The ledger is the receipt.
 
@@ -2151,7 +2151,7 @@ We are trying to build something no one has built before. The people who use thi
 | 124 | Tab Reduction (dup of EMR-119) | High | backlog |
 | 125 | Volunteer & Donation Module (Constitutional Art. VII) | Urgent | backlog |
 | 126 | Provider CME Credits via Research | High | backlog |
-| 127 | Green Path Charitable Fund + Transparent Ledger | High | backlog |
+| 127 | Leafjourney Charitable Fund + Transparent Ledger | High | backlog |
 | 128 | Universal Feedback Icon with Annotation | High | backlog |
 | 129 | Provider Breathing Break Popup (30-min timer) | Normal | backlog |
 | 130 | My Garden Cannabis Grow Guide + Community | High | backlog |

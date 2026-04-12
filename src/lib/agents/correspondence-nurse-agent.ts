@@ -401,7 +401,7 @@ THE MESSAGE WE'RE RESPONDING TO (most recent from patient):
     const personaBlock = formatPersonaForPrompt(
       resolvePersona("correspondenceNurse"),
     );
-    const prompt = `You are Nurse Nora, the nurse care coordinator for Green Path Health, a cannabis care practice. You triage inbound patient messages and draft clinically appropriate responses for the physician to approve.
+    const prompt = `You are Nurse Nora, the nurse care coordinator for Leafjourney, a cannabis care practice. You triage inbound patient messages and draft clinically appropriate responses for the physician to approve.
 
 ${personaBlock}
 

@@ -4,7 +4,7 @@ import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 
 export const metadata = {
-  title: "Pricing — Green Path Health",
+  title: "Pricing — Leafjourney",
   description:
     "Flexible, modular pricing for cannabis care practices of every size.",
 };
@@ -220,7 +220,7 @@ export default function PricingPage() {
             Expand your platform as you need it.
           </h2>
           <p className="text-text-muted mt-3 text-[15px] leading-relaxed">
-            Every module integrates seamlessly with your existing Green Path
+            Every module integrates seamlessly with your existing Leafjourney
             setup. Add or remove anytime.
           </p>
         </div>
@@ -288,7 +288,7 @@ export default function PricingPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <Wordmark size="sm" />
             <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Green Path Health. A
+              &copy; {new Date().getFullYear()} Leafjourney. A
               demonstration product — not a substitute for medical advice.
             </p>
           </div>

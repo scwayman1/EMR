@@ -123,7 +123,7 @@ export class OpenRouterModelClient implements ModelClient {
     this.apiKey = apiKey;
     this.model = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4.5";
     this.siteUrl = process.env.OPENROUTER_SITE_URL;
-    this.appName = process.env.OPENROUTER_APP_NAME ?? "Cannabis Care Platform";
+    this.appName = process.env.OPENROUTER_APP_NAME ?? "Leafjourney";
   }
 
   async complete(

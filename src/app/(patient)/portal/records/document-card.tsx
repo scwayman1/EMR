@@ -217,7 +217,7 @@ export function DocumentCard({ doc }: { doc: DocumentData }) {
                 onClick={() => {
                   const subject = encodeURIComponent(`Document: ${doc.originalName}`);
                   const body = encodeURIComponent(
-                    `Here is my ${KIND_LABEL[doc.kind].toLowerCase()} document "${doc.originalName}" from Green Path Health.\n\nUploaded: ${formatDate(doc.createdAt)}\nType: ${doc.mimeType}\n\n— Sent from Green Path Health Patient Portal`
+                    `Here is my ${KIND_LABEL[doc.kind].toLowerCase()} document "${doc.originalName}" from Leafjourney.\n\nUploaded: ${formatDate(doc.createdAt)}\nType: ${doc.mimeType}\n\n— Sent from Leafjourney Patient Portal`
                   );
                   window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
                 }}

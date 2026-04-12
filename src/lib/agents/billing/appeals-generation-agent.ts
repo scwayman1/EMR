@@ -251,7 +251,7 @@ We are enclosing the complete clinical documentation for your review. We request
 Please contact our office if additional information is needed.
 
 Sincerely,
-Green Path Health Billing Department`;
+Leafjourney Billing Department`;
     }
 
     // ── Create the appeal packet ────────────────────────────────

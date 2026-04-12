@@ -147,7 +147,7 @@ async function main() {
     where: { slug: "green-path-health" },
     update: {},
     create: {
-      name: "Green Path Health",
+      name: "Leafjourney",
       slug: "green-path-health",
     },
   });
@@ -526,7 +526,7 @@ async function main() {
       threadId: mayaThread.id,
       senderUserId: clinicianUser.id,
       status: MessageStatus.read,
-      body: "Hi Maya! Welcome to Green Path Health. I'm Dr. Okafor and I'll be your care provider. Feel free to reach out any time with questions about your treatment plan.",
+      body: "Hi Maya! Welcome to Leafjourney. I'm Dr. Okafor and I'll be your care provider. Feel free to reach out any time with questions about your treatment plan.",
       aiDrafted: false,
       sentAt: daysAgo(5),
       createdAt: daysAgo(5),
@@ -848,7 +848,7 @@ async function main() {
   const jamesThread = await prisma.messageThread.create({
     data: {
       patientId: james.id,
-      subject: "Welcome to Green Path Health",
+      subject: "Welcome to Leafjourney",
       lastMessageAt: daysAgo(1),
       triageUrgency: "routine",
       triageCategory: "general_question",
@@ -862,7 +862,7 @@ async function main() {
       threadId: jamesThread.id,
       senderUserId: clinicianUser.id,
       status: MessageStatus.sent,
-      body: "Hi James, welcome to Green Path Health! I'm Dr. Okafor. I've reviewed your intake so far and I'm looking forward to our consultation. In the meantime, please continue logging your sleep and anxiety levels daily so we have good baseline data.",
+      body: "Hi James, welcome to Leafjourney! I'm Dr. Okafor. I've reviewed your intake so far and I'm looking forward to our consultation. In the meantime, please continue logging your sleep and anxiety levels daily so we have good baseline data.",
       aiDrafted: false,
       sentAt: daysAgo(1),
       createdAt: daysAgo(1),

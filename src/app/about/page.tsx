@@ -4,9 +4,9 @@ import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 
 export const metadata = {
-  title: "About — Green Path Health",
+  title: "About — Leafjourney",
   description:
-    "Meet the founders behind Green Path Health: visionaries rebuilding healthcare from the ground up.",
+    "Meet the founders behind Leafjourney: visionaries rebuilding healthcare from the ground up.",
 };
 
 const FOUNDERS = [
@@ -201,7 +201,7 @@ export default function AboutPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <Wordmark size="sm" />
             <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Green Path Health. A
+              &copy; {new Date().getFullYear()} Leafjourney. A
               demonstration product — not a substitute for medical advice.
             </p>
           </div>

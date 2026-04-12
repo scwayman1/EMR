@@ -29,7 +29,7 @@ services:
       - key: OPENROUTER_MODEL
         value: anthropic/claude-sonnet-4.5
       - key: OPENROUTER_APP_NAME
-        value: Cannabis Care Platform
+        value: Leafjourney
       # Payment gateway — defaults to "stub" until Payabli credentials are wired
       - key: PAYMENT_GATEWAY
         value: stub
@@ -65,7 +65,7 @@ services:
       - key: OPENROUTER_MODEL
         value: anthropic/claude-sonnet-4.5
       - key: OPENROUTER_APP_NAME
-        value: Cannabis Care Platform
+        value: Leafjourney
 
   # -----------------------------------------------------------------
   # Scheduler — cron that enqueues recurring workflows

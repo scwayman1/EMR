@@ -12,7 +12,7 @@ import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { Badge } from "@/components/ui/badge";
 
 export const metadata = {
-  title: "Security & Data Ownership — Green Path Health",
+  title: "Security & Data Ownership — Leafjourney",
   description:
     "Your data belongs to you. Learn about our security practices and data ownership framework.",
 };
@@ -182,7 +182,7 @@ export default function SecurityPage() {
             Patient Data Bill of Rights
           </h2>
           <p className="text-text-muted mt-3 text-[15px] leading-relaxed">
-            Every patient on Green Path Health has these fundamental data rights.
+            Every patient on Leafjourney has these fundamental data rights.
           </p>
         </div>
 
@@ -276,7 +276,7 @@ export default function SecurityPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <Wordmark size="sm" />
             <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Green Path Health. A
+              &copy; {new Date().getFullYear()} Leafjourney. A
               demonstration product — not a substitute for medical advice.
             </p>
           </div>
