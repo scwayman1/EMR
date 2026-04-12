@@ -42,6 +42,7 @@ model Organization {
   documents      Document[]
   auditLogs      AuditLog[]
   agentJobs      AgentJob[]
+  agentFeedback  AgentFeedback[]
   launchStatus   PracticeLaunchStatus?
   cannabisProducts CannabisProduct[]
   claims         Claim[]
@@ -146,6 +147,9 @@ model Patient {
   paymentPlans    PaymentPlan[]
   coverages       PatientCoverage[]
   paymentMethods  StoredPaymentMethod[]
+  // Agentic memory harness
+  memories        PatientMemory[]
+  observations    ClinicalObservation[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -825,6 +829,195 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@index([subjectType, subjectId])
+}
+
+// --------------------------------------------------------------
+// Agentic Memory Harness
+// --------------------------------------------------------------
+// The four models below give the agent fleet a persistent, evolving
+// understanding of each patient and of its own performance. This is the
+// "next-level harness" layer:
+//
+//   PatientMemory       — the soft, narrative, evolving understanding of
+//                         a specific person. Preferences, trajectory,
+//                         context, what's working. Every agent reads
+//                         from it before drafting; every agent writes to
+//                         it when it learns something new.
+//
+//   ClinicalObservation — structured insights an agent notices: symptom
+//                         trends, medication responses, red flags,
+//                         emotional shifts. Each one is evidence-backed
+//                         and can be acknowledged by the physician.
+//
+//   AgentReasoning      — per-job reasoning trace. Every agent output
+//                         gets an explain-why record the physician can
+//                         click into. No more black-box drafts.
+//
+//   AgentFeedback       — captures approve / edit / reject signals on
+//                         every agent output. Aggregated over time this
+//                         is how we measure (and eventually tune) each
+//                         agent's clinical fit with the physician.
+//
+// These are the spine of clinical memory. See HANDOFF.md at the repo
+// root for the design rationale.
+// --------------------------------------------------------------
+
+enum MemoryKind {
+  preference       // what the patient wants / what helps them feel heard
+  observation      // something we've noticed about them
+  trajectory       // how something is trending over time
+  relationship     // who's in their life (family, other providers)
+  context          // background that informs care
+  milestone        // key moments worth remembering
+  working          // an intervention that is currently helping
+  not_working      // something that was tried and didn't help
+  concern          // an ongoing worry the physician should keep front of mind
+}
+
+model PatientMemory {
+  id             String     @id @default(cuid())
+  patientId      String
+  kind           MemoryKind
+  /// The actual memory, written as narrative prose.
+  /// e.g. "Prefers email over phone. Gets anxious when multiple prescriptions
+  /// are added at once and feels more in control with single-change visits."
+  content        String
+  /// 0-1. How confident we are this memory is accurate + still valid.
+  confidence     Float      @default(0.8)
+  /// Short structured tags for quick filtering. e.g. ["sleep", "pain", "anxiety"]
+  tags           String[]   @default([])
+  /// Who recorded this memory.
+  source         String     // agent name or user id
+  sourceKind     String     // "agent" | "user"
+  /// When this memory became valid.
+  validFrom      DateTime   @default(now())
+  /// When this memory stopped being valid (null = still valid).
+  validUntil     DateTime?
+  /// If a newer memory replaced this one, link to it.
+  supersededById String?
+  metadata       Json?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  supersededBy   PatientMemory? @relation("Supersession", fields: [supersededById], references: [id])
+  supersedes     PatientMemory[] @relation("Supersession")
+
+  @@index([patientId, kind, validUntil])
+  @@index([patientId, createdAt])
+}
+
+enum ObservationSeverity {
+  info
+  notable
+  concern
+  urgent
+}
+
+enum ObservationCategory {
+  symptom_trend
+  medication_response
+  adherence
+  emotional_state
+  red_flag
+  positive_signal
+  side_effect
+  lifestyle_shift
+  engagement
+  other
+}
+
+model ClinicalObservation {
+  id              String              @id @default(cuid())
+  patientId       String
+  /// Who observed this — agent name or user id.
+  observedBy      String
+  observedByKind  String              // "agent" | "user"
+  category        ObservationCategory
+  severity        ObservationSeverity @default(info)
+  /// 1-2 sentence human-readable summary of what was noticed.
+  /// e.g. "Pain scores trended from 8 → 4 over the last 3 weeks of CBD:THC 1:1."
+  summary         String
+  /// Structured references to the data that supports this observation.
+  /// e.g. { "messageIds": ["..."], "outcomeLogIds": ["..."], "noteIds": ["..."] }
+  evidence        Json                @default("{}")
+  /// Optional nudge: what the physician could consider doing.
+  actionSuggested String?
+  /// Acknowledged by the physician (click to dismiss / mark-as-seen).
+  acknowledgedBy  String?
+  acknowledgedAt  DateTime?
+  /// When this observation stops being relevant (e.g. resolved).
+  resolvedAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, acknowledgedAt])
+  @@index([patientId, category, createdAt])
+  @@index([patientId, severity, createdAt])
+}
+
+model AgentReasoning {
+  id             String   @id @default(cuid())
+  /// Links back to the AgentJob that produced this output (if one exists).
+  /// Not a hard FK — some agent calls happen outside the job queue (inline
+  /// refine/dictate actions) and still want to record reasoning.
+  agentJobId     String?
+  agentName      String
+  agentVersion   String
+  /// Structured steps, in order. Each step:
+  /// { step: "load patient context", input: {...}, output: {...}, durationMs: number }
+  steps          Json     @default("[]")
+  /// References to the data sources the agent consulted.
+  /// e.g. { "memories": [...ids], "notes": [...ids], "outcomeLogs": [...ids] }
+  sources        Json     @default("{}")
+  /// Alternatives the agent considered but did not choose.
+  /// Useful for the "why this draft not that one" surface.
+  alternatives   Json?
+  /// 0-1 self-reported confidence in the final output.
+  confidence     Float?
+  /// Human-readable one-line summary of the reasoning ("considered
+  /// patient's fatigue side-effect history and dose-response pattern
+  /// before drafting the taper plan").
+  summary        String?
+  createdAt      DateTime @default(now())
+
+  @@index([agentName, createdAt])
+  @@index([agentJobId])
+}
+
+enum FeedbackAction {
+  approved
+  approved_with_edits
+  rejected
+  dismissed
+}
+
+model AgentFeedback {
+  id             String         @id @default(cuid())
+  organizationId String?
+  agentName      String
+  agentVersion   String?
+  /// Optional links to the artifact the feedback is about.
+  agentJobId     String?
+  messageId      String?
+  noteId        String?
+  action         FeedbackAction
+  reviewerId     String         // user id
+  /// If the reviewer edited the draft, the delta between original and
+  /// final (plain text diff, not structured). Null for approved/rejected
+  /// without edits.
+  editDelta      String?
+  /// Optional free-text note from the reviewer about why they edited /
+  /// rejected. Structured tuning signal over time.
+  reviewerNote   String?
+  createdAt      DateTime       @default(now())
+
+  organization   Organization?  @relation(fields: [organizationId], references: [id])
+
+  @@index([agentName, action, createdAt])
+  @@index([reviewerId, createdAt])
 }
 
 // --------------------------------------------------------------
