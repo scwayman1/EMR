@@ -2201,6 +2201,13 @@ We are trying to build something no one has built before. The people who use thi
 | 174 | Direct Insurance Company Phone Lines for Patients | Normal | aspirational |
 | 175 | Military-Grade Cybersecurity + AI Self-Audit Suite | High | aspirational |
 | 176 | Make EMR Fun and Engaging for ALL Users | Normal | backlog |
+| 177 | Patient Chart Tab Ribbon — Two Rows, No Scroll | High | backlog |
+| 178 | Billing Tab → Redirect to Financial Cockpit | High | backlog |
+| 179 | Research Articles Hyperlinked + Open in New Tab | High | backlog |
+| 180 | Patient Chart Task List / To-Do on Open | High | backlog |
+| 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | backlog |
+| 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | backlog |
+| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | backlog |
+| 184 | Patient Home Page: Next Appointment Card | High | backlog |
 
-**Grand total: 176 tickets.** Product Drops #5 + #6 (48 new).
-Neal, some of these are aspirational and we marked them that way — the spirit is right, the sequencing matters.
+**Grand total: 184 tickets.** Product Drop #7 (8 new UX/workflow improvements).
