@@ -275,6 +275,39 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  // ─────────────────────────────────────────────────────────────────
+  // RCM Fleet — Phase 7 post-adjudication loop (Layer 8, Flows 3-4)
+  // ─────────────────────────────────────────────────────────────────
+  // adjudication.received → Adjudication Interpretation → payment/denial routing
+  {
+    name: "adjudication-interpretation",
+    on: ["adjudication.received"],
+    steps: [
+      {
+        agent: "adjudicationInterpretation",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          adjudicationResultId: (e as any).adjudicationResultId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // denial.classified (resolution=appeal) → Appeals Generation
+  {
+    name: "appeals-generation",
+    on: ["denial.classified"],
+    steps: [
+      {
+        agent: "appealsGeneration",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          denialEventId: (e as any).denialEventId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
   // coding.recommended → Claim Construction → claim.created
   // (Claim Construction also listens for coding.approved for human-reviewed cases)
   {

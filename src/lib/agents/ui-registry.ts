@@ -214,6 +214,25 @@ export const AGENT_UI: Record<string, AgentUIMeta> = {
     glyph: "CB",
     tone: "warning",
   },
+  // RCM Fleet — Phase 7
+  adjudicationInterpretation: {
+    key: "adjudicationInterpretation",
+    displayName: "ERA Reader",
+    role: "Adjudication Interpretation",
+    blurb:
+      "Parses payer decisions from ERA/835 responses. Matches payments to claims, detects denials, and routes everything downstream.",
+    glyph: "AR",
+    tone: "warning",
+  },
+  appealsGeneration: {
+    key: "appealsGeneration",
+    displayName: "Appeals",
+    role: "Appeals Generation",
+    blurb:
+      "Drafts appeal letters for denied claims worth pursuing. Attaches supporting clinical documentation and routes for review when the stakes are high.",
+    glyph: "AP",
+    tone: "warning",
+  },
 };
 
 /** Fallback metadata when an agent appears in the UI but isn't registered. */
