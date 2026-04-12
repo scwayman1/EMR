@@ -324,6 +324,7 @@ enum ClaimStatus {
   ready          // scrub passed, awaiting submission
   submitted      // sent to clearinghouse
   ch_rejected    // clearinghouse returned rejection
+  pending        // (deprecated — use accepted/adjudicated. Kept for existing data migration)
   accepted       // payer acknowledged receipt
   adjudicated    // payer made a decision
   paid           // fully paid
