@@ -259,6 +259,22 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  // charge.created → Coding Optimization → coding.recommended
+  {
+    name: "coding-optimization",
+    on: ["charge.created"],
+    steps: [
+      {
+        agent: "codingOptimization",
+        input: (e) => ({
+          chargeId: (e as any).chargeId,
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
   // coding.recommended → Claim Construction → claim.created
   // (Claim Construction also listens for coding.approved for human-reviewed cases)
   {

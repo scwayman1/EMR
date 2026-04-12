@@ -27,6 +27,7 @@ import { refundCreditAgent } from "./billing/refund-credit-agent";
 import { revenueCommandAgent } from "./billing/revenue-command-agent";
 // RCM Fleet — Phase 5 (pre-submission pipeline)
 import { encounterIntelligenceAgent } from "./billing/encounter-intelligence-agent";
+import { codingOptimizationAgent } from "./billing/coding-optimization-agent";
 import { claimConstructionAgent } from "./billing/claim-construction-agent";
 
 /**
@@ -63,6 +64,7 @@ export const agentRegistry = {
   revenueCommand: revenueCommandAgent,
   // RCM Fleet — Phase 5 (pre-submission pipeline)
   encounterIntelligence: encounterIntelligenceAgent,
+  codingOptimization: codingOptimizationAgent,
   claimConstruction: claimConstructionAgent,
 } satisfies Record<string, Agent<any, any>>;
 
@@ -73,6 +75,7 @@ export const agentList = Object.values(agentRegistry);
 /** Agents tagged as "billing" — used by the billing oversight console. */
 export const BILLING_AGENT_NAMES: AgentName[] = [
   "encounterIntelligence",
+  "codingOptimization",
   "claimConstruction",
   "chargeIntegrity",
   "denialTriage",

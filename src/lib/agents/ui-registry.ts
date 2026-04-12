@@ -186,6 +186,34 @@ export const AGENT_UI: Record<string, AgentUIMeta> = {
     glyph: "R",
     tone: "warning",
   },
+  // RCM Fleet — Phase 5
+  encounterIntelligence: {
+    key: "encounterIntelligence",
+    displayName: "Charge Capture",
+    role: "Encounter Intelligence",
+    blurb:
+      "Extracts billable services from clinical documentation. Creates charges from encounter notes so nothing gets missed.",
+    glyph: "E",
+    tone: "warning",
+  },
+  codingOptimization: {
+    key: "codingOptimization",
+    displayName: "Code Optimizer",
+    role: "Coding Optimization",
+    blurb:
+      "Reviews and optimizes CPT/ICD-10 codes for compliant reimbursement. The highest code the documentation supports — no more, no less.",
+    glyph: "Cx",
+    tone: "warning",
+  },
+  claimConstruction: {
+    key: "claimConstruction",
+    displayName: "Claim Builder",
+    role: "Claim Construction",
+    blurb:
+      "Assembles coded charges into a valid professional claim with patient, provider, and coverage data. The claim factory.",
+    glyph: "CB",
+    tone: "warning",
+  },
 };
 
 /** Fallback metadata when an agent appears in the UI but isn't registered. */
