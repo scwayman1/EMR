@@ -2178,6 +2178,185 @@ async function main() {
   console.log("  Memory harness: patient memories + observations seeded.");
 
   // ------------------------------------------------------------------
+  // RCM Fleet — billing demo data for Revenue Cockpit + Clinical Billing
+  // ------------------------------------------------------------------
+  // Seed realistic claims with charges, denials, and adjustments so the
+  // billing surfaces actually show data on first load.
+
+  // Clean up prior billing demo data (idempotent)
+  await prisma.adjustment.deleteMany({ where: { claim: { organizationId: org.id } } });
+  await prisma.denialEvent.deleteMany({ where: { claim: { organizationId: org.id } } });
+  await prisma.charge.deleteMany({ where: { organizationId: org.id } });
+
+  // Maya's completed encounter → Claim 1 (paid in full, clean path)
+  const mayaClaim1 = await prisma.claim.upsert({
+    where: { id: "demo-claim-maya-1" },
+    update: {},
+    create: {
+      id: "demo-claim-maya-1",
+      organizationId: org.id,
+      patientId: maya.id,
+      encounterId: mayaCompletedEncounter.id,
+      providerId: provider.id,
+      status: "paid",
+      claimNumber: "CLM-20260405-0001",
+      cptCodes: [
+        { code: "99214", label: "Office visit, established, moderate MDM", units: 1, chargeAmount: 18500, modifiers: ["25"] },
+        { code: "36415", label: "Venipuncture", units: 1, chargeAmount: 3600, modifiers: [] },
+      ] as any,
+      icd10Codes: [
+        { code: "G89.29", label: "Other chronic pain", sequence: 1 },
+        { code: "Z71.3", label: "Cannabis counseling", sequence: 2 },
+      ] as any,
+      billedAmountCents: 22100,
+      allowedAmountCents: 19200,
+      paidAmountCents: 19200,
+      patientRespCents: 2500,
+      payerName: "Aetna",
+      payerId: "AETNA-001",
+      billingNpi: "1234567890",
+      renderingNpi: "1234567890",
+      placeOfService: "11",
+      frequencyCode: "1",
+      serviceDate: daysAgo(7),
+      submittedAt: daysAgo(6),
+      paidAt: daysAgo(1),
+      closedAt: daysAgo(1),
+      closureType: "paid_in_full",
+      humanTouches: 0,
+    },
+  });
+
+  // Maya Claim 1 charges
+  await prisma.charge.createMany({
+    data: [
+      {
+        encounterId: mayaCompletedEncounter.id,
+        patientId: maya.id,
+        organizationId: org.id,
+        cptCode: "99214",
+        cptDescription: "Office visit, established patient, moderate MDM",
+        modifiers: ["25"],
+        units: 1,
+        icd10Codes: ["G89.29", "Z71.3"],
+        feeAmountCents: 18500,
+        status: "claim_attached",
+        claimId: mayaClaim1.id,
+        confidence: 0.94,
+        createdBy: "encounterIntelligence:1.0.0",
+      },
+      {
+        encounterId: mayaCompletedEncounter.id,
+        patientId: maya.id,
+        organizationId: org.id,
+        cptCode: "36415",
+        cptDescription: "Venipuncture",
+        modifiers: [],
+        units: 1,
+        icd10Codes: ["Z71.3"],
+        feeAmountCents: 3600,
+        status: "claim_attached",
+        claimId: mayaClaim1.id,
+        confidence: 0.98,
+        createdBy: "encounterIntelligence:1.0.0",
+      },
+    ],
+  });
+
+  // Contractual adjustment on Maya's paid claim
+  await prisma.adjustment.create({
+    data: {
+      claimId: mayaClaim1.id,
+      type: "contractual",
+      amountCents: 2900,
+      reason: "Contractual adjustment per Aetna agreement",
+      carcCode: "45",
+      postedAt: daysAgo(1),
+    },
+  });
+
+  // James — Claim 2 (denied for medical necessity, appeal pending)
+  const jamesClaim = await prisma.claim.upsert({
+    where: { id: "demo-claim-james-1" },
+    update: {},
+    create: {
+      id: "demo-claim-james-1",
+      organizationId: org.id,
+      patientId: james.id,
+      providerId: provider.id,
+      status: "denied",
+      claimNumber: "CLM-20260408-0002",
+      cptCodes: [
+        { code: "99213", label: "Office visit, established, low MDM", units: 1, chargeAmount: 12800, modifiers: [] },
+      ] as any,
+      icd10Codes: [
+        { code: "F41.1", label: "Generalized anxiety disorder", sequence: 1 },
+        { code: "G47.00", label: "Insomnia", sequence: 2 },
+      ] as any,
+      billedAmountCents: 12800,
+      allowedAmountCents: 0,
+      paidAmountCents: 0,
+      patientRespCents: 0,
+      payerName: "UnitedHealthcare",
+      payerId: "UHC-001",
+      placeOfService: "11",
+      frequencyCode: "1",
+      serviceDate: daysAgo(14),
+      submittedAt: daysAgo(13),
+      deniedAt: daysAgo(5),
+      denialReason: "Service not medically necessary per plan guidelines",
+      humanTouches: 0,
+    },
+  });
+
+  // Denial event for James
+  await prisma.denialEvent.create({
+    data: {
+      claimId: jamesClaim.id,
+      carcCode: "50",
+      rarcCode: "N386",
+      groupCode: "CO",
+      denialCategory: "medical_necessity",
+      amountDeniedCents: 12800,
+      recoverable: true,
+      recoverableAmountCents: 12800,
+      resolution: "pending",
+    },
+  });
+
+  // Maya — Claim 3 (submitted, pending adjudication)
+  await prisma.claim.upsert({
+    where: { id: "demo-claim-maya-2" },
+    update: {},
+    create: {
+      id: "demo-claim-maya-2",
+      organizationId: org.id,
+      patientId: maya.id,
+      providerId: provider.id,
+      status: "submitted",
+      claimNumber: "CLM-20260410-0003",
+      cptCodes: [
+        { code: "99214", label: "Office visit, established, moderate MDM", units: 1, chargeAmount: 18500, modifiers: [] },
+      ] as any,
+      icd10Codes: [
+        { code: "G89.29", label: "Other chronic pain", sequence: 1 },
+      ] as any,
+      billedAmountCents: 18500,
+      paidAmountCents: 0,
+      patientRespCents: 0,
+      payerName: "Aetna",
+      payerId: "AETNA-001",
+      placeOfService: "02",
+      frequencyCode: "1",
+      serviceDate: daysAgo(2),
+      submittedAt: daysAgo(1),
+      humanTouches: 0,
+    },
+  });
+
+  console.log("  RCM Fleet: billing demo data seeded (3 claims, charges, denials).");
+
+  // ------------------------------------------------------------------
   // Done
   // ------------------------------------------------------------------
   console.log("Seed complete.");

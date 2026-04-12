@@ -1500,15 +1500,17 @@ model ResearchQuery {
 }
 
 model ResearchResult {
-  id                   String @id @default(cuid())
+  id                   String  @id @default(cuid())
   queryId              String
   title                String
   source               String
   year                 Int?
   summary              String
   citation             String
+  url                  String? // link to PubMed, DOI, or full text
+  pmid                 String? // PubMed ID if available
   quantitativeFindings Json?
-  rank                 Int    @default(0)
+  rank                 Int     @default(0)
 
   query ResearchQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
 }

@@ -98,11 +98,32 @@ export default async function ResearchConsolePage({
                             {idx + 1}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-display text-base text-text leading-snug">
-                              {r.title}
-                            </p>
+                            {r.url ? (
+                              <a
+                                href={r.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-display text-base text-accent leading-snug hover:underline"
+                              >
+                                {r.title} ↗
+                              </a>
+                            ) : (
+                              <p className="font-display text-base text-text leading-snug">
+                                {r.title}
+                              </p>
+                            )}
                             <p className="text-xs text-text-subtle mt-1.5 font-mono">
                               {r.citation}
+                              {r.pmid && (
+                                <a
+                                  href={`https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="ml-2 text-accent hover:underline"
+                                >
+                                  PMID: {r.pmid}
+                                </a>
+                              )}
                             </p>
                             <p className="text-sm text-text-muted mt-3 leading-relaxed">
                               {r.summary}

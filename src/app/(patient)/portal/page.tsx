@@ -126,18 +126,34 @@ export default async function PatientHome() {
                 <p className="font-display text-2xl text-text tracking-tight">
                   {formatDate(nextVisit.scheduledFor)}
                 </p>
-                <p className="text-sm text-text-muted mt-1.5">
-                  {nextVisit.modality === "video"
-                    ? "Video visit"
-                    : "In-person visit"}
-                  {nextVisit.reason ? ` · ${nextVisit.reason}` : ""}
-                </p>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <Badge tone={nextVisit.modality === "video" ? "info" : "accent"}>
+                    {nextVisit.modality === "video"
+                      ? "Video visit"
+                      : nextVisit.modality === "phone"
+                        ? "Phone visit"
+                        : "In-person"}
+                  </Badge>
+                  {nextVisit.reason && (
+                    <Badge tone="neutral">{nextVisit.reason}</Badge>
+                  )}
+                </div>
+                {nextVisit.scheduledFor && (
+                  <p className="text-sm text-text mt-3">
+                    {new Date(nextVisit.scheduledFor).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                    {" · "}
+                    {formatRelative(nextVisit.scheduledFor)}
+                  </p>
+                )}
                 <div className="mt-5 flex items-center gap-2 flex-wrap">
-                  <Button size="sm" variant="secondary">
-                    View details
+                  <Button size="sm">
+                    Confirm appointment
                   </Button>
                   <Button size="sm" variant="ghost">
-                    Reschedule
+                    Change appointment
                   </Button>
                   <a href="/api/appointments/ical" download>
                     <Button size="sm" variant="ghost">
