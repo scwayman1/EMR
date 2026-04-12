@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { Button } from "@/components/ui/button";
+import { formatRelative } from "@/lib/utils/format";
 
-export const metadata = { title: "Revenue Dashboard" };
+export const metadata = { title: "Revenue Cockpit" };
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,23 +32,39 @@ function formatMoneyPrecise(cents: number): string {
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "var(--text-subtle)",
+  scrubbing: "var(--text-subtle)",
+  scrub_blocked: "var(--warning)",
+  ready: "var(--accent)",
   submitted: "var(--info)",
+  ch_rejected: "var(--danger)",
   pending: "var(--highlight)",
+  accepted: "var(--info)",
+  adjudicated: "var(--accent)",
   paid: "var(--success)",
   partial: "var(--accent)",
   denied: "var(--danger)",
   appealed: "var(--highlight)",
+  closed: "var(--success)",
+  voided: "var(--border-strong)",
   written_off: "var(--border-strong)",
 };
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
+  scrubbing: "Scrubbing",
+  scrub_blocked: "Blocked",
+  ready: "Ready",
   submitted: "Submitted",
+  ch_rejected: "Rejected",
   pending: "Pending",
+  accepted: "Accepted",
+  adjudicated: "Adjudicated",
   paid: "Paid",
   partial: "Partial",
   denied: "Denied",
   appealed: "Appealed",
+  closed: "Closed",
+  voided: "Voided",
   written_off: "Written off",
 };
 
@@ -61,7 +78,7 @@ export default async function RevenuePage() {
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
-  const [byStatus, byProvider, byPayer, recent30Days, topCptCodes] = await Promise.all([
+  const [byStatus, byProvider, byPayer, recent30Days, topCptCodes, deniedClaims, arAging, recentEscalations] = await Promise.all([
     // Claims grouped by status (all-time)
     prisma.claim.groupBy({
       by: ["status"],
@@ -94,6 +111,30 @@ export default async function RevenuePage() {
       where: { organizationId },
       select: { cptCodes: true },
       take: 200,
+    }),
+    // Denied claims for the denial queue (ranked by amount)
+    prisma.claim.findMany({
+      where: { organizationId, status: { in: ["denied", "partial", "appealed"] } },
+      orderBy: { billedAmountCents: "desc" },
+      take: 15,
+      include: {
+        patient: { select: { firstName: true, lastName: true } },
+        denialEvents: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    }),
+    // AR aging buckets: claims submitted but not yet paid/closed
+    prisma.claim.findMany({
+      where: {
+        organizationId,
+        status: { in: ["submitted", "accepted", "adjudicated", "pending", "partial", "denied", "appealed"] },
+      },
+      select: { id: true, billedAmountCents: true, submittedAt: true, status: true },
+    }),
+    // Recent escalation cases
+    prisma.escalationCase.findMany({
+      where: { organizationId, status: { in: ["open", "assigned", "in_review"] } },
+      orderBy: { createdAt: "desc" },
+      take: 8,
     }),
   ]);
 
@@ -136,9 +177,9 @@ export default async function RevenuePage() {
   return (
     <PageShell maxWidth="max-w-[1320px]">
       <PageHeader
-        eyebrow="Practice management"
-        title="Revenue dashboard"
-        description="Real-time view of practice financials — billed, collected, outstanding, by provider and payer."
+        eyebrow="Revenue Cockpit"
+        title="Billing command center"
+        description="Claims funnel, AR aging, denial queue, payer performance, and KPIs — the single view for practice revenue."
         actions={
           <Link href="/ops/billing">
             <Button variant="secondary" size="sm">
@@ -203,6 +244,183 @@ export default async function RevenuePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Claims Funnel (Layer 10 §1) ─────────────────────── */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">Claims funnel</Eyebrow>
+        <Card tone="raised">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-end gap-1 h-32">
+              {[
+                { label: "Coded", statuses: ["draft", "scrubbing", "scrub_blocked", "ready"] },
+                { label: "Submitted", statuses: ["submitted", "ch_rejected"] },
+                { label: "Processing", statuses: ["accepted", "adjudicated", "pending"] },
+                { label: "Paid", statuses: ["paid", "closed"] },
+                { label: "Denied", statuses: ["denied", "appealed", "partial"] },
+              ].map((stage) => {
+                const count = byStatus
+                  .filter((s) => stage.statuses.includes(s.status))
+                  .reduce((a, s) => a + s._count, 0);
+                const maxCount = Math.max(1, ...byStatus.map((s) => s._count));
+                const heightPct = Math.max(8, (count / maxCount) * 100);
+                const isDenied = stage.label === "Denied";
+                return (
+                  <div key={stage.label} className="flex-1 flex flex-col items-center gap-1.5">
+                    <span className="text-[11px] font-display tabular-nums text-text">
+                      {count}
+                    </span>
+                    <div
+                      className={`w-full rounded-t-md transition-all ${
+                        isDenied ? "bg-danger/70" : "bg-accent/70"
+                      }`}
+                      style={{ height: `${heightPct}%` }}
+                    />
+                    <span className="text-[10px] text-text-subtle">{stage.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── AR Aging (Layer 10 §3) ───────────────────────────── */}
+      {(() => {
+        const now = Date.now();
+        const buckets = { "0-30": { count: 0, cents: 0 }, "31-60": { count: 0, cents: 0 }, "61-90": { count: 0, cents: 0 }, "90+": { count: 0, cents: 0 } };
+        for (const c of arAging) {
+          const days = c.submittedAt ? Math.floor((now - c.submittedAt.getTime()) / 86_400_000) : 0;
+          const key = days <= 30 ? "0-30" : days <= 60 ? "31-60" : days <= 90 ? "61-90" : "90+";
+          buckets[key].count++;
+          buckets[key].cents += c.billedAmountCents;
+        }
+        const totalAR = Object.values(buckets).reduce((a, b) => a + b.cents, 0);
+        return (
+          <div className="mb-10">
+            <Eyebrow className="mb-4">AR aging</Eyebrow>
+            <div className="grid grid-cols-4 gap-3">
+              {(Object.entries(buckets) as [string, { count: number; cents: number }][]).map(
+                ([label, data]) => {
+                  const isOld = label === "90+";
+                  const pct = totalAR > 0 ? Math.round((data.cents / totalAR) * 100) : 0;
+                  return (
+                    <Card key={label} className={isOld ? "border-l-4 border-l-danger" : ""}>
+                      <CardContent className="pt-5 pb-5">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                          {label} days
+                        </p>
+                        <p className={`font-display text-2xl tabular-nums mt-1 ${isOld ? "text-danger" : "text-text"}`}>
+                          {formatMoney(data.cents)}
+                        </p>
+                        <p className="text-[11px] text-text-muted mt-1">
+                          {data.count} claim{data.count !== 1 ? "s" : ""} · {pct}% of AR
+                        </p>
+                      </CardContent>
+                    </Card>
+                  );
+                },
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── Denial Queue (Layer 10 §2) ───────────────────────── */}
+      {deniedClaims.length > 0 && (
+        <div className="mb-10">
+          <Eyebrow className="mb-4">Denial queue — ranked by recoverable dollars</Eyebrow>
+          <Card tone="raised">
+            <CardContent className="pt-4 pb-4">
+              <div className="space-y-2">
+                {deniedClaims.map((claim: any) => {
+                  const denial = claim.denialEvents?.[0];
+                  return (
+                    <Link
+                      key={claim.id}
+                      href={`/clinic/patients/${claim.patientId}?tab=billing`}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-muted transition-colors"
+                    >
+                      <span
+                        className={`h-2.5 w-2.5 rounded-full shrink-0 ${
+                          claim.status === "denied" ? "bg-danger" : claim.status === "appealed" ? "bg-[color:var(--warning)]" : "bg-accent"
+                        }`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-text">
+                            {claim.patient.firstName} {claim.patient.lastName}
+                          </span>
+                          <Badge tone={claim.status === "denied" ? "danger" : "warning"} className="text-[9px]">
+                            {STATUS_LABEL[claim.status] ?? claim.status}
+                          </Badge>
+                          {denial && (
+                            <span className="text-[10px] text-text-subtle">
+                              CARC {denial.carcCode}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-muted">
+                          {claim.claimNumber ?? claim.id.slice(0, 8)} · {claim.payerName ?? "Unknown payer"}
+                        </p>
+                      </div>
+                      <span className="font-display text-sm tabular-nums text-danger shrink-0">
+                        {formatMoneyPrecise(claim.billedAmountCents - claim.paidAmountCents)}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── Escalations Queue (Layer 10 §6) ──────────────────── */}
+      {recentEscalations.length > 0 && (
+        <div className="mb-10">
+          <Eyebrow className="mb-4">Open escalations</Eyebrow>
+          <Card tone="raised">
+            <CardContent className="pt-4 pb-4">
+              <div className="space-y-2">
+                {recentEscalations.map((esc: any) => (
+                  <div
+                    key={esc.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border-l-3 ${
+                      esc.tier === "tier_3" ? "border-l-danger bg-danger/[0.03]" :
+                      esc.tier === "tier_2" ? "border-l-[color:var(--warning)] bg-[color:var(--warning)]/[0.03]" :
+                      "border-l-accent/40"
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          tone={esc.tier === "tier_3" ? "danger" : esc.tier === "tier_2" ? "warning" : "accent"}
+                          className="text-[9px]"
+                        >
+                          {esc.tier.replace("_", " ")}
+                        </Badge>
+                        <Badge tone="neutral" className="text-[9px]">
+                          {esc.category.replace(/_/g, " ")}
+                        </Badge>
+                        <Badge
+                          tone={esc.status === "open" ? "warning" : "accent"}
+                          className="text-[9px]"
+                        >
+                          {esc.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-text mt-1 line-clamp-1">{esc.summary}</p>
+                      <p className="text-[10px] text-text-subtle mt-0.5">
+                        from {esc.sourceAgent} · {formatRelative(esc.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Claim status breakdown */}
       <div className="mb-10">
