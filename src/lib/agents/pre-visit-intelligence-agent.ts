@@ -2,6 +2,20 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
+import {
+  recallMemories,
+  formatMemoriesForPrompt,
+} from "./memory/patient-memory";
+import {
+  recallObservations,
+  formatObservationsForPrompt,
+} from "./memory/clinical-observation";
+import { startReasoning } from "./memory/agent-reasoning";
+import {
+  findSimilarPatients,
+  summarizeCohortOutcomes,
+  formatCohortInsightForPrompt,
+} from "./memory/cohort";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -220,6 +234,64 @@ export const preVisitIntelligenceAgent: Agent<
 
     ctx.log("info", "Step 6/6: Generating intelligence briefing via LLM");
 
+    // ── Step 5b: longitudinal memory + recent observations ────────
+    // Everything the harness has ever learned about this person. The
+    // physician is about to walk into a room with them — the briefing
+    // should reflect the full understanding we've accumulated, not
+    // just the structured fields.
+    const trace = startReasoning("preVisitIntelligence", "1.0.0", ctx.jobId);
+    trace.step("load core chart data", {
+      patientId: input.patientId,
+    });
+
+    const memories = await recallMemories(input.patientId, { limit: 32 });
+    trace.step("recalled memories", { count: memories.length });
+    trace.source(
+      "memories",
+      memories.map((m) => m.id),
+    );
+
+    const observations = await recallObservations(input.patientId, {
+      onlyOpen: true,
+      limit: 12,
+    });
+    trace.step("recalled open observations", { count: observations.length });
+    trace.source(
+      "observations",
+      observations.map((o) => o.id),
+    );
+
+    // ── Step 5c: cohort context ─────────────────────────────────────
+    // "How have similar patients on similar regimens actually responded?"
+    // This is the single biggest clinical superpower the harness gives
+    // the physician — evidence from within their own practice, not just
+    // the journal literature.
+    let cohortSummary: string | null = null;
+    try {
+      const similar = await findSimilarPatients(input.patientId, {
+        limit: 5,
+      });
+      trace.step("found similar patients", { count: similar.length });
+      if (similar.length >= 2) {
+        const cohortOutcomes = await summarizeCohortOutcomes(
+          similar.map((s) => s.patientId),
+        );
+        cohortSummary = formatCohortInsightForPrompt({
+          similar,
+          outcomes: cohortOutcomes,
+        });
+        trace.source(
+          "cohort",
+          similar.map((s) => s.patientId),
+        );
+      }
+    } catch (err) {
+      // Cohort is opportunistic — a failure never blocks the briefing.
+      ctx.log("warn", "Cohort context unavailable for briefing", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     const prompt = buildBriefingPrompt({
       patient,
       age,
@@ -232,6 +304,9 @@ export const preVisitIntelligenceAgent: Agent<
       recentMessages,
       recentAssessments,
       openTasks,
+      memoryBlock: formatMemoriesForPrompt(memories),
+      observationsBlock: formatObservationsForPrompt(observations),
+      cohortSummary,
     });
 
     let raw: string;
@@ -240,10 +315,12 @@ export const preVisitIntelligenceAgent: Agent<
         maxTokens: 1024,
         temperature: 0.2,
       });
+      trace.step("llm briefing complete", { rawLen: raw.length });
     } catch (llmErr) {
       ctx.log("warn", "LLM call failed — using deterministic briefing", {
         error: llmErr instanceof Error ? llmErr.message : String(llmErr),
       });
+      trace.step("llm briefing failed — using deterministic fallback");
       raw = ""; // triggers fallback path below
     }
 
@@ -264,6 +341,12 @@ export const preVisitIntelligenceAgent: Agent<
         { type: "patient", id: input.patientId },
         { confidence: parsed.confidence ?? 0.8 },
       );
+
+      trace.conclude({
+        confidence: parsed.confidence ?? 0.8,
+        summary: `Briefing drafted using ${memories.length} memories and ${observations.length} open observations${cohortSummary ? " + cohort context" : ""}. ${parsed.talkingPoints.length} talking points, ${(parsed.riskFlags ?? []).length} risk flags.`,
+      });
+      await trace.persist();
 
       return {
         patientSummary: parsed.patientSummary ?? buildFallbackSummary(patient, age),
@@ -370,6 +453,12 @@ export const preVisitIntelligenceAgent: Agent<
       talkingPoints.push("Routine follow-up — review outcomes and care plan");
     }
 
+    trace.conclude({
+      confidence: 0.75,
+      summary: `Deterministic fallback briefing: ${sections.length} sections, ${riskFlags.length} risk flags, ${talkingPoints.length} talking points (LLM path unavailable).`,
+    });
+    await trace.persist();
+
     return {
       patientSummary: buildFallbackSummary(patient, age),
       lastVisitSummary: lastNoteSummary,
@@ -405,15 +494,25 @@ function buildBriefingPrompt(data: {
   recentMessages: any[];
   recentAssessments: any[];
   openTasks: any[];
+  memoryBlock: string;
+  observationsBlock: string;
+  cohortSummary: string | null;
 }): string {
-  const { patient, age, lastEncounter, lastNoteSummary, trends, dosingRegimens, adherenceRate, recentDoses, recentMessages, recentAssessments, openTasks } = data;
+  const { patient, age, lastEncounter, lastNoteSummary, trends, dosingRegimens, adherenceRate, recentDoses, recentMessages, recentAssessments, openTasks, memoryBlock, observationsBlock, cohortSummary } = data;
 
-  return `You are an AI clinical assistant preparing a pre-visit intelligence briefing for a physician.
+  return `You are an AI clinical assistant preparing a pre-visit intelligence briefing for a physician. You've known this patient for a while — the WHAT WE ALREADY KNOW block below is the accumulated understanding of who this person is and what matters to their care.
 
 PATIENT: ${patient.firstName} ${patient.lastName}${age ? `, ${age}yo` : ""}
 STATUS: ${patient.status}
 PRESENTING CONCERNS: ${patient.presentingConcerns ?? "Not documented"}
 TREATMENT GOALS: ${patient.treatmentGoals ?? "Not documented"}
+
+WHAT WE ALREADY KNOW ABOUT THIS PERSON (longitudinal memory):
+${memoryBlock}
+
+WHAT THE CARE TEAM HAS BEEN NOTICING (open observations):
+${observationsBlock}
+${cohortSummary ? `\nCOHORT CONTEXT (similar patients in this practice):\n${cohortSummary}` : ""}
 
 LAST VISIT: ${lastEncounter ? `${daysAgo(lastEncounter.createdAt)} days ago (${lastEncounter.modality})` : "No prior visits"}
 LAST NOTE SUMMARY: ${lastNoteSummary ?? "None"}
@@ -431,9 +530,9 @@ RECENT MESSAGES: ${recentMessages.length} in last 30 days
 
 Return a JSON object with:
 {
-  "patientSummary": "1-2 sentence patient overview",
+  "patientSummary": "1-2 sentence patient overview that ACTUALLY reflects what we know about them, not a rote demographic line",
   "lastVisitSummary": "Brief recap of last visit or null",
-  "talkingPoints": ["3-5 specific talking points for today's visit"],
+  "talkingPoints": ["3-5 specific talking points for today's visit — lean on the memory and cohort context when possible, e.g. 'Sleep has been trending up on CBN; consider reinforcing' beats 'Ask about sleep'"],
   "sections": [
     {"title": "...", "content": "...", "priority": "high|medium|low", "icon": "alert|trend|medication|research|note|task|message"}
   ],
@@ -441,5 +540,5 @@ Return a JSON object with:
   "confidence": 0.0-1.0
 }
 
-Focus on what CHANGED since last visit. Prioritize actionable insights over raw data. Flag any concerning trends or adherence issues prominently.`;
+Focus on what CHANGED since last visit. Prioritize actionable insights over raw data. If the memory or cohort context meaningfully informs a talking point, reference it explicitly in the content (e.g. "4 similar patients on CBD:THC 1:1 reported improved sleep within 3 weeks — we're seeing the same pattern here").`;
 }

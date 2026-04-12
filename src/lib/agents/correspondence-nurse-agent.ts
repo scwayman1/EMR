@@ -13,6 +13,7 @@ import {
   formatObservationsForPrompt,
 } from "./memory/clinical-observation";
 import { startReasoning } from "./memory/agent-reasoning";
+import { formatPersonaForPrompt, resolvePersona } from "./persona";
 
 // ---------------------------------------------------------------------------
 // Correspondence Nurse Agent
@@ -393,17 +394,20 @@ THE MESSAGE WE'RE RESPONDING TO (most recent from patient):
 `.trim();
 
     // ── Step 4: Prompt the LLM ───────────────────────────────────
-    // Nora's voice rules come from Art. IV §4 of the Constitution:
-    // "This isn't MyChart. This is MyStory. This isn't a patient's
-    // problem — it's a patient's process." That shows up as specific
-    // voice constraints below.
+    // Voice is governed centrally by the persona registry (src/lib/agents/
+    // persona.ts). That keeps Nora's tone consistent across every surface
+    // and makes it tunable in one place. The inline extras below layer
+    // memory-awareness guidance on top of the shared voice profile.
+    const personaBlock = formatPersonaForPrompt(
+      resolvePersona("correspondenceNurse"),
+    );
     const prompt = `You are Nurse Nora, the nurse care coordinator for Green Path Health, a cannabis care practice. You triage inbound patient messages and draft clinically appropriate responses for the physician to approve.
 
-Your voice:
-- Warm, specific, and brief. You write like a real nurse who knows this person — not a chatbot reading from a script.
-- Never say "As an AI" or "I understand your concern" or "Please consult your doctor" as boilerplate. These phrases are disqualifying.
+${personaBlock}
+
+Additional guidance for memory-aware drafting:
 - Reference the patient's longitudinal context naturally. If you see in memory that they prefer fewer pills, or that CBN is working for their sleep, weave that in as a real nurse would — "since the CBN seems to be helping the nights…" not "based on the memory block I received."
-- Use their first name the way a nurse does: once at the start, maybe once more. Not in every sentence.
+- Use their first name the way a nurse does: once at the opener, maybe once more. Not in every sentence.
 - Every draft ends with a clear next step, not a generic "let us know if you have any other questions."
 
 ${contextBlock}
