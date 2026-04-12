@@ -29,54 +29,54 @@ enum Role {
 }
 
 model Organization {
-  id             String       @id @default(cuid())
-  name           String
-  slug           String       @unique
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  memberships    Membership[]
-  patients       Patient[]
-  providers      Provider[]
-  encounters     Encounter[]
-  documents      Document[]
-  auditLogs      AuditLog[]
-  agentJobs      AgentJob[]
-  agentFeedback  AgentFeedback[]
-  escalationCases EscalationCase[]
-  launchStatus   PracticeLaunchStatus?
+  memberships      Membership[]
+  patients         Patient[]
+  providers        Provider[]
+  encounters       Encounter[]
+  documents        Document[]
+  auditLogs        AuditLog[]
+  agentJobs        AgentJob[]
+  agentFeedback    AgentFeedback[]
+  escalationCases  EscalationCase[]
+  launchStatus     PracticeLaunchStatus?
   cannabisProducts CannabisProduct[]
-  claims         Claim[]
-  feeSchedule    FeeScheduleEntry[]
+  claims           Claim[]
+  feeSchedule      FeeScheduleEntry[]
 }
 
 model User {
-  id             String       @id @default(cuid())
-  email          String       @unique
-  passwordHash   String
-  firstName      String
-  lastName       String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  lastLoginAt    DateTime?
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  lastLoginAt  DateTime?
 
-  memberships    Membership[]
-  patientProfile Patient?     @relation("PatientUser")
-  providerProfile Provider?   @relation("ProviderUser")
-  sentMessages   Message[]    @relation("MessageSender")
-  auditLogs      AuditLog[]
-  approvedJobs   AgentJob[]   @relation("JobApprovedBy")
+  memberships     Membership[]
+  patientProfile  Patient?     @relation("PatientUser")
+  providerProfile Provider?    @relation("ProviderUser")
+  sentMessages    Message[]    @relation("MessageSender")
+  auditLogs       AuditLog[]
+  approvedJobs    AgentJob[]   @relation("JobApprovedBy")
 }
 
 model Membership {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   userId         String
   organizationId String
   role           Role
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime @default(now())
 
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId, role])
   @@index([organizationId, role])
@@ -102,77 +102,77 @@ enum QualificationStatus {
 }
 
 model Patient {
-  id              String              @id @default(cuid())
-  userId          String?             @unique
-  organizationId  String
-  status          PatientStatus       @default(prospect)
+  id                     String              @id @default(cuid())
+  userId                 String?             @unique
+  organizationId         String
+  status                 PatientStatus       @default(prospect)
   // Demographics
-  firstName       String
-  lastName        String
-  dateOfBirth     DateTime?
-  email           String?
-  phone           String?
-  addressLine1    String?
-  addressLine2    String?
-  city            String?
-  state           String?
-  postalCode      String?
+  firstName              String
+  lastName               String
+  dateOfBirth            DateTime?
+  email                  String?
+  phone                  String?
+  addressLine1           String?
+  addressLine2           String?
+  city                   String?
+  state                  String?
+  postalCode             String?
   // Cannabis + clinical
-  intakeAnswers   Json?               // progressive intake payload
-  cannabisHistory Json?               // prior use, formats, benefits, side effects
-  presentingConcerns String?
-  treatmentGoals  String?
-  qualificationStatus QualificationStatus @default(unknown)
+  intakeAnswers          Json? // progressive intake payload
+  cannabisHistory        Json? // prior use, formats, benefits, side effects
+  presentingConcerns     String?
+  treatmentGoals         String?
+  qualificationStatus    QualificationStatus @default(unknown)
   qualificationExpiresAt DateTime?
   // Soft delete
-  deletedAt       DateTime?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  deletedAt              DateTime?
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
 
-  user            User?               @relation("PatientUser", fields: [userId], references: [id])
-  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  chartSummary    ChartSummary?
-  encounters      Encounter[]
-  documents       Document[]
-  assessmentResponses AssessmentResponse[]
-  outcomeLogs     OutcomeLog[]
-  messageThreads  MessageThread[]
-  appointments    Appointment[]
-  tasks           Task[]
-  dosingRegimens  DosingRegimen[]
-  doseLogs        DoseLog[]
-  medications     PatientMedication[]
-  claims          Claim[]
-  financialEvents FinancialEvent[]
-  statements      Statement[]
-  paymentPlans    PaymentPlan[]
-  coverages       PatientCoverage[]
-  paymentMethods  StoredPaymentMethod[]
-  charges         Charge[]
+  user                 User?                 @relation("PatientUser", fields: [userId], references: [id])
+  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chartSummary         ChartSummary?
+  encounters           Encounter[]
+  documents            Document[]
+  assessmentResponses  AssessmentResponse[]
+  outcomeLogs          OutcomeLog[]
+  messageThreads       MessageThread[]
+  appointments         Appointment[]
+  tasks                Task[]
+  dosingRegimens       DosingRegimen[]
+  doseLogs             DoseLog[]
+  medications          PatientMedication[]
+  claims               Claim[]
+  financialEvents      FinancialEvent[]
+  statements           Statement[]
+  paymentPlans         PaymentPlan[]
+  coverages            PatientCoverage[]
+  paymentMethods       StoredPaymentMethod[]
+  charges              Charge[]
   eligibilitySnapshots EligibilitySnapshot[]
   // Agentic memory harness
-  memories        PatientMemory[]
-  observations    ClinicalObservation[]
+  memories             PatientMemory[]
+  observations         ClinicalObservation[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
 }
 
 model Provider {
-  id              String       @id @default(cuid())
-  userId          String       @unique
-  organizationId  String
-  title           String?      // e.g. "MD, Integrative Oncology"
-  specialties     String[]     @default([])
-  bio             String?
-  active          Boolean      @default(true)
-  createdAt       DateTime     @default(now())
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  organizationId String
+  title          String? // e.g. "MD, Integrative Oncology"
+  specialties    String[] @default([])
+  bio            String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
-  user            User         @relation("ProviderUser", fields: [userId], references: [id], onDelete: Cascade)
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  encounters      Encounter[]
-  appointments    Appointment[]
-  claims          Claim[]
+  user         User          @relation("ProviderUser", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  encounters   Encounter[]
+  appointments Appointment[]
+  claims       Claim[]
 
   @@index([organizationId])
 }
@@ -182,15 +182,15 @@ model Provider {
 // --------------------------------------------------------------
 
 model ChartSummary {
-  id             String   @id @default(cuid())
-  patientId      String   @unique
-  summaryMd      String   // markdown
-  completenessScore Int   // 0-100
-  missingFields  String[] @default([])
-  generatedBy    String   // agent name:version
-  generatedAt    DateTime @default(now())
+  id                String   @id @default(cuid())
+  patientId         String   @unique
+  summaryMd         String // markdown
+  completenessScore Int // 0-100
+  missingFields     String[] @default([])
+  generatedBy       String // agent name:version
+  generatedAt       DateTime @default(now())
 
-  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 }
 
 // --------------------------------------------------------------
@@ -216,7 +216,7 @@ model Document {
   originalName   String
   mimeType       String
   sizeBytes      Int
-  storageKey     String       // opaque pointer to object storage
+  storageKey     String // opaque pointer to object storage
   tags           String[]     @default([])
   aiClassified   Boolean      @default(false)
   aiTags         String[]     @default([])
@@ -226,9 +226,9 @@ model Document {
   deletedAt      DateTime?
   createdAt      DateTime     @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  patient        Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  encounter      Encounter?   @relation(fields: [encounterId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter    Encounter?   @relation(fields: [encounterId], references: [id])
 
   @@index([patientId, kind])
   @@index([organizationId, needsReview])
@@ -246,29 +246,29 @@ enum EncounterStatus {
 }
 
 model Encounter {
-  id             String          @id @default(cuid())
-  organizationId String
-  patientId      String
-  providerId     String?
-  status         EncounterStatus @default(scheduled)
-  scheduledFor   DateTime?
-  startedAt      DateTime?
-  completedAt    DateTime?
-  modality       String          @default("in_person") // in_person | video | phone
-  placeOfService String?         // 2-digit POS code: 11=office, 02=telehealth
-  renderingProviderId String?    // if different from scheduling provider
-  reason         String?
-  briefingContext Json?           // Pre-visit intelligence briefing (talking points, risk flags, summary)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                  String          @id @default(cuid())
+  organizationId      String
+  patientId           String
+  providerId          String?
+  status              EncounterStatus @default(scheduled)
+  scheduledFor        DateTime?
+  startedAt           DateTime?
+  completedAt         DateTime?
+  modality            String          @default("in_person") // in_person | video | phone
+  placeOfService      String? // 2-digit POS code: 11=office, 02=telehealth
+  renderingProviderId String? // if different from scheduling provider
+  reason              String?
+  briefingContext     Json? // Pre-visit intelligence briefing (talking points, risk flags, summary)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  provider       Provider?       @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  notes          Note[]
-  documents      Document[]
-  claims         Claim[]
-  charges        Charge[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider     Provider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  notes        Note[]
+  documents    Document[]
+  claims       Claim[]
+  charges      Charge[]
 
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
@@ -283,34 +283,34 @@ enum NoteStatus {
 }
 
 model Note {
-  id             String     @id @default(cuid())
-  encounterId    String
-  authorUserId   String?    // null when drafted by agent, set when finalized by clinician
-  status         NoteStatus @default(draft)
+  id           String     @id @default(cuid())
+  encounterId  String
+  authorUserId String? // null when drafted by agent, set when finalized by clinician
+  status       NoteStatus @default(draft)
   // Structured note blocks — see src/lib/domain/notes.ts for the canonical block types.
-  blocks         Json
-  narrative      String?    // free-form fallback text
-  aiDrafted      Boolean    @default(false)
-  aiConfidence   Float?
-  finalizedAt    DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  blocks       Json
+  narrative    String? // free-form fallback text
+  aiDrafted    Boolean    @default(false)
+  aiConfidence Float?
+  finalizedAt  DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-  encounter      Encounter  @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  encounter        Encounter         @relation(fields: [encounterId], references: [id], onDelete: Cascade)
   codingSuggestion CodingSuggestion?
 
   @@index([encounterId, status])
 }
 
 model CodingSuggestion {
-  id             String   @id @default(cuid())
-  noteId         String   @unique
-  icd10          Json     // [{ code, label, confidence }]
-  emLevel        String?
-  rationale      String?
-  generatedAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  noteId      String   @unique
+  icd10       Json // [{ code, label, confidence }]
+  emLevel     String?
+  rationale   String?
+  generatedAt DateTime @default(now())
 
-  note           Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
 }
 
 // --------------------------------------------------------------
@@ -318,76 +318,76 @@ model CodingSuggestion {
 // --------------------------------------------------------------
 
 enum ClaimStatus {
-  draft          // not yet submitted
-  scrubbing      // being validated pre-submission
-  scrub_blocked  // scrub found blocking issues
-  ready          // scrub passed, awaiting submission
-  submitted      // sent to clearinghouse
-  ch_rejected    // clearinghouse returned rejection
-  pending        // (deprecated — use accepted/adjudicated. Kept for existing data migration)
-  accepted       // payer acknowledged receipt
-  adjudicated    // payer made a decision
-  paid           // fully paid
-  partial        // partially paid, balance due
-  denied         // payer denied
-  appealed       // under appeal
-  closed         // financial closure reached
-  voided         // voided (error/duplicate)
-  written_off    // written off
+  draft // not yet submitted
+  scrubbing // being validated pre-submission
+  scrub_blocked // scrub found blocking issues
+  ready // scrub passed, awaiting submission
+  submitted // sent to clearinghouse
+  ch_rejected // clearinghouse returned rejection
+  pending // (deprecated — use accepted/adjudicated. Kept for existing data migration)
+  accepted // payer acknowledged receipt
+  adjudicated // payer made a decision
+  paid // fully paid
+  partial // partially paid, balance due
+  denied // payer denied
+  appealed // under appeal
+  closed // financial closure reached
+  voided // voided (error/duplicate)
+  written_off // written off
 }
 
 model Claim {
-  id              String       @id @default(cuid())
-  organizationId  String
-  patientId       String
-  encounterId     String?
-  providerId      String?
-  status          ClaimStatus  @default(draft)
+  id                   String      @id @default(cuid())
+  organizationId       String
+  patientId            String
+  encounterId          String?
+  providerId           String?
+  status               ClaimStatus @default(draft)
   // Coding
-  cptCodes        Json         // [{ code, label, units, chargeAmount }]
-  icd10Codes      Json         // [{ code, label }]
+  cptCodes             Json // [{ code, label, units, chargeAmount }]
+  icd10Codes           Json // [{ code, label }]
   // Financials (in cents to avoid float rounding)
-  billedAmountCents   Int
-  allowedAmountCents  Int?
-  paidAmountCents     Int       @default(0)
-  patientRespCents    Int       @default(0)
+  billedAmountCents    Int
+  allowedAmountCents   Int?
+  paidAmountCents      Int         @default(0)
+  patientRespCents     Int         @default(0)
   // Payer
-  payerName       String?       // "Blue Cross Blue Shield", "Aetna", etc.
-  payerId         String?       // standardized EDI payer ID
-  claimNumber     String?       // our internal claim number
+  payerName            String? // "Blue Cross Blue Shield", "Aetna", etc.
+  payerId              String? // standardized EDI payer ID
+  claimNumber          String? // our internal claim number
   // Provider identifiers for 837P
-  billingNpi      String?       // billing provider NPI
-  renderingNpi    String?       // rendering provider NPI (may differ)
-  placeOfService  String?       // 2-digit POS code (11=office, 02=telehealth)
+  billingNpi           String? // billing provider NPI
+  renderingNpi         String? // rendering provider NPI (may differ)
+  placeOfService       String? // 2-digit POS code (11=office, 02=telehealth)
   // Submission control
-  frequencyCode   String?       // 1=original, 7=replacement, 8=void
-  priorAuthNumber String?       // prior authorization reference
+  frequencyCode        String? // 1=original, 7=replacement, 8=void
+  priorAuthNumber      String? // prior authorization reference
   timelyFilingDeadline DateTime? // computed from payer rules
-  resubmissionCount Int         @default(0)
+  resubmissionCount    Int         @default(0)
   // Lifecycle
-  serviceDate     DateTime
-  submittedAt     DateTime?
-  paidAt          DateTime?
-  deniedAt        DateTime?
-  denialReason    String?
-  closedAt        DateTime?
-  closureType     String?       // paid_in_full, written_off, patient_on_plan, collections, voided, adjusted
-  notes           String?
+  serviceDate          DateTime
+  submittedAt          DateTime?
+  paidAt               DateTime?
+  deniedAt             DateTime?
+  denialReason         String?
+  closedAt             DateTime?
+  closureType          String? // paid_in_full, written_off, patient_on_plan, collections, voided, adjusted
+  notes                String?
   // Agent-written: scrub issues from Claims Scrubbing Agent
-  scrubIssues     Json?
-  scrubbedAt      DateTime?
+  scrubIssues          Json?
+  scrubbedAt           DateTime?
   // Agent-written: denial triage from Denial Resolution Agent
-  denialTriage    Json?
-  triagedAt       DateTime?
+  denialTriage         Json?
+  triagedAt            DateTime?
   // Tracking
-  humanTouches    Int           @default(0) // count of human interventions on this claim
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  humanTouches         Int         @default(0) // count of human interventions on this claim
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  encounter       Encounter?    @relation(fields: [encounterId], references: [id], onDelete: SetNull)
-  provider        Provider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  organization    Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient         Patient                   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter       Encounter?                @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+  provider        Provider?                 @relation(fields: [providerId], references: [id], onDelete: SetNull)
   payments        Payment[]
   financialEvents FinancialEvent[]
   charges         Charge[]
@@ -411,15 +411,15 @@ enum PaymentSource {
 }
 
 model Payment {
-  id              String         @id @default(cuid())
-  claimId         String
-  source          PaymentSource
-  amountCents     Int
-  paymentDate     DateTime       @default(now())
-  reference       String?        // check #, EFT trace, last4 of card
-  notes           String?
+  id          String        @id @default(cuid())
+  claimId     String
+  source      PaymentSource
+  amountCents Int
+  paymentDate DateTime      @default(now())
+  reference   String? // check #, EFT trace, last4 of card
+  notes       String?
 
-  claim           Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([claimId, paymentDate])
 }
@@ -429,31 +429,31 @@ model Payment {
 // --------------------------------------------------------------
 
 enum ChargeStatus {
-  pending         // created, not yet on a claim
-  claim_attached  // linked to a claim line
-  voided          // cancelled
+  pending // created, not yet on a claim
+  claim_attached // linked to a claim line
+  voided // cancelled
 }
 
 model Charge {
-  id              String       @id @default(cuid())
-  encounterId     String
-  patientId       String
-  organizationId  String
-  cptCode         String       // e.g. "99214", "36415"
-  cptDescription  String?
-  modifiers       String[]     @default([])  // e.g. ["25", "XE"]
-  units           Int          @default(1)
-  icd10Codes      String[]     @default([])  // linked diagnosis codes
-  feeAmountCents  Int          // from fee schedule
-  status          ChargeStatus @default(pending)
-  claimId         String?      // set when attached to a claim
-  confidence      Float?       // coding confidence (0-1)
-  createdBy       String       // agent name or user id
-  createdAt       DateTime     @default(now())
+  id             String       @id @default(cuid())
+  encounterId    String
+  patientId      String
+  organizationId String
+  cptCode        String // e.g. "99214", "36415"
+  cptDescription String?
+  modifiers      String[]     @default([]) // e.g. ["25", "XE"]
+  units          Int          @default(1)
+  icd10Codes     String[]     @default([]) // linked diagnosis codes
+  feeAmountCents Int // from fee schedule
+  status         ChargeStatus @default(pending)
+  claimId        String? // set when attached to a claim
+  confidence     Float? // coding confidence (0-1)
+  createdBy      String // agent name or user id
+  createdAt      DateTime     @default(now())
 
-  encounter       Encounter    @relation(fields: [encounterId], references: [id], onDelete: Cascade)
-  patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  claim           Claim?       @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  encounter Encounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  claim     Claim?    @relation(fields: [claimId], references: [id], onDelete: SetNull)
 
   @@index([encounterId])
   @@index([patientId, createdAt])
@@ -461,25 +461,25 @@ model Charge {
 }
 
 model EligibilitySnapshot {
-  id              String       @id @default(cuid())
-  patientId       String
-  coverageId      String
-  checkedAt       DateTime     @default(now())
-  eligible        Boolean
-  planStatus      String       // active, termed, pending
-  copayAmountCents Int?
+  id                       String   @id @default(cuid())
+  patientId                String
+  coverageId               String
+  checkedAt                DateTime @default(now())
+  eligible                 Boolean
+  planStatus               String // active, termed, pending
+  copayAmountCents         Int?
   deductibleRemainingCents Int?
-  oopRemainingCents Int?
-  coinsurancePct  Int?
-  priorAuthRequired Boolean   @default(false)
-  referralRequired Boolean    @default(false)
-  networkStatus   String      @default("unknown")  // in_network, out_of_network, unknown
-  rawResponse     Json?       // full 271 response for audit
-  expiresAt       DateTime    // when this snapshot is stale (default: +24h)
-  createdAt       DateTime    @default(now())
+  oopRemainingCents        Int?
+  coinsurancePct           Int?
+  priorAuthRequired        Boolean  @default(false)
+  referralRequired         Boolean  @default(false)
+  networkStatus            String   @default("unknown") // in_network, out_of_network, unknown
+  rawResponse              Json? // full 271 response for audit
+  expiresAt                DateTime // when this snapshot is stale (default: +24h)
+  createdAt                DateTime @default(now())
 
-  patient         Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  coverage        PatientCoverage @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  patient  Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  coverage PatientCoverage @relation(fields: [coverageId], references: [id], onDelete: Cascade)
 
   @@index([patientId, coverageId, checkedAt])
   @@index([expiresAt])
@@ -492,17 +492,17 @@ enum ScrubStatus {
 }
 
 model ClaimScrubResult {
-  id              String       @id @default(cuid())
-  claimId         String
-  scrubVersion    String       // agent version that performed the scrub
-  status          ScrubStatus
-  edits           Json         @default("[]")  // [{ ruleId, severity, message, lineSequence, autoFixApplied }]
-  ncciConflicts   Json         @default("[]")  // detected NCCI edit pairs
+  id               String      @id @default(cuid())
+  claimId          String
+  scrubVersion     String // agent version that performed the scrub
+  status           ScrubStatus
+  edits            Json        @default("[]") // [{ ruleId, severity, message, lineSequence, autoFixApplied }]
+  ncciConflicts    Json        @default("[]") // detected NCCI edit pairs
   modifierWarnings Json        @default("[]")
-  missingFields   Json         @default("[]")
-  scrubbedAt      DateTime     @default(now())
+  missingFields    Json        @default("[]")
+  scrubbedAt       DateTime    @default(now())
 
-  claim           Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([claimId, scrubbedAt])
 }
@@ -517,16 +517,16 @@ model ClearinghouseSubmission {
   id                String                   @id @default(cuid())
   claimId           String
   organizationId    String
-  clearinghouseName String                   // "Availity", "Waystar", etc.
+  clearinghouseName String // "Availity", "Waystar", etc.
   submittedAt       DateTime                 @default(now())
-  ediPayload        String?                  // 837P payload (stored for audit)
+  ediPayload        String? // 837P payload (stored for audit)
   responseStatus    SubmissionResponseStatus @default(pending)
   responseCode      String?
   responseMessage   String?
   respondedAt       DateTime?
   retryCount        Int                      @default(0)
 
-  claim             Claim                    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([claimId, submittedAt])
 }
@@ -539,20 +539,20 @@ enum AdjudicationClaimStatus {
 }
 
 model AdjudicationResult {
-  id              String                   @id @default(cuid())
-  claimId         String
-  eraDate         DateTime                 // date ERA was received
-  checkNumber     String?                  // payer payment reference
-  totalPaidCents  Int                      @default(0)
-  totalAllowedCents Int                    @default(0)
-  totalAdjustedCents Int                   @default(0)
-  totalPatientRespCents Int                @default(0)
-  claimStatus     AdjudicationClaimStatus
-  lineDetails     Json                     @default("[]")  // per-line: paid, allowed, CARC/RARC
-  rawEra          String?                  // full 835 segment for audit
-  parsedAt        DateTime                 @default(now())
+  id                    String                  @id @default(cuid())
+  claimId               String
+  eraDate               DateTime // date ERA was received
+  checkNumber           String? // payer payment reference
+  totalPaidCents        Int                     @default(0)
+  totalAllowedCents     Int                     @default(0)
+  totalAdjustedCents    Int                     @default(0)
+  totalPatientRespCents Int                     @default(0)
+  claimStatus           AdjudicationClaimStatus
+  lineDetails           Json                    @default("[]") // per-line: paid, allowed, CARC/RARC
+  rawEra                String? // full 835 segment for audit
+  parsedAt              DateTime                @default(now())
 
-  claim           Claim                    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([claimId])
 }
@@ -568,22 +568,22 @@ enum DenialResolution {
 }
 
 model DenialEvent {
-  id              String           @id @default(cuid())
-  claimId         String
-  claimLineSequence Int?           // null = claim-level denial
-  carcCode        String           // Claim Adjustment Reason Code (e.g. "16", "4", "197")
-  rarcCode        String?          // Remittance Advice Remark Code
-  groupCode       String           // CO, PR, OA, PI
-  denialCategory  String?          // agent-classified: coding_error, missing_info, eligibility, etc.
-  amountDeniedCents Int
-  recoverable     Boolean          @default(true)
+  id                     String           @id @default(cuid())
+  claimId                String
+  claimLineSequence      Int? // null = claim-level denial
+  carcCode               String // Claim Adjustment Reason Code (e.g. "16", "4", "197")
+  rarcCode               String? // Remittance Advice Remark Code
+  groupCode              String // CO, PR, OA, PI
+  denialCategory         String? // agent-classified: coding_error, missing_info, eligibility, etc.
+  amountDeniedCents      Int
+  recoverable            Boolean          @default(true)
   recoverableAmountCents Int?
-  resolution      DenialResolution @default(pending)
-  resolvedAt      DateTime?
-  createdAt       DateTime         @default(now())
+  resolution             DenialResolution @default(pending)
+  resolvedAt             DateTime?
+  createdAt              DateTime         @default(now())
 
-  claim           Claim            @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  appeals         AppealPacket[]
+  claim   Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  appeals AppealPacket[]
 
   @@index([claimId])
   @@index([carcCode, resolution])
@@ -600,22 +600,22 @@ enum AppealStatus {
 }
 
 model AppealPacket {
-  id              String       @id @default(cuid())
-  claimId         String
-  denialEventId   String
-  appealLevel     Int          @default(1) // 1=first, 2=second, 3=external review
-  appealLetter    String?      // generated text
-  supportingDocIds String[]    @default([])
-  submittedAt     DateTime?
-  submittedTo     String?      // payer address/fax/portal
-  status          AppealStatus @default(draft)
+  id                String       @id @default(cuid())
+  claimId           String
+  denialEventId     String
+  appealLevel       Int          @default(1) // 1=first, 2=second, 3=external review
+  appealLetter      String? // generated text
+  supportingDocIds  String[]     @default([])
+  submittedAt       DateTime?
+  submittedTo       String? // payer address/fax/portal
+  status            AppealStatus @default(draft)
   outcomeReceivedAt DateTime?
-  generatedBy     String?      // agent name
-  reviewedBy      String?      // user id (if human-reviewed)
-  createdAt       DateTime     @default(now())
+  generatedBy       String? // agent name
+  reviewedBy        String? // user id (if human-reviewed)
+  createdAt         DateTime     @default(now())
 
-  claim           Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  denialEvent     DenialEvent  @relation(fields: [denialEventId], references: [id], onDelete: Cascade)
+  claim       Claim       @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  denialEvent DenialEvent @relation(fields: [denialEventId], references: [id], onDelete: Cascade)
 
   @@index([claimId])
   @@index([status])
@@ -630,28 +630,28 @@ enum AdjustmentType {
 }
 
 model Adjustment {
-  id              String         @id @default(cuid())
-  claimId         String
+  id                String         @id @default(cuid())
+  claimId           String
   claimLineSequence Int?
-  type            AdjustmentType
-  amountCents     Int            // signed: negative = money back
-  reason          String?
-  carcCode        String?        // if derived from ERA
-  approvedBy      String?        // user id (required for write-offs > $25)
-  approvedAt      DateTime?
-  postedAt        DateTime?
-  createdAt       DateTime       @default(now())
+  type              AdjustmentType
+  amountCents       Int // signed: negative = money back
+  reason            String?
+  carcCode          String? // if derived from ERA
+  approvedBy        String? // user id (required for write-offs > $25)
+  approvedAt        DateTime?
+  postedAt          DateTime?
+  createdAt         DateTime       @default(now())
 
-  claim           Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([claimId])
   @@index([type, createdAt])
 }
 
 enum EscalationTier {
-  tier_1  // billing specialist
-  tier_2  // compliance officer / senior biller
-  tier_3  // practice owner
+  tier_1 // billing specialist
+  tier_2 // compliance officer / senior biller
+  tier_3 // practice owner
 }
 
 enum EscalationStatus {
@@ -663,25 +663,25 @@ enum EscalationStatus {
 }
 
 model EscalationCase {
-  id              String           @id @default(cuid())
-  organizationId  String
-  claimId         String?
-  patientId       String?
-  tier            EscalationTier
-  category        String           // coding_uncertainty, high_dollar, compliance_risk, etc.
-  summary         String           // agent-generated description
-  sourceAgent     String           // which agent escalated
-  suggestedAction String?
-  assignedTo      String?          // user id
-  status          EscalationStatus @default(open)
-  resolution      String?          // what was decided
-  resolvedAt      DateTime?
-  resolvedBy      String?          // user id
-  feedbackRecorded Boolean         @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id               String           @id @default(cuid())
+  organizationId   String
+  claimId          String?
+  patientId        String?
+  tier             EscalationTier
+  category         String // coding_uncertainty, high_dollar, compliance_risk, etc.
+  summary          String // agent-generated description
+  sourceAgent      String // which agent escalated
+  suggestedAction  String?
+  assignedTo       String? // user id
+  status           EscalationStatus @default(open)
+  resolution       String? // what was decided
+  resolvedAt       DateTime?
+  resolvedBy       String? // user id
+  feedbackRecorded Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, status, tier])
   @@index([claimId])
@@ -689,18 +689,18 @@ model EscalationCase {
 }
 
 model BillingMemory {
-  id              String   @id @default(cuid())
-  organizationId  String
-  scope           String   // "payer" | "provider" | "patient" | "code_combo" | "global"
-  scopeId         String?  // payerId, providerId, patientId, or null for global
-  category        String   // "denial_pattern" | "modifier_rule" | "turnaround" | "collection_behavior" | "coding_pattern"
-  content         String   // narrative description
-  confidence      Float    @default(0.8)
-  evidenceCount   Int      @default(1)
-  lastEvidenceAt  DateTime @default(now())
-  tags            String[] @default([])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  organizationId String
+  scope          String // "payer" | "provider" | "patient" | "code_combo" | "global"
+  scopeId        String? // payerId, providerId, patientId, or null for global
+  category       String // "denial_pattern" | "modifier_rule" | "turnaround" | "collection_behavior" | "coding_pattern"
+  content        String // narrative description
+  confidence     Float    @default(0.8)
+  evidenceCount  Int      @default(1)
+  lastEvidenceAt DateTime @default(now())
+  tags           String[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([scope, scopeId, category])
   @@index([organizationId, category])
@@ -711,16 +711,16 @@ model BillingMemory {
 // --------------------------------------------------------------
 
 model FeeScheduleEntry {
-  id              String        @id @default(cuid())
-  organizationId  String
-  cptCode         String
-  description     String
+  id                 String   @id @default(cuid())
+  organizationId     String
+  cptCode            String
+  description        String
   defaultChargeCents Int
-  category        String?        // "E&M", "Procedure", "Cannabis Counseling", etc.
-  active          Boolean       @default(true)
-  createdAt       DateTime      @default(now())
+  category           String? // "E&M", "Procedure", "Cannabis Counseling", etc.
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
 
-  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, cptCode])
   @@index([organizationId, category])
@@ -756,22 +756,22 @@ enum FinancialEventType {
 /// amountCents is SIGNED: positive = money into practice, negative = money out/owed.
 /// This is the source of truth for all balance calculations.
 model FinancialEvent {
-  id              String              @id @default(cuid())
+  id              String             @id @default(cuid())
   organizationId  String
   patientId       String
   claimId         String?
   encounterId     String?
   paymentId       String?
   type            FinancialEventType
-  amountCents     Int                  // signed; + = cash in, - = cash out / balance owed
+  amountCents     Int // signed; + = cash in, - = cash out / balance owed
   description     String
-  metadata        Json?                // payer, CPT, confidence, agent id, etc.
-  occurredAt      DateTime             @default(now())
-  createdByUserId String?              // null when system/agent
-  createdByAgent  String?              // agent name if automated
+  metadata        Json? // payer, CPT, confidence, agent id, etc.
+  occurredAt      DateTime           @default(now())
+  createdByUserId String? // null when system/agent
+  createdByAgent  String? // agent name if automated
 
-  patient         Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  claim           Claim?               @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  claim   Claim?  @relation(fields: [claimId], references: [id], onDelete: SetNull)
 
   @@index([patientId, occurredAt])
   @@index([organizationId, occurredAt])
@@ -790,29 +790,29 @@ enum StatementStatus {
 }
 
 model Statement {
-  id                 String          @id @default(cuid())
-  organizationId     String
-  patientId          String
-  statementNumber    String          @unique
-  periodStart        DateTime
-  periodEnd          DateTime
-  dueDate            DateTime
-  totalChargesCents  Int
-  insurancePaidCents Int             @default(0)
-  adjustmentsCents   Int             @default(0)
-  priorBalanceCents  Int             @default(0)
-  amountDueCents     Int
-  paidToDateCents    Int             @default(0)
-  status             StatementStatus @default(draft)
-  deliveryMethod     String          @default("portal") // portal | email | sms | mail
-  sentAt             DateTime?
-  viewedAt           DateTime?
-  paidAt             DateTime?
-  lineItems          Json            // array of { description, amountCents, encounterId, cptCode }
-  plainLanguageSummary String?       // AI-generated explanation
-  createdAt          DateTime        @default(now())
+  id                   String          @id @default(cuid())
+  organizationId       String
+  patientId            String
+  statementNumber      String          @unique
+  periodStart          DateTime
+  periodEnd            DateTime
+  dueDate              DateTime
+  totalChargesCents    Int
+  insurancePaidCents   Int             @default(0)
+  adjustmentsCents     Int             @default(0)
+  priorBalanceCents    Int             @default(0)
+  amountDueCents       Int
+  paidToDateCents      Int             @default(0)
+  status               StatementStatus @default(draft)
+  deliveryMethod       String          @default("portal") // portal | email | sms | mail
+  sentAt               DateTime?
+  viewedAt             DateTime?
+  paidAt               DateTime?
+  lineItems            Json // array of { description, amountCents, encounterId, cptCode }
+  plainLanguageSummary String? // AI-generated explanation
+  createdAt            DateTime        @default(now())
 
-  patient            Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, status])
   @@index([organizationId, status, dueDate])
@@ -827,24 +827,24 @@ enum PaymentPlanStatus {
 }
 
 model PaymentPlan {
-  id                      String             @id @default(cuid())
-  organizationId          String
-  patientId               String
-  totalAmountCents        Int
-  installmentAmountCents  Int
-  frequency               String             // monthly | biweekly | weekly
-  numberOfInstallments    Int
-  installmentsPaid        Int                @default(0)
-  startDate               DateTime
-  nextPaymentDate         DateTime?
-  status                  PaymentPlanStatus  @default(active)
-  paidAmountCents         Int                @default(0)
-  autopayEnabled          Boolean            @default(false)
-  notes                   String?
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  id                     String            @id @default(cuid())
+  organizationId         String
+  patientId              String
+  totalAmountCents       Int
+  installmentAmountCents Int
+  frequency              String // monthly | biweekly | weekly
+  numberOfInstallments   Int
+  installmentsPaid       Int               @default(0)
+  startDate              DateTime
+  nextPaymentDate        DateTime?
+  status                 PaymentPlanStatus @default(active)
+  paidAmountCents        Int               @default(0)
+  autopayEnabled         Boolean           @default(false)
+  notes                  String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
-  patient                 Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, status])
 }
@@ -865,33 +865,33 @@ enum EligibilityStatus {
 }
 
 model PatientCoverage {
-  id                      String             @id @default(cuid())
-  patientId               String
-  type                    CoverageType       @default(primary)
-  payerName               String             // "Blue Cross Blue Shield"
-  payerId                 String?
-  memberId                String
-  groupNumber             String?
-  planName                String?
-  subscriberName          String?
-  relationshipToSubscriber String?           // self | spouse | child | other
-  effectiveDate           DateTime?
-  terminationDate         DateTime?
-  eligibilityStatus       EligibilityStatus  @default(unknown)
+  id                       String            @id @default(cuid())
+  patientId                String
+  type                     CoverageType      @default(primary)
+  payerName                String // "Blue Cross Blue Shield"
+  payerId                  String?
+  memberId                 String
+  groupNumber              String?
+  planName                 String?
+  subscriberName           String?
+  relationshipToSubscriber String? // self | spouse | child | other
+  effectiveDate            DateTime?
+  terminationDate          DateTime?
+  eligibilityStatus        EligibilityStatus @default(unknown)
   eligibilityLastCheckedAt DateTime?
-  copayCents              Int?               // default visit copay estimate
-  deductibleCents         Int?               // annual deductible
-  deductibleMetCents      Int                @default(0)
-  outOfPocketMaxCents     Int?
-  outOfPocketMetCents     Int                @default(0)
-  coinsurancePct          Int?               // e.g. 20 for 20%
-  notes                   String?
-  active                  Boolean            @default(true)
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  copayCents               Int? // default visit copay estimate
+  deductibleCents          Int? // annual deductible
+  deductibleMetCents       Int               @default(0)
+  outOfPocketMaxCents      Int?
+  outOfPocketMetCents      Int               @default(0)
+  coinsurancePct           Int? // e.g. 20 for 20%
+  notes                    String?
+  active                   Boolean           @default(true)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
 
-  patient                 Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  eligibilitySnapshots    EligibilitySnapshot[]
+  patient              Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  eligibilitySnapshots EligibilitySnapshot[]
 
   @@index([patientId, type, active])
 }
@@ -902,20 +902,20 @@ enum StoredPaymentMethodType {
 }
 
 model StoredPaymentMethod {
-  id              String                   @id @default(cuid())
-  patientId       String
-  type            StoredPaymentMethodType
-  last4           String                   // "4242" — never store full PAN
-  brand           String?                  // visa | mastercard | amex | bank name
-  expiryMonth     Int?
-  expiryYear      Int?
-  isDefault       Boolean                  @default(false)
-  tokenReference  String                   // opaque token from processor (Payabli)
-  consentedAt     DateTime                 @default(now())
-  active          Boolean                  @default(true)
-  createdAt       DateTime                 @default(now())
+  id             String                  @id @default(cuid())
+  patientId      String
+  type           StoredPaymentMethodType
+  last4          String // "4242" — never store full PAN
+  brand          String? // visa | mastercard | amex | bank name
+  expiryMonth    Int?
+  expiryYear     Int?
+  isDefault      Boolean                 @default(false)
+  tokenReference String // opaque token from processor (Payabli)
+  consentedAt    DateTime                @default(now())
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
 
-  patient         Patient                  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, active])
 }
@@ -925,16 +925,16 @@ model StoredPaymentMethod {
 // --------------------------------------------------------------
 
 model Assessment {
-  id             String   @id @default(cuid())
-  slug           String   @unique // "phq-9", "gad-7", "pain-vas"
-  title          String
-  description    String?
+  id           String   @id @default(cuid())
+  slug         String   @unique // "phq-9", "gad-7", "pain-vas"
+  title        String
+  description  String?
   // Form schema — see src/lib/domain/assessments.ts
-  schema         Json
-  scoringRules   Json?
-  createdAt      DateTime @default(now())
+  schema       Json
+  scoringRules Json?
+  createdAt    DateTime @default(now())
 
-  responses      AssessmentResponse[]
+  responses AssessmentResponse[]
 }
 
 model AssessmentResponse {
@@ -946,8 +946,8 @@ model AssessmentResponse {
   interpretation String?
   submittedAt    DateTime @default(now())
 
-  assessment     Assessment @relation(fields: [assessmentId], references: [id])
-  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+  patient    Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, submittedAt])
 }
@@ -965,14 +965,14 @@ enum OutcomeMetric {
 }
 
 model OutcomeLog {
-  id             String        @id @default(cuid())
-  patientId      String
-  metric         OutcomeMetric
-  value          Float         // normalized 0-10
-  note           String?
-  loggedAt       DateTime      @default(now())
+  id        String        @id @default(cuid())
+  patientId String
+  metric    OutcomeMetric
+  value     Float // normalized 0-10
+  note      String?
+  loggedAt  DateTime      @default(now())
 
-  patient        Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, metric, loggedAt])
 }
@@ -982,20 +982,20 @@ model OutcomeLog {
 // --------------------------------------------------------------
 
 model MessageThread {
-  id             String    @id @default(cuid())
-  patientId      String
-  subject        String
-  lastMessageAt  DateTime  @default(now())
-  createdAt      DateTime  @default(now())
+  id                String    @id @default(cuid())
+  patientId         String
+  subject           String
+  lastMessageAt     DateTime  @default(now())
+  createdAt         DateTime  @default(now())
   // Correspondence Nurse Agent triage metadata
-  triageUrgency   String?   // "emergency" | "high" | "routine" | "low"
-  triageCategory  String?   // "symptom_report" | "refill_request" | etc.
-  triageSafetyFlags Json?   // string[] of red-flag symptoms
-  triageSummary   String?   // 1-2 sentence AI summary of the thread
-  triagedAt       DateTime?
+  triageUrgency     String? // "emergency" | "high" | "routine" | "low"
+  triageCategory    String? // "symptom_report" | "refill_request" | etc.
+  triageSafetyFlags Json? // string[] of red-flag symptoms
+  triageSummary     String? // 1-2 sentence AI summary of the thread
+  triagedAt         DateTime?
 
-  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  messages       Message[]
+  patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  messages Message[]
 
   @@index([patientId, lastMessageAt])
   @@index([triageUrgency])
@@ -1008,18 +1008,18 @@ enum MessageStatus {
 }
 
 model Message {
-  id             String        @id @default(cuid())
-  threadId       String
-  senderUserId   String?       // null when agent-drafted
-  senderAgent    String?       // agent name:version if AI-drafted
-  status         MessageStatus @default(draft)
-  body           String
-  aiDrafted      Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  sentAt         DateTime?
+  id           String        @id @default(cuid())
+  threadId     String
+  senderUserId String? // null when agent-drafted
+  senderAgent  String? // agent name:version if AI-drafted
+  status       MessageStatus @default(draft)
+  body         String
+  aiDrafted    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  sentAt       DateTime?
 
-  thread         MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sender         User?         @relation("MessageSender", fields: [senderUserId], references: [id])
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User?         @relation("MessageSender", fields: [senderUserId], references: [id])
 
   @@index([threadId, createdAt])
 }
@@ -1037,18 +1037,18 @@ enum AppointmentStatus {
 }
 
 model Appointment {
-  id             String            @id @default(cuid())
-  patientId      String
-  providerId     String?
-  status         AppointmentStatus @default(requested)
-  startAt        DateTime
-  endAt          DateTime
-  modality       String            @default("video")
-  notes          String?
-  createdAt      DateTime          @default(now())
+  id         String            @id @default(cuid())
+  patientId  String
+  providerId String?
+  status     AppointmentStatus @default(requested)
+  startAt    DateTime
+  endAt      DateTime
+  modality   String            @default("video")
+  notes      String?
+  createdAt  DateTime          @default(now())
 
-  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  provider       Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([providerId, startAt])
   @@index([patientId, startAt])
@@ -1079,7 +1079,7 @@ model Task {
   createdAt      DateTime   @default(now())
   completedAt    DateTime?
 
-  patient        Patient?   @relation(fields: [patientId], references: [id])
+  patient Patient? @relation(fields: [patientId], references: [id])
 
   @@index([organizationId, status])
   @@index([assigneeUserId, status])
@@ -1100,31 +1100,31 @@ enum AgentJobStatus {
 }
 
 model AgentJob {
-  id             String         @id @default(cuid())
-  organizationId String?
-  workflowName   String
-  agentName      String
-  eventName      String
-  input          Json
-  output         Json?
-  status         AgentJobStatus @default(pending)
-  attempts       Int            @default(0)
-  maxAttempts    Int            @default(3)
-  lastError      String?
-  logs           Json           @default("[]")
-  requiresApproval Boolean      @default(false)
+  id                 String         @id @default(cuid())
+  organizationId     String?
+  workflowName       String
+  agentName          String
+  eventName          String
+  input              Json
+  output             Json?
+  status             AgentJobStatus @default(pending)
+  attempts           Int            @default(0)
+  maxAttempts        Int            @default(3)
+  lastError          String?
+  logs               Json           @default("[]")
+  requiresApproval   Boolean        @default(false)
   approvalRequiredAt DateTime?
-  approvedById   String?
-  approvedAt     DateTime?
-  claimedAt      DateTime?
-  claimedBy      String?        // worker id
-  runAfter       DateTime       @default(now())
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime       @default(now())
+  approvedById       String?
+  approvedAt         DateTime?
+  claimedAt          DateTime?
+  claimedBy          String? // worker id
+  runAfter           DateTime       @default(now())
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime       @default(now())
 
-  organization   Organization?  @relation(fields: [organizationId], references: [id])
-  approvedBy     User?          @relation("JobApprovedBy", fields: [approvedById], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  approvedBy   User?         @relation("JobApprovedBy", fields: [approvedById], references: [id])
 
   @@index([status, runAfter])
   @@index([organizationId, status])
@@ -1139,15 +1139,15 @@ model AuditLog {
   id             String   @id @default(cuid())
   organizationId String?
   actorUserId    String?
-  actorAgent     String?  // "agent:scribe@1.0.0"
-  action         String   // e.g. "patient.read", "note.finalized"
+  actorAgent     String? // "agent:scribe@1.0.0"
+  action         String // e.g. "patient.read", "note.finalized"
   subjectType    String?
   subjectId      String?
   metadata       Json?
   createdAt      DateTime @default(now())
 
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  actor          User?         @relation(fields: [actorUserId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  actor        User?         @relation(fields: [actorUserId], references: [id])
 
   @@index([organizationId, createdAt])
   @@index([subjectType, subjectId])
@@ -1185,15 +1185,15 @@ model AuditLog {
 // --------------------------------------------------------------
 
 enum MemoryKind {
-  preference       // what the patient wants / what helps them feel heard
-  observation      // something we've noticed about them
-  trajectory       // how something is trending over time
-  relationship     // who's in their life (family, other providers)
-  context          // background that informs care
-  milestone        // key moments worth remembering
-  working          // an intervention that is currently helping
-  not_working      // something that was tried and didn't help
-  concern          // an ongoing worry the physician should keep front of mind
+  preference // what the patient wants / what helps them feel heard
+  observation // something we've noticed about them
+  trajectory // how something is trending over time
+  relationship // who's in their life (family, other providers)
+  context // background that informs care
+  milestone // key moments worth remembering
+  working // an intervention that is currently helping
+  not_working // something that was tried and didn't help
+  concern // an ongoing worry the physician should keep front of mind
 }
 
 model PatientMemory {
@@ -1209,8 +1209,8 @@ model PatientMemory {
   /// Short structured tags for quick filtering. e.g. ["sleep", "pain", "anxiety"]
   tags           String[]   @default([])
   /// Who recorded this memory.
-  source         String     // agent name or user id
-  sourceKind     String     // "agent" | "user"
+  source         String // agent name or user id
+  sourceKind     String // "agent" | "user"
   /// When this memory became valid.
   validFrom      DateTime   @default(now())
   /// When this memory stopped being valid (null = still valid).
@@ -1221,9 +1221,9 @@ model PatientMemory {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 
-  patient        Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  supersededBy   PatientMemory? @relation("Supersession", fields: [supersededById], references: [id])
-  supersedes     PatientMemory[] @relation("Supersession")
+  patient      Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  supersededBy PatientMemory?  @relation("Supersession", fields: [supersededById], references: [id])
+  supersedes   PatientMemory[] @relation("Supersession")
 
   @@index([patientId, kind, validUntil])
   @@index([patientId, createdAt])
@@ -1254,7 +1254,7 @@ model ClinicalObservation {
   patientId       String
   /// Who observed this — agent name or user id.
   observedBy      String
-  observedByKind  String              // "agent" | "user"
+  observedByKind  String // "agent" | "user"
   category        ObservationCategory
   severity        ObservationSeverity @default(info)
   /// 1-2 sentence human-readable summary of what was noticed.
@@ -1273,7 +1273,7 @@ model ClinicalObservation {
   metadata        Json?
   createdAt       DateTime            @default(now())
 
-  patient         Patient             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, acknowledgedAt])
   @@index([patientId, category, createdAt])
@@ -1281,29 +1281,29 @@ model ClinicalObservation {
 }
 
 model AgentReasoning {
-  id             String   @id @default(cuid())
+  id           String   @id @default(cuid())
   /// Links back to the AgentJob that produced this output (if one exists).
   /// Not a hard FK — some agent calls happen outside the job queue (inline
   /// refine/dictate actions) and still want to record reasoning.
-  agentJobId     String?
-  agentName      String
-  agentVersion   String
+  agentJobId   String?
+  agentName    String
+  agentVersion String
   /// Structured steps, in order. Each step:
   /// { step: "load patient context", input: {...}, output: {...}, durationMs: number }
-  steps          Json     @default("[]")
+  steps        Json     @default("[]")
   /// References to the data sources the agent consulted.
   /// e.g. { "memories": [...ids], "notes": [...ids], "outcomeLogs": [...ids] }
-  sources        Json     @default("{}")
+  sources      Json     @default("{}")
   /// Alternatives the agent considered but did not choose.
   /// Useful for the "why this draft not that one" surface.
-  alternatives   Json?
+  alternatives Json?
   /// 0-1 self-reported confidence in the final output.
-  confidence     Float?
+  confidence   Float?
   /// Human-readable one-line summary of the reasoning ("considered
   /// patient's fatigue side-effect history and dose-response pattern
   /// before drafting the taper plan").
-  summary        String?
-  createdAt      DateTime @default(now())
+  summary      String?
+  createdAt    DateTime @default(now())
 
   @@index([agentName, createdAt])
   @@index([agentJobId])
@@ -1324,9 +1324,9 @@ model AgentFeedback {
   /// Optional links to the artifact the feedback is about.
   agentJobId     String?
   messageId      String?
-  noteId        String?
+  noteId         String?
   action         FeedbackAction
-  reviewerId     String         // user id
+  reviewerId     String // user id
   /// If the reviewer edited the draft, the delta between original and
   /// final (plain text diff, not structured). Null for approved/rejected
   /// without edits.
@@ -1336,7 +1336,7 @@ model AgentFeedback {
   reviewerNote   String?
   createdAt      DateTime       @default(now())
 
-  organization   Organization?  @relation(fields: [organizationId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
 
   @@index([agentName, action, createdAt])
   @@index([reviewerId, createdAt])
@@ -1369,87 +1369,87 @@ enum DeliveryRoute {
 }
 
 model CannabisProduct {
-  id                String      @id @default(cuid())
+  id                String        @id @default(cuid())
   organizationId    String
-  name              String        // e.g. "THC Infused Oil 10mg/mL"
-  brand             String?       // e.g. "Green Path Organics"
+  name              String // e.g. "THC Infused Oil 10mg/mL"
+  brand             String? // e.g. "Green Path Organics"
   productType       ProductType
   route             DeliveryRoute
   // Cannabinoid concentrations (mg per mL, mg per unit, or % for flower)
-  thcConcentration  Float?        // mg/mL for liquids, mg/unit for capsules, % for flower
+  thcConcentration  Float? // mg/mL for liquids, mg/unit for capsules, % for flower
   cbdConcentration  Float?
   cbnConcentration  Float?
   cbgConcentration  Float?
-  thcCbdRatio       String?       // e.g. "1:1", "20:1", "1:20"
+  thcCbdRatio       String? // e.g. "1:1", "20:1", "1:20"
   // Terpene profile (optional, structured)
-  terpeneProfile    Json?         // { myrcene: 0.5, limonene: 0.3, ... } in %
+  terpeneProfile    Json? // { myrcene: 0.5, limonene: 0.3, ... } in %
   // Units
-  concentrationUnit String       @default("mg/mL") // "mg/mL", "mg/unit", "%", "mg/g"
-  unitSize          Float?        // mL per bottle, units per pack, grams per container
+  concentrationUnit String        @default("mg/mL") // "mg/mL", "mg/unit", "%", "mg/g"
+  unitSize          Float? // mL per bottle, units per pack, grams per container
   // Metadata
   description       String?
   active            Boolean       @default(true)
   createdAt         DateTime      @default(now())
 
-  organization      Organization  @relation(fields: [organizationId], references: [id])
-  regimens          DosingRegimen[]
+  organization Organization    @relation(fields: [organizationId], references: [id])
+  regimens     DosingRegimen[]
 
   @@index([organizationId, active])
 }
 
 model DosingRegimen {
-  id                String      @id @default(cuid())
-  patientId         String
-  productId         String
-  prescribedById    String?     // provider user id
+  id                       String    @id @default(cuid())
+  patientId                String
+  productId                String
+  prescribedById           String? // provider user id
   // Dosing
-  volumePerDose     Float       // mL, puffs, units, mg
-  volumeUnit        String      @default("mL") // "mL", "puffs", "units", "mg", "drops"
-  frequencyPerDay   Int         @default(1)
-  timingInstructions String?    // e.g. "1 hour before bed", "after meals"
+  volumePerDose            Float // mL, puffs, units, mg
+  volumeUnit               String    @default("mL") // "mL", "puffs", "units", "mg", "drops"
+  frequencyPerDay          Int       @default(1)
+  timingInstructions       String? // e.g. "1 hour before bed", "after meals"
   // Auto-calculated mg (from product concentration * volume)
-  calculatedThcMgPerDose  Float?
-  calculatedCbdMgPerDose  Float?
-  calculatedThcMgPerDay   Float?
-  calculatedCbdMgPerDay   Float?
+  calculatedThcMgPerDose   Float?
+  calculatedCbdMgPerDose   Float?
+  calculatedThcMgPerDay    Float?
+  calculatedCbdMgPerDay    Float?
   // Duration
-  startDate         DateTime    @default(now())
-  endDate           DateTime?
-  active            Boolean     @default(true)
+  startDate                DateTime  @default(now())
+  endDate                  DateTime?
+  active                   Boolean   @default(true)
   // Patient-facing instructions
-  patientInstructions String?   // "Take 0.25 mL under the tongue twice daily"
+  patientInstructions      String? // "Take 0.25 mL under the tongue twice daily"
   // Clinician notes
-  clinicianNotes    String?
+  clinicianNotes           String?
   // EMR-088: contraindication override — populated when prescribing despite
   // a flagged contraindication. Contains: { contraindicationIds, reason,
   // overriddenByUserId, overriddenAt }
   contraindicationOverride Json?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
-  patient           Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  product           CannabisProduct @relation(fields: [productId], references: [id])
-  doseLogs          DoseLog[]
+  patient  Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  product  CannabisProduct @relation(fields: [productId], references: [id])
+  doseLogs DoseLog[]
 
   @@index([patientId, active])
 }
 
 model DoseLog {
-  id                String      @id @default(cuid())
-  patientId         String
-  regimenId         String?
+  id             String         @id @default(cuid())
+  patientId      String
+  regimenId      String?
   // What was taken
-  actualVolume      Float       // what they actually took
-  volumeUnit        String      @default("mL")
-  estimatedThcMg    Float?      // auto-calculated from regimen product
-  estimatedCbdMg    Float?
-  route             DeliveryRoute?
+  actualVolume   Float // what they actually took
+  volumeUnit     String         @default("mL")
+  estimatedThcMg Float? // auto-calculated from regimen product
+  estimatedCbdMg Float?
+  route          DeliveryRoute?
   // Context
-  note              String?
-  loggedAt          DateTime    @default(now())
+  note           String?
+  loggedAt       DateTime       @default(now())
 
-  patient           Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  regimen           DosingRegimen? @relation(fields: [regimenId], references: [id])
+  patient Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  regimen DosingRegimen? @relation(fields: [regimenId], references: [id])
 
   @@index([patientId, loggedAt])
 }
@@ -1466,19 +1466,19 @@ enum MedicationType {
 }
 
 model PatientMedication {
-  id              String         @id @default(cuid())
-  patientId       String
-  name            String         // "Warfarin", "Melatonin", "Vitamin D"
-  genericName     String?        // "warfarin sodium"
-  type            MedicationType
-  dosage          String?        // "5mg daily"
-  prescriber      String?        // who prescribed it (external)
-  active          Boolean        @default(true)
-  startDate       DateTime?
-  notes           String?
-  createdAt       DateTime       @default(now())
+  id          String         @id @default(cuid())
+  patientId   String
+  name        String // "Warfarin", "Melatonin", "Vitamin D"
+  genericName String? // "warfarin sodium"
+  type        MedicationType
+  dosage      String? // "5mg daily"
+  prescriber  String? // who prescribed it (external)
+  active      Boolean        @default(true)
+  startDate   DateTime?
+  notes       String?
+  createdAt   DateTime       @default(now())
 
-  patient         Patient        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, active])
 }
@@ -1488,29 +1488,29 @@ model PatientMedication {
 // --------------------------------------------------------------
 
 model ResearchQuery {
-  id             String   @id @default(cuid())
-  userId         String?
-  patientId      String?
-  queryText      String
-  createdAt      DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String?
+  patientId String?
+  queryText String
+  createdAt DateTime @default(now())
 
-  results        ResearchResult[]
+  results ResearchResult[]
 
   @@index([userId, createdAt])
 }
 
 model ResearchResult {
-  id             String   @id @default(cuid())
-  queryId        String
-  title          String
-  source         String
-  year           Int?
-  summary        String
-  citation       String
+  id                   String @id @default(cuid())
+  queryId              String
+  title                String
+  source               String
+  year                 Int?
+  summary              String
+  citation             String
   quantitativeFindings Json?
-  rank           Int      @default(0)
+  rank                 Int    @default(0)
 
-  query          ResearchQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  query ResearchQuery @relation(fields: [queryId], references: [id], onDelete: Cascade)
 }
 
 // --------------------------------------------------------------
@@ -1518,13 +1518,13 @@ model ResearchResult {
 // --------------------------------------------------------------
 
 model PracticeLaunchStatus {
-  id             String   @id @default(cuid())
-  organizationId String   @unique
-  readinessScore Int      @default(0)
-  blockers       Json     @default("[]")
-  nextSteps      Json     @default("[]")
+  id             String    @id @default(cuid())
+  organizationId String    @unique
+  readinessScore Int       @default(0)
+  blockers       Json      @default("[]")
+  nextSteps      Json      @default("[]")
   goLiveAt       DateTime?
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime  @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
