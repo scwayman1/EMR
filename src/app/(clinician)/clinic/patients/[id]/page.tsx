@@ -15,6 +15,7 @@ import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey } from "./chart-tabs";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
+import { MemoryTab } from "./memory-tab";
 import { startVisit } from "./actions";
 import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
 import { InteractionBadge } from "@/components/ui/interaction-badge";
@@ -35,7 +36,18 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const tab = (searchParams.tab as TabKey) || "demographics";
 
   /* ── Parallel data fetch ──────────────────────────────────── */
-  const [patient, allNotes, threads, assessmentResponses, dosingRegimens, recentDoseLogs, cannabisProducts, patientMedications] = await Promise.all([
+  const [
+    patient,
+    allNotes,
+    threads,
+    assessmentResponses,
+    dosingRegimens,
+    recentDoseLogs,
+    cannabisProducts,
+    patientMedications,
+    patientMemories,
+    clinicalObservations,
+  ] = await Promise.all([
     prisma.patient.findFirst({
       where: {
         id: params.id,
@@ -113,6 +125,17 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       where: { patientId: params.id, active: true },
       orderBy: { name: "asc" },
     }),
+    // Agentic memory harness: longitudinal memories + recent observations
+    prisma.patientMemory.findMany({
+      where: { patientId: params.id, validUntil: null },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+    }),
+    prisma.clinicalObservation.findMany({
+      where: { patientId: params.id },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }),
   ]);
 
   if (!patient) notFound();
@@ -134,8 +157,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     },
   });
 
+  const openObservationCount = clinicalObservations.filter(
+    (o: any) => !o.acknowledgedAt,
+  ).length;
+
   const counts = {
     demographics: 1,
+    memory: patientMemories.length + openObservationCount,
     records: recordDocs.length,
     images: imageDocs.length,
     labs: labDocs.length + assessmentResponses.length,
@@ -271,6 +299,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           patientId={params.id}
           startVisitAction={startVisitWithPatient}
           scribeProcessing={searchParams.scribe === "processing"}
+        />
+      )}
+      {tab === "memory" && (
+        <MemoryTab
+          memories={patientMemories}
+          observations={clinicalObservations}
+          patientFirstName={patient.firstName}
         />
       )}
       {tab === "correspondence" && (
