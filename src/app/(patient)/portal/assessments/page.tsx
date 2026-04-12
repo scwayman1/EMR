@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -57,6 +58,7 @@ export default async function AssessmentsPage() {
         description="Short questionnaires that help your care team track how you're doing between visits."
       />
 
+      <PatientSectionNav section="health" />
       {!patient ? (
         <EmptyState
           title="No patient profile yet"

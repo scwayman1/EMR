@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -67,6 +68,7 @@ export default async function ProfilePage() {
         description="View and update your personal information. This stays with your chart and helps your care team know you better."
       />
 
+      <PatientSectionNav section="account" />
       {/* ---- Photo placeholder ---- */}
       <div className="flex justify-center mb-8">
         <div className="flex flex-col items-center gap-3">

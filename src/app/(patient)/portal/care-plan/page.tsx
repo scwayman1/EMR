@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
@@ -123,6 +124,7 @@ export default async function CarePlanPage() {
             <CardTitle className="flex items-center gap-2">
               <LeafSprig size={16} className="text-accent/80" />
               What we&apos;re working toward together
+      <PatientSectionNav section="health" />
             </CardTitle>
             <CardDescription>
               These goals guide the care plan your team builds with you.

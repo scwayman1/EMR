@@ -6,22 +6,10 @@ import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 
 const PATIENT_NAV: NavItem[] = [
   { label: "Home", href: "/portal" },
-  { label: "Profile", href: "/portal/profile" },
-  { label: "Intake", href: "/portal/intake" },
-  { label: "Records", href: "/portal/records" },
-  { label: "Assessments", href: "/portal/assessments" },
-  { label: "Outcomes", href: "/portal/outcomes" },
-  { label: "Lifestyle", href: "/portal/lifestyle" },
-  { label: "Care plan", href: "/portal/care-plan" },
-  { label: "Medications", href: "/portal/medications" },
-  { label: "Billing", href: "/portal/billing" },
-  { label: "My Garden", href: "/portal/garden" },
-  { label: "Achievements", href: "/portal/achievements" },
-  { label: "My Roadmap", href: "/portal/roadmap" },
-  { label: "My Story", href: "/portal/my-story" },
-  { label: "Storybook", href: "/portal/storybook" },
-  { label: "Community", href: "/portal/community" },
+  { label: "My Health", href: "/portal/records" },
+  { label: "My Journey", href: "/portal/lifestyle" },
   { label: "Messages", href: "/portal/messages" },
+  { label: "Account", href: "/portal/profile" },
 ];
 
 export default async function PatientLayout({

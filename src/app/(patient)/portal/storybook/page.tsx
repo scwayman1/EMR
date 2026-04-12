@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -26,6 +27,7 @@ export default async function StorybookPage() {
 
   return (
     <PageShell maxWidth="max-w-[860px]">
+      <PatientSectionNav section="journey" />
       <div className="mb-10 text-center print:hidden">
         <Eyebrow className="justify-center mb-3">Your storybook</Eyebrow>
         <h1 className="font-display text-3xl md:text-4xl text-text tracking-tight">

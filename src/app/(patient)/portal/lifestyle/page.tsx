@@ -1,4 +1,5 @@
 "use client";
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 
 import { useState } from "react";
 import { PageShell } from "@/components/shell/PageHeader";
@@ -61,6 +62,7 @@ function TipRow({ tip }: { tip: LifestyleTip }) {
               strokeLinejoin="round"
             />
           </svg>
+      <PatientSectionNav section="journey" />
         </span>
 
         <div className="flex-1 min-w-0">

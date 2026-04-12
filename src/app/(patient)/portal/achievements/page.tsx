@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -115,6 +116,7 @@ function ActivityRing({
         opacity={0.6}
       />
       {/* Progress arc */}
+      <PatientSectionNav section="journey" />
       <circle
         cx={center}
         cy={center}

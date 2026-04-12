@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
@@ -51,6 +52,7 @@ export default async function GardenPage() {
 
           <HealthPlant health={health} size="lg" />
 
+      <PatientSectionNav section="journey" />
           <h1 className="font-display text-3xl md:text-4xl leading-[1.1] tracking-tight text-text mt-8">
             {STAGE_LABELS[health.stage]}
           </h1>

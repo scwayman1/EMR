@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
@@ -81,6 +82,7 @@ export default async function MedicationsPage() {
   return (
     <PageShell maxWidth="max-w-[960px]">
       {/* ==================== Hero ==================== */}
+      <PatientSectionNav section="health" />
       <div className="mb-10">
         <Eyebrow className="mb-3">Medications</Eyebrow>
         <h1 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">

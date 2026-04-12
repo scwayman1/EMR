@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -86,6 +87,7 @@ function PathwaySvg({
       {/* Area fill */}
       <path d={areaD} fill={fillColor} opacity={0.15} />
 
+      <PatientSectionNav section="journey" />
       {/* Main curve */}
       <path
         d={pathD}

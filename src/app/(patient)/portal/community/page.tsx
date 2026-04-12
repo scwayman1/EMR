@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -70,6 +71,7 @@ export default async function CommunityPage() {
         }
       />
 
+      <PatientSectionNav section="account" />
       {/* Detected categories */}
       {categories.length > 0 && (
         <Card tone="ambient" className="mb-8">

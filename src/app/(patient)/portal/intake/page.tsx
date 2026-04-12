@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -46,6 +47,7 @@ function StepIndicator() {
             {i < STEPS.length - 1 && (
               <div className="w-16 md:w-24 h-px bg-gradient-to-r from-accent/40 via-border-strong/60 to-accent/40 mx-3 mt-[-22px]" />
             )}
+      <PatientSectionNav section="account" />
           </div>
         ))}
       </div>

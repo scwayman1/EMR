@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -47,6 +48,7 @@ export default async function OutcomesPage() {
 
   return (
     <PageShell maxWidth="max-w-[960px]">
+      <PatientSectionNav section="health" />
       <PageHeader
         eyebrow="Outcomes"
         title="How you've been feeling"

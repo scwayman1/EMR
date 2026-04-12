@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
@@ -54,6 +55,7 @@ export default async function PortalBillingPage() {
         description="Everything you owe, everything your insurance covered, all in one place — explained in plain language."
       />
 
+      <PatientSectionNav section="account" />
       {/* Hero balance card */}
       <Card
         tone="ambient"

@@ -1,3 +1,4 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
@@ -38,6 +39,7 @@ export default async function RecordsPage({
       <PageShell maxWidth="max-w-[960px]">
         <PageHeader eyebrow="Records" title="Your documents" />
         <p className="text-sm text-text-muted">No patient profile found.</p>
+      <PatientSectionNav section="health" />
       </PageShell>
     );
   }
