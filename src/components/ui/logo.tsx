@@ -74,24 +74,24 @@ export function Wordmark({
       ? "text-[15px] leading-none"
       : size === "lg"
         ? "text-[22px] leading-none"
-        : "text-[17px] leading-none";
+        : "text-[18px] leading-none";
   const subClass =
-    size === "sm" ? "text-[9px]" : size === "lg" ? "text-[11px]" : "text-[10px]";
+    size === "sm" ? "text-[8px]" : size === "lg" ? "text-[10px]" : "text-[9px]";
 
   return (
-    <div className={cn("inline-flex items-center gap-2.5", className)}>
+    <div className={cn("inline-flex items-center gap-3", className)}>
       <LogoMark size={markSize} />
-      <div className="flex flex-col gap-[3px]">
-        <span className={cn("font-display text-text tracking-tight", textClass)}>
+      <div className="flex flex-col items-start">
+        <span className={cn("font-display text-text tracking-[-0.02em] font-medium", textClass)}>
           Leafjourney
         </span>
         <span
           className={cn(
-            "uppercase tracking-[0.18em] text-text-subtle font-medium",
+            "uppercase tracking-[0.22em] text-text-subtle/70 font-medium mt-[1px]",
             subClass
           )}
         >
-          Health
+          health
         </span>
       </div>
     </div>
