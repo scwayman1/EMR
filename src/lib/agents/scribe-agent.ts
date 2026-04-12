@@ -2,6 +2,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
+import { startReasoning } from "./memory/agent-reasoning";
+import { formatPersonaForPrompt, resolvePersona } from "./persona";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -105,6 +107,11 @@ export const scribeAgent: Agent<
   requiresApproval: true,
 
   async run({ encounterId }, ctx) {
+    // Reasoning trace is started at the top so every decision point
+    // gets captured for the physician's "explain why" view.
+    const trace = startReasoning("scribe", "1.0.0", ctx.jobId);
+    trace.step("begin scribe draft", { encounterId });
+
     // ------------------------------------------------------------------
     // 1. Load encounter + patient + chart summary
     // ------------------------------------------------------------------
@@ -117,6 +124,10 @@ export const scribeAgent: Agent<
       },
     });
     if (!encounter) throw new Error(`Encounter not found: ${encounterId}`);
+    trace.step("loaded encounter", {
+      patientId: encounter.patientId,
+      modality: encounter.modality,
+    });
 
     const patient = encounter.patient;
     ctx.assertCan("read.patient");
@@ -283,23 +294,31 @@ Important guidelines:
 - Set confidence between 0.0 and 1.0 based on how much context was available
 - If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.`;
 
+    // Prepend the shared scribe persona voice profile so the documentation
+    // tone comes from one central place (persona.ts).
+    const personaBlock = formatPersonaForPrompt(resolvePersona("scribe"));
+    const promptWithPersona = `${personaBlock}\n\n${prompt}`;
+
     ctx.log("info", "Sending prompt to model", {
-      promptLength: prompt.length,
+      promptLength: promptWithPersona.length,
     });
+    trace.step("built prompt", { promptLength: promptWithPersona.length });
 
     // Call the LLM, but gracefully fall back to a deterministic template
     // if the model fails (credits, timeout, network). We still create a
     // draft note so the clinician always sees something after Start Visit.
     let modelResponse = "";
     try {
-      modelResponse = await ctx.model.complete(prompt, {
+      modelResponse = await ctx.model.complete(promptWithPersona, {
         maxTokens: 1024,
         temperature: 0.3,
       });
+      trace.step("llm complete", { rawLen: modelResponse.length });
     } catch (err) {
       ctx.log("warn", "Scribe LLM call failed — using deterministic draft", {
         error: err instanceof Error ? err.message : String(err),
       });
+      trace.step("llm failed — using deterministic fallback");
       modelResponse = "";
     }
 
@@ -430,6 +449,12 @@ Important guidelines:
     );
 
     ctx.log("info", "Note draft created", { noteId: note.id, confidence });
+
+    trace.conclude({
+      confidence,
+      summary: `Drafted a ${blocks.length}-block SOAP note at ${Math.round(confidence * 100)}% confidence. ${suggestedCodes.length > 0 ? `Suggested ${suggestedCodes.length} ICD-10 codes.` : ""}`,
+    });
+    await trace.persist();
 
     return {
       noteId: note.id,

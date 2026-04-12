@@ -1917,6 +1917,267 @@ async function main() {
   console.log("  Billing: coverage + ledger + statements + payment plans seeded.");
 
   // ------------------------------------------------------------------
+  // Agentic memory harness — seed longitudinal memory + observations
+  // ------------------------------------------------------------------
+  // This is what makes the Memory tab actually show something the
+  // moment you open a patient chart in demo. Real production memories
+  // are written by the agents themselves (correspondenceNurse,
+  // preVisitIntelligence, etc.) over the course of care; the seed data
+  // is just a believable starting point for the demo.
+  //
+  // Every entry is narrative prose, not structured fields. Read them
+  // aloud and they should sound like a clinician's private note about
+  // the patient, not a database row.
+  //
+  // Idempotent: deleteMany first so reseeding doesn't pile up.
+
+  await prisma.patientMemory.deleteMany({
+    where: { patientId: { in: [maya.id, james.id, sarah.id] } },
+  });
+  await prisma.clinicalObservation.deleteMany({
+    where: { patientId: { in: [maya.id, james.id, sarah.id] } },
+  });
+
+  // ─── Maya Reyes — rich longitudinal memory ────────────────────
+  await prisma.patientMemory.createMany({
+    data: [
+      {
+        patientId: maya.id,
+        kind: "working",
+        content:
+          "The THC:CBD 1:1 tincture with CBN at bedtime is clearly helping. Pain has trended from 7/10 at intake to a consistent 3-4/10 over the last three weeks, and she's reporting her first nights of real sleep in years.",
+        confidence: 0.9,
+        tags: ["pain", "sleep", "tincture", "CBN"],
+        source: "correspondenceNurse",
+        sourceKind: "agent",
+        createdAt: daysAgo(14),
+      },
+      {
+        patientId: maya.id,
+        kind: "not_working",
+        content:
+          "Early morning grogginess from the CBN bedtime component was a problem in week one. Solved by moving the dose to 60-90 minutes before bed. Do not need to re-titrate the CBN.",
+        confidence: 0.85,
+        tags: ["CBN", "side-effect", "timing"],
+        source: "correspondenceNurse",
+        sourceKind: "agent",
+        createdAt: daysAgo(10),
+      },
+      {
+        patientId: maya.id,
+        kind: "preference",
+        content:
+          "Prefers direct, specific responses over general reassurance. Asks concrete questions (timing, mg, interactions) and wants concrete answers back. Don't over-soften.",
+        confidence: 0.8,
+        tags: ["communication"],
+        source: "correspondenceNurse",
+        sourceKind: "agent",
+        createdAt: daysAgo(12),
+      },
+      {
+        patientId: maya.id,
+        kind: "relationship",
+        content:
+          "Her adult daughter is a primary support — Maya mentions their walks together as a goal metric. When she improves, she wants to be able to walk 3 miles with her daughter.",
+        confidence: 0.9,
+        tags: ["support", "daughter", "goal"],
+        source: "correspondenceNurse",
+        sourceKind: "agent",
+        createdAt: daysAgo(8),
+      },
+      {
+        patientId: maya.id,
+        kind: "trajectory",
+        content:
+          "Pain scores: 7 → 5 → 4 → 3 over the last 30 days. Sleep scores: 4 → 5 → 6 → 7. Anxiety stable around 3-4. The cannabis regimen is performing exactly as hoped; reinforce and hold.",
+        confidence: 0.92,
+        tags: ["pain", "sleep", "anxiety", "trend"],
+        source: "preVisitIntelligence",
+        sourceKind: "agent",
+        createdAt: daysAgo(2),
+      },
+      {
+        patientId: maya.id,
+        kind: "milestone",
+        content:
+          "3/15/26 — first pain-free day since starting cannabis therapy. Walked 3 miles with her daughter. She messaged the clinic the same day; the note made Dr. Okafor's week.",
+        confidence: 0.95,
+        tags: ["milestone", "pain-free"],
+        source: "correspondenceNurse",
+        sourceKind: "agent",
+        createdAt: daysAgo(5),
+      },
+      {
+        patientId: maya.id,
+        kind: "context",
+        content:
+          "Prior to starting here, Maya tried gabapentin (caused fog) and tramadol (made her anxious). Cannabis is the third attempt. She's open about the fact that she doesn't want to be 'stuck on pills forever' — the minimum-effective-dose framing resonates with her.",
+        confidence: 0.85,
+        tags: ["history", "gabapentin", "tramadol"],
+        source: "intake",
+        sourceKind: "agent",
+        createdAt: daysAgo(30),
+      },
+      {
+        patientId: maya.id,
+        kind: "observation",
+        content:
+          "Adherence has been 92% over the last 30 days (measured by DoseLog entries against the regimen frequency). That's remarkably high for a patient this early in therapy. Whatever Dr. Okafor is doing with the onboarding, it's working.",
+        confidence: 0.9,
+        tags: ["adherence"],
+        source: "preVisitIntelligence",
+        sourceKind: "agent",
+        createdAt: daysAgo(2),
+      },
+    ],
+  });
+
+  // ─── James Chen — newer patient, earlier memory ───────────────
+  await prisma.patientMemory.createMany({
+    data: [
+      {
+        patientId: james.id,
+        kind: "concern",
+        content:
+          "James reported chest pressure while walking uphill on 4/8. The correspondence nurse triaged this as an emergency and routed him to the ER. Cardiology follow-up pending. Do not start any new cannabis dosing until cardiac workup is complete.",
+        confidence: 0.98,
+        tags: ["cardiac", "emergency", "hold"],
+        source: "correspondenceNurse",
+        sourceKind: "agent",
+        createdAt: daysAgo(4),
+      },
+      {
+        patientId: james.id,
+        kind: "preference",
+        content:
+          "Prefers phone over messaging for anything clinical. Responds to texts but wants the real conversation by voice. His wife helps him manage his health — include her in care planning when he opts in.",
+        confidence: 0.75,
+        tags: ["communication", "wife"],
+        source: "intake",
+        sourceKind: "agent",
+        createdAt: daysAgo(21),
+      },
+      {
+        patientId: james.id,
+        kind: "context",
+        content:
+          "Retired electrician, 47. Primary concern is sleep and anxiety related to a workplace accident three years ago. Has tried SSRIs (did not tolerate) and trazodone (worked but sedation was too heavy the next morning).",
+        confidence: 0.88,
+        tags: ["history", "sleep", "anxiety", "SSRI"],
+        source: "intake",
+        sourceKind: "agent",
+        createdAt: daysAgo(21),
+      },
+      {
+        patientId: james.id,
+        kind: "trajectory",
+        content:
+          "Anxiety scores trending slightly downward (5 → 4 → 4 over two weeks), but sleep remains poor (3-4/10 most nights). The cannabis regimen hasn't been running long enough to evaluate — we're still in the titration window.",
+        confidence: 0.7,
+        tags: ["anxiety", "sleep", "titration"],
+        source: "preVisitIntelligence",
+        sourceKind: "agent",
+        createdAt: daysAgo(3),
+      },
+    ],
+  });
+
+  // ─── Sarah Thompson — thin memory (newest patient) ────────────
+  await prisma.patientMemory.createMany({
+    data: [
+      {
+        patientId: sarah.id,
+        kind: "context",
+        content:
+          "Brand new to the practice — intake submitted last week. Presenting concerns focus on chronic migraine. Has not started any cannabis therapy yet; we're still in assessment.",
+        confidence: 0.85,
+        tags: ["new", "migraine"],
+        source: "intake",
+        sourceKind: "agent",
+        createdAt: daysAgo(7),
+      },
+      {
+        patientId: sarah.id,
+        kind: "preference",
+        content:
+          "Says in her intake answers that she wants 'the science, not the vibes.' Lead with the research corpus and mechanism when explaining recommendations; she'll push back on anything that sounds hand-wavy.",
+        confidence: 0.8,
+        tags: ["communication", "evidence"],
+        source: "intake",
+        sourceKind: "agent",
+        createdAt: daysAgo(7),
+      },
+    ],
+  });
+
+  // ─── Clinical observations (visible in the Memory tab feed) ───
+  await prisma.clinicalObservation.createMany({
+    data: [
+      {
+        patientId: maya.id,
+        observedBy: "correspondenceNurse",
+        observedByKind: "agent",
+        category: "positive_signal",
+        severity: "info",
+        summary:
+          "Maya reported her first pain-free day since starting cannabis therapy. Positive update — reinforce and encourage.",
+        evidence: { messageIds: [] } as any,
+        createdAt: daysAgo(5),
+      },
+      {
+        patientId: maya.id,
+        observedBy: "preVisitIntelligence",
+        observedByKind: "agent",
+        category: "symptom_trend",
+        severity: "notable",
+        summary:
+          "Pain and sleep scores are both improving steadily on the current regimen. 92% adherence. Considering a possible dose reduction at the next visit to test durability.",
+        evidence: {} as any,
+        actionSuggested:
+          "At the next visit, discuss whether to hold or gently taper the bedtime CBN component.",
+        createdAt: daysAgo(2),
+      },
+      {
+        patientId: james.id,
+        observedBy: "correspondenceNurse",
+        observedByKind: "agent",
+        category: "red_flag",
+        severity: "urgent",
+        summary:
+          "Emergency keywords detected in James's message: 'chest pain', 'trouble breathing'. Routed to ER. Cardiac evaluation pending. Cannabis therapy on hold.",
+        evidence: {} as any,
+        actionSuggested:
+          "Follow up on cardiology workup before resuming or advancing any cannabis dosing.",
+        createdAt: daysAgo(4),
+      },
+      {
+        patientId: james.id,
+        observedBy: "preVisitIntelligence",
+        observedByKind: "agent",
+        category: "adherence",
+        severity: "notable",
+        summary:
+          "James has not logged a single dose in 4 days, coinciding with the ER visit. Expected — we told him to hold. Will need to re-verify readiness before restarting.",
+        evidence: {} as any,
+        createdAt: daysAgo(1),
+      },
+      {
+        patientId: sarah.id,
+        observedBy: "intake",
+        observedByKind: "agent",
+        category: "engagement",
+        severity: "info",
+        summary:
+          "Sarah completed her intake in one sitting and asked multiple follow-up questions about mechanism of action. High engagement — she's ready for a detailed first visit.",
+        evidence: {} as any,
+        createdAt: daysAgo(6),
+      },
+    ],
+  });
+
+  console.log("  Memory harness: patient memories + observations seeded.");
+
+  // ------------------------------------------------------------------
   // Done
   // ------------------------------------------------------------------
   console.log("Seed complete.");
