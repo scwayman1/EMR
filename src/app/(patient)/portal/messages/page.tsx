@@ -14,6 +14,11 @@ export default async function MessagesPage() {
         orderBy: { lastMessageAt: "desc" },
         include: {
           messages: {
+            // HIPAA / Art. V §2: patients must NEVER see unapproved agent
+            // drafts. Only messages the clinician has actively sent (or the
+            // patient has sent themselves) may cross this boundary. Filtering
+            // server-side means draft bodies never even reach the browser.
+            where: { status: { in: ["sent", "read"] } },
             orderBy: { createdAt: "desc" },
             include: {
               sender: {
@@ -28,7 +33,10 @@ export default async function MessagesPage() {
 
   const threads = patient?.messageThreads ?? [];
 
-  // Serialize dates for client component
+  // Serialize dates for client component. Note we do NOT serialize the
+  // `aiDrafted` or `senderAgent` fields — the patient has no business
+  // knowing which of their care team's replies were drafted by AI.
+  // The physician reviewed and approved every reply they see here.
   const serialized = threads.map((t) => ({
     id: t.id,
     subject: t.subject,
@@ -37,9 +45,7 @@ export default async function MessagesPage() {
       id: m.id,
       body: m.body,
       status: m.status,
-      aiDrafted: m.aiDrafted,
       senderUserId: m.senderUserId,
-      senderAgent: m.senderAgent,
       sender: m.sender
         ? { firstName: m.sender.firstName, lastName: m.sender.lastName }
         : null,

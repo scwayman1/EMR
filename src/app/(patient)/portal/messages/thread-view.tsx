@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -48,14 +47,15 @@ function VideoIcon() {
 }
 
 // ---------- Types matching the serialized data from the server ----------
+// Note: this interface intentionally does NOT carry `aiDrafted` or
+// `senderAgent` — those are stripped server-side before the page renders
+// so patients never see agent attribution on their messages.
 
 interface MessageData {
   id: string;
   body: string;
   status: string;
-  aiDrafted: boolean;
   senderUserId: string | null;
-  senderAgent: string | null;
   sender: { firstName: string; lastName: string } | null;
   createdAt: string;
 }
@@ -70,6 +70,43 @@ interface ThreadData {
 interface Props {
   threads: ThreadData[];
   currentUserId: string;
+}
+
+/**
+ * "Care team is reviewing" inline status card. Shown immediately below a
+ * patient's own message when there's no care-team reply yet. Communicates
+ * "we got it, we're working on it" without mentioning the agent layer at
+ * all. From the patient's perspective the care team is their care team —
+ * the AI assist happens behind the curtain.
+ */
+function CareTeamReviewingCard() {
+  return (
+    <div className="flex justify-start">
+      <div className="flex gap-2.5 max-w-[80%]">
+        <div
+          aria-hidden="true"
+          className="h-7 w-7 rounded-full bg-accent-soft border border-accent/25 flex items-center justify-center shrink-0 mt-1"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+          </span>
+        </div>
+        <div>
+          <div className="rounded-xl px-4 py-2.5 bg-accent-soft/60 border border-accent/20 text-sm leading-relaxed text-text italic">
+            Your care team is reviewing your message. Typical response time is
+            within 24 hours — sooner for anything urgent.
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-text-subtle">Care team</span>
+            <span className="text-[10px] text-accent uppercase tracking-wider">
+              · reviewing
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function PatientMessagesView({ threads, currentUserId }: Props) {
@@ -192,64 +229,69 @@ export function PatientMessagesView({ threads, currentUserId }: Props) {
                 {/* Messages area */}
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
                   {/* Show messages in chronological order */}
-                  {[...activeThread.messages].reverse().map((msg) => {
-                    const isOwn = msg.senderUserId === currentUserId;
-                    const senderName = isOwn
-                      ? "You"
-                      : msg.sender
-                        ? `${msg.sender.firstName} ${msg.sender.lastName}`
-                        : msg.senderAgent
-                          ? "Care Team"
-                          : "Care Team";
-
+                  {(() => {
+                    const chronological = [...activeThread.messages].reverse();
+                    // Detect whether the last message is from the patient
+                    // with no care-team reply after it. If so we'll render
+                    // a "care team is reviewing" system card below it.
+                    const lastMsg = chronological[chronological.length - 1];
+                    const awaitingReply =
+                      lastMsg != null && lastMsg.senderUserId === currentUserId;
                     return (
-                      <div
-                        key={msg.id}
-                        className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
-                      >
-                        <div
-                          className={`flex gap-2.5 max-w-[80%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}
-                        >
-                          {!isOwn && (
-                            <Avatar
-                              firstName={
-                                msg.sender?.firstName ?? "C"
-                              }
-                              lastName={
-                                msg.sender?.lastName ?? "T"
-                              }
-                              size="sm"
-                              className="mt-1 shrink-0"
-                            />
-                          )}
-                          <div>
+                      <>
+                        {chronological.map((msg) => {
+                          const isOwn = msg.senderUserId === currentUserId;
+                          const senderName = isOwn
+                            ? "You"
+                            : msg.sender
+                              ? `${msg.sender.firstName} ${msg.sender.lastName}`
+                              : "Care Team";
+
+                          return (
                             <div
-                              className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                                isOwn
-                                  ? "bg-accent-soft text-text"
-                                  : "bg-surface-raised text-text border border-border/60"
-                              }`}
+                              key={msg.id}
+                              className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                             >
-                              {msg.body}
+                              <div
+                                className={`flex gap-2.5 max-w-[80%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}
+                              >
+                                {!isOwn && (
+                                  <Avatar
+                                    firstName={msg.sender?.firstName ?? "C"}
+                                    lastName={msg.sender?.lastName ?? "T"}
+                                    size="sm"
+                                    className="mt-1 shrink-0"
+                                  />
+                                )}
+                                <div>
+                                  <div
+                                    className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
+                                      isOwn
+                                        ? "bg-accent-soft text-text"
+                                        : "bg-surface-raised text-text border border-border/60"
+                                    }`}
+                                  >
+                                    {msg.body}
+                                  </div>
+                                  <div
+                                    className={`flex items-center gap-2 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}
+                                  >
+                                    <span className="text-xs text-text-subtle">
+                                      {senderName}
+                                    </span>
+                                    <span className="text-xs text-text-subtle">
+                                      {formatRelative(msg.createdAt)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <div
-                              className={`flex items-center gap-2 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}
-                            >
-                              <span className="text-xs text-text-subtle">
-                                {senderName}
-                              </span>
-                              <span className="text-xs text-text-subtle">
-                                {formatRelative(msg.createdAt)}
-                              </span>
-                              {msg.aiDrafted && (
-                                <Badge tone="highlight">AI Draft</Badge>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                          );
+                        })}
+                        {awaitingReply && <CareTeamReviewingCard />}
+                      </>
                     );
-                  })}
+                  })()}
                 </div>
 
                 {/* Reply bar */}

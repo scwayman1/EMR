@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AgentSignal } from "@/components/ui/agent-signal";
+import {
+  InThreadDraftReview,
+  DraftReadyBanner,
+} from "@/components/agent/in-thread-draft-review";
 import { resolveAgentMeta } from "@/lib/agents/ui-registry";
 import { ClinicReplyCompose } from "./compose";
 import { formatRelative } from "@/lib/utils/format";
@@ -205,6 +208,23 @@ export function ClinicMessagesView({ threads, currentUserId }: Props) {
               )}
             </div>
 
+            {/* Draft-ready banner above the messages — visible heads-up when
+                Nurse Nora (or any agent) has drafted a reply that's sitting
+                in review. The inline draft review card below the bubble is
+                where the clinician actually takes action. */}
+            {(() => {
+              const pendingDrafts = activeThread.messages.filter(
+                (m) => m.aiDrafted && m.status === "draft",
+              );
+              if (pendingDrafts.length === 0) return null;
+              return (
+                <DraftReadyBanner
+                  agent={pendingDrafts[0].senderAgent}
+                  draftCount={pendingDrafts.length}
+                />
+              );
+            })()}
+
             {/* Messages area */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {/* Show messages in chronological order */}
@@ -281,15 +301,14 @@ export function ClinicMessagesView({ threads, currentUserId }: Props) {
                               }
                             />
                           )}
-                          {msg.aiDrafted && msg.status === "draft" && (
-                            <Link
-                              href="/clinic/approvals"
-                              className="text-[11px] text-accent hover:underline"
-                            >
-                              Review →
-                            </Link>
-                          )}
                         </div>
+                        {msg.aiDrafted && msg.status === "draft" && (
+                          <InThreadDraftReview
+                            messageId={msg.id}
+                            initialBody={msg.body}
+                            agent={msg.senderAgent}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>

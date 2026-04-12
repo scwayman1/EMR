@@ -2,7 +2,6 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -10,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AgentSignal } from "@/components/ui/agent-signal";
+import {
+  InThreadDraftReview,
+  DraftReadyBanner,
+} from "@/components/agent/in-thread-draft-review";
 import { resolveAgentMeta } from "@/lib/agents/ui-registry";
 import { formatRelative } from "@/lib/utils/format";
 import { sendChartReply, type ChartReplyResult } from "./correspondence-actions";
@@ -332,6 +335,22 @@ export function CorrespondenceTab({
                 )}
             </div>
 
+            {/* Draft-ready banner: only shown when this thread has one or
+                more unsent AI drafts waiting for clinician review. Gives
+                the physician an at-a-glance cue before they scroll. */}
+            {(() => {
+              const pendingDrafts = activeThread.messages.filter(
+                (m) => m.aiDrafted && m.status === "draft",
+              );
+              if (pendingDrafts.length === 0) return null;
+              return (
+                <DraftReadyBanner
+                  agent={pendingDrafts[0].senderAgent}
+                  draftCount={pendingDrafts.length}
+                />
+              );
+            })()}
+
             {/* Messages area (chronological) */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {[...activeThread.messages].reverse().map((msg) => {
@@ -397,15 +416,14 @@ export function CorrespondenceTab({
                               }
                             />
                           )}
-                          {msg.aiDrafted && msg.status === "draft" && (
-                            <Link
-                              href="/clinic/approvals"
-                              className="text-[11px] text-accent hover:underline"
-                            >
-                              Review in approvals →
-                            </Link>
-                          )}
                         </div>
+                        {msg.aiDrafted && msg.status === "draft" && (
+                          <InThreadDraftReview
+                            messageId={msg.id}
+                            initialBody={msg.body}
+                            agent={msg.senderAgent}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
