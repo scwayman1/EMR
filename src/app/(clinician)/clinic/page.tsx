@@ -205,6 +205,10 @@ export default async function ClinicHomePage() {
     allChartSummaries,
     dailyEncounterCounts,
     needsReviewCount,
+    // Fleet bridge data
+    recentAgentJobs,
+    pendingDrafts,
+    recentObservations,
   ] = await Promise.all([
     // 1. Today's encounters
     prisma.encounter.findMany({
@@ -353,6 +357,40 @@ export default async function ClinicHomePage() {
     // 16. Notes in needs_review status (for command strip count)
     prisma.note.count({
       where: { status: "needs_review", encounter: { organizationId } },
+    }),
+
+    // 17. Recent agent jobs (fleet bridge — last 24h, succeeded + needs_approval)
+    prisma.agentJob.findMany({
+      where: {
+        organizationId,
+        status: { in: ["succeeded", "needs_approval"] },
+        completedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      select: { agentName: true, status: true, completedAt: true },
+      orderBy: { completedAt: "desc" },
+      take: 50,
+    }),
+
+    // 18. Pending AI drafts (fleet bridge — approval count per agent)
+    prisma.message.findMany({
+      where: {
+        status: "draft",
+        aiDrafted: true,
+        thread: { patient: { organizationId } },
+      },
+      select: { senderAgent: true },
+    }),
+
+    // 19. Recent unacknowledged clinical observations
+    prisma.clinicalObservation.findMany({
+      where: {
+        patient: { organizationId },
+        acknowledgedAt: null,
+        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+      select: { id: true, severity: true, category: true, summary: true, observedBy: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 6,
     }),
   ]);
 
@@ -503,6 +541,132 @@ export default async function ClinicHomePage() {
           </div>
         </div>
       </Card>
+
+      {/* ============================================================
+          1b. FLEET BRIDGE — orientation across the agentic team
+          ============================================================ */}
+      {(() => {
+        // Compute fleet activity metrics
+        const jobsByAgent: Record<string, { succeeded: number; needsApproval: number }> = {};
+        for (const job of recentAgentJobs) {
+          const entry = jobsByAgent[job.agentName] ?? { succeeded: 0, needsApproval: 0 };
+          if (job.status === "succeeded") entry.succeeded++;
+          if (job.status === "needs_approval") entry.needsApproval++;
+          jobsByAgent[job.agentName] = entry;
+        }
+
+        const draftsByAgent: Record<string, number> = {};
+        for (const d of pendingDrafts) {
+          const name = d.senderAgent?.split(":")[0] ?? "unknown";
+          draftsByAgent[name] = (draftsByAgent[name] ?? 0) + 1;
+        }
+
+        const totalJobsLast24h = recentAgentJobs.length;
+        const totalPendingDrafts = pendingDrafts.length;
+        const urgentObservations = recentObservations.filter((o: any) => o.severity === "urgent" || o.severity === "concern");
+
+        // Agent display names
+        const AGENT_NAMES: Record<string, string> = {
+          correspondenceNurse: "Nurse Nora",
+          scribe: "Scribe",
+          preVisitIntelligence: "Visit Prep",
+          codingOptimization: "Code Optimizer",
+          encounterIntelligence: "Charge Capture",
+          claimConstruction: "Claim Builder",
+          chargeIntegrity: "Scrubber",
+          denialResolution: "Denial Resolver",
+          complianceAudit: "Compliance",
+          eligibilityBenefits: "Eligibility",
+          outcomeTracker: "Outcomes",
+          patientOutreach: "Outreach",
+          physicianNudge: "Coach",
+        };
+
+        // Top 6 agents by activity
+        const topAgents = Object.entries(jobsByAgent)
+          .map(([name, counts]) => ({
+            name,
+            displayName: AGENT_NAMES[name] ?? name,
+            total: counts.succeeded + counts.needsApproval,
+            drafts: draftsByAgent[name] ?? 0,
+            ...counts,
+          }))
+          .sort((a, b) => b.total - a.total)
+          .slice(0, 6);
+
+        if (totalJobsLast24h === 0 && totalPendingDrafts === 0 && recentObservations.length === 0) {
+          return null; // hide bridge when fleet is quiet
+        }
+
+        return (
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <Eyebrow>Your AI team — last 24 hours</Eyebrow>
+              <Link
+                href="/clinic/approvals"
+                className="text-xs text-accent hover:underline"
+              >
+                {totalPendingDrafts > 0
+                  ? `${totalPendingDrafts} draft${totalPendingDrafts !== 1 ? "s" : ""} waiting →`
+                  : "Approvals →"}
+              </Link>
+            </div>
+
+            {/* Agent roster strip */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+              {topAgents.map((agent) => (
+                <Card key={agent.name} className="px-3 py-2.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span
+                      className={`h-2 w-2 rounded-full shrink-0 ${
+                        agent.drafts > 0
+                          ? "bg-highlight animate-pulse"
+                          : agent.total > 0
+                            ? "bg-success"
+                            : "bg-border-strong"
+                      }`}
+                    />
+                    <span className="text-[12px] font-medium text-text truncate">
+                      {agent.displayName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="text-text-muted tabular-nums">
+                      {agent.total} task{agent.total !== 1 ? "s" : ""}
+                    </span>
+                    {agent.drafts > 0 && (
+                      <span className="text-[color:var(--highlight-hover)] font-medium tabular-nums">
+                        {agent.drafts} draft{agent.drafts !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+
+            {/* Observations strip — what the team is noticing */}
+            {urgentObservations.length > 0 && (
+              <Card className="border-l-4 border-l-[color:var(--warning)] px-4 py-3 mb-4">
+                <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-2">
+                  Your team is noticing
+                </p>
+                <div className="space-y-1.5">
+                  {urgentObservations.slice(0, 3).map((obs: any) => (
+                    <div key={obs.id} className="flex items-start gap-2">
+                      <span className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${
+                        obs.severity === "urgent" ? "bg-danger" : "bg-[color:var(--warning)]"
+                      }`} />
+                      <p className="text-xs text-text leading-relaxed line-clamp-1">
+                        {obs.summary}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </section>
+        );
+      })()}
 
       {/* ============================================================
           2. PATIENT QUEUE — horizontal scroll rail

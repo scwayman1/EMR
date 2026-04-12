@@ -29,7 +29,7 @@ export function ChartTabs({ patientId, counts }: ChartTabsProps) {
 
   return (
     <nav
-      className="flex items-center gap-1 border-b border-border mb-8 overflow-x-auto"
+      className="flex flex-wrap items-center gap-1 border-b border-border mb-8"
       aria-label="Chart sections"
     >
       {TABS.map((tab) => {

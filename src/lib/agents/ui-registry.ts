@@ -224,6 +224,24 @@ export const AGENT_UI: Record<string, AgentUIMeta> = {
     glyph: "AR",
     tone: "warning",
   },
+  priorAuthVerification: {
+    key: "priorAuthVerification",
+    displayName: "Prior Auth",
+    role: "Authorization Verification",
+    blurb:
+      "Tracks prior authorization status for services that require it. Attaches auth numbers to claims before submission.",
+    glyph: "PA",
+    tone: "info",
+  },
+  clearinghouseSubmission: {
+    key: "clearinghouseSubmission",
+    displayName: "Submission",
+    role: "Clearinghouse Submission",
+    blurb:
+      "Formats claims as 837P transactions and submits to the clearinghouse. Parses acceptance and rejection responses.",
+    glyph: "TX",
+    tone: "info",
+  },
   eligibilityBenefits: {
     key: "eligibilityBenefits",
     displayName: "Eligibility Check",

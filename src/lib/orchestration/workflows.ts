@@ -245,6 +245,37 @@ export const workflows: WorkflowDefinition[] = [
   // ─────────────────────────────────────────────────────────────────
   // RCM Fleet — Phase 5 pre-submission pipeline (Layer 8, Flow 1)
   // ─────────────────────────────────────────────────────────────────
+  // prior_auth.required → Prior Auth Verification
+  {
+    name: "prior-auth-check",
+    on: ["prior_auth.required"],
+    steps: [
+      {
+        agent: "priorAuthVerification",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+          coverageId: (e as any).coverageId,
+          cptCode: (e as any).cptCode,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // claim.scrubbed → Clearinghouse Submission (when clean)
+  {
+    name: "clearinghouse-submission",
+    on: ["claim.scrubbed"],
+    steps: [
+      {
+        agent: "clearinghouseSubmission",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          organizationId: (e as any).organizationId,
+          scrubResultId: (e as any).scrubResultId,
+        }),
+      },
+    ],
+  },
   // encounter.completed → Eligibility & Benefits → eligibility.checked
   {
     name: "eligibility-check",

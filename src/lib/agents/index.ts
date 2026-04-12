@@ -35,6 +35,8 @@ import { appealsGenerationAgent } from "./billing/appeals-generation-agent";
 import { denialResolutionAgent } from "./billing/denial-resolution-agent";
 import { eligibilityBenefitsAgent } from "./billing/eligibility-benefits-agent";
 import { complianceAuditAgent } from "./billing/compliance-audit-agent";
+import { priorAuthAgent } from "./billing/prior-auth-agent";
+import { clearinghouseSubmissionAgent } from "./billing/clearinghouse-submission-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -78,6 +80,8 @@ export const agentRegistry = {
   denialResolution: denialResolutionAgent,
   eligibilityBenefits: eligibilityBenefitsAgent,
   complianceAudit: complianceAuditAgent,
+  priorAuthVerification: priorAuthAgent,
+  clearinghouseSubmission: clearinghouseSubmissionAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
@@ -94,6 +98,8 @@ export const BILLING_AGENT_NAMES: AgentName[] = [
   "denialResolution",
   "eligibilityBenefits",
   "complianceAudit",
+  "priorAuthVerification",
+  "clearinghouseSubmission",
   "chargeIntegrity",
   "denialTriage",
   "patientExplanation",
