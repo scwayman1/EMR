@@ -25,6 +25,9 @@ import { underpaymentDetectionAgent } from "./billing/underpayment-detection-age
 // Phase 4
 import { refundCreditAgent } from "./billing/refund-credit-agent";
 import { revenueCommandAgent } from "./billing/revenue-command-agent";
+// RCM Fleet — Phase 5 (pre-submission pipeline)
+import { encounterIntelligenceAgent } from "./billing/encounter-intelligence-agent";
+import { claimConstructionAgent } from "./billing/claim-construction-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -58,6 +61,9 @@ export const agentRegistry = {
   // Billing agents (Phase 4)
   refundCredit: refundCreditAgent,
   revenueCommand: revenueCommandAgent,
+  // RCM Fleet — Phase 5 (pre-submission pipeline)
+  encounterIntelligence: encounterIntelligenceAgent,
+  claimConstruction: claimConstructionAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
@@ -66,6 +72,8 @@ export const agentList = Object.values(agentRegistry);
 
 /** Agents tagged as "billing" — used by the billing oversight console. */
 export const BILLING_AGENT_NAMES: AgentName[] = [
+  "encounterIntelligence",
+  "claimConstruction",
   "chargeIntegrity",
   "denialTriage",
   "patientExplanation",

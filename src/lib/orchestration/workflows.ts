@@ -242,6 +242,39 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  // ─────────────────────────────────────────────────────────────────
+  // RCM Fleet — Phase 5 pre-submission pipeline (Layer 8, Flow 1)
+  // ─────────────────────────────────────────────────────────────────
+  // encounter.completed → Encounter Intelligence → charge.created
+  {
+    name: "encounter-charge-extraction",
+    on: ["encounter.completed"],
+    steps: [
+      {
+        agent: "encounterIntelligence",
+        input: (e) => ({
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  // coding.recommended → Claim Construction → claim.created
+  // (Claim Construction also listens for coding.approved for human-reviewed cases)
+  {
+    name: "claim-construction",
+    on: ["coding.recommended", "coding.approved"],
+    steps: [
+      {
+        agent: "claimConstruction",
+        input: (e) => ({
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
