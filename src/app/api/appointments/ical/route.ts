@@ -69,7 +69,7 @@ export async function GET() {
         `Modality: ${modalityLabel}\n` +
         `Status: ${appt.status}\n` +
         (appt.notes ? `Notes: ${appt.notes}\n` : "") +
-        `\nView in Green Path: https://emr-web-n11k.onrender.com/portal`,
+        `\nView in Green Path: ${process.env.NEXT_PUBLIC_APP_URL ?? "https://leafjourney.com"}/portal`,
       location: appt.modality === "in_person" ? "Green Path Clinic" : undefined,
     };
   });
