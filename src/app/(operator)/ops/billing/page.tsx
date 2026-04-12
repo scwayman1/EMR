@@ -101,7 +101,7 @@ export default async function BillingPage({
   const outstandingCents = totalBilled - totalPaid;
   const denialCount = countByStatus.denied ?? 0;
   const pendingRevenueCents = statusCounts
-    .filter((s) => s.status === "pending" || s.status === "submitted")
+    .filter((s) => s.status === "accepted" || s.status === "adjudicated" || s.status === "submitted")
     .reduce((acc, s) => acc + (s._sum.billedAmountCents ?? 0), 0);
 
   return (
@@ -151,7 +151,7 @@ export default async function BillingPage({
           active={activeStatus === "all"}
           href="/ops/billing"
         />
-        {(["draft", "submitted", "pending", "paid", "partial", "denied"] as const).map(
+        {(["draft", "submitted", "accepted", "adjudicated", "paid", "partial", "denied", "closed"] as const).map(
           (status) => (
             <FilterTab
               key={status}

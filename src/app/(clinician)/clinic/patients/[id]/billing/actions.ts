@@ -64,7 +64,7 @@ export async function collectPayment(
       where: {
         patientId: parsed.data.patientId,
         patientRespCents: { gt: 0 },
-        status: { in: ["pending", "partial", "paid"] },
+        status: { in: ["accepted", "adjudicated", "partial", "paid"] },
       },
       orderBy: { serviceDate: "asc" },
     });

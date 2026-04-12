@@ -153,7 +153,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   const openClaimCount = await prisma.claim.count({
     where: {
       patientId: params.id,
-      status: { in: ["draft", "submitted", "pending", "denied", "partial"] },
+      status: { in: ["draft", "scrubbing", "scrub_blocked", "ready", "submitted", "ch_rejected", "accepted", "adjudicated", "denied", "partial", "appealed"] },
     },
   });
 

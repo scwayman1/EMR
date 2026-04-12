@@ -43,6 +43,7 @@ model Organization {
   auditLogs      AuditLog[]
   agentJobs      AgentJob[]
   agentFeedback  AgentFeedback[]
+  escalationCases EscalationCase[]
   launchStatus   PracticeLaunchStatus?
   cannabisProducts CannabisProduct[]
   claims         Claim[]
@@ -147,6 +148,8 @@ model Patient {
   paymentPlans    PaymentPlan[]
   coverages       PatientCoverage[]
   paymentMethods  StoredPaymentMethod[]
+  charges         Charge[]
+  eligibilitySnapshots EligibilitySnapshot[]
   // Agentic memory harness
   memories        PatientMemory[]
   observations    ClinicalObservation[]
@@ -252,6 +255,8 @@ model Encounter {
   startedAt      DateTime?
   completedAt    DateTime?
   modality       String          @default("in_person") // in_person | video | phone
+  placeOfService String?         // 2-digit POS code: 11=office, 02=telehealth
+  renderingProviderId String?    // if different from scheduling provider
   reason         String?
   briefingContext Json?           // Pre-visit intelligence briefing (talking points, risk flags, summary)
   createdAt      DateTime        @default(now())
@@ -263,6 +268,7 @@ model Encounter {
   notes          Note[]
   documents      Document[]
   claims         Claim[]
+  charges        Charge[]
 
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
@@ -313,12 +319,19 @@ model CodingSuggestion {
 
 enum ClaimStatus {
   draft          // not yet submitted
-  submitted      // sent to payer
-  pending        // payer processing
+  scrubbing      // being validated pre-submission
+  scrub_blocked  // scrub found blocking issues
+  ready          // scrub passed, awaiting submission
+  submitted      // sent to clearinghouse
+  ch_rejected    // clearinghouse returned rejection
+  accepted       // payer acknowledged receipt
+  adjudicated    // payer made a decision
   paid           // fully paid
   partial        // partially paid, balance due
   denied         // payer denied
   appealed       // under appeal
+  closed         // financial closure reached
+  voided         // voided (error/duplicate)
   written_off    // written off
 }
 
@@ -339,21 +352,34 @@ model Claim {
   patientRespCents    Int       @default(0)
   // Payer
   payerName       String?       // "Blue Cross Blue Shield", "Aetna", etc.
-  payerId         String?       // payer's claim id
+  payerId         String?       // standardized EDI payer ID
   claimNumber     String?       // our internal claim number
+  // Provider identifiers for 837P
+  billingNpi      String?       // billing provider NPI
+  renderingNpi    String?       // rendering provider NPI (may differ)
+  placeOfService  String?       // 2-digit POS code (11=office, 02=telehealth)
+  // Submission control
+  frequencyCode   String?       // 1=original, 7=replacement, 8=void
+  priorAuthNumber String?       // prior authorization reference
+  timelyFilingDeadline DateTime? // computed from payer rules
+  resubmissionCount Int         @default(0)
   // Lifecycle
   serviceDate     DateTime
   submittedAt     DateTime?
   paidAt          DateTime?
   deniedAt        DateTime?
   denialReason    String?
+  closedAt        DateTime?
+  closureType     String?       // paid_in_full, written_off, patient_on_plan, collections, voided, adjusted
   notes           String?
-  // Agent-written: scrub issues from Charge Integrity Agent
+  // Agent-written: scrub issues from Claims Scrubbing Agent
   scrubIssues     Json?
   scrubbedAt      DateTime?
-  // Agent-written: denial triage from Denial Triage Agent
+  // Agent-written: denial triage from Denial Resolution Agent
   denialTriage    Json?
   triagedAt       DateTime?
+  // Tracking
+  humanTouches    Int           @default(0) // count of human interventions on this claim
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -363,10 +389,18 @@ model Claim {
   provider        Provider?     @relation(fields: [providerId], references: [id], onDelete: SetNull)
   payments        Payment[]
   financialEvents FinancialEvent[]
+  charges         Charge[]
+  scrubResults    ClaimScrubResult[]
+  submissions     ClearinghouseSubmission[]
+  adjudications   AdjudicationResult[]
+  denialEvents    DenialEvent[]
+  appealPackets   AppealPacket[]
+  adjustments     Adjustment[]
 
   @@index([organizationId, status, serviceDate])
   @@index([patientId, serviceDate])
   @@index([providerId, serviceDate])
+  @@index([status, timelyFilingDeadline])
 }
 
 enum PaymentSource {
@@ -388,6 +422,292 @@ model Payment {
 
   @@index([claimId, paymentDate])
 }
+
+// --------------------------------------------------------------
+// RCM Fleet — New billing models (Layer 2)
+// --------------------------------------------------------------
+
+enum ChargeStatus {
+  pending         // created, not yet on a claim
+  claim_attached  // linked to a claim line
+  voided          // cancelled
+}
+
+model Charge {
+  id              String       @id @default(cuid())
+  encounterId     String
+  patientId       String
+  organizationId  String
+  cptCode         String       // e.g. "99214", "36415"
+  cptDescription  String?
+  modifiers       String[]     @default([])  // e.g. ["25", "XE"]
+  units           Int          @default(1)
+  icd10Codes      String[]     @default([])  // linked diagnosis codes
+  feeAmountCents  Int          // from fee schedule
+  status          ChargeStatus @default(pending)
+  claimId         String?      // set when attached to a claim
+  confidence      Float?       // coding confidence (0-1)
+  createdBy       String       // agent name or user id
+  createdAt       DateTime     @default(now())
+
+  encounter       Encounter    @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  claim           Claim?       @relation(fields: [claimId], references: [id], onDelete: SetNull)
+
+  @@index([encounterId])
+  @@index([patientId, createdAt])
+  @@index([claimId])
+}
+
+model EligibilitySnapshot {
+  id              String       @id @default(cuid())
+  patientId       String
+  coverageId      String
+  checkedAt       DateTime     @default(now())
+  eligible        Boolean
+  planStatus      String       // active, termed, pending
+  copayAmountCents Int?
+  deductibleRemainingCents Int?
+  oopRemainingCents Int?
+  coinsurancePct  Int?
+  priorAuthRequired Boolean   @default(false)
+  referralRequired Boolean    @default(false)
+  networkStatus   String      @default("unknown")  // in_network, out_of_network, unknown
+  rawResponse     Json?       // full 271 response for audit
+  expiresAt       DateTime    // when this snapshot is stale (default: +24h)
+  createdAt       DateTime    @default(now())
+
+  patient         Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  coverage        PatientCoverage @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, coverageId, checkedAt])
+  @@index([expiresAt])
+}
+
+enum ScrubStatus {
+  clean
+  warnings
+  blocked
+}
+
+model ClaimScrubResult {
+  id              String       @id @default(cuid())
+  claimId         String
+  scrubVersion    String       // agent version that performed the scrub
+  status          ScrubStatus
+  edits           Json         @default("[]")  // [{ ruleId, severity, message, lineSequence, autoFixApplied }]
+  ncciConflicts   Json         @default("[]")  // detected NCCI edit pairs
+  modifierWarnings Json        @default("[]")
+  missingFields   Json         @default("[]")
+  scrubbedAt      DateTime     @default(now())
+
+  claim           Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId, scrubbedAt])
+}
+
+enum SubmissionResponseStatus {
+  pending
+  accepted
+  rejected
+}
+
+model ClearinghouseSubmission {
+  id                String                   @id @default(cuid())
+  claimId           String
+  organizationId    String
+  clearinghouseName String                   // "Availity", "Waystar", etc.
+  submittedAt       DateTime                 @default(now())
+  ediPayload        String?                  // 837P payload (stored for audit)
+  responseStatus    SubmissionResponseStatus @default(pending)
+  responseCode      String?
+  responseMessage   String?
+  respondedAt       DateTime?
+  retryCount        Int                      @default(0)
+
+  claim             Claim                    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId, submittedAt])
+}
+
+enum AdjudicationClaimStatus {
+  paid
+  denied
+  partial
+  pending_review
+}
+
+model AdjudicationResult {
+  id              String                   @id @default(cuid())
+  claimId         String
+  eraDate         DateTime                 // date ERA was received
+  checkNumber     String?                  // payer payment reference
+  totalPaidCents  Int                      @default(0)
+  totalAllowedCents Int                    @default(0)
+  totalAdjustedCents Int                   @default(0)
+  totalPatientRespCents Int                @default(0)
+  claimStatus     AdjudicationClaimStatus
+  lineDetails     Json                     @default("[]")  // per-line: paid, allowed, CARC/RARC
+  rawEra          String?                  // full 835 segment for audit
+  parsedAt        DateTime                 @default(now())
+
+  claim           Claim                    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+enum DenialResolution {
+  pending
+  corrected_and_resubmitted
+  appealed
+  written_off
+  patient_responsibility
+  overturned
+  escalated
+}
+
+model DenialEvent {
+  id              String           @id @default(cuid())
+  claimId         String
+  claimLineSequence Int?           // null = claim-level denial
+  carcCode        String           // Claim Adjustment Reason Code (e.g. "16", "4", "197")
+  rarcCode        String?          // Remittance Advice Remark Code
+  groupCode       String           // CO, PR, OA, PI
+  denialCategory  String?          // agent-classified: coding_error, missing_info, eligibility, etc.
+  amountDeniedCents Int
+  recoverable     Boolean          @default(true)
+  recoverableAmountCents Int?
+  resolution      DenialResolution @default(pending)
+  resolvedAt      DateTime?
+  createdAt       DateTime         @default(now())
+
+  claim           Claim            @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  appeals         AppealPacket[]
+
+  @@index([claimId])
+  @@index([carcCode, resolution])
+  @@index([resolution, createdAt])
+}
+
+enum AppealStatus {
+  draft
+  approved_for_submission
+  submitted
+  overturned
+  upheld
+  pending_review
+}
+
+model AppealPacket {
+  id              String       @id @default(cuid())
+  claimId         String
+  denialEventId   String
+  appealLevel     Int          @default(1) // 1=first, 2=second, 3=external review
+  appealLetter    String?      // generated text
+  supportingDocIds String[]    @default([])
+  submittedAt     DateTime?
+  submittedTo     String?      // payer address/fax/portal
+  status          AppealStatus @default(draft)
+  outcomeReceivedAt DateTime?
+  generatedBy     String?      // agent name
+  reviewedBy      String?      // user id (if human-reviewed)
+  createdAt       DateTime     @default(now())
+
+  claim           Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  denialEvent     DenialEvent  @relation(fields: [denialEventId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@index([status])
+}
+
+enum AdjustmentType {
+  contractual
+  write_off
+  refund
+  takeback
+  courtesy
+}
+
+model Adjustment {
+  id              String         @id @default(cuid())
+  claimId         String
+  claimLineSequence Int?
+  type            AdjustmentType
+  amountCents     Int            // signed: negative = money back
+  reason          String?
+  carcCode        String?        // if derived from ERA
+  approvedBy      String?        // user id (required for write-offs > $25)
+  approvedAt      DateTime?
+  postedAt        DateTime?
+  createdAt       DateTime       @default(now())
+
+  claim           Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@index([type, createdAt])
+}
+
+enum EscalationTier {
+  tier_1  // billing specialist
+  tier_2  // compliance officer / senior biller
+  tier_3  // practice owner
+}
+
+enum EscalationStatus {
+  open
+  assigned
+  in_review
+  resolved
+  dismissed
+}
+
+model EscalationCase {
+  id              String           @id @default(cuid())
+  organizationId  String
+  claimId         String?
+  patientId       String?
+  tier            EscalationTier
+  category        String           // coding_uncertainty, high_dollar, compliance_risk, etc.
+  summary         String           // agent-generated description
+  sourceAgent     String           // which agent escalated
+  suggestedAction String?
+  assignedTo      String?          // user id
+  status          EscalationStatus @default(open)
+  resolution      String?          // what was decided
+  resolvedAt      DateTime?
+  resolvedBy      String?          // user id
+  feedbackRecorded Boolean         @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, tier])
+  @@index([claimId])
+  @@index([status, createdAt])
+}
+
+model BillingMemory {
+  id              String   @id @default(cuid())
+  organizationId  String
+  scope           String   // "payer" | "provider" | "patient" | "code_combo" | "global"
+  scopeId         String?  // payerId, providerId, patientId, or null for global
+  category        String   // "denial_pattern" | "modifier_rule" | "turnaround" | "collection_behavior" | "coding_pattern"
+  content         String   // narrative description
+  confidence      Float    @default(0.8)
+  evidenceCount   Int      @default(1)
+  lastEvidenceAt  DateTime @default(now())
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([scope, scopeId, category])
+  @@index([organizationId, category])
+}
+
+// --------------------------------------------------------------
+// Fee schedule (existing)
+// --------------------------------------------------------------
 
 model FeeScheduleEntry {
   id              String        @id @default(cuid())
@@ -570,6 +890,7 @@ model PatientCoverage {
   updatedAt               DateTime           @updatedAt
 
   patient                 Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  eligibilitySnapshots    EligibilitySnapshot[]
 
   @@index([patientId, type, active])
 }

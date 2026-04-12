@@ -68,7 +68,7 @@ export async function getPatientFinancialSummary(
 
   // Insurance pending = submitted or pending claims
   const insurancePendingCents = claims
-    .filter((c) => c.status === "submitted" || c.status === "pending")
+    .filter((c) => c.status === "submitted" || c.status === "accepted" || c.status === "adjudicated")
     .reduce((acc, c) => acc + c.billedAmountCents, 0);
 
   // Patient responsibility = sum of patient resp on all claims minus patient payments

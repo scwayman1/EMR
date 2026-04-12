@@ -1380,7 +1380,7 @@ async function main() {
     {
       patient: maya,
       encounter: null as any,
-      status: ClaimStatus.pending,
+      status: ClaimStatus.accepted,
       cptCodes: [{ code: "99213", label: "Established patient, 20-29 min", units: 1, chargeAmount: 15500 }],
       icd10: [{ code: "G47.00", label: "Insomnia, unspecified" }],
       billedAmount: 15500,
@@ -1518,7 +1518,7 @@ async function main() {
     {
       patient: sarah,
       encounter: null as any,
-      status: ClaimStatus.pending,
+      status: ClaimStatus.accepted,
       cptCodes: [{ code: "99214", label: "Established patient, 30-39 min", units: 1, chargeAmount: 22500 }],
       icd10: [{ code: "M54.5", label: "Low back pain" }],
       billedAmount: 22500,

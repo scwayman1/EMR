@@ -93,7 +93,8 @@ export function ageClaims(
     let insuranceBalanceCents = 0;
     if (
       claim.status === "submitted" ||
-      claim.status === "pending" ||
+      claim.status === "accepted" ||
+      claim.status === "adjudicated" ||
       claim.status === "denied" ||
       claim.status === "appealed"
     ) {
