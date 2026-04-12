@@ -2,6 +2,17 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
+import {
+  recallMemories,
+  recordMemory,
+  formatMemoriesForPrompt,
+} from "./memory/patient-memory";
+import {
+  recordObservation,
+  recallObservations,
+  formatObservationsForPrompt,
+} from "./memory/clinical-observation";
+import { startReasoning } from "./memory/agent-reasoning";
 
 // ---------------------------------------------------------------------------
 // Correspondence Nurse Agent
@@ -53,6 +64,22 @@ const input = z.object({
   triggeringMessageId: z.string().optional(),
 });
 
+const newMemorySchema = z
+  .object({
+    kind: z.enum([
+      "preference",
+      "observation",
+      "trajectory",
+      "working",
+      "not_working",
+      "concern",
+    ]),
+    content: z.string().min(3).max(500),
+    tags: z.array(z.string()).optional(),
+  })
+  .nullable()
+  .optional();
+
 const triageSchema = z.object({
   urgency: z.enum(["emergency", "high", "routine", "low"]),
   category: z.enum([
@@ -71,6 +98,7 @@ const triageSchema = z.object({
   summary: z.string(),
   suggestedNextActions: z.array(z.string()),
   draftBody: z.string(),
+  newMemory: newMemorySchema,
 });
 
 const output = z.object({
@@ -180,6 +208,13 @@ export const correspondenceNurseAgent: Agent<
     ctx.assertCan("read.patient");
     ctx.log("info", "Triaging correspondence thread", { threadId });
 
+    // Start a reasoning trace so every step we take is auditable. The
+    // physician can click "explain why" on the resulting draft and see
+    // the full chain. Best-effort: if persistence fails later, the
+    // draft still ships.
+    const trace = startReasoning("correspondenceNurse", "1.0.0", ctx.jobId);
+    trace.step("begin triage", { threadId });
+
     // ── Step 1: Load the full thread + patient context ─────────
     const thread = await prisma.messageThread.findUnique({
       where: { id: threadId },
@@ -214,6 +249,54 @@ export const correspondenceNurseAgent: Agent<
     if (!thread) throw new Error(`Thread ${threadId} not found`);
 
     const patient = thread.patient;
+    trace.step("loaded patient chart", {
+      patientId: patient.id,
+      activeRegimens: patient.dosingRegimens.length,
+      recentOutcomes: patient.outcomeLogs.length,
+    });
+
+    // ── Step 1b: Recall what we already know about this patient ──
+    // This is the memory layer in action. Every draft this nurse writes
+    // is informed by the evolving understanding of the person. A cold
+    // read of the chart is never enough — the agent reaches back into
+    // what's been observed and preferred over time.
+    const memories = await recallMemories(patient.id, {
+      kinds: [
+        "concern",
+        "working",
+        "not_working",
+        "preference",
+        "trajectory",
+        "observation",
+      ],
+      limit: 24,
+    });
+    trace.step("recalled patient memories", {
+      count: memories.length,
+      kinds: [...new Set(memories.map((m) => m.kind))],
+    });
+    trace.source(
+      "memories",
+      memories.map((m) => m.id),
+    );
+
+    // Also recall recent unacknowledged observations — things other
+    // agents have noticed about this patient that a human hasn't seen
+    // yet. If any of them are urgent, the nurse should weight them
+    // heavily in the drafting step.
+    const recentObservations = await recallObservations(patient.id, {
+      onlyUnacknowledged: true,
+      limit: 8,
+    });
+    trace.step("recalled recent observations", {
+      count: recentObservations.length,
+      urgentCount: recentObservations.filter((o) => o.severity === "urgent")
+        .length,
+    });
+    trace.source(
+      "observations",
+      recentObservations.map((o) => o.id),
+    );
 
     // The most recent patient-originated message is the one we're responding to
     const mostRecentPatientMessage = [...thread.messages]
@@ -227,6 +310,10 @@ export const correspondenceNurseAgent: Agent<
     // ── Step 2: Deterministic safety scan (always runs, never skipped) ──
     const { flags: deterministicFlags, forceUrgency } =
       detectSafetyFlags(patientMessageText);
+    trace.step("deterministic safety scan", {
+      flagCount: deterministicFlags.length,
+      forceUrgency,
+    });
 
     // ── Step 3: Build the clinical context block for the LLM ────
     const cannabisMeds = patient.dosingRegimens
@@ -267,10 +354,22 @@ export const correspondenceNurseAgent: Agent<
       })
       .join("\n---\n");
 
+    // The longitudinal understanding block — the thing that makes this
+    // agent feel like a colleague who knows the patient instead of a
+    // chatbot reading a file fresh.
+    const memoryBlock = formatMemoriesForPrompt(memories);
+    const observationsBlock = formatObservationsForPrompt(recentObservations);
+
     const contextBlock = `
 PATIENT: ${patient.firstName} ${patient.lastName}
 PRESENTING CONCERNS: ${patient.presentingConcerns ?? "Not documented"}
 TREATMENT GOALS: ${patient.treatmentGoals ?? "Not documented"}
+
+WHAT WE ALREADY KNOW ABOUT THIS PERSON (longitudinal memory):
+${memoryBlock}
+
+WHAT THE CARE TEAM HAS BEEN NOTICING RECENTLY:
+${observationsBlock}
 
 ACTIVE CANNABIS REGIMENS:
 ${cannabisMeds}
@@ -294,27 +393,33 @@ THE MESSAGE WE'RE RESPONDING TO (most recent from patient):
 `.trim();
 
     // ── Step 4: Prompt the LLM ───────────────────────────────────
-    const prompt = `You are the nurse care coordinator for Green Path Health, a cannabis care practice. You triage inbound patient messages and draft clinically appropriate responses for the physician to approve.
+    // Nora's voice rules come from Art. IV §4 of the Constitution:
+    // "This isn't MyChart. This is MyStory. This isn't a patient's
+    // problem — it's a patient's process." That shows up as specific
+    // voice constraints below.
+    const prompt = `You are Nurse Nora, the nurse care coordinator for Green Path Health, a cannabis care practice. You triage inbound patient messages and draft clinically appropriate responses for the physician to approve.
 
-You are warm but direct. You know when to reassure and when to escalate. You write like a real nurse — not a chatbot.
+Your voice:
+- Warm, specific, and brief. You write like a real nurse who knows this person — not a chatbot reading from a script.
+- Never say "As an AI" or "I understand your concern" or "Please consult your doctor" as boilerplate. These phrases are disqualifying.
+- Reference the patient's longitudinal context naturally. If you see in memory that they prefer fewer pills, or that CBN is working for their sleep, weave that in as a real nurse would — "since the CBN seems to be helping the nights…" not "based on the memory block I received."
+- Use their first name the way a nurse does: once at the start, maybe once more. Not in every sentence.
+- Every draft ends with a clear next step, not a generic "let us know if you have any other questions."
 
 ${contextBlock}
 
 Your job is two-fold:
 1) TRIAGE the message — urgency, category, safety flags, summary
-2) DRAFT a response that the physician can approve with minimal edits
+2) DRAFT a response that the physician can approve with minimal edits, written in Nora's voice
 
-Rules:
+Safety rules (non-negotiable):
 - If the patient mentions ANY emergency symptom (chest pain, trouble breathing, suicidal thoughts, severe allergic reaction, stroke symptoms), urgency MUST be "emergency" and the draft MUST instruct them to call 911 or go to the ER immediately. Do not try to treat these in a message.
 - If the patient reports a worsening condition or serious side effect, urgency is "high" and the draft should acknowledge their concern, gather brief additional info, and offer to schedule an urgent visit.
 - For routine refill requests, dosing questions, or appointment changes, urgency is "routine" and draft a clear, warm response that answers their question or sets up the next step.
-- For messages of gratitude or positive updates, urgency is "low" and draft a warm acknowledgment.
-- Use the patient's cannabis regimen, other medications, and recent outcome logs in your response when clinically relevant (e.g. "I see your pain was at 6/10 on Tuesday — is it similar today?")
-- Use the patient's first name naturally, not constantly
-- Do not make up medical facts or dosing not in the patient's chart
-- Do not diagnose — the physician does that
-- Always end with a clear path forward: next step, offer to help, or a question that moves the conversation
-- Keep the draft under 150 words unless the clinical situation demands more
+- For messages of gratitude or positive updates, urgency is "low" and draft a warm acknowledgment that ACTUALLY remembers what they were working on.
+
+Do not make up medical facts, dosing, or history not in the patient's chart or memory. Do not diagnose — the physician does that.
+Keep the draft under 150 words unless the clinical situation genuinely demands more.
 
 Return ONLY valid JSON in this exact shape:
 {
@@ -323,8 +428,11 @@ Return ONLY valid JSON in this exact shape:
   "safetyFlags": ["string description of each flag, or empty array"],
   "summary": "1-2 sentence summary of the thread for the physician",
   "suggestedNextActions": ["2-4 short action items for the physician or staff"],
-  "draftBody": "The complete message response text to send to the patient"
-}`;
+  "draftBody": "The complete message response text to send to the patient",
+  "newMemory": null | { "kind": "preference" | "observation" | "trajectory" | "working" | "not_working" | "concern", "content": "1-2 sentence narrative to remember about this patient going forward", "tags": ["..."] }
+}
+
+The newMemory field is optional but important. If this message reveals something worth remembering about the patient going forward (a preference, a trajectory shift, something working or not working, a new concern), capture it. If the message is routine and doesn't teach you anything new, return newMemory: null.`;
 
     let raw = "";
     let usedLLM = false;
@@ -334,8 +442,12 @@ Return ONLY valid JSON in this exact shape:
         temperature: 0.35,
       });
       usedLLM = raw.length > 50 && !raw.startsWith("[stub");
+      trace.step("llm call complete", { usedLLM, rawLen: raw.length });
     } catch (err) {
       ctx.log("warn", "Correspondence Nurse LLM call failed", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      trace.step("llm call failed — using fallback", {
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -348,10 +460,18 @@ Return ONLY valid JSON in this exact shape:
         const validation = triageSchema.safeParse(parsed);
         if (validation.success) {
           triage = validation.data;
+          trace.step("parsed LLM output", {
+            urgency: triage.urgency,
+            hasNewMemory: !!triage.newMemory,
+          });
         } else {
           ctx.log("warn", "LLM output failed schema validation — using fallback", {
             issues: validation.error.issues.slice(0, 3),
           });
+          trace.alternative(
+            "use LLM output as-is",
+            `schema validation failed: ${validation.error.issues[0]?.message ?? "unknown"}`,
+          );
         }
       }
     }
@@ -373,7 +493,11 @@ Return ONLY valid JSON in this exact shape:
         draftBody:
           `Hi ${patient.firstName}, thanks for reaching out. I want to make sure I give you a thoughtful response — ` +
           `one of our care team members will review your message and get back to you shortly.`,
+        newMemory: null,
       };
+      trace.step("used deterministic fallback triage", {
+        urgency: fallbackUrgency,
+      });
     }
 
     // Always merge in deterministic safety flags (LLM may miss them)
@@ -441,11 +565,116 @@ Return ONLY valid JSON in this exact shape:
       },
     );
 
+    // ── Step 8: Write clinical observations ──────────────────────
+    // When the triage detects something a physician should see, capture
+    // it as a structured observation so it shows up in the Clinical
+    // Insights Panel next to the chart. Urgency-based mapping:
+    //   emergency → urgent observation, red_flag category
+    //   high      → concern observation, symptom_trend or side_effect
+    //   gratitude → info observation, positive_signal
+    // Routine/low messages don't create observations — they're noise.
+    try {
+      if (finalUrgency === "emergency" && mostRecentPatientMessage) {
+        await recordObservation({
+          patientId: patient.id,
+          observedBy: "correspondenceNurse",
+          observedByKind: "agent",
+          category: "red_flag",
+          severity: "urgent",
+          summary: `Emergency keywords detected in ${patient.firstName}'s message: ${allFlags.slice(0, 3).join(", ")}`,
+          evidence: {
+            messageIds: [mostRecentPatientMessage.id],
+          },
+          actionSuggested:
+            "Review the draft reply and the original message immediately. Patient may need emergency services.",
+        });
+        trace.step("recorded urgent observation");
+      } else if (finalUrgency === "high" && mostRecentPatientMessage) {
+        await recordObservation({
+          patientId: patient.id,
+          observedBy: "correspondenceNurse",
+          observedByKind: "agent",
+          category:
+            triage.category === "side_effect"
+              ? "side_effect"
+              : "symptom_trend",
+          severity: "concern",
+          summary: triage.summary,
+          evidence: {
+            messageIds: [mostRecentPatientMessage.id],
+          },
+          actionSuggested: triage.suggestedNextActions[0] ?? undefined,
+        });
+        trace.step("recorded concern observation");
+      } else if (triage.category === "gratitude" && mostRecentPatientMessage) {
+        await recordObservation({
+          patientId: patient.id,
+          observedBy: "correspondenceNurse",
+          observedByKind: "agent",
+          category: "positive_signal",
+          severity: "info",
+          summary: triage.summary,
+          evidence: {
+            messageIds: [mostRecentPatientMessage.id],
+          },
+        });
+        trace.step("recorded positive signal observation");
+      }
+    } catch (err) {
+      // Observation writes are best-effort; never fail a triage.
+      ctx.log("warn", "Failed to record clinical observation", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // ── Step 9: Write a new memory if the LLM flagged something worth remembering ──
+    // The LLM is the best signal we have for "did this message teach us
+    // something about this person that we should remember going forward?"
+    // We trust its judgment but validate the shape before writing.
+    try {
+      if (triage.newMemory) {
+        await recordMemory({
+          patientId: patient.id,
+          kind: triage.newMemory.kind,
+          content: triage.newMemory.content,
+          tags: triage.newMemory.tags ?? [],
+          source: "correspondenceNurse",
+          sourceKind: "agent",
+          // Agent-inferred memories carry lower confidence than
+          // human-recorded ones. A physician reviewing the Memory tab
+          // will see this and can upgrade confidence if they agree.
+          confidence: 0.65,
+          metadata: {
+            derivedFromMessageId: mostRecentPatientMessage?.id ?? null,
+            threadId,
+          },
+        });
+        trace.step("recorded new patient memory", {
+          kind: triage.newMemory.kind,
+        });
+      }
+    } catch (err) {
+      ctx.log("warn", "Failed to record patient memory", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // ── Step 10: Persist the reasoning trace ─────────────────────
+    trace.conclude({
+      confidence: usedLLM ? 0.8 : 0.5,
+      summary: usedLLM
+        ? `Triaged as ${finalUrgency}/${triage.category} using ${memories.length} memories and ${recentObservations.length} recent observations. Drafted a reply in Nora's voice.`
+        : `Triaged as ${finalUrgency}/${triage.category} using the deterministic fallback path (LLM was unavailable).`,
+    });
+    await trace.persist();
+
     ctx.log("info", "Correspondence triage complete", {
       threadId,
       urgency: finalUrgency,
       category: triage.category,
       safetyFlags: allFlags.length,
+      memoriesUsed: memories.length,
+      observationsUsed: recentObservations.length,
       usedLLM,
     });
 
