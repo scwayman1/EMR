@@ -16,6 +16,7 @@ import { ChartTabs, type TabKey } from "./chart-tabs";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { MemoryTab } from "./memory-tab";
+import { ClinicalBillingSummary } from "./clinical-billing-tab";
 import { startVisit } from "./actions";
 import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
 import { InteractionBadge } from "@/components/ui/interaction-badge";
@@ -47,6 +48,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     patientMedications,
     patientMemories,
     clinicalObservations,
+    patientClaims,
   ] = await Promise.all([
     prisma.patient.findFirst({
       where: {
@@ -135,6 +137,19 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       where: { patientId: params.id },
       orderBy: { createdAt: "desc" },
       take: 30,
+    }),
+    // Claims for clinical billing summary
+    prisma.claim.findMany({
+      where: { patientId: params.id },
+      orderBy: { serviceDate: "desc" },
+      take: 20,
+      include: {
+        payments: true,
+        denialEvents: { orderBy: { createdAt: "desc" } },
+        appealPackets: { orderBy: { createdAt: "desc" } },
+        adjustments: true,
+        charges: true,
+      },
     }),
   ]);
 
@@ -326,17 +341,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         />
       )}
       {tab === "billing" && (
-        <div className="text-center py-6">
-          <Link
-            href={`/clinic/patients/${params.id}/billing`}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent text-accent-ink text-sm font-medium hover:bg-accent/90 transition-colors"
-          >
-            Open financial cockpit &rarr;
-          </Link>
-          <p className="text-xs text-text-subtle mt-3">
-            Full billing view opens in a dedicated workspace
-          </p>
-        </div>
+        <ClinicalBillingSummary
+          claims={patientClaims}
+          patientFirstName={patient.firstName}
+          patientId={params.id}
+        />
       )}
     </PageShell>
   );
