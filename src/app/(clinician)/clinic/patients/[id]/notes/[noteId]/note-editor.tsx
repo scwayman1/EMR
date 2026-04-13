@@ -186,6 +186,25 @@ export function NoteEditor({
         </Card>
       )}
 
+      {/* Visit Snapshot — EMR-131: quick summary so the provider
+          doesn't have to read through the entire prior note */}
+      {aiDrafted && isEditable && (
+        <Card className="border-l-4 border-l-accent bg-accent/[0.03]">
+          <CardContent className="py-3">
+            <p className="text-[10px] uppercase tracking-[0.12em] text-accent font-medium mb-1.5">
+              Visit snapshot
+            </p>
+            <p className="text-xs text-text-muted leading-relaxed">
+              This note was pre-drafted by the AI scribe using the patient&apos;s
+              chart, recent outcomes, and your pre-visit briefing. Review
+              each section — the Assessment and Plan already incorporate
+              your talking points. Use the AI refine buttons to adjust
+              tone, expand, or add dosing detail. Sign when ready.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Status + AI badges */}
       <div className="flex items-center gap-2 flex-wrap">
         <Badge
@@ -207,6 +226,29 @@ export function NoteEditor({
         )}
         {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
       </div>
+
+      {/* Emotional vitals — EMR-134: emoji mood indicator */}
+      {isEditable && (
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+            Patient demeanor:
+          </span>
+          {[
+            { emoji: "😊", label: "Positive", value: "positive" },
+            { emoji: "😐", label: "Neutral", value: "neutral" },
+            { emoji: "😔", label: "Low", value: "low" },
+          ].map((mood) => (
+            <button
+              key={mood.value}
+              type="button"
+              title={mood.label}
+              className="text-2xl hover:scale-125 transition-transform focus:outline-none focus:ring-2 focus:ring-accent/40 rounded-lg p-1"
+            >
+              {mood.emoji}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Note blocks */}
       <div className="space-y-3">
