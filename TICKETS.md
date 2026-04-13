@@ -2211,6 +2211,9 @@ We are trying to build something no one has built before. The people who use thi
 | 184 | Patient Home Page: Next Appointment Card | High | **done** |
 | 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | backlog |
 | 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | backlog |
-| 187 | Landing Page: Fix Claude AI GIF Scroll Glitch | High | backlog |
+| 187 | Landing Page: Fix Hero Demo Static Box (portrait mode) | High | **done** |
+| 188 | Integrated Marketplace/Store — Amazon-style ecosystem inside EMR (ref: normalizemarketplace.com) | High | backlog |
+| 189 | Landing Page: All Nav Tabs Visible in Mobile Portrait Mode | High | backlog |
+| 190 | Set Up Linear for Project Management | Urgent | backlog |
 
-**Grand total: 187 tickets.** Product Drop #8 (3 new + 1 marked done).
+**Grand total: 190 tickets.** Product Drop #9 (3 new + 1 marked done).
