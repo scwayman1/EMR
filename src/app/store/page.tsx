@@ -67,9 +67,19 @@ const PRODUCTS = [
     url: "https://aulv.org",
     badge: "Popular",
   },
+  {
+    name: "Gold Skin Serum",
+    brand: "Potency 710",
+    category: "Skincare",
+    description:
+      "Luxurious CBD-infused skin serum with 24K gold flakes. Designed for anti-aging, hydration, and radiance. Lab-tested, clean ingredients.",
+    price: "$89.99",
+    url: "https://www.potency710.com/product/gold-skin-serum/",
+    badge: "New",
+  },
 ];
 
-const CATEGORIES = ["All", "Tinctures", "Topicals", "Capsules", "Edibles"];
+const CATEGORIES = ["All", "Tinctures", "Topicals", "Capsules", "Edibles", "Skincare"];
 
 export default function StorePage() {
   const [category, setCategory] = useState("All");

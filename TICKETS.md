@@ -2208,6 +2208,9 @@ We are trying to build something no one has built before. The people who use thi
 | 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | backlog |
 | 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | backlog |
 | 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | backlog |
-| 184 | Patient Home Page: Next Appointment Card | High | backlog |
+| 184 | Patient Home Page: Next Appointment Card | High | **done** |
+| 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | backlog |
+| 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | backlog |
+| 187 | Landing Page: Fix Claude AI GIF Scroll Glitch | High | backlog |
 
-**Grand total: 184 tickets.** Product Drop #7 (8 new UX/workflow improvements).
+**Grand total: 187 tickets.** Product Drop #8 (3 new + 1 marked done).
