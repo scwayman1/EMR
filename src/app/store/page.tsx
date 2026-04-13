@@ -8,63 +8,33 @@ import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 
 const PRODUCTS = [
   {
-    name: "PhytoRx Premium CBD Oil",
+    name: "Pain and Recovery Formula",
     brand: "PhytoRx",
-    category: "Tinctures",
+    category: "Beverages",
     description:
-      "Full-spectrum CBD tincture crafted for therapeutic use. Third-party tested, physician-recommended.",
-    price: "$79.99",
-    url: "https://phytorx.co",
+      "CBD + CBG beverage concentrate for pain and recovery. Physician-formulated, fast-absorbing emulsion technology.",
+    price: "$89.99",
+    url: "https://phytorx.co/products/cbd-cbg-beverage-concentrate",
     badge: "Best seller",
   },
   {
-    name: "Flower Powered Topical Balm",
+    name: "CBD Wellness Products",
     brand: "Flower Powered Products",
     category: "Topicals",
     description:
-      "Soothing topical balm with CBD, menthol, and arnica. Targeted relief for joints and muscles.",
-    price: "$44.99",
-    url: "https://flowerpoweredproductsllc.com",
+      "Full line of CBD-only wellness products. Topicals, balms, and creams. Third-party tested, physician-recommended.",
+    price: "From $34.99",
+    url: "https://flowerpoweredproductsllc.com/shop",
     badge: null,
   },
   {
-    name: "AULV Wellness Capsules",
-    brand: "AULV",
-    category: "Capsules",
-    description:
-      "Precision-dosed CBD capsules for consistent daily wellness. Vegan, gluten-free, lab-tested.",
-    price: "$59.99",
-    url: "https://aulv.org",
-    badge: "New",
-  },
-  {
-    name: "PhytoRx Sleep Formula",
-    brand: "PhytoRx",
-    category: "Tinctures",
-    description:
-      "CBN + CBD blend designed to support restful sleep. Taken 30 minutes before bedtime.",
-    price: "$89.99",
-    url: "https://phytorx.co",
-    badge: null,
-  },
-  {
-    name: "Flower Powered Pain Cream",
-    brand: "Flower Powered Products",
-    category: "Topicals",
-    description:
-      "High-potency CBD cream with camphor and eucalyptus. Fast-absorbing, non-greasy formula.",
-    price: "$54.99",
-    url: "https://flowerpoweredproductsllc.com",
-    badge: null,
-  },
-  {
-    name: "AULV Focus Gummies",
+    name: "PLNT PWRD Collection",
     brand: "AULV",
     category: "Edibles",
     description:
-      "CBD + CBG gummies formulated for clarity and focus. Natural fruit flavors, 25mg per gummy.",
-    price: "$39.99",
-    url: "https://aulv.org",
+      "Plant-powered CBD + CBG wellness products. Gummies, capsules, and tinctures formulated for daily wellness.",
+    price: "From $29.99",
+    url: "https://aulv.org/plnt-pwrd%E2%84%A2",
     badge: "Popular",
   },
   {
@@ -79,7 +49,7 @@ const PRODUCTS = [
   },
 ];
 
-const CATEGORIES = ["All", "Tinctures", "Topicals", "Capsules", "Edibles", "Skincare"];
+const CATEGORIES = ["All", "Beverages", "Topicals", "Edibles", "Skincare"];
 
 export default function StorePage() {
   const [category, setCategory] = useState("All");

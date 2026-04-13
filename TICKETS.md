@@ -2214,6 +2214,8 @@ We are trying to build something no one has built before. The people who use thi
 | 187 | Landing Page: Fix Hero Demo Static Box (portrait mode) | High | **done** |
 | 188 | Integrated Marketplace/Store — Amazon-style ecosystem inside EMR (ref: normalizemarketplace.com) | High | backlog |
 | 189 | Landing Page: All Nav Tabs Visible in Mobile Portrait Mode | High | backlog |
-| 190 | Set Up Linear for Project Management | Urgent | backlog |
+| 190 | Set Up Linear for Project Management | Urgent | **done** |
+| 191 | Wellness Toolkit Redesign — remove ribbon, checkbox dropdowns, health score integration | High | backlog |
+| 192 | Store Overhaul — remove old products, update to real partner URLs | High | **done** |
 
-**Grand total: 190 tickets.** Product Drop #9 (3 new + 1 marked done).
+**Grand total: 192 tickets.** Product Drop #9.
