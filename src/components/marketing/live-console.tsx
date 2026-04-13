@@ -69,9 +69,11 @@ export function LiveConsole() {
         }}
       />
 
-      {/* Main glass card */}
+      {/* Main glass card — FIXED HEIGHT on mobile so the animation
+          scrolls inside the card instead of pushing page content around.
+          On desktop the card is tall enough that it never needs to scroll. */}
       <div
-        className="relative rounded-[28px] overflow-hidden border border-white/30 shadow-[0_20px_80px_-20px_rgba(30,60,45,0.25),0_0_0_1px_rgba(255,255,255,0.1)_inset]"
+        className="relative rounded-[28px] overflow-hidden border border-white/30 shadow-[0_20px_80px_-20px_rgba(30,60,45,0.25),0_0_0_1px_rgba(255,255,255,0.1)_inset] max-h-[480px] md:max-h-none flex flex-col"
         style={{
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35))",
@@ -136,8 +138,8 @@ export function LiveConsole() {
         {/* Divider */}
         <div className="relative mx-7 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
-        {/* Steps */}
-        <div className="relative px-7 py-5 space-y-1.5 min-h-[300px]">
+        {/* Steps — scrollable on mobile, static on desktop */}
+        <div className="relative px-7 py-5 space-y-1.5 min-h-[240px] md:min-h-[300px] flex-1 overflow-y-auto">
           {STEPS.map((step, i) => {
             const isDone = phase === "done" || i < currentStep;
             const isRunning = phase === "running" && i === currentStep;
