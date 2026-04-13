@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "./session";
 import { hashPassword, verifyPassword } from "./password";
 import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
+import { loginLimiter, signupLimiter } from "./rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -22,6 +24,15 @@ const signupSchema = z.object({
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function loginAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  // Rate limit by IP + email to prevent brute force
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const emailRaw = (formData.get("email") as string)?.toLowerCase() ?? "";
+  const rl = loginLimiter.check(`${ip}:${emailRaw}`);
+  if (!rl.allowed) {
+    const waitMin = Math.ceil((rl.resetAt - Date.now()) / 60000);
+    return { ok: false, error: `Too many login attempts. Please try again in ${waitMin} minute${waitMin === 1 ? "" : "s"}.` };
+  }
+
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -53,6 +64,14 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
 }
 
 export async function signupAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  // Rate limit by IP to prevent account spam
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = signupLimiter.check(ip);
+  if (!rl.allowed) {
+    const waitMin = Math.ceil((rl.resetAt - Date.now()) / 60000);
+    return { ok: false, error: `Too many signup attempts. Please try again in ${waitMin} minute${waitMin === 1 ? "" : "s"}.` };
+  }
+
   const parsed = signupSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
