@@ -62,7 +62,6 @@ function TipRow({ tip }: { tip: LifestyleTip }) {
               strokeLinejoin="round"
             />
           </svg>
-      <PatientSectionNav section="journey" />
         </span>
 
         <div className="flex-1 min-w-0">
@@ -209,6 +208,7 @@ export default function LifestylePage() {
 
   return (
     <PageShell maxWidth="max-w-[960px]">
+      <PatientSectionNav section="journey" />
       {/* ==================== Hero ==================== */}
       <Card tone="ambient" className="mb-10 grain">
         <div className="relative z-10 px-6 md:px-10 py-10 md:py-14">
@@ -249,7 +249,7 @@ export default function LifestylePage() {
       </Card>
 
       {/* ==================== Quick stats ==================== */}
-      <div className="grid grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
         <div className="bg-surface-raised border border-border rounded-xl p-4 text-center shadow-sm">
           <p className="font-display text-2xl font-medium text-text">7</p>
           <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mt-1">

@@ -6,6 +6,7 @@ import { logoutAction } from "@/lib/auth/actions";
 import type { AuthedUser } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
 import { cn } from "@/lib/utils/cn";
+import { MobileNav } from "./MobileNav";
 
 export interface NavItem {
   label: string;
@@ -133,7 +134,10 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
           <Link href="/" className="flex items-center gap-2">
             <Wordmark size="sm" />
           </Link>
-          <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
+          <div className="flex items-center gap-2">
+            <MobileNav nav={nav} />
+            <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
+          </div>
         </header>
         <main id="main-content" className="flex-1 min-w-0">{children}</main>
       </div>

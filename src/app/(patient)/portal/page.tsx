@@ -291,11 +291,11 @@ export default async function PatientHome() {
                 description="We'll let you know when there's something new."
               />
             ) : (
-              <ul className="divide-y divide-border/70 -mx-6">
+              <ul className="divide-y divide-border/70 -mx-4 md:-mx-6">
                 {patient.tasks.map((task) => (
                   <li
                     key={task.id}
-                    className="px-6 py-4 flex items-start justify-between gap-4 hover:bg-surface-muted/40 transition-colors"
+                    className="px-4 md:px-6 py-4 flex items-start justify-between gap-4 hover:bg-surface-muted/40 transition-colors"
                   >
                     <div className="flex gap-3 min-w-0">
                       <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />

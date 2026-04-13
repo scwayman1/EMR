@@ -201,7 +201,7 @@ export function PatientMessagesView({ threads, currentUserId }: Props) {
                           setCallToast("Voice calling coming soon");
                           setTimeout(() => setCallToast(null), 2500);
                         }}
-                        className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
+                        className="inline-flex items-center justify-center h-11 w-11 min-h-[44px] min-w-[44px] rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
                         aria-label="Voice call"
                       >
                         <PhoneIcon />
@@ -212,7 +212,7 @@ export function PatientMessagesView({ threads, currentUserId }: Props) {
                           setCallToast("Video calling coming soon");
                           setTimeout(() => setCallToast(null), 2500);
                         }}
-                        className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
+                        className="inline-flex items-center justify-center h-11 w-11 min-h-[44px] min-w-[44px] rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
                         aria-label="Video call"
                       >
                         <VideoIcon />
