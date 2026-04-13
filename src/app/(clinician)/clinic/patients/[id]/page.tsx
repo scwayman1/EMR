@@ -172,6 +172,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     },
   });
 
+  // Open tasks for this patient (EMR-180: task list on chart open)
+  const openTasks = await prisma.task.findMany({
+    where: { patientId: params.id, status: "open" },
+    orderBy: { dueAt: "asc" },
+    take: 8,
+  });
+
   const openObservationCount = clinicalObservations.filter(
     (o: any) => !o.acknowledgedAt,
   ).length;
@@ -271,6 +278,22 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   />
                 </div>
               </div>
+
+              {/* Allergies + contraindications alert (EMR-113) */}
+              {(patient.allergies?.length > 0 || patient.contraindications?.length > 0) && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {patient.allergies?.map((a: string) => (
+                    <Badge key={a} tone="danger" className="text-[10px]">
+                      ⚠ {a}
+                    </Badge>
+                  ))}
+                  {patient.contraindications?.map((c: string) => (
+                    <Badge key={c} tone="warning" className="text-[10px]">
+                      ⊘ {c}
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Quick actions */}
@@ -289,6 +312,30 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Open tasks panel (EMR-180) ─────────────────────── */}
+      {openTasks.length > 0 && (
+        <Card className="mb-6 border-l-4 border-l-highlight px-5 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-text-subtle font-medium">
+              Open tasks · {openTasks.length}
+            </p>
+          </div>
+          <ul className="space-y-1.5">
+            {openTasks.map((task: any) => (
+              <li key={task.id} className="flex items-center gap-3 text-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-highlight shrink-0" />
+                <span className="text-text flex-1 truncate">{task.title}</span>
+                {task.dueAt && (
+                  <span className="text-[11px] text-text-subtle shrink-0 tabular-nums">
+                    due {formatRelative(task.dueAt)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* ── Tab bar ───────────────────────────────────────── */}
       <ChartTabs patientId={params.id} counts={counts} />

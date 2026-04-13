@@ -122,6 +122,9 @@ model Patient {
   cannabisHistory        Json? // prior use, formats, benefits, side effects
   presentingConcerns     String?
   treatmentGoals         String?
+  // Clinical safety fields (EMR-113)
+  allergies              String[] @default([]) // e.g. ["Penicillin", "Sulfa", "Latex"]
+  contraindications      String[] @default([]) // e.g. ["MAOIs", "Blood thinners"]
   qualificationStatus    QualificationStatus @default(unknown)
   qualificationExpiresAt DateTime?
   // Soft delete

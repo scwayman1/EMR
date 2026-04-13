@@ -240,6 +240,8 @@ async function main() {
         "Chronic neuropathic pain and sleep disturbance following chemotherapy.",
       treatmentGoals:
         "Reduce nighttime pain, improve sleep continuity, minimize opioid reliance.",
+      allergies: ["Ibuprofen", "Sulfa drugs"],
+      contraindications: ["Tramadol (prior anxiety reaction)"],
       cannabisHistory: {
         priorUse: true,
         formats: ["tincture", "vape"],

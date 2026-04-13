@@ -27,33 +27,33 @@ export default function HomePage() {
         <Link href="/">
           <Wordmark size="md" />
         </Link>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 md:gap-1 flex-wrap justify-end">
           <Link
             href="/about"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
             About
           </Link>
           <Link
             href="/security"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors hidden md:inline-block"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
             Security
           </Link>
           <Link
             href="/store"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors hidden md:inline-block"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
             Store
           </Link>
           <Link
             href="/login"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
             Sign in
           </Link>
           <Link href="/signup">
-            <Button size="sm">Request a demo</Button>
+            <Button size="sm">Demo</Button>
           </Link>
         </div>
       </nav>
