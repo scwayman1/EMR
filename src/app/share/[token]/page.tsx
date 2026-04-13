@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
+import { verifyShareToken } from "@/lib/auth/share-tokens";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Wordmark } from "@/components/ui/logo";
@@ -8,16 +9,9 @@ import { formatDate } from "@/lib/utils/format";
 /**
  * Read-Only Patient Share Link — EMR-149
  *
- * A compact, unauthenticated page that shows key patient information
- * for emergency situations (ER visits, travel, out-of-country care).
- * Accessed via a share token — no login required.
- *
- * Shows: name, DOB, allergies, medications, cannabis regimen, presenting
- * concerns, treatment goals. Does NOT show: notes, messages, billing,
- * or any clinician-private data.
- *
- * V1: token = patient ID (for demo). Production: use a signed, expiring
- * token with audit logging.
+ * Secured with HMAC-signed, time-limited tokens. The URL contains a
+ * signed payload (not the raw patient ID). Tokens expire after 72 hours.
+ * Generate tokens via generateShareToken() from share-tokens.ts.
  */
 
 export const metadata = { title: "Patient Summary — Leafjourney" };
@@ -27,9 +21,12 @@ export default async function SharePage({
 }: {
   params: { token: string };
 }) {
-  // V1: token is the patient ID. Production: verify a signed JWT.
+  // Verify the signed token — returns null if invalid or expired
+  const patientId = verifyShareToken(params.token);
+  if (!patientId) notFound();
+
   const patient = await prisma.patient.findUnique({
-    where: { id: params.token },
+    where: { id: patientId },
     include: {
       medications: { where: { active: true }, orderBy: { name: "asc" } },
       dosingRegimens: {

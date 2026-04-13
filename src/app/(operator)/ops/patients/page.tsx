@@ -26,6 +26,7 @@ export default async function OpsPatientsPage({
         tasks: { where: { status: "open" } },
       },
       orderBy: { updatedAt: "desc" },
+      take: 200,
     }),
     prisma.patient.groupBy({
       by: ["status"],

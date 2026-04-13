@@ -26,12 +26,21 @@ export default async function OperatorLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+
+  // Role check: only operators, practice owners, and system users
   const allowed = user.roles.some(
     (r) => r === "operator" || r === "practice_owner" || r === "system"
   );
   if (!allowed) {
     const primary = user.roles[0];
     redirect(ROLE_HOME[primary] ?? "/");
+  }
+
+  // Org isolation: user must have an active org membership.
+  // All data queries downstream filter by user.organizationId,
+  // so even if this check is bypassed, data access is scoped.
+  if (!user.organizationId) {
+    redirect("/login");
   }
 
   return (

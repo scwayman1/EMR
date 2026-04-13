@@ -68,9 +68,13 @@ export async function signupAction(_prev: ActionResult | null, formData: FormDat
 
   const passwordHash = await hashPassword(parsed.data.password);
 
-  // V1: new self-signups default to a patient membership in the demo org.
-  // Practice owners and clinicians are invited through the practice launch flow.
-  const org = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
+  // Self-signups go to the default org. In multi-tenant production, this should
+  // be determined by the signup URL (e.g. signup?org=slug) or invitation link.
+  // For now, use SIGNUP_DEFAULT_ORG_SLUG env var, falling back to first org.
+  const orgSlug = process.env.SIGNUP_DEFAULT_ORG_SLUG;
+  const org = orgSlug
+    ? await prisma.organization.findUnique({ where: { slug: orgSlug } })
+    : await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
   if (!org) {
     return { ok: false, error: "No organization available for signup. Please contact support." };
   }

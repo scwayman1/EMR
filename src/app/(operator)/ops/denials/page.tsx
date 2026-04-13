@@ -54,6 +54,7 @@ export default async function DenialsPage({
       },
     },
     orderBy: { deniedAt: "desc" },
+    take: 100,
   });
 
   // Classify each denial

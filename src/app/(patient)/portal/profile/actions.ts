@@ -92,6 +92,22 @@ export async function saveProfileAction(
     },
   });
 
+  // Audit trail: log every patient profile change (P1-9)
+  await prisma.auditLog.create({
+    data: {
+      organizationId: patient.organizationId,
+      actorUserId: user.id,
+      action: "patient.profile.updated",
+      subjectType: "Patient",
+      subjectId: patient.id,
+      metadata: {
+        changedFields: Object.keys(parsed.data).filter(
+          (k) => parsed.data[k as keyof typeof parsed.data] !== undefined,
+        ),
+      },
+    },
+  });
+
   revalidatePath("/portal/profile");
   revalidatePath("/portal");
 

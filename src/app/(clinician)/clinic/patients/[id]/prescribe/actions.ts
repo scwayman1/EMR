@@ -103,7 +103,7 @@ export async function createPrescriptionAction(
       data: {
         organizationId: user.organizationId!,
         name: customProductName,
-        productType: (productType as any) || "other",
+        productType: (["oil", "tincture", "capsule", "flower", "vape_cartridge", "edible", "topical", "suppository", "spray", "other"].includes(productType ?? "") ? productType : "other") as any,
         route: "oral",
         concentrationUnit: "mg/unit",
         active: true,
@@ -152,13 +152,16 @@ export async function createPrescriptionAction(
   const thcMgPerDay = thcMgPerDose !== null ? thcMgPerDose * frequencyPerDay : null;
   const cbdMgPerDay = cbdMgPerDose !== null ? cbdMgPerDose * frequencyPerDay : null;
 
-  // Parse diagnosis codes
+  // Parse diagnosis codes with validation
+  const diagnosisSchema = z.array(z.object({ code: z.string(), label: z.string() }));
   let parsedDiagnoses: { code: string; label: string }[] = [];
   if (diagnosisCodes) {
     try {
-      parsedDiagnoses = JSON.parse(diagnosisCodes);
+      const raw = JSON.parse(diagnosisCodes);
+      const result = diagnosisSchema.safeParse(raw);
+      parsedDiagnoses = result.success ? result.data : [];
     } catch {
-      // Ignore parse errors
+      parsedDiagnoses = [];
     }
   }
 
@@ -201,7 +204,9 @@ export async function createPrescriptionAction(
     }
     let ids: string[] = [];
     try {
-      ids = JSON.parse(parsed.data.contraindicationIds ?? "[]");
+      const raw = JSON.parse(parsed.data.contraindicationIds ?? "[]");
+      const result = z.array(z.string()).safeParse(raw);
+      ids = result.success ? result.data : [];
     } catch {
       ids = [];
     }
