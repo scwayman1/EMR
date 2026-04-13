@@ -5,6 +5,7 @@ import { ROLE_HOME } from "@/lib/rbac/roles";
 
 const PATIENT_NAV: NavItem[] = [
   { label: "Home", href: "/portal" },
+  { label: "Shop", href: "/portal/shop" },
   { label: "Intake", href: "/portal/intake" },
   { label: "Records", href: "/portal/records" },
   { label: "Assessments", href: "/portal/assessments" },
