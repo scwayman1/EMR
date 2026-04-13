@@ -1,27 +1,14 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const jetbrains = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
-    default: "Green Path — Modern cannabis care",
-    template: "%s · Green Path",
+    default: "Leafjourney — Modern cannabis care",
+    template: "%s · Leafjourney",
   },
   description:
-    "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",
-  robots: { index: false, follow: false }, // private by default in V1
+    "A physician-curated wellness marketplace and AI-native care platform for modern cannabis medicine.",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({
@@ -30,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
+    <html lang="en">
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

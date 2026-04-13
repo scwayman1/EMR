@@ -10,10 +10,10 @@ export default function HomePage() {
       <nav className="max-w-[1200px] mx-auto flex items-center justify-between px-6 lg:px-10 h-16">
         <Link href="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-md bg-accent flex items-center justify-center text-white font-semibold text-sm">
-            GP
+            LJ
           </div>
           <span className="text-base font-semibold text-text tracking-tight">
-            Green Path Health
+            Leafjourney
           </span>
         </Link>
         <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ export default function HomePage() {
       <footer className="border-t border-border">
         <div className="max-w-[1200px] mx-auto px-6 lg:px-10 py-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <p className="text-xs text-text-subtle">
-            &copy; {new Date().getFullYear()} Green Path Health. All rights reserved.
+            &copy; {new Date().getFullYear()} Leafjourney. All rights reserved.
           </p>
           <p className="text-xs text-text-subtle">
             This platform is a demonstration product and is not a substitute for medical advice.

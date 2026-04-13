@@ -28,11 +28,11 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
         <div className="px-5 py-5">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="h-8 w-8 rounded-md bg-accent flex items-center justify-center text-white font-semibold text-sm">
-              GP
+              LJ
             </div>
             <div>
               <div className="text-sm font-semibold text-text tracking-tight leading-4">
-                {user.organizationName ?? "Green Path"}
+                {user.organizationName ?? "Leafjourney"}
               </div>
               <div className="text-xs text-text-subtle">{roleLabel}</div>
             </div>
@@ -86,7 +86,7 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
         <header className="md:hidden flex items-center justify-between px-4 h-14 border-b border-border bg-surface">
           <Link href="/" className="flex items-center gap-2">
             <div className="h-7 w-7 rounded-md bg-accent flex items-center justify-center text-white font-semibold text-xs">
-              GP
+              LJ
             </div>
             <span className="text-sm font-semibold text-text">{roleLabel}</span>
           </Link>

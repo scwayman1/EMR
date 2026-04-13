@@ -12,11 +12,11 @@ async function main() {
   console.log("Seeding demo organization...");
 
   const org = await prisma.organization.upsert({
-    where: { slug: "green-path-health" },
+    where: { slug: "leafjourney" },
     update: {},
     create: {
-      name: "Green Path Health",
-      slug: "green-path-health",
+      name: "Leafjourney",
+      slug: "leafjourney",
     },
   });
 

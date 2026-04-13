@@ -37,5 +37,5 @@ prisma/*.db-journal
 *.log
 .turbo
 coverage/
-.tsbuildinfo
+*.tsbuildinfo
 next-env.d.ts

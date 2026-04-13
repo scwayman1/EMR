@@ -6,10 +6,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <nav className="max-w-[1200px] mx-auto w-full flex items-center justify-between px-6 lg:px-10 h-16">
         <Link href="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-md bg-accent flex items-center justify-center text-white font-semibold text-sm">
-            GP
+            LJ
           </div>
           <span className="text-base font-semibold text-text tracking-tight">
-            Green Path Health
+            Leafjourney
           </span>
         </Link>
       </nav>
