@@ -27,27 +27,19 @@ export function QuoteWelcomeModal({ userName }: { userName?: string }) {
     return () => clearTimeout(t);
   }, []);
 
-  if (!quote) return null;
+  if (!quote || !visible) return null;
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none transition-opacity duration-500 ${
-        visible ? "opacity-100" : "opacity-0"
-      }`}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-500 opacity-100"
       onClick={() => setVisible(false)}
     >
       {/* Backdrop */}
-      <div
-        className={`absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto transition-opacity duration-500 ${
-          visible ? "opacity-100" : "opacity-0"
-        }`}
-      />
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
 
       {/* Quote card */}
       <div
-        className={`relative pointer-events-auto max-w-lg w-full bg-surface-raised rounded-3xl border border-border shadow-2xl p-10 text-center transition-all duration-700 ${
-          visible ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
-        }`}
+        className="relative pointer-events-auto max-w-lg w-full bg-surface-raised rounded-3xl border border-border shadow-2xl p-10 text-center"
         style={{
           background:
             "linear-gradient(135deg, var(--surface-raised), var(--surface))",
