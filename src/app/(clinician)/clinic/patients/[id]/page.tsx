@@ -17,6 +17,7 @@ import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { MemoryTab } from "./memory-tab";
 import { ClinicalBillingSummary } from "./clinical-billing-tab";
+import { ChartingTimer } from "./charting-timer";
 import { startVisit } from "./actions";
 import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
 import { InteractionBadge } from "@/components/ui/interaction-badge";
@@ -234,7 +235,10 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           <div className="flex flex-wrap items-start gap-6">
             <Avatar firstName={patient.firstName} lastName={patient.lastName} size="lg" />
             <div className="flex-1 min-w-0">
-              <Eyebrow className="mb-2">Patient chart</Eyebrow>
+              <div className="flex items-center gap-3 mb-2">
+                <Eyebrow>Patient chart</Eyebrow>
+                <ChartingTimer />
+              </div>
               <h1 className="font-display text-3xl text-text tracking-tight leading-tight">
                 {patient.firstName} {patient.lastName}
               </h1>
