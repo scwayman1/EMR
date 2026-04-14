@@ -28,9 +28,11 @@ const SECTIONS: Record<string, { title: string; tabs: TabDef[] }> = {
     tabs: [
       { label: "My Results", href: "/portal/records" },
       { label: "Medications", href: "/portal/medications" },
+      { label: "Dosing plan", href: "/portal/dosing" },
       { label: "Assessments", href: "/portal/assessments" },
       { label: "Outcomes", href: "/portal/outcomes" },
       { label: "Care plan", href: "/portal/care-plan" },
+      { label: "Care guide", href: "/portal/education" },
     ],
   },
   journey: {
