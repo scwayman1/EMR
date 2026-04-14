@@ -152,7 +152,7 @@ async function main() {
     },
   });
 
-  const passwordHash = await bcrypt.hash("password123", 12);
+  const passwordHash = await bcrypt.hash("Longbeach2026!", 12);
 
   // ------------------------------------------------------------------
   // Users
@@ -2362,11 +2362,11 @@ async function main() {
   // Done
   // ------------------------------------------------------------------
   console.log("Seed complete.");
-  console.log("  Owner:     owner@demo.health            / password123");
-  console.log("  Clinician: clinician@demo.health        / password123");
-  console.log("  Patient 1: patient@demo.health (Maya)   / password123");
-  console.log("  Patient 2: james.chen@demo.health       / password123");
-  console.log("  Patient 3: sarah.thompson@demo.health   / password123");
+  console.log("  Owner:     owner@demo.health            / Longbeach2026!");
+  console.log("  Clinician: clinician@demo.health        / Longbeach2026!");
+  console.log("  Patient 1: patient@demo.health (Maya)   / Longbeach2026!");
+  console.log("  Patient 2: james.chen@demo.health       / Longbeach2026!");
+  console.log("  Patient 3: sarah.thompson@demo.health   / Longbeach2026!");
 }
 
 main()

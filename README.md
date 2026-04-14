@@ -83,11 +83,11 @@ The app is now at [http://localhost:3000](http://localhost:3000).
 
 ### Demo accounts (from seed)
 
-| Role       | Email                   | Password       |
-| ---------- | ----------------------- | -------------- |
-| Patient    | `patient@demo.health`   | `password123`  |
-| Clinician  | `clinician@demo.health` | `password123`  |
-| Owner/ops  | `owner@demo.health`     | `password123`  |
+| Role       | Email                   | Password          |
+| ---------- | ----------------------- | ----------------- |
+| Patient    | `patient@demo.health`   | *(ask team lead)* |
+| Clinician  | `clinician@demo.health` | *(ask team lead)* |
+| Owner/ops  | `owner@demo.health`     | *(ask team lead)* |
 
 ### Running the agent worker
 
