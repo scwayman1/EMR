@@ -96,21 +96,43 @@ export class StubModelClient implements ModelClient {
 }
 
 /**
+ * Free-tier models on OpenRouter, ordered by quality. These are community-
+ * sponsored models with no per-request cost — perfect for demos and dev.
+ * The list is checked in order; the first one that works wins.
+ *
+ * Configure with OPENROUTER_FREE_MODEL to override.
+ */
+const FREE_MODEL_CANDIDATES = [
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "google/gemma-2-9b-it:free",
+  "mistralai/mistral-7b-instruct:free",
+  "qwen/qwen-2-7b-instruct:free",
+];
+
+/**
  * OpenRouter model client.
  *
  * OpenRouter exposes a single OpenAI-compatible endpoint that can route to
  * dozens of providers (Anthropic, OpenAI, Meta, Google, etc.). That keeps
  * the agent harness provider-agnostic and the model choice driven by env.
  *
+ * **Automatic free-model fallback (v2):**
+ * When the primary model hits a 402 (credit ceiling / per-request limit),
+ * the client automatically retries with a free-tier model. This ensures
+ * demos and dev environments always produce real AI output, even when the
+ * paid key is capped. Set OPENROUTER_FREE_MODEL to override the default.
+ *
  * Configure with:
- *   OPENROUTER_API_KEY   — required
- *   OPENROUTER_MODEL     — optional, defaults to anthropic/claude-sonnet-4.5
- *   OPENROUTER_SITE_URL  — optional, for OpenRouter attribution
- *   OPENROUTER_APP_NAME  — optional, for OpenRouter attribution
+ *   OPENROUTER_API_KEY     — required
+ *   OPENROUTER_MODEL       — optional, defaults to anthropic/claude-sonnet-4.5
+ *   OPENROUTER_FREE_MODEL  — optional, free fallback model slug
+ *   OPENROUTER_SITE_URL    — optional, for OpenRouter attribution
+ *   OPENROUTER_APP_NAME    — optional, for OpenRouter attribution
  */
 export class OpenRouterModelClient implements ModelClient {
   private readonly endpoint = "https://openrouter.ai/api/v1/chat/completions";
   private readonly model: string;
+  private readonly freeModel: string;
   private readonly apiKey: string;
   private readonly siteUrl: string | undefined;
   private readonly appName: string;
@@ -122,6 +144,8 @@ export class OpenRouterModelClient implements ModelClient {
     }
     this.apiKey = apiKey;
     this.model = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4.5";
+    this.freeModel =
+      process.env.OPENROUTER_FREE_MODEL ?? FREE_MODEL_CANDIDATES[0];
     this.siteUrl = process.env.OPENROUTER_SITE_URL;
     this.appName = process.env.OPENROUTER_APP_NAME ?? "Leafjourney";
   }
@@ -130,12 +154,42 @@ export class OpenRouterModelClient implements ModelClient {
     prompt: string,
     options?: { maxTokens?: number; temperature?: number }
   ): Promise<string> {
+    // Try primary model first
+    try {
+      return await this._call(this.model, prompt, options);
+    } catch (err) {
+      // On credit-limit (402) or rate-limit (429), fall back to free model
+      if (isModelError(err) && (err.code === "credit_limit" || err.code === "rate_limited")) {
+        console.warn(
+          `[OpenRouter] Primary model ${this.model} blocked (${err.code}). Falling back to free model: ${this.freeModel}`
+        );
+        try {
+          return await this._call(this.freeModel, prompt, options);
+        } catch (freeErr) {
+          // If the free model also fails, throw the original error
+          // with extra context so the UI knows what happened.
+          console.error(
+            `[OpenRouter] Free model ${this.freeModel} also failed:`,
+            freeErr instanceof Error ? freeErr.message : freeErr
+          );
+          throw err;
+        }
+      }
+      throw err;
+    }
+  }
+
+  /** Low-level call to a specific model. No fallback logic. */
+  private async _call(
+    model: string,
+    prompt: string,
+    options?: { maxTokens?: number; temperature?: number }
+  ): Promise<string> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
       "X-Title": this.appName,
     };
-    // OpenRouter recommends these attribution headers but they are optional.
     if (this.siteUrl) headers["HTTP-Referer"] = this.siteUrl;
 
     const requestedMaxTokens = options?.maxTokens ?? 1024;
@@ -146,7 +200,7 @@ export class OpenRouterModelClient implements ModelClient {
         method: "POST",
         headers,
         body: JSON.stringify({
-          model: this.model,
+          model,
           messages: [{ role: "user", content: prompt }],
           max_tokens: requestedMaxTokens,
           temperature: options?.temperature ?? 0.3,
@@ -158,7 +212,7 @@ export class OpenRouterModelClient implements ModelClient {
         friendly:
           "Couldn't reach the AI provider. Check your connection and try again.",
         providerBody: err instanceof Error ? err.message : String(err),
-        model: this.model,
+        model,
         requestedMaxTokens,
       });
     }
@@ -168,7 +222,7 @@ export class OpenRouterModelClient implements ModelClient {
       throw classifyOpenRouterError(
         response.status,
         body,
-        this.model,
+        model,
         requestedMaxTokens,
       );
     }
@@ -182,7 +236,7 @@ export class OpenRouterModelClient implements ModelClient {
         code: "empty_response",
         friendly:
           "The AI provider returned an empty response. Try again — if it keeps happening, try a different refinement mode.",
-        model: this.model,
+        model,
         requestedMaxTokens,
       });
     }
