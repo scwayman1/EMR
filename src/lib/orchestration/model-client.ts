@@ -143,7 +143,9 @@ export class OpenRouterModelClient implements ModelClient {
       throw new Error("OPENROUTER_API_KEY is required for OpenRouterModelClient");
     }
     this.apiKey = apiKey;
-    this.model = process.env.OPENROUTER_MODEL ?? "anthropic/claude-sonnet-4.5";
+    // Default to Gemini Flash — 37x cheaper than Claude Sonnet, still very capable.
+    // Override with OPENROUTER_MODEL env var for premium models when needed.
+    this.model = process.env.OPENROUTER_MODEL ?? "google/gemini-2.0-flash-001";
     this.freeModel =
       process.env.OPENROUTER_FREE_MODEL ?? FREE_MODEL_CANDIDATES[0];
     this.siteUrl = process.env.OPENROUTER_SITE_URL;
