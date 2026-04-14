@@ -27,9 +27,9 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: meta-llama/llama-3.1-8b-instruct:free
+        value: google/gemma-2-9b-it:free
       - key: OPENROUTER_FREE_MODEL
-        value: meta-llama/llama-3.1-8b-instruct:free
+        value: google/gemma-2-9b-it:free
       - key: OPENROUTER_APP_NAME
         value: Leafjourney
       # Payment gateway — defaults to "stub" until Payabli credentials are wired
@@ -65,9 +65,9 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
-        value: meta-llama/llama-3.1-8b-instruct:free
+        value: google/gemma-2-9b-it:free
       - key: OPENROUTER_FREE_MODEL
-        value: meta-llama/llama-3.1-8b-instruct:free
+        value: google/gemma-2-9b-it:free
       - key: OPENROUTER_APP_NAME
         value: Leafjourney
 
