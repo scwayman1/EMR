@@ -612,12 +612,12 @@ export default async function ClinicHomePage() {
               </Link>
             </div>
 
-            {/* Agent roster strip — CLICKABLE to approvals */}
+            {/* Agent roster strip — CLICKABLE to agent detail */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
               {topAgents.map((agent) => (
                 <Link
                   key={agent.name}
-                  href={agent.drafts > 0 ? "/clinic/approvals" : `/clinic/patients`}
+                  href={`/clinic/agents/${encodeURIComponent(agent.name)}`}
                 >
                   <Card className="px-3 py-2.5 card-hover cursor-pointer">
                     <div className="flex items-center gap-2 mb-1.5">
