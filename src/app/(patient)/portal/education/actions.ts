@@ -3,8 +3,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { patientEducationAgent, patientSimplifierAgent } from "@/lib/agents/patient-education-agent";
-import { resolveModelClient } from "@/lib/orchestration/model-client";
-import type { AllowedAction } from "@/lib/orchestration/types";
+import { createLightContext } from "@/lib/orchestration/context";
 
 // ---------------------------------------------------------------------------
 // Education Sheet generation (EMR-66)
@@ -42,14 +41,10 @@ export async function generateEducationSheet(): Promise<EducationSheetResult> {
     return { ok: false, error: "Patient profile not found", durationMs: Date.now() - startTime };
   }
 
-  const ctx = {
+  const ctx = createLightContext({
     jobId: `education-${Date.now()}`,
     organizationId: user.organizationId,
-    log() {},
-    async emit() {},
-    assertCan(_action: AllowedAction) {},
-    model: resolveModelClient(),
-  };
+  });
 
   try {
     const result = await patientEducationAgent.run({ patientId: patient.id }, ctx);
@@ -86,14 +81,7 @@ export async function simplifyText(
     return { ok: false, error: "No text provided" };
   }
 
-  const ctx = {
-    jobId: `simplify-${Date.now()}`,
-    organizationId: null,
-    log() {},
-    async emit() {},
-    assertCan(_action: AllowedAction) {},
-    model: resolveModelClient(),
-  };
+  const ctx = createLightContext({ jobId: `simplify-${Date.now()}` });
 
   try {
     const result = await patientSimplifierAgent.run({ text, context }, ctx);

@@ -8,7 +8,8 @@ import { dispatch } from "@/lib/orchestration/dispatch";
 import { runTick } from "@/lib/orchestration/runner";
 import { preVisitIntelligenceAgent } from "@/lib/agents/pre-visit-intelligence-agent";
 import { resolveModelClient } from "@/lib/orchestration/model-client";
-import type { AllowedAction, AgentLogEntry } from "@/lib/orchestration/types";
+import { buildToolRegistry } from "@/lib/orchestration/tool-registry";
+import type { AllowedAction, AgentLogEntry, StepResult } from "@/lib/orchestration/types";
 
 export interface BriefingStep {
   step: number;
@@ -103,6 +104,15 @@ export async function generateBriefing(patientId: string): Promise<BriefingResul
     async emit() {},
     assertCan(_action: AllowedAction) {},
     model: resolveModelClient(),
+    tools: buildToolRegistry({
+      agentName: "preVisitIntelligence",
+      agentVersion: "1.0.0",
+      organizationId: user.organizationId,
+      allowed: new Set(["read.patient", "read.encounter", "read.note"] as AllowedAction[]),
+      stepFn() {},
+      sourceFn() {},
+    }),
+    stepResults: new Map<string, StepResult>(),
   };
 
   try {

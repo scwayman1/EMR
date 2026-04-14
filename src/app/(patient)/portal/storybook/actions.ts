@@ -3,8 +3,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { fairytaleSummaryAgent } from "@/lib/agents/fairytale-summary-agent";
-import { resolveModelClient } from "@/lib/orchestration/model-client";
-import type { AllowedAction } from "@/lib/orchestration/types";
+import { createLightContext } from "@/lib/orchestration/context";
 
 export interface FairytaleResult {
   ok: boolean;
@@ -36,15 +35,10 @@ export async function generateFairytale(): Promise<FairytaleResult> {
     };
   }
 
-  // Build a minimal agent context (similar to the prepare flow)
-  const ctx = {
+  const ctx = createLightContext({
     jobId: `fairytale-${Date.now()}`,
     organizationId: user.organizationId,
-    log() {},
-    async emit() {},
-    assertCan(_action: AllowedAction) {},
-    model: resolveModelClient(),
-  };
+  });
 
   try {
     const result = await fairytaleSummaryAgent.run({ patientId: patient.id }, ctx);

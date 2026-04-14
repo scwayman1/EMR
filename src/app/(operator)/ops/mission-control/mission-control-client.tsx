@@ -22,7 +22,7 @@ interface JobRow {
 interface AgentInfo {
   name: string;
   version: string;
-  requiresApproval: boolean;
+  requiresApproval: boolean | { mode: string; confidenceThreshold?: number };
   allowedActions: string[];
   statusCounts: Record<string, number>;
 }
