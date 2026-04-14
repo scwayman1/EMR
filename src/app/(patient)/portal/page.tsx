@@ -172,7 +172,7 @@ export default async function PatientHome() {
   const latestAdherence = latestMetric.adherence;
 
   const nextVisit = patient.encounters.find((e) => e.status === "scheduled");
-  const recentVisit = patient.encounters.find((e) => e.status === "completed");
+  const recentVisit = patient.encounters.find((e) => e.status === "complete");
   const intakeComplete = patient.chartSummary?.completenessScore ?? 0;
 
   // Compute overall outcome average (for pain, anxiety — lower is better)
