@@ -388,7 +388,7 @@ export default async function ClinicHomePage() {
         acknowledgedAt: null,
         createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
       },
-      select: { id: true, severity: true, category: true, summary: true, observedBy: true, createdAt: true },
+      select: { id: true, severity: true, category: true, summary: true, observedBy: true, createdAt: true, patientId: true },
       orderBy: { createdAt: "desc" },
       take: 6,
     }),
@@ -612,57 +612,91 @@ export default async function ClinicHomePage() {
               </Link>
             </div>
 
-            {/* Agent roster strip */}
+            {/* Agent roster strip — CLICKABLE to approvals */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
               {topAgents.map((agent) => (
-                <Card key={agent.name} className="px-3 py-2.5">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span
-                      className={`h-2 w-2 rounded-full shrink-0 ${
-                        agent.drafts > 0
-                          ? "bg-highlight animate-pulse"
-                          : agent.total > 0
-                            ? "bg-success"
-                            : "bg-border-strong"
-                      }`}
-                    />
-                    <span className="text-[12px] font-medium text-text truncate">
-                      {agent.displayName}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-[11px]">
-                    <span className="text-text-muted tabular-nums">
-                      {agent.total} task{agent.total !== 1 ? "s" : ""}
-                    </span>
-                    {agent.drafts > 0 && (
-                      <span className="text-[color:var(--highlight-hover)] font-medium tabular-nums">
-                        {agent.drafts} draft{agent.drafts !== 1 ? "s" : ""}
+                <Link
+                  key={agent.name}
+                  href={agent.drafts > 0 ? "/clinic/approvals" : `/clinic/patients`}
+                >
+                  <Card className="px-3 py-2.5 card-hover cursor-pointer">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span
+                        className={`h-2 w-2 rounded-full shrink-0 ${
+                          agent.drafts > 0
+                            ? "bg-highlight animate-pulse"
+                            : agent.total > 0
+                              ? "bg-success"
+                              : "bg-border-strong"
+                        }`}
+                      />
+                      <span className="text-[12px] font-medium text-text truncate">
+                        {agent.displayName}
                       </span>
-                    )}
-                  </div>
-                </Card>
+                    </div>
+                    <div className="flex items-center gap-3 text-[11px]">
+                      <span className="text-text-muted tabular-nums">
+                        {agent.total} task{agent.total !== 1 ? "s" : ""}
+                      </span>
+                      {agent.drafts > 0 && (
+                        <span className="text-[color:var(--highlight-hover)] font-medium tabular-nums">
+                          {agent.drafts} draft{agent.drafts !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </Card>
+                </Link>
               ))}
             </div>
 
-            {/* Observations strip — what the team is noticing */}
+            {/* Observations strip — CLICKABLE to patient chart */}
             {urgentObservations.length > 0 && (
               <Card className="border-l-4 border-l-[color:var(--warning)] px-4 py-3 mb-4">
                 <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-2">
                   Your team is noticing
                 </p>
-                <div className="space-y-1.5">
-                  {urgentObservations.slice(0, 3).map((obs: any) => (
-                    <div key={obs.id} className="flex items-start gap-2">
+                <div className="space-y-1">
+                  {urgentObservations.slice(0, 4).map((obs: any) => (
+                    <Link
+                      key={obs.id}
+                      href={`/clinic/patients/${obs.patientId}`}
+                      className="flex items-start gap-2 py-1 px-1 -mx-1 rounded hover:bg-surface-muted/50 transition-colors group"
+                    >
                       <span className={`mt-1 h-1.5 w-1.5 rounded-full shrink-0 ${
                         obs.severity === "urgent" ? "bg-danger" : "bg-[color:var(--warning)]"
                       }`} />
-                      <p className="text-xs text-text leading-relaxed line-clamp-1">
+                      <p className="text-xs text-text leading-relaxed line-clamp-1 group-hover:text-accent transition-colors flex-1">
                         {obs.summary}
                       </p>
-                    </div>
+                      <span className="text-text-subtle group-hover:text-accent text-xs shrink-0">&rarr;</span>
+                    </Link>
                   ))}
                 </div>
               </Card>
+            )}
+
+            {/* Drafts waiting — PROMINENT action panel */}
+            {totalPendingDrafts > 0 && (
+              <Link href="/clinic/approvals">
+                <Card className="border-l-4 border-l-accent card-hover cursor-pointer px-5 py-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft">
+                        <LeafSprig size={18} className="text-accent" />
+                      </span>
+                      <div>
+                        <p className="font-display text-lg text-text tracking-tight">
+                          {totalPendingDrafts} draft{totalPendingDrafts !== 1 ? "s" : ""} waiting for you
+                        </p>
+                        <p className="text-xs text-text-muted mt-0.5">
+                          AI-drafted messages and notes ready for your review
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm">Review now</Button>
+                  </div>
+                </Card>
+              </Link>
             )}
           </section>
         );
@@ -693,53 +727,56 @@ export default async function ClinicHomePage() {
               const status = readinessStatus(readiness);
 
               return (
-                <Link
-                  key={enc.id}
-                  href={`/clinic/patients/${enc.patient.id}`}
-                  className="shrink-0 snap-start"
-                >
+                <div key={enc.id} className="shrink-0 snap-start">
                   <Card
                     tone="raised"
-                    className="w-56 h-36 card-hover flex flex-col justify-between p-4 group cursor-pointer"
+                    className="w-64 card-hover flex flex-col justify-between p-4 group"
                   >
                     {/* Top: Avatar + name + time */}
-                    <div className="flex items-start gap-3">
-                      <Avatar
-                        firstName={enc.patient.firstName}
-                        lastName={enc.patient.lastName}
-                        size="sm"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-text truncate group-hover:text-accent transition-colors">
-                          {enc.patient.firstName} {enc.patient.lastName}
-                        </p>
-                        <p className="text-xs text-text-subtle tabular-nums mt-0.5">
-                          {enc.scheduledFor?.toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bottom: modality + readiness + status */}
-                    <div className="flex items-center justify-between mt-auto">
-                      <Badge tone={modalityTone(enc.modality)}>
-                        {modalityLabel(enc.modality)}
-                      </Badge>
-                      <div className="flex items-center gap-2">
-                        {readiness != null && (
-                          <ChartReadinessRing percent={readiness} size={26} />
-                        )}
-                        <span
-                          className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: status.color }}
-                          title={status.label}
+                    <Link href={`/clinic/patients/${enc.patient.id}`} className="block">
+                      <div className="flex items-start gap-3">
+                        <Avatar
+                          firstName={enc.patient.firstName}
+                          lastName={enc.patient.lastName}
+                          size="sm"
                         />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-text truncate group-hover:text-accent transition-colors">
+                            {enc.patient.firstName} {enc.patient.lastName}
+                          </p>
+                          <p className="text-xs text-text-subtle tabular-nums mt-0.5">
+                            {enc.scheduledFor?.toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
                       </div>
+
+                      {/* Reason / concerns */}
+                      {(enc.reason || enc.patient.presentingConcerns) && (
+                        <p className="text-xs text-text-muted mt-2 line-clamp-1">
+                          {enc.reason ?? enc.patient.presentingConcerns}
+                        </p>
+                      )}
+                    </Link>
+
+                    {/* Bottom: modality + readiness + actions */}
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                      <div className="flex items-center gap-2">
+                        <Badge tone={modalityTone(enc.modality)}>
+                          {modalityLabel(enc.modality)}
+                        </Badge>
+                        {readiness != null && (
+                          <ChartReadinessRing percent={readiness} size={24} />
+                        )}
+                      </div>
+                      <Link href={`/clinic/patients/${enc.patient.id}/prepare`}>
+                        <Button size="sm" variant="secondary">Prepare</Button>
+                      </Link>
                     </div>
                   </Card>
-                </Link>
+                </div>
               );
             })}
           </div>
