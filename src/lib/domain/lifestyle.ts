@@ -25,6 +25,8 @@ export const LIFESTYLE_DOMAINS: LifestyleDomain[] = [
   { id: "family", icon: "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}", label: "Family", color: "#9b59b6", description: "Family dynamics and support" },
   { id: "habits", icon: "\u{1F504}", label: "Habits", color: "var(--warning)", description: "Building healthy routines" },
   { id: "social", icon: "\u{1F91D}", label: "Social", color: "var(--info)", description: "Community and connection" },
+  { id: "spiritual", icon: "\u{1F54A}\u{FE0F}", label: "Spiritual", color: "#8e44ad", description: "Purpose, gratitude, and inner peace" },
+  { id: "mindfulness", icon: "\u{1F9D8}\u200D\u2640\u{FE0F}", label: "Mindfulness", color: "var(--accent)", description: "Meditation, silence, breathing, and sunlight" },
 ];
 
 export interface LifestyleTip {
@@ -75,5 +77,18 @@ export const LIFESTYLE_TIPS: Record<string, LifestyleTip[]> = {
     { domain: "social", title: "One real conversation", body: "Have one genuine conversation per day that isn\u2019t about work or logistics. Ask someone how they\u2019re really doing.", difficulty: "easy", timeCommitment: "10 min/day" },
     { domain: "social", title: "Support group", body: "Consider joining a support group for your condition. Shared experience reduces isolation and provides practical tips.", difficulty: "moderate", timeCommitment: "1 hr/week" },
     { domain: "social", title: "Volunteer once a month", body: "Helping others is one of the most evidence-backed ways to improve your own wellbeing.", difficulty: "moderate", timeCommitment: "2 hrs/month" },
+  ],
+  spiritual: [
+    { domain: "spiritual", title: "Morning gratitude", body: "Write 3 things you're grateful for before looking at your phone. Takes 2 minutes. Reframes the entire day.", difficulty: "easy", timeCommitment: "2 min/day" },
+    { domain: "spiritual", title: "Purpose journaling", body: "Once a week, write about what gives your life meaning. Purpose is protective — it reduces inflammation and improves outcomes.", difficulty: "moderate", timeCommitment: "15 min/week" },
+    { domain: "spiritual", title: "Acts of kindness", body: "Do one intentional act of kindness per day. It doesn't have to be big. The act of giving activates the same reward pathways as receiving.", difficulty: "easy", timeCommitment: "5 min/day" },
+    { domain: "spiritual", title: "Nature connection", body: "Spend 20 minutes in nature without your phone. Forest bathing (shinrin-yoku) has measurable effects on cortisol and blood pressure.", difficulty: "easy", timeCommitment: "20 min" },
+  ],
+  mindfulness: [
+    { domain: "mindfulness", title: "5-minute meditation", body: "Sit quietly, eyes closed, focus on your breath. When your mind wanders, gently return. Start with 5 minutes. The practice is the returning.", difficulty: "easy", timeCommitment: "5 min/day" },
+    { domain: "mindfulness", title: "Intentional silence", body: "Spend 10 minutes in complete silence — no music, no podcasts, no conversation. Let your nervous system rest.", difficulty: "easy", timeCommitment: "10 min/day" },
+    { domain: "mindfulness", title: "Breathing exercises", body: "Try 4-7-8 breathing: inhale 4 seconds, hold 7, exhale 8. Three rounds. Activates the parasympathetic nervous system immediately.", difficulty: "easy", timeCommitment: "3 min" },
+    { domain: "mindfulness", title: "Morning sunlight", body: "Get 10-15 minutes of natural sunlight within the first hour of waking. Sets your circadian rhythm, boosts serotonin, improves sleep quality.", difficulty: "easy", timeCommitment: "15 min/day" },
+    { domain: "mindfulness", title: "Body scan before cannabis", body: "Before your dose, do a 3-minute body scan: notice where you're holding tension. This baseline awareness makes the therapeutic effects more intentional.", difficulty: "easy", timeCommitment: "3 min" },
   ],
 };
