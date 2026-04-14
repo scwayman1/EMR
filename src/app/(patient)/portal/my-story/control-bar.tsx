@@ -4,12 +4,37 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LeafSprig } from "@/components/ui/ornament";
+import { createShareLink } from "./share-actions";
 
 export function ControlBar({ patientName }: { patientName: string }) {
-  const [shareMessage, setShareMessage] = React.useState(false);
+  const [shareUrl, setShareUrl] = React.useState<string | null>(null);
+  const [shareLoading, setShareLoading] = React.useState(false);
+  const [shareCopied, setShareCopied] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = React.useState(false);
   const [emailValue, setEmailValue] = React.useState("");
   const [emailSent, setEmailSent] = React.useState(false);
+
+  async function handleShare() {
+    if (shareUrl) {
+      setShareOpen(!shareOpen);
+      return;
+    }
+    setShareLoading(true);
+    const result = await createShareLink();
+    setShareLoading(false);
+    if (result.ok && result.url) {
+      setShareUrl(result.url);
+      setShareOpen(true);
+    }
+  }
+
+  async function handleCopy() {
+    if (!shareUrl) return;
+    await navigator.clipboard.writeText(shareUrl);
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2500);
+  }
 
   function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -111,22 +136,44 @@ export function ControlBar({ patientName }: { patientName: string }) {
             PDF
           </Button>
 
-          {/* Legacy share tooltip */}
+          {/* Share link — EMR-90 / EMR-149 */}
           <div className="relative">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setShareMessage(true);
-                setTimeout(() => setShareMessage(false), 3000);
-              }}
+              onClick={handleShare}
+              disabled={shareLoading}
             >
-              Share
+              {shareLoading ? "Creating..." : "Share"}
             </Button>
-            {shareMessage && (
-              <div className="absolute top-full right-0 mt-2 w-64 p-3 rounded-lg bg-surface-raised border border-border shadow-md text-xs text-text-muted leading-relaxed z-40">
-                Sharing is coming soon. For now, print your story and bring it
-                to your next visit.
+            {shareOpen && shareUrl && (
+              <div className="absolute top-full right-0 mt-2 w-80 p-4 rounded-lg bg-surface-raised border border-border shadow-lg z-40">
+                <p className="text-sm font-medium text-text mb-2">
+                  Share with an ER or outside doctor
+                </p>
+                <p className="text-xs text-text-muted mb-3 leading-relaxed">
+                  This link shows a read-only summary of your chart — allergies,
+                  medications, and care plan. It expires in 72 hours.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={shareUrl}
+                    className="flex-1 text-xs bg-surface-muted border border-border rounded px-2 py-1.5 text-text truncate"
+                    onFocus={(e) => e.target.select()}
+                  />
+                  <Button size="sm" variant="primary" onClick={handleCopy}>
+                    {shareCopied ? "Copied!" : "Copy"}
+                  </Button>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="w-full mt-2 text-xs"
+                  onClick={() => setShareOpen(false)}
+                >
+                  Close
+                </Button>
               </div>
             )}
           </div>
