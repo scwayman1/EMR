@@ -15,7 +15,7 @@ import type { Agent } from "@/lib/orchestration/types";
 
 const simplifyInput = z.object({
   text: z.string().min(1),
-  context: z.enum(["visit_summary", "lab_result", "care_plan", "medication", "general"]).default("general"),
+  context: z.enum(["visit_summary", "lab_result", "care_plan", "medication", "general"]),
 });
 
 const simplifyOutput = z.object({

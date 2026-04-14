@@ -36,7 +36,7 @@ interface LabTooltipProps {
 
 export function LabTooltip({ name, value, children, className }: LabTooltipProps) {
   const [open, setOpen] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const result = explainLabValue(name, value);
 
   const handleEnter = useCallback(() => {
