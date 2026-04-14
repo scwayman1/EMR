@@ -190,6 +190,25 @@ export default async function MedicationsPage() {
                       )}
                     </div>
 
+                    {/* ── Daily total (EMR-003) ─────────── */}
+                    {regimen.frequencyPerDay > 0 && (regimen.calculatedThcMgPerDose != null || regimen.calculatedCbdMgPerDose != null) && (
+                      <div className="flex items-center gap-4 px-5 py-3 rounded-xl bg-highlight-soft/40 border border-highlight/20">
+                        <span className="text-[10px] uppercase tracking-wider text-[color:var(--highlight-hover)] font-medium">Daily total</span>
+                        {regimen.calculatedThcMgPerDose != null && (
+                          <span className="font-display text-lg tabular-nums text-text">
+                            {(regimen.calculatedThcMgPerDose * regimen.frequencyPerDay).toFixed(1)}
+                            <span className="text-xs text-text-muted ml-1">mg THC/day</span>
+                          </span>
+                        )}
+                        {regimen.calculatedCbdMgPerDose != null && (
+                          <span className="font-display text-lg tabular-nums text-text">
+                            {(regimen.calculatedCbdMgPerDose * regimen.frequencyPerDay).toFixed(1)}
+                            <span className="text-xs text-text-muted ml-1">mg CBD/day</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+
                     {/* ── Timing ──────────────────────────── */}
                     <div className="flex items-start gap-6 flex-wrap">
                       <div>

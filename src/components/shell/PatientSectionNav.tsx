@@ -26,7 +26,7 @@ const SECTIONS: Record<string, { title: string; tabs: TabDef[] }> = {
   health: {
     title: "My Health",
     tabs: [
-      { label: "Records", href: "/portal/records" },
+      { label: "My Results", href: "/portal/records" },
       { label: "Medications", href: "/portal/medications" },
       { label: "Assessments", href: "/portal/assessments" },
       { label: "Outcomes", href: "/portal/outcomes" },

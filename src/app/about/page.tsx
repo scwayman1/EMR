@@ -129,6 +129,55 @@ export default function AboutPage() {
             </article>
           ))}
         </div>
+
+        {/* C-Suite + Teams — EMR-170 */}
+        <div className="mt-16 max-w-4xl">
+          <Eyebrow className="mb-4">Leadership</Eyebrow>
+          <h2 className="font-display text-2xl text-text tracking-tight mb-8">
+            The people building Leafjourney
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
+            {[
+              { role: "CEO", name: "Dr. Neal H. Patel", initials: "NP" },
+              { role: "CPTO", name: "Scott Wayman", initials: "SW" },
+              { role: "CMO", name: "Coming soon", initials: "—" },
+              { role: "CSO", name: "Coming soon", initials: "—" },
+              { role: "COO", name: "Coming soon", initials: "—" },
+              { role: "CFO", name: "Coming soon", initials: "—" },
+              { role: "CIO", name: "Coming soon", initials: "—" },
+              { role: "CHRO", name: "Coming soon", initials: "—" },
+            ].map((exec) => (
+              <div
+                key={exec.role}
+                className="bg-surface-raised rounded-xl border border-border p-4 text-center"
+              >
+                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2">
+                  <span className="text-sm font-medium text-accent">{exec.initials}</span>
+                </div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{exec.role}</p>
+                <p className="text-xs text-text mt-1">{exec.name}</p>
+              </div>
+            ))}
+          </div>
+
+          <Eyebrow className="mb-4">Specialized teams</Eyebrow>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-10">
+            {[
+              "Cannabis Care", "Fitness & Movement", "Spiritual Wellness",
+              "Psilocybin Research", "Veterans Affairs", "Veterinary",
+              "First Responders", "Mental Health",
+            ].map((team) => (
+              <div
+                key={team}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-surface border border-border/60"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                <span className="text-xs text-text">{team}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <EditorialRule className="max-w-[1280px] mx-auto px-6 lg:px-12" />
