@@ -563,7 +563,7 @@ export default async function ClinicHomePage() {
 
         const totalJobsLast24h = recentAgentJobs.length;
         const totalPendingDrafts = pendingDrafts.length;
-        const urgentObservations = recentObservations.filter((o: any) => o.severity === "urgent" || o.severity === "concern");
+        const urgentObservations = recentObservations.filter((o: any) => o && (o.severity === "urgent" || o.severity === "concern"));
 
         // Agent display names
         const AGENT_NAMES: Record<string, string> = {

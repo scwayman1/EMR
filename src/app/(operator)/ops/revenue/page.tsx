@@ -348,7 +348,7 @@ export default async function RevenuePage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-text">
-                            {claim.patient.firstName} {claim.patient.lastName}
+                            {claim.patient?.firstName ?? ""} {claim.patient?.lastName ?? ""}
                           </span>
                           <Badge tone={claim.status === "denied" ? "danger" : "warning"} className="text-[9px]">
                             {STATUS_LABEL[claim.status] ?? claim.status}
