@@ -161,7 +161,7 @@ async function main() {
   // Practice owner / operator
   const owner = await prisma.user.upsert({
     where: { email: "owner@demo.health" },
-    update: {},
+    update: { passwordHash },
     create: {
       email: "owner@demo.health",
       passwordHash,
@@ -179,7 +179,7 @@ async function main() {
   // Clinician
   const clinicianUser = await prisma.user.upsert({
     where: { email: "clinician@demo.health" },
-    update: {},
+    update: { passwordHash },
     create: {
       email: "clinician@demo.health",
       passwordHash,
@@ -208,7 +208,7 @@ async function main() {
   // ------------------------------------------------------------------
   const mayaUser = await prisma.user.upsert({
     where: { email: "patient@demo.health" },
-    update: {},
+    update: { passwordHash },
     create: {
       email: "patient@demo.health",
       passwordHash,
@@ -737,7 +737,7 @@ async function main() {
   // ------------------------------------------------------------------
   const jamesUser = await prisma.user.upsert({
     where: { email: "james.chen@demo.health" },
-    update: {},
+    update: { passwordHash },
     create: {
       email: "james.chen@demo.health",
       passwordHash,
@@ -956,7 +956,7 @@ async function main() {
   // ------------------------------------------------------------------
   const sarahUser = await prisma.user.upsert({
     where: { email: "sarah.thompson@demo.health" },
-    update: {},
+    update: { passwordHash },
     create: {
       email: "sarah.thompson@demo.health",
       passwordHash,
