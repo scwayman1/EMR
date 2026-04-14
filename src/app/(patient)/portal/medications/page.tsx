@@ -243,11 +243,36 @@ export default async function MedicationsPage() {
                       </div>
                     </div>
 
-                    {/* ── Log a dose (stub) ───────────────── */}
-                    <div className="pt-2">
+                    {/* ── Per-dose mg breakdown (EMR-51) ──── */}
+                    {regimen.calculatedThcMgPerDose != null && regimen.frequencyPerDay > 1 && (
+                      <div className="rounded-xl bg-surface border border-border/60 px-5 py-4">
+                        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-3">
+                          Your daily schedule
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {Array.from({ length: regimen.frequencyPerDay }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-soft/40 border border-accent/10">
+                              <span className="text-xs text-accent font-medium">Dose {i + 1}</span>
+                              <span className="text-xs text-text-muted tabular-nums">
+                                {regimen.calculatedThcMgPerDose?.toFixed(1)}mg THC
+                                {regimen.calculatedCbdMgPerDose != null && ` + ${regimen.calculatedCbdMgPerDose.toFixed(1)}mg CBD`}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Actions ────────────────────────────── */}
+                    <div className="pt-2 flex items-center gap-3 flex-wrap">
                       <Button variant="highlight" size="md">
                         Log a dose
                       </Button>
+                      <a href="/portal/medications/explainer">
+                        <Button variant="ghost" size="md">
+                          How does this work?
+                        </Button>
+                      </a>
                     </div>
                   </CardContent>
                 </Card>

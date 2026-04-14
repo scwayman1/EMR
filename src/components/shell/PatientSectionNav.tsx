@@ -33,6 +33,7 @@ const SECTIONS: Record<string, { title: string; tabs: TabDef[] }> = {
       { label: "Outcomes", href: "/portal/outcomes" },
       { label: "Care plan", href: "/portal/care-plan" },
       { label: "Care guide", href: "/portal/education" },
+      { label: "Learn", href: "/portal/learn" },
     ],
   },
   journey: {

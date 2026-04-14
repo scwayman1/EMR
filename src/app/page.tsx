@@ -375,6 +375,68 @@ export default function HomePage() {
 
       <EditorialRule className="max-w-[1320px] mx-auto px-6 lg:px-12" />
 
+      {/* ── Cannabis Combo Wheel Showcase — EMR-91 ──────────── */}
+      <section className="max-w-[1320px] mx-auto px-6 lg:px-12 py-20">
+        <Reveal>
+          <div className="text-center mb-12">
+            <Eyebrow className="mb-4 justify-center">Proprietary tool</Eyebrow>
+            <h2 className="font-display text-4xl md:text-5xl text-text tracking-tight leading-[1.05] mb-4">
+              The Cannabis{" "}
+              <span className="text-accent italic">Wellness Wheel</span>
+            </h2>
+            <p className="text-[17px] text-text-muted max-w-2xl mx-auto leading-relaxed">
+              Our signature pharmacology tool. Select cannabinoids and terpenes,
+              see their combined therapeutic profile, evidence levels, and
+              dosing guidance — personalized to your patient&apos;s condition.
+            </p>
+          </div>
+          <div className="relative overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/[0.04] via-surface-raised to-highlight/[0.04] p-8 md:p-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50">
+                <span className="text-4xl block mb-3">{"\uD83C\uDF3F"}</span>
+                <h3 className="font-display text-lg text-text tracking-tight mb-2">
+                  6 Cannabinoids
+                </h3>
+                <p className="text-sm text-text-muted">
+                  THC, CBD, CBN, CBG, CBC, THCV — each with evidence-backed
+                  therapeutic profiles.
+                </p>
+              </div>
+              <div className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50">
+                <span className="text-4xl block mb-3">{"\uD83C\uDF3A"}</span>
+                <h3 className="font-display text-lg text-text tracking-tight mb-2">
+                  8 Terpenes
+                </h3>
+                <p className="text-sm text-text-muted">
+                  Myrcene, limonene, linalool, pinene, caryophyllene, and more —
+                  the aromatic compounds that shape the effect.
+                </p>
+              </div>
+              <div className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50">
+                <span className="text-4xl block mb-3">{"\uD83C\uDFAF"}</span>
+                <h3 className="font-display text-lg text-text tracking-tight mb-2">
+                  10 Condition Guides
+                </h3>
+                <p className="text-sm text-text-muted">
+                  Pain, insomnia, anxiety, PTSD, nausea, and more — matched to
+                  the best cannabinoid + terpene combinations.
+                </p>
+              </div>
+            </div>
+            <div className="text-center">
+              <Link href="/portal/combo-wheel">
+                <Button size="lg">Try the Wellness Wheel</Button>
+              </Link>
+              <p className="text-xs text-text-subtle mt-3">
+                Free demo access — no account required for the wheel.
+              </p>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      <EditorialRule className="max-w-[1320px] mx-auto px-6 lg:px-12" />
+
       {/* ── Cannabis Plant 101 — a sacred tribute ──────────── */}
       <section className="max-w-[1320px] mx-auto px-6 lg:px-12 py-20">
         <Reveal>
