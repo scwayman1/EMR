@@ -11,160 +11,148 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { EditorialRule, Eyebrow } from "@/components/ui/ornament";
+import { EmptyState } from "@/components/ui/empty-state";
+import { EditorialRule, Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate } from "@/lib/utils/format";
+import type { NoteBlock } from "@/lib/domain/notes";
+import {
+  TimelineWithFilters,
+  type TimelineEventData,
+  type EventKind,
+} from "./timeline-card";
 
-export const metadata = { title: "My Roadmap" };
+export const metadata = { title: "Health Roadmap" };
 
 // ---------------------------------------------------------------------------
-// Types
+// Helpers
 // ---------------------------------------------------------------------------
 
-interface TimelineEvent {
-  id: string;
-  date: Date;
-  label: string;
-  detail: string | null;
+/** Extract a readable summary from encounter note blocks. */
+function extractNoteSummary(blocks: unknown): string | null {
+  if (!Array.isArray(blocks)) return null;
+  const typed = blocks as NoteBlock[];
+  const summary =
+    typed.find((b) => b.type === "summary") ??
+    typed.find((b) => b.type === "assessment") ??
+    typed[0];
+  if (!summary?.body) return null;
+  const text = summary.body.trim();
+  return text.length > 200 ? text.slice(0, 200).trimEnd() + "\u2026" : text;
 }
 
-interface Milestone {
-  label: string;
-  description: string;
+function modalityLabel(modality: string): string {
+  if (modality === "video") return "Video visit";
+  if (modality === "phone") return "Phone visit";
+  return "In-person visit";
 }
 
+function encounterStatusBadge(status: string): {
+  label: string;
+  tone: "success" | "accent" | "info" | "neutral";
+} {
+  if (status === "complete") return { label: "Completed", tone: "success" };
+  if (status === "scheduled") return { label: "Upcoming", tone: "accent" };
+  if (status === "in_progress")
+    return { label: "In progress", tone: "info" };
+  return { label: "Cancelled", tone: "neutral" };
+}
+
+/** Pretty metric label. */
+const METRIC_LABELS: Record<string, string> = {
+  pain: "Pain",
+  sleep: "Sleep quality",
+  anxiety: "Anxiety",
+  mood: "Mood",
+  nausea: "Nausea",
+  appetite: "Appetite",
+  energy: "Energy",
+  adherence: "Adherence",
+  side_effects: "Side effects",
+};
+
+/**
+ * "Higher is better" metrics — for these, an increase means improvement.
+ * For all others (pain, anxiety, nausea, side_effects), a decrease means
+ * improvement.
+ */
+const HIGHER_IS_BETTER = new Set(["sleep", "mood", "appetite", "energy", "adherence"]);
+
 // ---------------------------------------------------------------------------
-// Future pathway SVG — a gentle curve with milestone markers
+// Milestone detection algorithm
 // ---------------------------------------------------------------------------
 
-function PathwaySvg({
-  direction,
-  color,
-  fillColor,
-  milestones,
-}: {
-  direction: "up" | "down";
-  color: string;
-  fillColor: string;
-  milestones: Milestone[];
-}) {
-  const width = 600;
-  const height = 180;
-  const padX = 40;
-  const padY = 30;
+interface MilestoneCandidate {
+  metric: string;
+  fromValue: number;
+  toValue: number;
+  fromDate: Date;
+  toDate: Date;
+  improvement: number;
+}
 
-  // Build a gentle curve: rising or declining
-  const startY = direction === "up" ? height - padY : padY + 20;
-  const endY = direction === "up" ? padY + 20 : height - padY;
-  const midY = (startY + endY) / 2;
+/**
+ * Detect milestones: a metric improving by 2+ points within any 14-day
+ * sliding window. We return at most one milestone per metric (the largest
+ * improvement).
+ */
+function detectMilestones(
+  outcomeLogs: Array<{
+    metric: string;
+    value: number;
+    loggedAt: Date;
+  }>
+): MilestoneCandidate[] {
+  const TWO_WEEKS_MS = 14 * 24 * 60 * 60 * 1000;
+  const THRESHOLD = 2;
 
-  const pathD = [
-    `M ${padX} ${startY}`,
-    `C ${padX + (width - 2 * padX) * 0.33} ${startY},`,
-    `  ${padX + (width - 2 * padX) * 0.5} ${midY},`,
-    `  ${padX + (width - 2 * padX) * 0.66} ${endY * 0.7 + startY * 0.3}`,
-    `L ${width - padX} ${endY}`,
-  ].join(" ");
+  // Group by metric, sort ascending by date
+  const byMetric: Record<string, Array<{ value: number; loggedAt: Date }>> = {};
+  for (const log of outcomeLogs) {
+    if (!byMetric[log.metric]) byMetric[log.metric] = [];
+    byMetric[log.metric].push({ value: log.value, loggedAt: log.loggedAt });
+  }
 
-  // Area fill beneath the curve
-  const areaD = `${pathD} L ${width - padX} ${height - 10} L ${padX} ${height - 10} Z`;
+  const milestones: MilestoneCandidate[] = [];
 
-  // Distribute milestones along the path
-  const count = milestones.length;
-  const positions = milestones.map((_, i) => {
-    const t = (i + 1) / (count + 1);
-    const x = padX + t * (width - 2 * padX);
-    // Interpolate Y along the curve (simplified linear interpolation)
-    const y = startY + t * (endY - startY);
-    return { x, y };
-  });
+  for (const [metric, logs] of Object.entries(byMetric)) {
+    const sorted = [...logs].sort(
+      (a, b) => a.loggedAt.getTime() - b.loggedAt.getTime()
+    );
+    if (sorted.length < 2) continue;
 
-  return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="w-full max-w-[600px]"
-      aria-hidden="true"
-    >
-      {/* Area fill */}
-      <path d={areaD} fill={fillColor} opacity={0.15} />
+    const hib = HIGHER_IS_BETTER.has(metric);
+    let bestImprovement = 0;
+    let bestCandidate: MilestoneCandidate | null = null;
 
-      <PatientSectionNav section="journey" />
-      {/* Main curve */}
-      <path
-        d={pathD}
-        fill="none"
-        stroke={color}
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    // Sliding window: for each pair within 14 days, compute improvement
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        const timeDiff = sorted[j].loggedAt.getTime() - sorted[i].loggedAt.getTime();
+        if (timeDiff > TWO_WEEKS_MS) break; // no point looking further from i
 
-      {/* Start dot */}
-      <circle
-        cx={padX}
-        cy={startY}
-        r="4"
-        fill={color}
-        stroke="var(--surface-raised)"
-        strokeWidth="2"
-      />
+        const rawDelta = sorted[j].value - sorted[i].value;
+        // Improvement direction depends on metric
+        const improvement = hib ? rawDelta : -rawDelta;
 
-      {/* Milestone markers */}
-      {positions.map((pos, i) => (
-        <g key={i}>
-          {/* Vertical tick line */}
-          <line
-            x1={pos.x}
-            y1={pos.y - 8}
-            x2={pos.x}
-            y2={pos.y + 8}
-            stroke={color}
-            strokeWidth="1"
-            opacity={0.4}
-          />
-          {/* Dot */}
-          <circle
-            cx={pos.x}
-            cy={pos.y}
-            r="5"
-            fill={color}
-            stroke="var(--surface-raised)"
-            strokeWidth="2"
-          />
-          {/* Label — above for rising, below for declining */}
-          <text
-            x={pos.x}
-            y={direction === "up" ? pos.y - 16 : pos.y + 22}
-            textAnchor="middle"
-            fill="var(--text)"
-            fontSize="11"
-            fontWeight="500"
-            fontFamily="var(--font-sans)"
-          >
-            {milestones[i].label}
-          </text>
-          <text
-            x={pos.x}
-            y={direction === "up" ? pos.y - 4 : pos.y + 34}
-            textAnchor="middle"
-            fill="var(--text-muted)"
-            fontSize="9"
-            fontFamily="var(--font-sans)"
-          >
-            {milestones[i].description}
-          </text>
-        </g>
-      ))}
+        if (improvement >= THRESHOLD && improvement > bestImprovement) {
+          bestImprovement = improvement;
+          bestCandidate = {
+            metric,
+            fromValue: sorted[i].value,
+            toValue: sorted[j].value,
+            fromDate: sorted[i].loggedAt,
+            toDate: sorted[j].loggedAt,
+            improvement,
+          };
+        }
+      }
+    }
 
-      {/* End dot */}
-      <circle
-        cx={width - padX}
-        cy={endY}
-        r="4"
-        fill={color}
-        stroke="var(--surface-raised)"
-        strokeWidth="2"
-      />
-    </svg>
+    if (bestCandidate) milestones.push(bestCandidate);
+  }
+
+  return milestones.sort(
+    (a, b) => a.toDate.getTime() - b.toDate.getTime()
   );
 }
 
@@ -172,118 +160,231 @@ function PathwaySvg({
 // Data fetching
 // ---------------------------------------------------------------------------
 
-async function getRoadmapData(patientId: string) {
-  const [encounters, outcomeLogs, regimens, patient] = await Promise.all([
-    prisma.encounter.findMany({
-      where: { patientId },
-      orderBy: { scheduledFor: "asc" },
-      select: {
-        id: true,
-        scheduledFor: true,
-        completedAt: true,
-        reason: true,
-        modality: true,
-        status: true,
-        createdAt: true,
-      },
-      take: 20,
-    }),
-    prisma.outcomeLog.findMany({
-      where: { patientId },
-      orderBy: { loggedAt: "desc" },
-      take: 50,
-    }),
-    prisma.dosingRegimen.findMany({
-      where: { patientId, active: true },
-      include: { product: { select: { name: true, productType: true } } },
-    }),
-    prisma.patient.findUnique({
-      where: { id: patientId },
-      select: {
-        presentingConcerns: true,
-        treatmentGoals: true,
-      },
-    }),
-  ]);
+async function getTimelineData(patientId: string) {
+  const [encounters, outcomeLogs, regimens, assessmentResponses, tasks] =
+    await Promise.all([
+      prisma.encounter.findMany({
+        where: { patientId },
+        orderBy: { scheduledFor: "desc" },
+        include: {
+          notes: { orderBy: { createdAt: "desc" }, take: 1 },
+        },
+        take: 50,
+      }),
+      prisma.outcomeLog.findMany({
+        where: { patientId },
+        orderBy: { loggedAt: "asc" },
+        take: 200,
+      }),
+      prisma.dosingRegimen.findMany({
+        where: { patientId },
+        orderBy: { startDate: "desc" },
+        include: {
+          product: {
+            select: { name: true, productType: true, route: true },
+          },
+        },
+        take: 30,
+      }),
+      prisma.assessmentResponse.findMany({
+        where: { patientId },
+        orderBy: { submittedAt: "desc" },
+        include: {
+          assessment: { select: { title: true, slug: true } },
+        },
+        take: 50,
+      }),
+      prisma.task.findMany({
+        where: { patientId, status: "done" },
+        orderBy: { completedAt: "desc" },
+        take: 20,
+      }),
+    ]);
 
-  // Build timeline events from encounters
-  const timeline: TimelineEvent[] = encounters.map((e) => ({
-    id: e.id,
-    date: e.scheduledFor ?? e.createdAt,
-    label:
-      e.status === "complete"
-        ? "Visit completed"
-        : e.status === "scheduled"
-          ? "Upcoming visit"
-          : e.status === "in_progress"
-            ? "Visit in progress"
-            : "Visit cancelled",
-    detail: e.reason ?? null,
-  }));
+  return { encounters, outcomeLogs, regimens, assessmentResponses, tasks };
+}
 
-  // Latest values per metric
-  const latestMetrics: Record<string, number> = {};
-  for (const log of outcomeLogs) {
-    if (!(log.metric in latestMetrics)) {
-      latestMetrics[log.metric] = log.value;
-    }
+// ---------------------------------------------------------------------------
+// Build unified timeline
+// ---------------------------------------------------------------------------
+
+function buildTimeline(data: Awaited<ReturnType<typeof getTimelineData>>): TimelineEventData[] {
+  const events: TimelineEventData[] = [];
+
+  // --- Visits ---
+  for (const enc of data.encounters) {
+    const statusBadge = encounterStatusBadge(enc.status);
+    const noteBlocks = enc.notes[0]?.blocks ?? null;
+    const noteSummary = extractNoteSummary(noteBlocks);
+
+    events.push({
+      id: `visit-${enc.id}`,
+      kind: "visit",
+      date: (enc.scheduledFor ?? enc.createdAt).toISOString(),
+      title: `${modalityLabel(enc.modality)}${enc.reason ? ` -- ${enc.reason}` : ""}`,
+      subtitle: noteSummary,
+      badges: [statusBadge],
+      detail: noteSummary
+        ? `Note summary:\n${noteSummary}`
+        : enc.reason
+          ? `Reason: ${enc.reason}`
+          : null,
+    });
   }
 
-  // Active concerns
-  const concerns = patient?.presentingConcerns
-    ? patient.presentingConcerns
-        .split(/[,;]+/)
-        .map((c) => c.trim())
+  // --- Medication changes ---
+  for (const reg of data.regimens) {
+    const doseStr = reg.patientInstructions ??
+      `${reg.volumePerDose} ${reg.volumeUnit} x${reg.frequencyPerDay}/day`;
+
+    const mgParts: string[] = [];
+    if (reg.calculatedThcMgPerDose) mgParts.push(`THC ${reg.calculatedThcMgPerDose}mg`);
+    if (reg.calculatedCbdMgPerDose) mgParts.push(`CBD ${reg.calculatedCbdMgPerDose}mg`);
+
+    events.push({
+      id: `med-${reg.id}`,
+      kind: "medication",
+      date: reg.startDate.toISOString(),
+      title: `${reg.active ? "Started" : "Changed"}: ${reg.product.name}`,
+      subtitle: doseStr,
+      badges: [
+        { label: reg.product.productType, tone: "neutral" as const },
+        ...(reg.active
+          ? [{ label: "Active", tone: "success" as const }]
+          : [{ label: "Ended", tone: "neutral" as const }]),
+      ],
+      detail: [
+        `Product: ${reg.product.name}`,
+        `Route: ${reg.product.route}`,
+        `Dose: ${doseStr}`,
+        mgParts.length > 0 ? `Per dose: ${mgParts.join(", ")}` : null,
+        reg.timingInstructions ? `Timing: ${reg.timingInstructions}` : null,
+        reg.clinicianNotes ? `Clinician notes: ${reg.clinicianNotes}` : null,
+      ]
         .filter(Boolean)
-    : [];
-
-  // Treatment goals
-  const goals = patient?.treatmentGoals?.trim() ?? null;
-
-  // Active regimen summary
-  const activeRegimen = regimens.map((r) => ({
-    product: r.product.name,
-    type: r.product.productType,
-    instructions: r.patientInstructions ?? `${r.volumePerDose} ${r.volumeUnit} x${r.frequencyPerDay}/day`,
-  }));
-
-  return { timeline, latestMetrics, concerns, goals, activeRegimen };
-}
-
-// ---------------------------------------------------------------------------
-// Modality label helper
-// ---------------------------------------------------------------------------
-
-function modalityIcon(status: string): string {
-  switch (status) {
-    case "Visit completed":
-      return "\u2713";
-    case "Upcoming visit":
-      return "\u25CB";
-    case "Visit in progress":
-      return "\u25CF";
-    default:
-      return "\u00D7";
+        .join("\n"),
+    });
   }
+
+  // --- Assessment responses ---
+  for (const resp of data.assessmentResponses) {
+    const scoreStr = resp.score !== null ? `Score: ${resp.score}` : null;
+
+    events.push({
+      id: `assess-${resp.id}`,
+      kind: "assessment",
+      date: resp.submittedAt.toISOString(),
+      title: resp.assessment.title,
+      subtitle: [scoreStr, resp.interpretation].filter(Boolean).join(" -- "),
+      badges: [
+        ...(resp.score !== null
+          ? [{ label: `${resp.score}`, tone: "info" as const }]
+          : []),
+        ...(resp.interpretation
+          ? [
+              {
+                label: resp.interpretation,
+                tone: (resp.interpretation.toLowerCase().includes("minimal") ||
+                  resp.interpretation.toLowerCase().includes("mild")
+                  ? "success"
+                  : resp.interpretation.toLowerCase().includes("moderate")
+                    ? "warning"
+                    : resp.interpretation.toLowerCase().includes("severe")
+                      ? "danger"
+                      : "neutral") as "success" | "warning" | "danger" | "neutral",
+              },
+            ]
+          : []),
+      ],
+      detail: resp.interpretation
+        ? `Assessment: ${resp.assessment.title}\nScore: ${resp.score ?? "--"}\nInterpretation: ${resp.interpretation}`
+        : null,
+    });
+  }
+
+  // --- Outcome milestones ---
+  const milestones = detectMilestones(data.outcomeLogs);
+  for (const m of milestones) {
+    const label = METRIC_LABELS[m.metric] ?? m.metric;
+    const direction = HIGHER_IS_BETTER.has(m.metric) ? "improved" : "decreased";
+
+    events.push({
+      id: `milestone-${m.metric}-${m.toDate.getTime()}`,
+      kind: "milestone",
+      date: m.toDate.toISOString(),
+      title: `${label} ${direction} by ${m.improvement.toFixed(1)} points`,
+      subtitle: `${m.fromValue.toFixed(1)} \u2192 ${m.toValue.toFixed(1)} over ${Math.round((m.toDate.getTime() - m.fromDate.getTime()) / (24 * 60 * 60 * 1000))} days`,
+      badges: [{ label: "Milestone", tone: "highlight" }],
+      detail: `${label} went from ${m.fromValue.toFixed(1)} to ${m.toValue.toFixed(1)} between ${formatDate(m.fromDate)} and ${formatDate(m.toDate)}. That's a ${m.improvement.toFixed(1)}-point improvement in ${Math.round((m.toDate.getTime() - m.fromDate.getTime()) / (24 * 60 * 60 * 1000))} days.`,
+      isMilestone: true,
+    });
+  }
+
+  // --- Completed tasks ---
+  for (const task of data.tasks) {
+    if (!task.completedAt) continue;
+
+    events.push({
+      id: `task-${task.id}`,
+      kind: "task",
+      date: task.completedAt.toISOString(),
+      title: task.title,
+      subtitle: task.description
+        ? task.description.length > 100
+          ? task.description.slice(0, 100).trimEnd() + "\u2026"
+          : task.description
+        : null,
+      badges: [{ label: "Done", tone: "success" }],
+      detail: task.description,
+    });
+  }
+
+  // Sort all events by date descending (newest first)
+  events.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  return events;
 }
 
 // ---------------------------------------------------------------------------
-// Template milestones for the two future pathways
+// Summary stats
 // ---------------------------------------------------------------------------
 
-const STATUS_QUO_MILESTONES: Milestone[] = [
-  { label: "Month 1", description: "Symptoms persist" },
-  { label: "Month 3", description: "Frustration builds" },
-  { label: "Month 6", description: "Quality of life declines" },
-  { label: "Month 12", description: "Missed opportunities" },
-];
+interface SummaryStats {
+  totalVisits: number;
+  completedVisits: number;
+  activeRegimens: number;
+  assessmentsTaken: number;
+  milestonesReached: number;
+  tasksCompleted: number;
+  latestMetrics: Record<string, number>;
+}
 
-const TREATMENT_MILESTONES: Milestone[] = [
-  { label: "Week 2", description: "Adjustment period" },
-  { label: "Month 1", description: "Early improvements" },
-  { label: "Month 3", description: "Steady progress" },
-  { label: "Month 6", description: "New baseline reached" },
-];
+function computeStats(
+  data: Awaited<ReturnType<typeof getTimelineData>>,
+  events: TimelineEventData[]
+): SummaryStats {
+  const latestMetrics: Record<string, number> = {};
+  // outcomeLogs are sorted asc, so last per metric is latest
+  for (const log of data.outcomeLogs) {
+    latestMetrics[log.metric] = log.value;
+  }
+
+  return {
+    totalVisits: data.encounters.length,
+    completedVisits: data.encounters.filter(
+      (e: { status: string }) => e.status === "complete"
+    ).length,
+    activeRegimens: data.regimens.filter(
+      (r: { active: boolean }) => r.active
+    ).length,
+    assessmentsTaken: data.assessmentResponses.length,
+    milestonesReached: events.filter((e) => e.kind === "milestone").length,
+    tasksCompleted: data.tasks.length,
+    latestMetrics,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -294,310 +395,287 @@ export default async function RoadmapPage() {
 
   const patient = await prisma.patient.findUnique({
     where: { userId: user.id },
-    select: { id: true, firstName: true },
+    select: {
+      id: true,
+      firstName: true,
+      treatmentGoals: true,
+      presentingConcerns: true,
+    },
   });
 
   if (!patient) {
     redirect("/portal/intake");
   }
 
-  const data = await getRoadmapData(patient.id);
+  const data = await getTimelineData(patient.id);
+  const events = buildTimeline(data);
+  const stats = computeStats(data, events);
 
-  const metricLabels: Record<string, string> = {
-    pain: "Pain",
-    sleep: "Sleep",
-    anxiety: "Anxiety",
-    mood: "Mood",
-    nausea: "Nausea",
-    appetite: "Appetite",
-    energy: "Energy",
-    adherence: "Adherence",
-    side_effects: "Side effects",
-  };
+  const hasAnyData = events.length > 0;
 
   return (
     <PageShell maxWidth="max-w-[960px]">
+      <PatientSectionNav section="journey" />
       <PageHeader
         eyebrow="Health Roadmap"
-        title="Your health trajectory"
-        description="A visual map of where you've been, where you are, and where your care plan can take you."
+        title="Your health journey"
+        description="Every visit, treatment change, assessment, and milestone -- all in one place. Click any event to see details."
       />
 
       {/* ================================================================
-          PAST — Timeline of encounters
+          Summary strip
           ================================================================ */}
-      <section className="mb-12">
-        <div className="flex items-center gap-3 mb-6">
-          <h2 className="font-display text-xl text-text tracking-tight">
-            Where you&apos;ve been
-          </h2>
-          <Badge tone="neutral">Past</Badge>
+      {hasAnyData && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8 print:grid-cols-6">
+          <StatCard
+            label="Visits"
+            value={stats.completedVisits}
+            total={stats.totalVisits}
+            dot="bg-green-500"
+          />
+          <StatCard
+            label="Medications"
+            value={stats.activeRegimens}
+            suffix="active"
+            dot="bg-purple-500"
+          />
+          <StatCard
+            label="Assessments"
+            value={stats.assessmentsTaken}
+            dot="bg-blue-500"
+          />
+          <StatCard
+            label="Milestones"
+            value={stats.milestonesReached}
+            dot="bg-amber-500"
+          />
+          <StatCard
+            label="Tasks done"
+            value={stats.tasksCompleted}
+            dot="bg-gray-400"
+          />
+          <StatCard
+            label="Metrics tracked"
+            value={Object.keys(stats.latestMetrics).length}
+            dot="bg-accent"
+          />
         </div>
-
-        {data.timeline.length === 0 ? (
-          <Card tone="outlined">
-            <CardContent className="py-8 text-center">
-              <p className="text-sm text-text-muted">
-                No visits recorded yet. Your health timeline will grow as you
-                engage with your care team.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="relative pl-6">
-            {/* Vertical timeline line */}
-            <div
-              className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-accent/40 via-border-strong/40 to-transparent"
-              aria-hidden="true"
-            />
-
-            <div className="space-y-5">
-              {data.timeline.map((event) => (
-                <div key={event.id} className="relative flex items-start gap-4">
-                  {/* Timeline dot */}
-                  <span
-                    className="absolute -left-6 top-1.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-accent/30 bg-surface-raised text-[10px] text-accent font-medium shrink-0"
-                    aria-hidden="true"
-                  >
-                    {modalityIcon(event.label)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-text">
-                      {event.label}
-                    </p>
-                    <p className="text-xs text-text-subtle">
-                      {formatDate(event.date)}
-                      {event.detail && (
-                        <span className="text-text-muted">
-                          {" "}
-                          &mdash; {event.detail}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      <EditorialRule className="mb-12" />
+      )}
 
       {/* ================================================================
-          PRESENT — Current status
+          Current metrics snapshot
           ================================================================ */}
-      <section className="mb-12">
-        <div className="flex items-center gap-3 mb-6">
-          <h2 className="font-display text-xl text-text tracking-tight">
-            Where you are now
-          </h2>
-          <Badge tone="accent">Present</Badge>
-        </div>
+      {Object.keys(stats.latestMetrics).length > 0 && (
+        <Card tone="raised" className="mb-8">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <LeafSprig size={16} />
+              <CardTitle>Current metrics</CardTitle>
+            </div>
+            <CardDescription>
+              Latest values from your outcome check-ins
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(stats.latestMetrics).map(([metric, value]) => {
+                const hib = HIGHER_IS_BETTER.has(metric);
+                const tone = hib
+                  ? value >= 7
+                    ? ("success" as const)
+                    : value >= 4
+                      ? ("warning" as const)
+                      : ("danger" as const)
+                  : value <= 3
+                    ? ("success" as const)
+                    : value <= 6
+                      ? ("warning" as const)
+                      : ("danger" as const);
+                return (
+                  <Badge key={metric} tone={tone}>
+                    {METRIC_LABELS[metric] ?? metric}: {value.toFixed(1)}
+                  </Badge>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Active concerns */}
-          <Card tone="raised">
-            <CardHeader>
-              <CardTitle>Active concerns</CardTitle>
-              <CardDescription>
-                What brought you to care
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.concerns.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {data.concerns.map((concern) => (
-                    <Badge key={concern} tone="warning">
-                      {concern}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-text-muted">
-                  No presenting concerns documented yet.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+      <EditorialRule className="mb-8" />
 
-          {/* Latest metrics */}
-          <Card tone="raised">
-            <CardHeader>
-              <CardTitle>Latest metrics</CardTitle>
-              <CardDescription>
-                Most recent outcome readings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {Object.keys(data.latestMetrics).length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {Object.entries(data.latestMetrics).map(([metric, value]) => (
-                    <Badge
-                      key={metric}
-                      tone={
-                        metric === "sleep" || metric === "mood" || metric === "energy"
-                          ? value >= 7
-                            ? "success"
-                            : value >= 4
-                              ? "warning"
-                              : "danger"
-                          : value <= 3
-                            ? "success"
-                            : value <= 6
-                              ? "warning"
-                              : "danger"
-                      }
-                    >
-                      {metricLabels[metric] ?? metric}: {value.toFixed(1)}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-text-muted">
-                  No outcome data logged yet. Start a check-in to see your
-                  current metrics here.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+      {/* ================================================================
+          Timeline
+          ================================================================ */}
+      {!hasAnyData ? (
+        <EmptyState
+          title="Your health roadmap is empty"
+          description="As you visit your care team, log outcomes, take assessments, and start treatments, your journey will appear here as an interactive timeline."
+          className="mb-10"
+        />
+      ) : (
+        <section className="mb-10">
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="font-display text-xl text-text tracking-tight">
+              Timeline
+            </h2>
+            <Badge tone="neutral">{events.length} events</Badge>
+          </div>
 
-          {/* Current regimen */}
-          <Card tone="raised" className="md:col-span-2">
-            <CardHeader>
-              <CardTitle>Current regimen</CardTitle>
-              <CardDescription>
-                Your active care plan products
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.activeRegimen.length > 0 ? (
-                <div className="space-y-3">
-                  {data.activeRegimen.map((r, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 pl-3 border-l-2 border-accent/20"
-                    >
+          <TimelineWithFilters events={events} />
+        </section>
+      )}
+
+      <EditorialRule className="mb-8" />
+
+      {/* ================================================================
+          Milestones highlight
+          ================================================================ */}
+      {stats.milestonesReached > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center gap-3 mb-6">
+            <h2 className="font-display text-xl text-text tracking-tight">
+              Milestones reached
+            </h2>
+            <Badge tone="highlight">{stats.milestonesReached}</Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {events
+              .filter((e) => e.kind === "milestone")
+              .map((m) => (
+                <Card
+                  key={m.id}
+                  tone="ambient"
+                  className="border-amber-200/50"
+                >
+                  <CardContent className="py-5 px-5">
+                    <div className="flex items-start gap-3">
+                      <span
+                        className="mt-0.5 h-5 w-5 rounded-full bg-amber-500 border-2 border-amber-200 shadow-[0_0_10px_rgba(245,158,11,0.4)] shrink-0"
+                        aria-hidden="true"
+                      />
                       <div>
                         <p className="text-sm font-medium text-text">
-                          {r.product}
+                          {m.title}
                         </p>
-                        <p className="text-xs text-text-muted">
-                          {r.instructions}
+                        <p className="text-xs text-text-muted mt-0.5">
+                          {m.subtitle}
+                        </p>
+                        <p className="text-[11px] text-text-subtle mt-1">
+                          {formatDate(m.date)}
                         </p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-text-muted">
-                  No active dosing regimen. Your care team will add products as
-                  part of your plan.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      <EditorialRule className="mb-12" />
-
-      {/* ================================================================
-          FUTURE — Two divergent pathways
-          ================================================================ */}
-      <section className="mb-12">
-        <div className="flex items-center gap-3 mb-6">
-          <h2 className="font-display text-xl text-text tracking-tight">
-            Where you could go
-          </h2>
-          <Badge tone="highlight">Future</Badge>
-        </div>
-
-        <p className="text-sm text-text-muted mb-8 max-w-2xl leading-relaxed">
-          Two possible paths lie ahead. These are illustrative trajectories
-          based on common patient journeys -- not predictions. Your actual
-          experience is shaped by many personal factors.
-        </p>
-
-        <div className="grid grid-cols-1 gap-6">
-          {/* Path A — Status quo (declining) */}
-          <Card tone="default" className="overflow-hidden">
-            <CardHeader>
-              <Eyebrow className="mb-2 text-[color:var(--danger)]">
-                Path A
-              </Eyebrow>
-              <CardTitle>If things stay the same&hellip;</CardTitle>
-              <CardDescription>
-                Without active care management, symptoms often persist or
-                gradually worsen. This path represents the status quo trajectory.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto -mx-2 px-2">
-                <PathwaySvg
-                  direction="down"
-                  color="var(--danger)"
-                  fillColor="var(--danger)"
-                  milestones={STATUS_QUO_MILESTONES}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Path B — With treatment (rising) */}
-          <Card tone="ambient" className="overflow-hidden">
-            <CardHeader>
-              <Eyebrow className="mb-2">Path B</Eyebrow>
-              <CardTitle>With your care plan&hellip;</CardTitle>
-              <CardDescription>
-                Consistent engagement with your treatment plan, regular
-                check-ins, and open communication with your care team create the
-                conditions for meaningful progress.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto -mx-2 px-2">
-                <PathwaySvg
-                  direction="up"
-                  color="var(--success)"
-                  fillColor="var(--success)"
-                  milestones={TREATMENT_MILESTONES}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      <EditorialRule className="mb-10" />
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </section>
+      )}
 
       {/* ================================================================
           Goals reminder
           ================================================================ */}
-      {data.goals && (
-        <Card tone="raised" className="mb-10">
-          <CardHeader>
-            <CardTitle>Your stated goals</CardTitle>
-            <CardDescription>
-              A reminder of what you&apos;re working toward
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-text-muted leading-relaxed italic">
-              &ldquo;{data.goals}&rdquo;
-            </p>
-          </CardContent>
-        </Card>
+      {patient.treatmentGoals && (
+        <>
+          <EditorialRule className="mb-8" />
+          <Card tone="raised" className="mb-10">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <LeafSprig size={16} />
+                <CardTitle>Your stated goals</CardTitle>
+              </div>
+              <CardDescription>
+                A reminder of what you&apos;re working toward
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-text-muted leading-relaxed italic">
+                &ldquo;{patient.treatmentGoals}&rdquo;
+              </p>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* ================================================================
           Disclaimer
           ================================================================ */}
-      <p className="text-xs text-text-subtle text-center max-w-lg mx-auto leading-relaxed">
-        This roadmap is a conceptual illustration to help you visualize your
-        health journey. It does not constitute a medical prediction or guarantee
-        of outcomes. Always consult your care team for clinical decisions.
+      <p className="text-xs text-text-subtle text-center max-w-lg mx-auto leading-relaxed mb-4">
+        This roadmap shows your personal health journey based on data in your
+        chart. Milestones are algorithmically detected when a metric improves
+        by 2 or more points within a 14-day window. Always consult your care
+        team for clinical decisions.
       </p>
+
+      {/* ================================================================
+          Print styles (inline style tag for server component)
+          ================================================================ */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+@media print {
+  /* Show all timeline cards expanded */
+  .print\\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+
+  /* Hide interactive elements */
+  .print\\:hidden { display: none !important; }
+
+  /* Ensure backgrounds print */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* Tighten spacing */
+  .pb-6 { padding-bottom: 0.75rem !important; }
+
+  /* Ensure page breaks nicely */
+  .rounded-xl { break-inside: avoid; }
+}
+`,
+        }}
+      />
     </PageShell>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Small stat card
+// ---------------------------------------------------------------------------
+
+function StatCard({
+  label,
+  value,
+  total,
+  suffix,
+  dot,
+}: {
+  label: string;
+  value: number;
+  total?: number;
+  suffix?: string;
+  dot: string;
+}) {
+  return (
+    <Card tone="raised" className="px-4 py-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className={`h-2 w-2 rounded-full shrink-0 ${dot}`} />
+        <p className="text-[11px] font-medium text-text-muted uppercase tracking-wider truncate">
+          {label}
+        </p>
+      </div>
+      <p className="text-lg font-display font-medium text-text">
+        {value}
+        {total !== undefined && total > value && (
+          <span className="text-sm text-text-subtle font-normal">
+            {" "}
+            / {total}
+          </span>
+        )}
+        {suffix && (
+          <span className="text-xs text-text-subtle font-normal ml-1">
+            {suffix}
+          </span>
+        )}
+      </p>
+    </Card>
   );
 }
