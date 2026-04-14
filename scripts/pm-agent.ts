@@ -1,17 +1,18 @@
 #!/usr/bin/env npx tsx
 /**
- * Product Management Agent — Leafjourney EMR
+ * MALLIK — Leafjourney's Agentic Product Intelligence
  *
- * A development-time utility that gives product intelligence by
- * reading the codebase, git history, and ticket state. Run it to
- * get status reports, sprint suggestions, and release notes.
+ * The AI agent that walks into your Claude Code instance like it owns
+ * the place. Full blueprint of EMR practice management tattooed on its
+ * code, with a minor in cannabis medicine. Revenue cycle management
+ * whisperer. Physician workflow maestro. Not just reactive — agentic.
  *
  * Usage:
- *   npx tsx scripts/pm-agent.ts status     — what's shipped vs backlog
- *   npx tsx scripts/pm-agent.ts sprint     — suggest next sprint items
- *   npx tsx scripts/pm-agent.ts changelog  — generate changelog from recent commits
- *   npx tsx scripts/pm-agent.ts health     — codebase health check
- *   npx tsx scripts/pm-agent.ts launch     — launch readiness assessment
+ *   npm run pm status     — the full picture
+ *   npm run pm sprint     — what to build next (opinionated)
+ *   npm run pm changelog  — what shipped recently
+ *   npm run pm health     — code quality audit
+ *   npm run pm launch     — are we ready for customers?
  */
 
 import { execSync } from "child_process";
@@ -56,7 +57,7 @@ function readTickets(): { total: number; done: number; backlog: number; urgent: 
 // ---------------------------------------------------------------------------
 
 function status() {
-  console.log("\n🌿 LEAFJOURNEY EMR — Product Status Report\n");
+  console.log("\n🧠 MALLIK — Leafjourney Product Intelligence\n");
   console.log(`   Date: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}\n`);
 
   // Git stats
@@ -111,7 +112,7 @@ function status() {
 }
 
 function changelog() {
-  console.log("\n🌿 LEAFJOURNEY EMR — Recent Changelog\n");
+  console.log("\n🧠 MALLIK — Recent Changelog\n");
 
   const days = process.argv[3] ?? "3";
   const log = exec(`git log --since="${days} days ago" --pretty=format:"%h %s" --no-merges`);
@@ -131,7 +132,7 @@ function changelog() {
 }
 
 function sprint() {
-  console.log("\n🌿 LEAFJOURNEY EMR — Sprint Suggestions\n");
+  console.log("\n🧠 MALLIK — Sprint Suggestions\n");
   console.log("   Based on: 15-day launch deadline, current codebase state\n");
 
   console.log("   LAUNCH-CRITICAL (do these first):");
@@ -157,7 +158,7 @@ function sprint() {
 }
 
 function health() {
-  console.log("\n🌿 LEAFJOURNEY EMR — Codebase Health\n");
+  console.log("\n🧠 MALLIK — Codebase Health\n");
 
   const anyCount = exec("grep -r 'as any' --include='*.ts' --include='*.tsx' src/ | wc -l");
   const todoCount = exec("grep -ri 'TODO\\|FIXME\\|HACK' --include='*.ts' --include='*.tsx' src/ | wc -l");
@@ -171,7 +172,7 @@ function health() {
 }
 
 function launch() {
-  console.log("\n🌿 LEAFJOURNEY EMR — Launch Readiness\n");
+  console.log("\n🧠 MALLIK — Launch Readiness\n");
 
   const checks = [
     { name: "Domain (leafjourney.com)", check: true, note: "Live" },
