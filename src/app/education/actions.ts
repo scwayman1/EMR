@@ -1,0 +1,108 @@
+"use server";
+
+import { resolveModelClient } from "@/lib/orchestration/model-client";
+import {
+  buildChatCBSystemPrompt,
+  searchKnowledgeBase,
+  type Citation,
+  type CannabisConditionPair,
+} from "@/lib/domain/chatcb";
+
+export interface ChatCBResponse {
+  answer: string;
+  citations: Citation[];
+}
+
+/**
+ * Server action for the ChatCB cannabis search engine.
+ * Calls the model with the system prompt + user question + relevant
+ * knowledge base entries as context. Falls back to formatted KB matches.
+ */
+export async function askChatCB(question: string): Promise<ChatCBResponse> {
+  const q = question.trim();
+  if (!q) {
+    return { answer: "Please enter a question about cannabis medicine.", citations: [] };
+  }
+
+  // Find relevant knowledge base entries for context
+  const matches = searchKnowledgeBase(q);
+
+  // Build context from matches
+  const kbContext =
+    matches.length > 0
+      ? "\n\nRelevant knowledge base entries:\n" +
+        matches
+          .map(
+            (m) =>
+              `- ${m.cannabinoid} for ${m.condition} (${m.evidenceLevel}, ${m.studyCount} studies): ${m.summary}`
+          )
+          .join("\n")
+      : "";
+
+  const systemPrompt = buildChatCBSystemPrompt();
+  const fullPrompt = `${systemPrompt}\n${kbContext}\n\nUser question: ${q}`;
+
+  // Build citations from knowledge base matches
+  const citations: Citation[] = matches.slice(0, 5).map((m, i) => ({
+    id: `kb-${i}`,
+    title: `${m.cannabinoid} and ${m.condition}`,
+    authors: "Cannabis Knowledge Base",
+    journal: "Leafjourney Research Index",
+    year: 2025,
+    evidenceLevel: m.evidenceLevel,
+    studyType: "review" as const,
+    summary: m.summary,
+  }));
+
+  try {
+    const model = resolveModelClient();
+    const answer = await model.complete(fullPrompt, {
+      maxTokens: 800,
+      temperature: 0.4,
+    });
+    return { answer, citations };
+  } catch {
+    // Fallback: format knowledge base matches as a human-readable response
+    const fallbackAnswer = buildFallbackResponse(q, matches);
+    return { answer: fallbackAnswer, citations };
+  }
+}
+
+function buildFallbackResponse(
+  query: string,
+  matches: CannabisConditionPair[]
+): string {
+  if (matches.length === 0) {
+    return (
+      `I couldn't find specific information about "${query}" in our cannabis knowledge base. ` +
+      `This topic may require further research. Please consult with a qualified healthcare ` +
+      `provider who specializes in cannabis medicine for personalized guidance.\n\n` +
+      `You can also try searching for specific cannabinoids (THC, CBD, CBN, CBG) or ` +
+      `conditions (pain, anxiety, insomnia, epilepsy) for detailed evidence summaries.`
+    );
+  }
+
+  let response = `Here's what the research says about "${query}":\n\n`;
+
+  for (const m of matches.slice(0, 5)) {
+    const levelLabel =
+      m.evidenceLevel === "positive"
+        ? "Positive evidence"
+        : m.evidenceLevel === "negative"
+          ? "Negative evidence"
+          : m.evidenceLevel === "mixed"
+            ? "Mixed results"
+            : m.evidenceLevel === "insufficient"
+              ? "Insufficient data"
+              : "Neutral";
+
+    response += `**${m.cannabinoid} for ${m.condition}** (${levelLabel}, ${m.studyCount} studies)\n`;
+    response += `${m.summary}\n\n`;
+  }
+
+  response +=
+    `---\n\n*This information is sourced from our curated cannabis research database. ` +
+    `Always consult with a healthcare provider before making any treatment decisions.*`;
+
+  return response;
+}

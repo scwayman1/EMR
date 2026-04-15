@@ -6,6 +6,7 @@ import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 
 const PATIENT_NAV: NavItem[] = [
   { label: "Home", href: "/portal" },
+  { label: "Log Dose", href: "/portal/log-dose" },
   { label: "My Health", href: "/portal/records" },
   { label: "My Journey", href: "/portal/lifestyle" },
   { label: "Schedule", href: "/portal/schedule" },

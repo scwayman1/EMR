@@ -41,6 +41,12 @@ export default function HomePage() {
             Security
           </Link>
           <Link
+            href="/education"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
+          >
+            Education
+          </Link>
+          <Link
             href="/store"
             className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
@@ -521,6 +527,7 @@ export default function HomePage() {
               <div className="hidden md:flex items-center gap-5 text-xs text-text-subtle">
                 <Link href="/about" className="hover:text-text transition-colors">About</Link>
                 <Link href="/security" className="hover:text-text transition-colors">Security</Link>
+                <Link href="/education" className="hover:text-text transition-colors">Education</Link>
                 <Link href="/store" className="hover:text-text transition-colors">Store</Link>
               </div>
             </div>
