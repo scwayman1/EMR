@@ -62,6 +62,7 @@ export default async function NoteDetailPage({ params }: PageProps) {
       <NoteEditor
         noteId={note.id}
         patientId={params.id}
+        encounterId={note.encounterId}
         initialBlocks={blocks}
         status={note.status}
         aiDrafted={note.aiDrafted}

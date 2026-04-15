@@ -19,6 +19,7 @@ interface NoteBlock {
 interface NoteEditorProps {
   noteId: string;
   patientId: string;
+  encounterId: string;
   initialBlocks: NoteBlock[];
   status: string;
   aiDrafted: boolean;
@@ -63,6 +64,7 @@ function scrubMessage(raw: string): string {
 export function NoteEditor({
   noteId,
   patientId,
+  encounterId,
   initialBlocks,
   status,
   aiDrafted,
@@ -425,7 +427,7 @@ export function NoteEditor({
                   <p className="text-xs text-text-muted">Print a branded after-visit summary for the patient</p>
                 </div>
               </div>
-              <a href={`/clinic/patients/${patientId}/leaflet?encounter=${noteId.split("/")[0]}`}>
+              <a href={`/clinic/patients/${patientId}/leaflet?encounter=${encounterId}`}>
                 <Button size="sm">Create Leaflet</Button>
               </a>
             </div>
