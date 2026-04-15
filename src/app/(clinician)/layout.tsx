@@ -45,6 +45,7 @@ export default async function ClinicianLayout({
 
   const nav: NavItem[] = [
     { label: "Command", href: "/clinic" },
+    { label: "Brief", href: "/clinic/morning-brief" },
     { label: "Roster", href: "/clinic/patients" },
     { label: "Inbox", href: "/clinic/messages" },
     {
