@@ -161,6 +161,48 @@
 }
 
 /* ==========================================================================
+   Dark mode
+   ========================================================================== */
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg: #0F1210;
+  --bg-deep: #0A0D0B;
+  --surface: #1A1F1C;
+  --surface-raised: #222926;
+  --surface-muted: #2A322D;
+
+  --border: #333D37;
+  --border-strong: #4A5750;
+
+  /* Text */
+  --text: #E8E6E1;
+  --text-muted: #A9A49C;
+  --text-subtle: #7A756D;
+
+  /* Accent — emerald forest, brightened for dark */
+  --accent: #047857;
+  --accent-hover: #059669;
+  --accent-strong: #10B981;
+  --accent-soft: #0D2A20;
+  --accent-ink: #F0FDF4;
+
+  /* Highlight — warm amber, adjusted for dark */
+  --highlight: #D4942E;
+  --highlight-hover: #E5A940;
+  --highlight-soft: #2A2010;
+
+  /* Semantic */
+  --success: #4ADE80;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --info: #60A5FA;
+}
+
+[data-theme="dark"] body {
+  color-scheme: dark;
+}
+
+/* ==========================================================================
    ADA — High-contrast mode
    ========================================================================== */
 @media (prefers-contrast: more) {

@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { EditorialRule, Eyebrow } from "@/components/ui/ornament";
 import { ProfileForm, type ProfileValues } from "./profile-form";
+import { CommunicationPreferences } from "./communication-preferences";
 
 export const metadata = { title: "Profile" };
 
@@ -137,6 +138,8 @@ export default async function ProfilePage() {
           <ProfileForm initial={initial} />
         </CardContent>
       </Card>
+
+      <CommunicationPreferences />
     </PageShell>
   );
 }

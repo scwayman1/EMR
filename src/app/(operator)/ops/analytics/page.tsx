@@ -12,6 +12,7 @@ import { MetricTile } from "@/components/ui/metric-tile";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { LeafSprig } from "@/components/ui/ornament";
+import { ProductivityDashboard } from "./productivity";
 
 export const metadata = { title: "Analytics" };
 
@@ -581,6 +582,21 @@ export default async function AnalyticsPage() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+      {/* ================== Productivity ================== */}
+      <Card tone="raised" className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LeafSprig size={16} className="text-accent/80" />
+            Productivity
+          </CardTitle>
+          <CardDescription>
+            Provider performance, referral sources, and AI agent utilization.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProductivityDashboard />
         </CardContent>
       </Card>
     </PageShell>

@@ -17,6 +17,9 @@ const OPS_NAV: NavItem[] = [
   { label: "Eligibility", href: "/ops/eligibility" },
   { label: "Practice launch", href: "/ops/launch" },
   { label: "Analytics", href: "/ops/analytics" },
+  { label: "Population", href: "/ops/population" },
+  { label: "AI Config", href: "/ops/settings/ai-config" },
+  { label: "Intake Builder", href: "/ops/intake-builder" },
 ];
 
 export default async function OperatorLayout({

@@ -50,6 +50,7 @@ model Organization {
   feeSchedule      FeeScheduleEntry[]
   referrals        Referral[]
   complianceForms  StateComplianceForm[]
+  intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
 }
@@ -71,6 +72,7 @@ model User {
   auditLogs       AuditLog[]
   approvedJobs    AgentJob[]   @relation("JobApprovedBy")
   notifications   Notification[]
+  communicationPreference CommunicationPreference?
 }
 
 model Membership {
@@ -164,6 +166,8 @@ model Patient {
   referrals            Referral[]
   signedConsents       SignedConsent[]
   complianceForms      StateComplianceForm[]
+  caregiverInvites     CaregiverInvite[]
+  surveySubmissions    SurveySubmission[]
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
@@ -279,10 +283,11 @@ model Encounter {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
   provider     Provider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
-  notes        Note[]
-  documents    Document[]
-  claims       Claim[]
-  charges      Charge[]
+  notes             Note[]
+  documents         Document[]
+  claims            Claim[]
+  charges           Charge[]
+  surveySubmissions SurveySubmission[]
 
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
@@ -1842,4 +1847,86 @@ model StateComplianceForm {
 
   @@index([patientId, stateCode])
   @@index([organizationId, status])
+}
+
+// --------------------------------------------------------------
+// Caregiver Access
+// --------------------------------------------------------------
+
+model CaregiverInvite {
+  id              String   @id @default(cuid())
+  patientId       String
+  caregiverEmail  String
+  caregiverName   String
+  relationship    String
+  accessLevel     String   @default("read_only") // read_only, full, emergency_only
+  status          String   @default("invited") // invited, active, revoked, expired
+  caregiverUserId String?  // set when accepted
+  invitedAt       DateTime @default(now())
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  expiresAt       DateTime?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@index([caregiverEmail])
+}
+
+// --------------------------------------------------------------
+// Satisfaction Survey
+// --------------------------------------------------------------
+
+model SurveySubmission {
+  id          String   @id @default(cuid())
+  patientId   String
+  encounterId String?
+  surveyType  String   @default("post_visit")
+  responses   Json     // Array of { questionId, value }
+  npsScore    Int?
+  submittedAt DateTime @default(now())
+
+  patient   Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  encounter Encounter? @relation(fields: [encounterId], references: [id], onDelete: SetNull)
+
+  @@index([patientId, submittedAt])
+}
+
+// --------------------------------------------------------------
+// Custom Intake Templates
+// --------------------------------------------------------------
+
+model IntakeFormTemplate {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  sections       Json     // Array of { id, title, description }
+  fields         Json     // Array of IntakeField objects
+  version        Int      @default(1)
+  isDefault      Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, active])
+}
+
+// --------------------------------------------------------------
+// Communication Preferences
+// --------------------------------------------------------------
+
+model CommunicationPreference {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  smsOptIn        Boolean @default(false)
+  emailFrequency  String  @default("instant") // instant, daily, weekly, off
+  quietHoursStart String? // "22:00"
+  quietHoursEnd   String? // "07:00"
+  preferences     Json    @default("{}") // per-category: { appointments: { email: true, sms: false }, ... }
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
