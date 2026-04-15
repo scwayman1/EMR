@@ -48,6 +48,8 @@ model Organization {
   cannabisProducts CannabisProduct[]
   claims           Claim[]
   feeSchedule      FeeScheduleEntry[]
+  referrals        Referral[]
+  complianceForms  StateComplianceForm[]
   products         Product[]
   orders           Order[]
 }
@@ -68,6 +70,7 @@ model User {
   sentMessages    Message[]    @relation("MessageSender")
   auditLogs       AuditLog[]
   approvedJobs    AgentJob[]   @relation("JobApprovedBy")
+  notifications   Notification[]
 }
 
 model Membership {
@@ -158,6 +161,9 @@ model Patient {
   // Agentic memory harness
   memories             PatientMemory[]
   observations         ClinicalObservation[]
+  referrals            Referral[]
+  signedConsents       SignedConsent[]
+  complianceForms      StateComplianceForm[]
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
@@ -1729,4 +1735,111 @@ model OrderItem {
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@index([orderId])
+}
+
+// --------------------------------------------------------------
+// Notifications
+// --------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // appointment_reminder, message_received, lab_results, etc.
+  priority  String   @default("normal") // urgent, normal, low
+  title     String
+  body      String
+  href      String? // deep link to relevant page
+  read      Boolean  @default(false)
+  readAt    DateTime?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
+
+// --------------------------------------------------------------
+// Referrals
+// --------------------------------------------------------------
+
+model Referral {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  patientId              String
+  direction              String   // outbound | inbound
+  status                 String   @default("draft") // draft, sent, received, scheduled, completed, cancelled, declined
+  priority               String   @default("routine") // stat, urgent, routine
+  referringProviderName  String
+  referringPracticeName  String
+  referredToProviderName String
+  referredToSpecialty    String
+  referredToPracticeName String
+  referredToPhone        String?
+  referredToFax          String?
+  reason                 String
+  diagnosisCodes         Json     @default("[]")
+  clinicalNotes          String?
+  attachedDocumentIds    Json     @default("[]")
+  sentAt                 DateTime?
+  receivedAt             DateTime?
+  scheduledDate          DateTime?
+  completedAt            DateTime?
+  completionNotes        String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, status])
+  @@index([organizationId, status])
+}
+
+// --------------------------------------------------------------
+// Consent Forms
+// --------------------------------------------------------------
+
+model SignedConsent {
+  id            String   @id @default(cuid())
+  patientId     String
+  templateId    String
+  templateName  String
+  version       String
+  responses     Json
+  signatureData String?  @db.Text // base64 signature image
+  signedAt      DateTime @default(now())
+  ipAddress     String?
+  userAgent     String?
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, templateId])
+}
+
+// --------------------------------------------------------------
+// State Compliance Forms
+// --------------------------------------------------------------
+
+model StateComplianceForm {
+  id           String   @id @default(cuid())
+  organizationId String
+  patientId    String
+  encounterId  String?
+  stateCode    String
+  formTemplateId String
+  formName     String
+  fields       Json
+  status       String   @default("draft") // draft, complete, submitted
+  signedBy     String?
+  signedAt     DateTime?
+  submittedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, stateCode])
+  @@index([organizationId, status])
 }

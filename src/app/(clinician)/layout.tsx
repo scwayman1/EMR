@@ -57,6 +57,7 @@ export default async function ClinicianLayout({
     { label: "Providers", href: "/clinic/providers" },
     { label: "Research", href: "/clinic/research" },
     { label: "Library", href: "/clinic/library" },
+    { label: "Audit", href: "/clinic/audit-trail" },
   ];
 
   return (

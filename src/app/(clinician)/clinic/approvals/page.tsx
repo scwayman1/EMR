@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ApprovalsInboxList, type ApprovalItem } from "./approvals-list";
+import { NoraV3Threads } from "./nora-v3-threads";
 
 export const metadata = { title: "Approvals" };
 
@@ -100,6 +101,9 @@ export default async function ClinicApprovalsPage() {
               }.`
         }
       />
+
+      {/* ── Nora V3 Conversation Threads ──────────────────── */}
+      <NoraV3Threads />
 
       {items.length === 0 ? (
         <EmptyState
