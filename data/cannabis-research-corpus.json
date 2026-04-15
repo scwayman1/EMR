@@ -1,0 +1,346 @@
+{
+  "meta": {
+    "title": "PROs and Research Supporting Dose Recommendations for Symptoms",
+    "description": "Cannabinoid dose recommendations supported by clinical research and patient-reported outcomes (PROs)",
+    "source": "Justin Kander, Whole Health Oncology research compilation",
+    "generated": "2026-04-10",
+    "notes": "This corpus seeds the Research Agent and the Dosing Recommendation Engine. Studies are indexed by symptom category with structured dosing data (mg, frequency, duration, delivery method, cannabinoid ratios) and traceable citations (PMIDs)."
+  },
+  "symptom_categories": {
+    "anxiety_depression": {
+      "label": "Anxiety / Depression",
+      "research": [
+        {
+          "title": "Cannabidiol for Scan-Related Anxiety in Women With Advanced Breast Cancer",
+          "pmid": "39680411",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39680411",
+          "year": 2024,
+          "design": "Randomized Clinical Trial",
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg": 400, "thc_mg": null, "frequency": "single dose", "duration": null },
+          "delivery": "oil (isolated CBD)",
+          "outcome": "positive",
+          "summary": "A single 400mg dose of isolated CBD reduced anxiety before scans"
+        },
+        {
+          "title": "Phase IIb Randomized, Placebo-Controlled, Dose-Escalating, Double-Blind Study of Cannabidiol Oil (MedCan1-CBD)",
+          "pmid": "36409969",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/36409969",
+          "year": 2023,
+          "design": "Phase IIb RCT, dose-escalating, double-blind",
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg_range": [50, 600], "cbd_mg_median": 400, "thc_mg": null, "frequency": "1x-3x/day", "duration": "28 days" },
+          "delivery": "oil",
+          "outcome": "negative",
+          "summary": "Median 400mg/day CBD for 28 days was not effective for anxiety, depression, or quality of life"
+        },
+        {
+          "title": "Acute and Extended Anxiolytic Effects of Cannabidiol in Cannabis Flower",
+          "pmid": "38252547",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38252547",
+          "year": 2024,
+          "design": "Quasi-experimental ad libitum use study",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "flower_thc_pct": [24, 12], "flower_cbd_pct": [0, 12, 24], "frequency": "3-4x/week", "duration": "4 weeks" },
+          "delivery": "flower (inhaled)",
+          "outcome": "positive",
+          "summary": "All flower types reduced anxiety, but 24% CBD flower was most effective for lower anxiety and reduced tension"
+        },
+        {
+          "title": "Acute effects of cannabigerol on anxiety, stress, and mood",
+          "pmid": "39003387",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC11246434",
+          "year": 2024,
+          "design": "Double-blind, placebo-controlled, crossover field trial",
+          "cannabinoids": ["CBG", "CBGA", "beta-caryophyllene"],
+          "dose": { "cbg_mg": 20, "frequency": "single dose" },
+          "delivery": "oil (10mg/ml CBG, 0.89mg/ml CBGA, 0.35mg/ml beta-caryophyllene)",
+          "outcome": "positive",
+          "summary": "A single 20mg CBG dose reduced anxiety and stress within 20 minutes"
+        },
+        {
+          "title": "Medical Cannabis in Patients with Chronic Pain: Effect on Pain Relief, Pain Disability, and Psychological aspects",
+          "pmid": "29938740",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/29938740",
+          "year": 2018,
+          "design": "Prospective non-randomized single arm",
+          "cannabinoids": ["THC"],
+          "dose": { "thc_mg_avg": 10, "thc_mg_range": [5, 40], "frequency": "daily", "duration": "12 months" },
+          "delivery": "water/milk decoction",
+          "outcome": "positive",
+          "summary": "Average 10mg/day THC for 12 months substantially improved anxiety and depression"
+        },
+        {
+          "title": "The effects of cannabidiol on worry and anxiety among high trait worriers",
+          "pmid": "37552290",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37552290",
+          "year": 2023,
+          "design": "Double-blind, randomized, placebo-controlled trial",
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg_options": [50, 300], "frequency": "daily", "duration": "2 weeks" },
+          "delivery": "oral",
+          "outcome": "mixed",
+          "summary": "No acute effect at 300mg or 50mg CBD, but 300mg/day over 2 weeks did reduce anxiety symptoms"
+        },
+        {
+          "title": "Cannabidiol for Treatment-Resistant Anxiety Disorders in Young People",
+          "pmid": "35921510",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/35921510",
+          "year": 2022,
+          "design": "Open-label trial",
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg_max": 800, "frequency": "daily", "duration": "12 weeks" },
+          "delivery": "oral",
+          "outcome": "positive",
+          "summary": "Up to 800mg/day CBD for 12 weeks reduced anxiety by 42.6% and significantly reduced depression"
+        },
+        {
+          "title": "Cannabidiol as a personalized treatment for anxiety: clinical cases in Mexico",
+          "pmid": "36188636",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9491383",
+          "year": 2022,
+          "design": "Case series (4 patients)",
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg_range": [20, 80], "frequency": "2-3x/day" },
+          "delivery": "CBD isolate, oral",
+          "outcome": "positive",
+          "summary": "20-33.3mg/day CBD helped anxiety and sleep; one patient needed 80mg/day"
+        },
+        {
+          "title": "The Effectiveness and Adverse Events of CBD and THC in Treatment of Anxiety Disorders in a PTSD Subpopulation",
+          "pmid": "37529155",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37529155",
+          "year": 2023,
+          "design": "Observational study (3 years)",
+          "cannabinoids": ["CBD", "THC"],
+          "dose": { "cbd_mg_median": 50, "thc_mg_median": 4.4, "frequency": "daily" },
+          "delivery": "oral",
+          "outcome": "positive",
+          "summary": "Median 50mg/day CBD and 4.4mg/day THC improved anxiety, depression, fatigue, and social activities"
+        }
+      ]
+    },
+    "nausea_vomiting": {
+      "label": "Nausea / Vomiting",
+      "research": [
+        {
+          "title": "Oral Cannabis Extract for Secondary Prevention of Chemotherapy-Induced Nausea and Vomiting",
+          "pmid": "39151115",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/39151115",
+          "year": 2024,
+          "design": "Randomized, placebo-controlled, Phase II/III trial",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "thc_mg": 7.5, "cbd_mg": 7.5, "per_dose_thc_mg": 2.5, "per_dose_cbd_mg": 2.5, "frequency": "3x/day", "duration": "6 days" },
+          "delivery": "capsules",
+          "outcome": "positive",
+          "summary": "2.5mg THC + 2.5mg CBD 3x/day for 6 days significantly reduced CINV"
+        },
+        {
+          "title": "Oral THC:CBD cannabis extract for refractory chemotherapy-induced nausea and vomiting",
+          "pmid": "32801017",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/32801017",
+          "year": 2020,
+          "design": "Randomized, placebo-controlled, Phase II crossover",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "per_dose_thc_mg": 2.5, "per_dose_cbd_mg": 2.5, "capsules_per_dose_range": [1, 4], "frequency": "3x/day" },
+          "delivery": "capsules",
+          "outcome": "positive",
+          "summary": "1-4 capsules of 2.5mg THC + 2.5mg CBD 3x/day reduced nausea and vomiting"
+        }
+      ]
+    },
+    "pain": {
+      "label": "Pain",
+      "research": [
+        {
+          "title": "Oral cannabidiol for prevention of acute and transient chemotherapy-induced peripheral neuropathy",
+          "pmid": "35933415",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/35933415",
+          "year": 2022,
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg": 300, "frequency": "2x/day (150mg each)" },
+          "delivery": "oral CBD",
+          "outcome": "positive",
+          "summary": "150mg CBD 2x/day effective for lowering chemotherapy-induced peripheral neuropathy"
+        },
+        {
+          "title": "Multicenter study of THC:CBD extract and THC extract in intractable cancer-related pain",
+          "pmid": "19896326",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/19896326",
+          "year": 2010,
+          "design": "Multicenter, double-blind, RCT",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "per_spray_thc_mg": 2.7, "per_spray_cbd_mg": 2.5, "sprays_per_day": "8-12" },
+          "delivery": "Sativex (oromucosal spray)",
+          "outcome": "positive",
+          "summary": "THC:CBD effective for pain — 43% showed >30% pain reduction vs 21% placebo. THC alone showed nonsignificant change."
+        },
+        {
+          "title": "A randomized trial of medical cannabis in patients with stage IV cancers",
+          "pmid": "34085149",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/34085149",
+          "year": 2021,
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "thc_mg_avg": 34, "cbd_mg_avg": 17, "frequency": "daily" },
+          "delivery": "state medical cannabis products",
+          "outcome": "positive",
+          "summary": "Average 34mg/day THC and 17mg/day CBD improved pain control and reduced opioid use"
+        },
+        {
+          "title": "Smoked cannabis for chronic neuropathic pain",
+          "pmid": "20805210",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/20805210",
+          "year": 2010,
+          "design": "RCT",
+          "cannabinoids": ["THC"],
+          "dose": { "thc_mg_total": 7, "frequency": "3x/day (single inhalation each)", "duration": "5 days", "flower_thc_pct": 9.4 },
+          "delivery": "smoked cannabis",
+          "outcome": "positive",
+          "summary": "Single inhalation of 25mg of 9.4% THC cannabis 3x/day (7mg total) for 5 days reduced pain"
+        },
+        {
+          "title": "IPElife: Phase III trial of cannabis sativa extract in metastatic lung cancer",
+          "url": "https://ascopubs.org/doi/abs/10.1200/JCO.2025.43.16_suppl.12061",
+          "year": 2025,
+          "design": "Phase III, double-blind",
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg": 100, "frequency": "daily" },
+          "delivery": "cannabis sativa extract",
+          "outcome": "positive",
+          "summary": "100mg/day CBD reduced pain scores in metastatic lung cancer"
+        }
+      ]
+    },
+    "sleep": {
+      "label": "Sleep / Insomnia",
+      "research": [
+        {
+          "title": "Treating insomnia symptoms with medicinal cannabis: a randomized crossover trial (ZTL-101)",
+          "pmid": "34115851",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8598183",
+          "year": 2021,
+          "design": "Randomized crossover trial",
+          "cannabinoids": ["THC", "CBN", "CBD"],
+          "dose": {
+            "low_dose": { "thc_mg": 10, "cbn_mg": 1, "cbd_mg": 0.5 },
+            "high_dose": { "thc_mg": 20, "cbn_mg": 2, "cbd_mg": 1 },
+            "frequency": "nightly (1 hour before bed)",
+            "duration": "2 weeks"
+          },
+          "delivery": "sublingual whole-plant extract (20mg/mL THC, 2mg/mL CBN, 1mg/mL CBD)",
+          "outcome": "positive",
+          "summary": "Half benefited at low dose, half needed high dose. Faster sleep onset, longer sleep, improved quality."
+        },
+        {
+          "title": "Medicinal cannabis improves sleep in adults with insomnia",
+          "pmid": "36539991",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/36539991",
+          "year": 2023,
+          "design": "Randomized double-blind placebo-controlled crossover",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "concentration": "10mg/mL THC, 15mg/mL CBD", "thc_mg_range": [2, 15], "cbd_mg_range": [3, 22.5] },
+          "delivery": "infused oil",
+          "outcome": "positive",
+          "summary": "55% improved at max dose (15mg THC/22.5mg CBD), 20% at 4-6mg THC, 25% at 8-12mg THC"
+        },
+        {
+          "title": "Eight Weeks of Daily Cannabidiol Supplementation Improves Sleep Quality and Immune Cell Cytotoxicity",
+          "pmid": "37836465",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37836465",
+          "year": 2023,
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg": 50, "frequency": "daily", "duration": "8 weeks" },
+          "delivery": "oral CBD",
+          "outcome": "positive",
+          "summary": "50mg/day CBD over 8 weeks improved sleep quality and enhanced NK immune cell function"
+        }
+      ]
+    },
+    "appetite_anorexia_cachexia": {
+      "label": "Appetite / Anorexia / Cachexia",
+      "research": [
+        {
+          "title": "A phase II study of delta-9-THC for appetite stimulation in cancer-associated anorexia",
+          "pmid": "8035251",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/8035251",
+          "year": 1994,
+          "design": "Phase II",
+          "cannabinoids": ["THC"],
+          "dose": { "thc_mg": 7.5, "per_dose_thc_mg": 2.5, "frequency": "3x/day after meals", "duration": "4 weeks" },
+          "delivery": "oral",
+          "outcome": "positive",
+          "summary": "2.5mg THC 3x/day for 4 weeks effective for appetite stimulation"
+        },
+        {
+          "title": "Prevention of Taste Alterations in Patients with Cancer Receiving Chemotherapy",
+          "pmid": "37447339",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/37447339",
+          "year": 2023,
+          "cannabinoids": ["CBD"],
+          "dose": { "cbd_mg": 300, "frequency": "2x/day (150mg each)", "duration": "8 days" },
+          "delivery": "oral CBD",
+          "outcome": "positive",
+          "summary": "150mg CBD 2x/day may improve taste perception during chemotherapy"
+        }
+      ]
+    },
+    "fatigue": {
+      "label": "Fatigue",
+      "research": [
+        {
+          "title": "The Effects of Consuming Cannabis Flower for Treatment of Fatigue",
+          "pmid": "35702402",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/35702402",
+          "year": 2022,
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "flower_thc_pct_avg": 19, "flower_cbd_pct_avg": 6 },
+          "delivery": "flower",
+          "outcome": "positive",
+          "summary": "91.94% of people experienced decreased fatigue"
+        },
+        {
+          "title": "Ingestion of a THC-Rich Cannabis Oil in People with Fibromyalgia",
+          "pmid": "33118602",
+          "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7593796",
+          "year": 2020,
+          "design": "RCT, double-blind, placebo-controlled",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "thc_mg_avg": 4.4, "cbd_mg_avg": 0.08, "frequency": "daily, titrated", "duration": "8 weeks" },
+          "delivery": "THC olive oil",
+          "outcome": "positive",
+          "summary": "Average ~4.4mg/day THC reduced fatigue after 8 weeks"
+        }
+      ]
+    },
+    "headaches": {
+      "label": "Headaches / Migraines",
+      "research": [
+        {
+          "title": "Vaporized Cannabis versus Placebo for Acute Migraine",
+          "pmid": "38405890",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/38405890",
+          "year": 2024,
+          "design": "Randomized controlled trial",
+          "cannabinoids": ["THC", "CBD"],
+          "dose": { "flower_thc_pct": 6, "flower_cbd_pct": 11 },
+          "delivery": "vaporized cannabis",
+          "outcome": "positive",
+          "summary": "6% THC/11% CBD was most effective for migraine pain relief, freedom, and symptom freedom at 2 hours. THC/CBD combination outperformed THC-only and CBD-only."
+        }
+      ]
+    },
+    "constipation": {
+      "label": "Constipation",
+      "research": [
+        {
+          "title": "Relationship Between Recreational Marijuana Use and Bowel Function",
+          "pmid": "31764090",
+          "url": "https://pubmed.ncbi.nlm.nih.gov/31764090",
+          "year": 2019,
+          "outcome": "positive",
+          "summary": "Recent marijuana use associated with 30% decreased odds of constipation"
+        }
+      ]
+    }
+  }
+}

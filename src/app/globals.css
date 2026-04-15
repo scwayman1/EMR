@@ -2,27 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens — see DESIGN_SYSTEM.md for rationale. */
+/* ==========================================================================
+   Design tokens — "Verdant Apothecary"
+   Warm parchment base · deep forest accent · burnt amber highlight.
+   See DESIGN_SYSTEM.md for rationale.
+   ========================================================================== */
 :root {
-  --bg: #FAFAF9;
-  --surface: #FFFFFF;
-  --surface-muted: #F5F5F4;
-  --border: #E7E5E4;
-  --border-strong: #D6D3D1;
+  /* Surfaces */
+  --bg: #F8F4EB;
+  --bg-deep: #F2ECDC;
+  --surface: #FEFCF6;
+  --surface-raised: #FFFFFF;
+  --surface-muted: #EFE7D1;
 
-  --text: #0C0A09;
-  --text-muted: #57534E;
-  --text-subtle: #A8A29E;
+  --border: #E6D9BB;
+  --border-strong: #D4C28F;
 
-  --accent: #047857;
-  --accent-soft: #ECFDF5;
-  --success: #059669;
-  --warning: #B45309;
-  --danger: #B91C1C;
-  --info: #1D4ED8;
+  /* Text */
+  --text: #1C1A15;
+  --text-muted: #5B534A;
+  --text-subtle: #938975;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Accent — deep verdant forest */
+  --accent: #1F4D37;
+  --accent-hover: #163825;
+  --accent-strong: #0E3225;
+  --accent-soft: #E2ECE5;
+  --accent-ink: #FBFBF8;
+
+  /* Highlight — burnt amber */
+  --highlight: #B8782F;
+  --highlight-hover: #9A6220;
+  --highlight-soft: #F4E7CA;
+
+  /* Semantic */
+  --success: #3A8560;
+  --warning: #B4701E;
+  --danger: #B83B2E;
+  --info: #2E5B8C;
+
+  /* Typography stacks — all system/local to stay build-network-free.
+     `Inter` is picked up if the user has it installed; otherwise
+     modern OS stacks take over.                                           */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "Segoe UI", Roboto, ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+    Palatino, "Charter", Georgia, ui-serif, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
@@ -43,20 +69,123 @@
     border-radius: 4px;
   }
   ::selection {
-    background-color: var(--accent-soft);
-    color: var(--accent);
+    background-color: var(--highlight-soft);
+    color: var(--accent-strong);
   }
 }
 
 @layer components {
+  /* Editorial prose for chart summaries, care plans, research panels. */
   .prose-clinical {
     @apply text-text text-base leading-relaxed;
   }
   .prose-clinical h1, .prose-clinical h2, .prose-clinical h3 {
-    @apply font-semibold text-text;
+    font-family: var(--font-display);
+    @apply font-medium text-text tracking-tight;
   }
   .prose-clinical h2 { @apply text-xl mt-6 mb-2; }
   .prose-clinical h3 { @apply text-lg mt-4 mb-2; }
   .prose-clinical p { @apply mb-3 text-text-muted; }
   .prose-clinical strong { @apply text-text font-medium; }
+
+  /* Card that glows on hover — used sparingly on interactive tiles. */
+  .card-hover {
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1),
+                box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .card-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 30px -12px rgba(28, 26, 21, 0.15),
+                0 0 0 1px rgba(212, 194, 143, 0.5);
+  }
+
+  /* Subtle paper grain — applied as a pseudo-element on containers. */
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.11  0 0 0 0 0.10  0 0 0 0 0.08  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  }
+
+  /* Ambient gradient used on hero cards — slowly drifts. */
+  .ambient {
+    background-image:
+      radial-gradient(ellipse 60% 80% at 15% 20%, rgba(184, 120, 47, 0.15), transparent 60%),
+      radial-gradient(ellipse 70% 90% at 90% 80%, rgba(31, 77, 55, 0.18), transparent 65%),
+      radial-gradient(ellipse 50% 60% at 60% 40%, rgba(244, 231, 202, 0.6), transparent 70%),
+      linear-gradient(180deg, var(--surface-raised), var(--bg-deep));
+    background-size: 200% 200%;
+    animation: ambient-drift 18s ease-in-out infinite alternate;
+  }
+
+  @keyframes ambient-drift {
+    0%   { background-position: 0% 0%,   100% 100%, 50% 50%, 0% 0%; }
+    100% { background-position: 20% 15%, 80% 85%,   60% 40%, 0% 0%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ambient { animation: none; }
+  }
+
+  /* Small utility for the display serif face. */
+  .font-display {
+    font-family: var(--font-display);
+    font-feature-settings: "kern", "liga", "calt";
+    letter-spacing: -0.015em;
+  }
+
+  /* Screen-reader-only utility — visually hidden but announced. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+  .focus\:not-sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 0;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+/* ==========================================================================
+   ADA — High-contrast mode
+   ========================================================================== */
+@media (prefers-contrast: more) {
+  :root {
+    --border: #9E8C5F;
+    --border-strong: #6F5E2E;
+    --text-muted: #3A3530;
+    --text-subtle: #5B534A;
+  }
+  body {
+    font-weight: 500;
+  }
+  *:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* ==========================================================================
+   ADA — Reduced motion: disable ALL transitions and animations globally
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

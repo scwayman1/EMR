@@ -43,9 +43,6 @@ export function LoginForm() {
         <p className="text-sm text-danger -mt-2">{state.error}</p>
       )}
       <SubmitButton />
-      <p className="text-xs text-text-subtle text-center pt-2">
-        Demo credentials: <span className="font-mono">patient@demo.health</span> / <span className="font-mono">password123</span>
-      </p>
     </form>
   );
 }

@@ -7,8 +7,8 @@ export const metadata: Metadata = {
     template: "%s · Leafjourney",
   },
   description:
-    "A physician-curated wellness marketplace and AI-native care platform for modern cannabis medicine.",
-  robots: { index: false, follow: false },
+    "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",
+  robots: { index: false, follow: false }, // private by default in V1
 };
 
 export default function RootLayout({
@@ -18,7 +18,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-accent focus:text-accent-ink focus:text-sm focus:font-medium focus:shadow-lg"
+        >
+          Skip to content
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

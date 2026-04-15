@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
+import { EmptyIllustration } from "./ornament";
 
 export function EmptyState({
   icon,
@@ -17,16 +18,18 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center p-10 rounded-lg border border-dashed border-border bg-surface",
+        "flex flex-col items-center justify-center text-center p-12 rounded-xl border border-dashed border-border-strong/60 bg-surface/60",
         className
       )}
     >
-      {icon && <div className="text-text-subtle mb-3">{icon}</div>}
-      <h3 className="text-base font-medium text-text">{title}</h3>
+      <div className="mb-1">{icon ?? <EmptyIllustration size={96} />}</div>
+      <h3 className="font-display text-lg text-text">{title}</h3>
       {description && (
-        <p className="text-sm text-text-muted mt-1.5 max-w-sm">{description}</p>
+        <p className="text-sm text-text-muted mt-2 max-w-sm leading-relaxed">
+          {description}
+        </p>
       )}
-      {action && <div className="mt-5">{action}</div>}
+      {action && <div className="mt-6">{action}</div>}
     </div>
   );
 }

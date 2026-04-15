@@ -145,7 +145,8 @@ Adding an agent = new file + one line in the registry + a workflow definition in
 ## Model strategy
 
 The agent base class delegates model calls to a `ModelClient` interface. V1 ships with:
-- `StubModelClient` — deterministic templated responses for CI + tests
-- `ClaudeModelClient` — real calls to Claude (configured by env)
 
-Swapping models or providers never touches workflow logic.
+- `StubModelClient` — deterministic templated responses for CI + local dev. No network, no keys, always works.
+- `OpenRouterModelClient` — real calls via [OpenRouter](https://openrouter.ai), which exposes an OpenAI-compatible endpoint that can route to Claude, GPT, Llama, and dozens of other providers.
+
+Selection is env-driven (`AGENT_MODEL_CLIENT=openrouter`), so swapping providers — or swapping the underlying model (`OPENROUTER_MODEL=anthropic/claude-sonnet-4.5`, or any other slug) — never touches workflow code. A single `OPENROUTER_API_KEY` unlocks the whole fleet.

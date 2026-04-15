@@ -1,28 +1,87 @@
+import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
-import { formatDate } from "@/lib/utils/format";
+import type { DocumentKind } from "@prisma/client";
+import type { DocumentData } from "./document-card";
+import { RecordsShell } from "./records-shell";
+import Link from "next/link";
 
 export const metadata = { title: "Records" };
 
-export default async function RecordsPage() {
+const FILTER_TABS: { label: string; value: string }[] = [
+  { label: "All", value: "all" },
+  { label: "Notes", value: "note" },
+  { label: "Labs", value: "lab" },
+  { label: "Images", value: "image" },
+  { label: "Letters", value: "letter" },
+  { label: "Other", value: "other" },
+  { label: "Needs Review", value: "needs_review" },
+];
+
+export default async function RecordsPage({
+  searchParams,
+}: {
+  searchParams: { filter?: string; upload?: string };
+}) {
   const user = await requireRole("patient");
+
+  const activeFilter = searchParams.filter ?? "all";
+  const showUpload = searchParams.upload === "1";
 
   const patient = await prisma.patient.findUnique({
     where: { userId: user.id },
-    include: {
-      documents: {
-        where: { deletedAt: null },
-        orderBy: { createdAt: "desc" },
-      },
-    },
   });
 
-  const documents = patient?.documents ?? [];
+  if (!patient) {
+    return (
+      <PageShell maxWidth="max-w-[960px]">
+        <PageHeader eyebrow="Records" title="Your documents" />
+        <p className="text-sm text-text-muted">No patient profile found.</p>
+      <PatientSectionNav section="health" />
+      </PageShell>
+    );
+  }
+
+  // Build the Prisma where clause from the active filter
+  const kindFilter: DocumentKind | undefined =
+    activeFilter !== "all" && activeFilter !== "needs_review"
+      ? (activeFilter as DocumentKind)
+      : undefined;
+
+  // Fetch filtered documents and total count in parallel
+  const [filteredDocs, totalCount] = await Promise.all([
+    prisma.document.findMany({
+      where: {
+        patientId: patient.id,
+        deletedAt: null,
+        ...(kindFilter ? { kind: kindFilter } : {}),
+        ...(activeFilter === "needs_review" ? { needsReview: true } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.document.count({
+      where: {
+        patientId: patient.id,
+        deletedAt: null,
+      },
+    }),
+  ]);
+
+  const documents: DocumentData[] = filteredDocs.map((doc) => ({
+    id: doc.id,
+    originalName: doc.originalName,
+    kind: doc.kind,
+    mimeType: doc.mimeType,
+    sizeBytes: doc.sizeBytes,
+    tags: doc.tags,
+    aiClassified: doc.aiClassified,
+    aiTags: doc.aiTags,
+    aiConfidence: doc.aiConfidence,
+    needsReview: doc.needsReview,
+    createdAt: doc.createdAt.toISOString(),
+  }));
 
   return (
     <PageShell maxWidth="max-w-[960px]">
@@ -30,48 +89,47 @@ export default async function RecordsPage() {
         eyebrow="Records"
         title="Your documents"
         description="Upload notes, labs, and letters. We organize them so your care team is ready for your visit."
-        actions={<Button>Upload a file</Button>}
+        actions={
+          <Link href="/portal/records?upload=1">
+            <Button>Upload a file</Button>
+          </Link>
+        }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All documents</CardTitle>
-          <CardDescription>
-            {documents.length === 0
-              ? "You haven't uploaded anything yet."
-              : `${documents.length} document${documents.length === 1 ? "" : "s"} on file.`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {documents.length === 0 ? (
-            <EmptyState
-              title="No documents yet"
-              description="Drag a PDF or image here, or click upload. Everything is encrypted and only visible to your care team."
-              action={<Button>Upload a file</Button>}
-            />
-          ) : (
-            <ul className="divide-y divide-border -mx-6">
-              {documents.map((doc) => (
-                <li key={doc.id} className="px-6 py-4 flex items-center justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-text truncate">{doc.originalName}</p>
-                      <Badge tone="neutral">{doc.kind}</Badge>
-                      {doc.needsReview && <Badge tone="warning">Needs review</Badge>}
-                    </div>
-                    <p className="text-xs text-text-subtle mt-1">
-                      {formatDate(doc.createdAt)} · {(doc.sizeBytes / 1024).toFixed(0)} KB
-                    </p>
-                  </div>
-                  <Button size="sm" variant="ghost">
-                    View
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+      {/* Filter tabs */}
+      <div className="flex items-center gap-1.5 mb-6 overflow-x-auto pb-1 -mx-1 px-1">
+        {FILTER_TABS.map((tab) => {
+          const isActive = activeFilter === tab.value;
+          return (
+            <Link
+              key={tab.value}
+              href={
+                tab.value === "all"
+                  ? "/portal/records"
+                  : `/portal/records?filter=${tab.value}`
+              }
+              className={`
+                inline-flex items-center px-3.5 py-1.5 rounded-full text-sm font-medium
+                transition-colors duration-200 whitespace-nowrap
+                ${
+                  isActive
+                    ? "bg-accent text-accent-ink shadow-sm"
+                    : "bg-surface-muted/70 text-text-muted hover:bg-surface-muted hover:text-text"
+                }
+              `}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      {/* Upload form + document list */}
+      <RecordsShell
+        documents={documents}
+        showUpload={showUpload}
+        isEmpty={totalCount === 0}
+      />
     </PageShell>
   );
 }

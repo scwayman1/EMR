@@ -1,11 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { getSession } from "./session";
 import { hashPassword, verifyPassword } from "./password";
 import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
+import { loginLimiter, signupLimiter } from "./rate-limit";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -22,6 +24,15 @@ const signupSchema = z.object({
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 export async function loginAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  // Rate limit by IP + email to prevent brute force
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const emailRaw = (formData.get("email") as string)?.toLowerCase() ?? "";
+  const rl = loginLimiter.check(`${ip}:${emailRaw}`);
+  if (!rl.allowed) {
+    const waitMin = Math.ceil((rl.resetAt - Date.now()) / 60000);
+    return { ok: false, error: `Too many login attempts. Please try again in ${waitMin} minute${waitMin === 1 ? "" : "s"}.` };
+  }
+
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -53,6 +64,14 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
 }
 
 export async function signupAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  // Rate limit by IP to prevent account spam
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = signupLimiter.check(ip);
+  if (!rl.allowed) {
+    const waitMin = Math.ceil((rl.resetAt - Date.now()) / 60000);
+    return { ok: false, error: `Too many signup attempts. Please try again in ${waitMin} minute${waitMin === 1 ? "" : "s"}.` };
+  }
+
   const parsed = signupSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
@@ -68,9 +87,13 @@ export async function signupAction(_prev: ActionResult | null, formData: FormDat
 
   const passwordHash = await hashPassword(parsed.data.password);
 
-  // V1: new self-signups default to a patient membership in the demo org.
-  // Practice owners and clinicians are invited through the practice launch flow.
-  const org = await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
+  // Self-signups go to the default org. In multi-tenant production, this should
+  // be determined by the signup URL (e.g. signup?org=slug) or invitation link.
+  // For now, use SIGNUP_DEFAULT_ORG_SLUG env var, falling back to first org.
+  const orgSlug = process.env.SIGNUP_DEFAULT_ORG_SLUG;
+  const org = orgSlug
+    ? await prisma.organization.findUnique({ where: { slug: orgSlug } })
+    : await prisma.organization.findFirst({ orderBy: { createdAt: "asc" } });
   if (!org) {
     return { ok: false, error: "No organization available for signup. Please contact support." };
   }

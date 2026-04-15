@@ -2,16 +2,123 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
-import { PageHeader, PageShell } from "@/components/shell/PageHeader";
+import { PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
+import { AmbientOrb } from "@/components/ui/hero-art";
+import { HealthPlant } from "@/components/ui/health-plant";
+import { computePlantHealth, STAGE_LABELS } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 
 export const metadata = { title: "Home" };
+
+// ---------------------------------------------------------------------------
+// EMR-13 / EMR-186: Patient Modular Dashboard
+// ---------------------------------------------------------------------------
+// Modular dashboard with: health grade, lifestyle bars, lab snapshots,
+// AI tips, mood, cannabis module, appointments, tasks, messages.
+// ---------------------------------------------------------------------------
+
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Still up";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Hello";
+}
+
+// Health grade algorithm: A-F based on outcomes, intake, visits, adherence
+function computeHealthGrade(data: {
+  outcomeAvg: number | null;
+  intakeComplete: number;
+  hasRecentVisit: boolean;
+  adherenceScore: number | null;
+}): { grade: string; color: string; message: string } {
+  let score = 50; // baseline
+
+  // Outcome average (0-10 where context matters)
+  if (data.outcomeAvg !== null) {
+    score += Math.round((10 - data.outcomeAvg) * 2); // lower pain/anxiety = higher score
+  }
+
+  // Intake completeness
+  score += Math.round(data.intakeComplete * 0.15);
+
+  // Recent visit
+  if (data.hasRecentVisit) score += 10;
+
+  // Adherence
+  if (data.adherenceScore !== null) {
+    score += Math.round(data.adherenceScore * 1.5);
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  if (score >= 90) return { grade: "A", color: "text-green-600 bg-green-50 border-green-200", message: "Excellent — you are on track." };
+  if (score >= 80) return { grade: "B", color: "text-emerald-600 bg-emerald-50 border-emerald-200", message: "Good — keep up the momentum." };
+  if (score >= 65) return { grade: "C", color: "text-amber-600 bg-amber-50 border-amber-200", message: "Fair — small changes can make a big difference." };
+  if (score >= 50) return { grade: "D", color: "text-orange-600 bg-orange-50 border-orange-200", message: "Room to grow — your care team is here to help." };
+  return { grade: "F", color: "text-red-600 bg-red-50 border-red-200", message: "Let's work on this together." };
+}
+
+// Lifestyle bar component
+function LifestyleBar({ label, value, emoji }: { label: string; value: number | null; emoji: string }) {
+  const pct = value !== null ? Math.round(value * 10) : 0;
+  const height = value !== null ? `${pct}%` : "0%";
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative w-8 h-24 bg-surface-muted rounded-full overflow-hidden border border-border/50">
+        <div
+          className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-accent to-accent/60 rounded-full transition-all duration-700 ease-smooth"
+          style={{ height }}
+        />
+      </div>
+      <span className="text-base">{emoji}</span>
+      <span className="text-[10px] text-text-subtle font-medium text-center leading-tight w-14">
+        {label}
+      </span>
+      <span className="text-xs font-display text-text tabular-nums">
+        {value !== null ? value.toFixed(1) : "—"}
+      </span>
+    </div>
+  );
+}
+
+// AI health tip generator (deterministic)
+function generateHealthTips(data: {
+  latestPain: number | undefined;
+  latestSleep: number | undefined;
+  latestAnxiety: number | undefined;
+  latestMood: number | undefined;
+  hasRegimen: boolean;
+}): string[] {
+  const tips: string[] = [];
+  if (data.latestPain !== undefined && data.latestPain > 5) {
+    tips.push("Your pain has been elevated. Consider logging when it spikes so we can spot patterns together.");
+  }
+  if (data.latestSleep !== undefined && data.latestSleep < 5) {
+    tips.push("Sleep quality is low. A consistent bedtime routine and avoiding screens before bed can help.");
+  }
+  if (data.latestAnxiety !== undefined && data.latestAnxiety > 6) {
+    tips.push("Anxiety is running high. Even 5 minutes of deep breathing can bring it down a notch.");
+  }
+  if (data.latestMood !== undefined && data.latestMood < 4) {
+    tips.push("Your mood has been low. Gentle movement and sunlight are two of the fastest mood lifters.");
+  }
+  if (!data.hasRegimen) {
+    tips.push("You don't have an active care plan yet. Your next visit is a great time to build one together.");
+  }
+  if (tips.length === 0) {
+    tips.push("You are doing well. Keep logging your outcomes — it helps your care team see the full picture.");
+  }
+  return tips.slice(0, 2);
+}
 
 export default async function PatientHome() {
   const user = await requireRole("patient");
@@ -20,11 +127,10 @@ export default async function PatientHome() {
     where: { userId: user.id },
     include: {
       chartSummary: true,
-      outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 30 },
+      outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 100 },
       encounters: {
-        where: { status: "scheduled" },
-        orderBy: { scheduledFor: "asc" },
-        take: 1,
+        orderBy: { scheduledFor: "desc" },
+        take: 3,
       },
       tasks: {
         where: { status: "open" },
@@ -36,42 +142,214 @@ export default async function PatientHome() {
         take: 1,
         include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
       },
+      dosingRegimens: {
+        where: { active: true },
+        include: { product: true },
+      },
     },
   });
 
-  if (!patient) {
-    redirect("/portal/intake");
+  if (!patient) redirect("/portal/intake");
+
+  const plantHealth = await computePlantHealth(patient.id);
+
+  // Build metric series
+  const metricSeries: Record<string, number[]> = {};
+  const latestMetric: Record<string, number> = {};
+  for (const log of patient.outcomeLogs) {
+    if (!metricSeries[log.metric]) metricSeries[log.metric] = [];
+    metricSeries[log.metric].push(log.value);
+    latestMetric[log.metric] = log.value;
   }
 
-  const painSeries = patient.outcomeLogs
-    .filter((l) => l.metric === "pain")
-    .map((l) => l.value);
-  const sleepSeries = patient.outcomeLogs
-    .filter((l) => l.metric === "sleep")
-    .map((l) => l.value);
+  const painSeries = metricSeries.pain ?? [];
+  const sleepSeries = metricSeries.sleep ?? [];
+  const latestPain = latestMetric.pain;
+  const latestSleep = latestMetric.sleep;
+  const latestAnxiety = latestMetric.anxiety;
+  const latestMood = latestMetric.mood;
+  const latestEnergy = latestMetric.energy;
+  const latestAdherence = latestMetric.adherence;
 
-  const nextVisit = patient.encounters[0];
+  const nextVisit = patient.encounters.find((e) => e.status === "scheduled");
+  const recentVisit = patient.encounters.find((e) => e.status === "complete");
   const intakeComplete = patient.chartSummary?.completenessScore ?? 0;
 
-  return (
-    <PageShell maxWidth="max-w-[960px]">
-      <PageHeader
-        eyebrow={`Welcome back, ${patient.firstName}`}
-        title="How are you feeling today?"
-        description="A quick check-in helps your care team see how things are trending between visits."
-        actions={
-          <Link href="/portal/outcomes/new">
-            <Button size="md">Log a check-in</Button>
-          </Link>
-        }
-      />
+  // Compute overall outcome average (for pain, anxiety — lower is better)
+  const negMetrics = [latestPain, latestAnxiety].filter((v): v is number => v !== undefined);
+  const outcomeAvg = negMetrics.length > 0
+    ? negMetrics.reduce((a, b) => a + b, 0) / negMetrics.length
+    : null;
 
-      {/* Top row: next action cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <Card>
-          <CardHeader>
+  const healthGrade = computeHealthGrade({
+    outcomeAvg,
+    intakeComplete,
+    hasRecentVisit: !!recentVisit,
+    adherenceScore: latestAdherence ?? null,
+  });
+
+  // Cannabis daily totals
+  const totalThcPerDay = patient.dosingRegimens.reduce(
+    (sum: number, r: any) => sum + (r.calculatedThcMgPerDay ?? (r.calculatedThcMgPerDose ?? 0) * r.frequencyPerDay),
+    0
+  );
+  const totalCbdPerDay = patient.dosingRegimens.reduce(
+    (sum: number, r: any) => sum + (r.calculatedCbdMgPerDay ?? (r.calculatedCbdMgPerDose ?? 0) * r.frequencyPerDay),
+    0
+  );
+
+  const healthTips = generateHealthTips({
+    latestPain,
+    latestSleep,
+    latestAnxiety,
+    latestMood,
+    hasRegimen: patient.dosingRegimens.length > 0,
+  });
+
+  return (
+    <PageShell maxWidth="max-w-[1040px]">
+      {/* ── Hero greeting ────────────────────────────── */}
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised ambient mb-8">
+        <AmbientOrb className="absolute -right-10 top-0 h-[260px] w-[480px] opacity-90" />
+        <div className="relative px-8 md:px-12 py-10 md:py-12 max-w-2xl">
+          <Eyebrow className="mb-3">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </Eyebrow>
+          <h1 className="font-display text-3xl md:text-4xl leading-[1.05] tracking-tight text-text">
+            {greeting()},{" "}
+            <span className="italic text-accent">{patient.firstName}</span>.
+          </h1>
+          <p className="text-sm text-text-muted mt-3 leading-relaxed max-w-lg">
+            Here is your health dashboard. A quick check-in helps your care team
+            see how things are trending between visits.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Link href="/portal/outcomes">
+              <Button size="md">Log today&apos;s check-in</Button>
+            </Link>
+            <Link href="/portal/messages">
+              <Button size="md" variant="secondary">Message your team</Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Top row: Health grade + Lifestyle bars + AI tips ── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-8">
+        {/* Health Grade */}
+        <Card tone="raised" className="md:col-span-3 text-center">
+          <CardContent className="py-8">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-3">
+              Health grade
+            </p>
+            <div className={`inline-flex h-20 w-20 items-center justify-center rounded-2xl border-2 ${healthGrade.color}`}>
+              <span className="font-display text-5xl font-bold">{healthGrade.grade}</span>
+            </div>
+            <p className="text-sm text-text-muted mt-4 leading-relaxed px-2">
+              {healthGrade.message}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Lifestyle Bars */}
+        <Card tone="raised" className="md:col-span-5">
+          <CardContent className="py-6">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-5">
+              Lifestyle measures
+            </p>
+            <div className="flex items-end justify-around">
+              <LifestyleBar label="Sleep" value={latestSleep ?? null} emoji={"\uD83D\uDE34"} />
+              <LifestyleBar label="Mood" value={latestMood ?? null} emoji={"\uD83D\uDE0A"} />
+              <LifestyleBar label="Energy" value={latestEnergy ?? null} emoji={"\u26A1"} />
+              <LifestyleBar label="Anxiety" value={latestAnxiety !== undefined ? 10 - latestAnxiety : null} emoji={"\uD83E\uDDD8"} />
+              <LifestyleBar label="Pain" value={latestPain !== undefined ? 10 - latestPain : null} emoji={"\uD83D\uDCAA"} />
+            </div>
+            <p className="text-[10px] text-text-subtle text-center mt-4">
+              Higher bars = better. Based on your latest check-in.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* AI Tips */}
+        <Card tone="raised" className="md:col-span-4">
+          <CardContent className="py-6">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent mb-4 flex items-center gap-1.5">
+              <LeafSprig size={12} className="text-accent/70" />
+              Ways to improve
+            </p>
+            <div className="space-y-3">
+              {healthTips.map((tip, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent text-[10px] font-medium mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-text-muted leading-relaxed">{tip}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Second row: Cannabis module + Next visit + Mood ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        {/* Cannabis Module */}
+        <Card tone="raised">
+          <CardContent className="py-6">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-4 flex items-center gap-1.5">
+              <span className="text-sm">{"\uD83C\uDF3F"}</span>
+              Cannabis intake
+            </p>
+            {patient.dosingRegimens.length > 0 ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <span className="font-display text-3xl text-accent tabular-nums font-medium">
+                      {totalThcPerDay.toFixed(1)}
+                    </span>
+                    <p className="text-xs text-text-muted mt-0.5">mg THC/day</p>
+                  </div>
+                  <div className="text-center">
+                    <span className="font-display text-3xl text-[color:var(--highlight)] tabular-nums font-medium">
+                      {totalCbdPerDay.toFixed(1)}
+                    </span>
+                    <p className="text-xs text-text-muted mt-0.5">mg CBD/day</p>
+                  </div>
+                </div>
+                <p className="text-xs text-text-subtle">
+                  {patient.dosingRegimens.length} active regimen{patient.dosingRegimens.length > 1 ? "s" : ""}
+                </p>
+                <Link href="/portal/medications">
+                  <Button size="sm" variant="secondary" className="w-full">
+                    View medications
+                  </Button>
+                </Link>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm text-text-muted">No active cannabis regimen yet.</p>
+                <Link href="/portal/dosing" className="mt-3 block">
+                  <Button size="sm" variant="secondary" className="w-full">
+                    View dosing plan
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Next Visit */}
+        <Card tone="raised">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle>Next visit</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2">
+                <LeafSprig size={14} className="text-accent/80" />
+                Next visit
+              </CardTitle>
               {nextVisit ? (
                 <Badge tone="accent">Confirmed</Badge>
               ) : (
@@ -82,158 +360,189 @@ export default async function PatientHome() {
           <CardContent>
             {nextVisit ? (
               <>
-                <p className="text-base font-medium text-text">
+                <p className="font-display text-xl text-text tracking-tight">
                   {formatDate(nextVisit.scheduledFor)}
                 </p>
-                <p className="text-sm text-text-muted mt-1">
-                  {nextVisit.modality === "video" ? "Video visit" : "In-person visit"}
-                  {nextVisit.reason ? ` · ${nextVisit.reason}` : ""}
-                </p>
-                <div className="mt-4 flex items-center gap-2">
-                  <Button size="sm" variant="secondary">
-                    View details
-                  </Button>
-                  <Button size="sm" variant="ghost">
-                    Reschedule
-                  </Button>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <Badge tone={nextVisit.modality === "video" ? "info" : "accent"}>
+                    {nextVisit.modality === "video" ? "Video" : nextVisit.modality === "phone" ? "Phone" : "In-person"}
+                  </Badge>
+                </div>
+                {nextVisit.scheduledFor && (
+                  <p className="text-sm text-text-muted mt-2">
+                    {new Date(nextVisit.scheduledFor).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    {" · "}{formatRelative(nextVisit.scheduledFor)}
+                  </p>
+                )}
+                <div className="mt-4 flex gap-2">
+                  <Button size="sm">Confirm</Button>
+                  <Button size="sm" variant="ghost">Change</Button>
                 </div>
               </>
             ) : (
               <p className="text-sm text-text-muted">
-                Once your intake is complete, your care team will help you find a time.
+                Once intake is complete, we will help you schedule.
               </p>
             )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Chart readiness</CardTitle>
-              <Badge tone={intakeComplete >= 80 ? "success" : "warning"}>
-                {intakeComplete}%
-              </Badge>
-            </div>
-            <CardDescription>
-              Finishing your intake helps your care team prepare.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-2 bg-surface-muted rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all"
-                style={{ width: `${intakeComplete}%` }}
-              />
-            </div>
-            <div className="mt-4">
-              <Link href="/portal/intake">
-                <Button size="sm" variant="secondary">
+        {/* Chart readiness + Mood */}
+        <Card tone="raised">
+          <CardContent className="py-6 space-y-5">
+            {/* Chart readiness */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                  Chart readiness
+                </p>
+                <Badge tone={intakeComplete >= 80 ? "success" : "warning"}>
+                  {intakeComplete}%
+                </Badge>
+              </div>
+              <div className="relative h-2 bg-surface-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-accent to-[#3A8560] rounded-full transition-all duration-700 ease-smooth"
+                  style={{ width: `${intakeComplete}%` }}
+                />
+              </div>
+              <Link href="/portal/intake" className="block mt-2">
+                <Button size="sm" variant="ghost" className="w-full text-xs">
                   {intakeComplete >= 100 ? "Review intake" : "Continue intake"}
                 </Button>
               </Link>
+            </div>
+
+            {/* Mood emoji */}
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">
+                Current mood
+              </p>
+              <div className="flex items-center gap-2">
+                {latestMood !== undefined ? (
+                  <>
+                    <span className="text-3xl">
+                      {latestMood >= 7 ? "\uD83D\uDE0A" : latestMood >= 4 ? "\uD83D\uDE10" : "\uD83D\uDE1E"}
+                    </span>
+                    <span className="text-sm text-text-muted">
+                      {latestMood >= 7 ? "Feeling good" : latestMood >= 4 ? "Hanging in there" : "Tough day"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-sm text-text-muted">Log a check-in to see your mood here</span>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <MetricTile
-          label="Pain"
-          value={
-            painSeries.length > 0
-              ? (painSeries[painSeries.length - 1]).toFixed(1)
-              : "—"
-          }
-          hint="Last 30 days"
-        />
-        <MetricTile
-          label="Sleep"
-          value={
-            sleepSeries.length > 0
-              ? (sleepSeries[sleepSeries.length - 1]).toFixed(1)
-              : "—"
-          }
-          hint="Last 30 days"
-        />
-        <div className="bg-surface border border-border rounded-lg p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-text-subtle">
-            Trend
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <Sparkline data={painSeries.length > 1 ? painSeries : [3, 4, 4, 3, 3, 2]} />
-          </div>
-          <p className="text-xs text-text-subtle mt-2">Pain score trend</p>
+      {/* ── Third row: Metrics sparklines ─────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <MetricTile label="Pain" accent="forest" value={latestPain !== undefined ? latestPain.toFixed(1) : "\u2014"} hint="0-10 scale" />
+        <MetricTile label="Sleep" accent="amber" value={latestSleep !== undefined ? latestSleep.toFixed(1) : "\u2014"} hint="0-10 scale" />
+        <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Pain trend</p>
+          <Sparkline data={painSeries.length > 1 ? painSeries : [3, 4, 4, 3, 3, 2]} width={180} height={44} />
+        </div>
+        <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Sleep trend</p>
+          <Sparkline data={sleepSeries.length > 1 ? sleepSeries : [5, 5, 6, 6, 7, 7]} width={180} height={44} />
         </div>
       </div>
 
-      {/* Tasks + last message */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ── Fourth row: Plant + Tasks + Message ────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+        {/* Plant companion */}
+        <Link href="/portal/garden" className="block">
+          <Card tone="raised" className="card-hover h-full">
+            <CardContent className="flex items-center gap-5 py-5">
+              <div className="shrink-0">
+                <HealthPlant health={plantHealth} size="sm" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+                  Your plant
+                </p>
+                <p className="font-display text-base text-text tracking-tight">
+                  {STAGE_LABELS[plantHealth.stage]}
+                </p>
+                <p className="text-xs text-text-muted mt-1 leading-relaxed line-clamp-2">
+                  {plantHealth.score >= 71
+                    ? "Thriving — you\u2019ve been consistent."
+                    : plantHealth.score >= 40
+                      ? "Growing nicely. A few more check-ins would help."
+                      : "Needs love. Try logging today."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* Tasks */}
         <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Your next steps</CardTitle>
-            <CardDescription>Short, focused actions from your care team.</CardDescription>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Your next steps</CardTitle>
           </CardHeader>
           <CardContent>
             {patient.tasks.length === 0 ? (
-              <EmptyState
-                title="You're all caught up."
-                description="We'll let you know when there's something new."
-              />
+              <p className="text-sm text-text-muted py-2">You&apos;re all caught up.</p>
             ) : (
-              <ul className="divide-y divide-border -mx-6">
-                {patient.tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    className="px-6 py-4 flex items-start justify-between gap-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-text">{task.title}</p>
-                      {task.dueAt && (
-                        <p className="text-xs text-text-subtle mt-1">
-                          Due {formatDate(task.dueAt)}
-                        </p>
-                      )}
+              <ul className="divide-y divide-border/70 -mx-4">
+                {patient.tasks.slice(0, 3).map((task) => (
+                  <li key={task.id} className="px-4 py-3 flex items-start justify-between gap-3">
+                    <div className="flex gap-2 min-w-0">
+                      <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text">{task.title}</p>
+                        {task.dueAt && (
+                          <p className="text-xs text-text-subtle mt-0.5">Due {formatDate(task.dueAt)}</p>
+                        )}
+                      </div>
                     </div>
-                    <Button size="sm" variant="secondary">
-                      Open
-                    </Button>
+                    <Button size="sm" variant="secondary">Open</Button>
                   </li>
                 ))}
               </ul>
             )}
           </CardContent>
         </Card>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Latest message</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {patient.messageThreads[0] ? (
-              <>
-                <p className="text-sm font-medium text-text">
-                  {patient.messageThreads[0].subject}
-                </p>
-                <p className="text-sm text-text-muted mt-2 line-clamp-3">
-                  {patient.messageThreads[0].messages[0]?.body ?? "No messages yet."}
-                </p>
-                <p className="text-xs text-text-subtle mt-3">
-                  {formatRelative(patient.messageThreads[0].lastMessageAt)}
-                </p>
-                <div className="mt-4">
-                  <Link href="/portal/messages">
-                    <Button size="sm" variant="secondary">Open thread</Button>
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-text-muted">
-                No messages yet. Your care team will reach out after your first visit.
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      {/* ── Quick links ──────────────────────────────── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link href="/portal/storybook">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">{"\uD83D\uDCD6"}</span>
+              <p className="text-sm font-medium text-text">My Storybook</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/education">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">{"\uD83D\uDCDA"}</span>
+              <p className="text-sm font-medium text-text">Care Guide</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/roadmap">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">{"\uD83D\uDDFA\uFE0F"}</span>
+              <p className="text-sm font-medium text-text">Roadmap</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/medications/explainer">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">{"\uD83D\uDC8A"}</span>
+              <p className="text-sm font-medium text-text">Med Explainer</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </PageShell>
   );

@@ -9,12 +9,43 @@ import { codingReadinessAgent } from "./coding-readiness-agent";
 import { practiceLaunchAgent } from "./practice-launch-agent";
 import { registryAgent } from "./registry-agent";
 import { schedulingAgent } from "./scheduling-agent";
+import { physicianNudgeAgent } from "./physician-nudge-agent";
+import { patientOutreachAgent } from "./patient-outreach-agent";
+import { preVisitIntelligenceAgent } from "./pre-visit-intelligence-agent";
+import { fairytaleSummaryAgent } from "./fairytale-summary-agent";
+import { correspondenceNurseAgent } from "./correspondence-nurse-agent";
+import { patientSimplifierAgent, patientEducationAgent } from "./patient-education-agent";
+import { dosingRecommendationAgent } from "./dosing-recommendation-agent";
+// Billing agents — Phase 3 of the Revenue Cycle PRD
+import { chargeIntegrityAgent } from "./billing/charge-integrity-agent";
+import { denialTriageAgent } from "./billing/denial-triage-agent";
+import { patientExplanationAgent } from "./billing/patient-explanation-agent";
+import { patientCollectionsAgent } from "./billing/patient-collections-agent";
+import { reconciliationAgent } from "./billing/reconciliation-agent";
+import { agingAgent } from "./billing/aging-agent";
+import { underpaymentDetectionAgent } from "./billing/underpayment-detection-agent";
+// Phase 4
+import { refundCreditAgent } from "./billing/refund-credit-agent";
+import { revenueCommandAgent } from "./billing/revenue-command-agent";
+// RCM Fleet — Phase 5 (pre-submission pipeline)
+import { encounterIntelligenceAgent } from "./billing/encounter-intelligence-agent";
+import { codingOptimizationAgent } from "./billing/coding-optimization-agent";
+import { claimConstructionAgent } from "./billing/claim-construction-agent";
+// RCM Fleet — Phase 7 (post-adjudication loop)
+import { adjudicationInterpretationAgent } from "./billing/adjudication-interpretation-agent";
+import { appealsGenerationAgent } from "./billing/appeals-generation-agent";
+import { denialResolutionAgent } from "./billing/denial-resolution-agent";
+import { eligibilityBenefitsAgent } from "./billing/eligibility-benefits-agent";
+import { complianceAuditAgent } from "./billing/compliance-audit-agent";
+import { priorAuthAgent } from "./billing/prior-auth-agent";
+import { clearinghouseSubmissionAgent } from "./billing/clearinghouse-submission-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
  * a workflow definition in src/lib/orchestration/workflows.ts.
  */
 export const agentRegistry = {
+  // Clinical agents
   intake: intakeAgent,
   documentOrganizer: documentOrganizerAgent,
   outcomeTracker: outcomeTrackerAgent,
@@ -25,8 +56,62 @@ export const agentRegistry = {
   practiceLaunch: practiceLaunchAgent,
   registry: registryAgent,
   scheduling: schedulingAgent,
+  physicianNudge: physicianNudgeAgent,
+  patientOutreach: patientOutreachAgent,
+  preVisitIntelligence: preVisitIntelligenceAgent,
+  fairytaleSummary: fairytaleSummaryAgent,
+  correspondenceNurse: correspondenceNurseAgent,
+  patientSimplifier: patientSimplifierAgent,
+  patientEducation: patientEducationAgent,
+  dosingRecommendation: dosingRecommendationAgent,
+  // Billing agents (Phase 3)
+  chargeIntegrity: chargeIntegrityAgent,
+  denialTriage: denialTriageAgent,
+  patientExplanation: patientExplanationAgent,
+  patientCollections: patientCollectionsAgent,
+  reconciliation: reconciliationAgent,
+  aging: agingAgent,
+  underpaymentDetection: underpaymentDetectionAgent,
+  // Billing agents (Phase 4)
+  refundCredit: refundCreditAgent,
+  revenueCommand: revenueCommandAgent,
+  // RCM Fleet — Phase 5 (pre-submission pipeline)
+  encounterIntelligence: encounterIntelligenceAgent,
+  codingOptimization: codingOptimizationAgent,
+  claimConstruction: claimConstructionAgent,
+  // RCM Fleet — Phase 7 (post-adjudication loop)
+  adjudicationInterpretation: adjudicationInterpretationAgent,
+  appealsGeneration: appealsGenerationAgent,
+  denialResolution: denialResolutionAgent,
+  eligibilityBenefits: eligibilityBenefitsAgent,
+  complianceAudit: complianceAuditAgent,
+  priorAuthVerification: priorAuthAgent,
+  clearinghouseSubmission: clearinghouseSubmissionAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
 
 export const agentList = Object.values(agentRegistry);
+
+/** Agents tagged as "billing" — used by the billing oversight console. */
+export const BILLING_AGENT_NAMES: AgentName[] = [
+  "encounterIntelligence",
+  "codingOptimization",
+  "claimConstruction",
+  "adjudicationInterpretation",
+  "appealsGeneration",
+  "denialResolution",
+  "eligibilityBenefits",
+  "complianceAudit",
+  "priorAuthVerification",
+  "clearinghouseSubmission",
+  "chargeIntegrity",
+  "denialTriage",
+  "patientExplanation",
+  "patientCollections",
+  "reconciliation",
+  "aging",
+  "underpaymentDetection",
+  "refundCredit",
+  "revenueCommand",
+];

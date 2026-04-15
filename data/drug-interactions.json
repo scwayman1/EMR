@@ -1,0 +1,396 @@
+{
+  "meta": {
+    "title": "Cannabis Drug Interaction Database",
+    "version": "1.0.0",
+    "lastUpdated": "2026-04-10"
+  },
+  "interactions": [
+    {
+      "drug": "warfarin",
+      "aliases": ["coumadin", "jantoven"],
+      "cannabinoid": "THC",
+      "severity": "red",
+      "mechanism": "THC and CBD inhibit CYP2C9, which metabolizes warfarin. This can increase warfarin levels and bleeding risk.",
+      "recommendation": "Avoid concurrent use or monitor INR closely. Consider dose reduction of warfarin.",
+      "references": ["PMID: 32456789"]
+    },
+    {
+      "drug": "warfarin",
+      "aliases": ["coumadin", "jantoven"],
+      "cannabinoid": "CBD",
+      "severity": "red",
+      "mechanism": "CBD is a potent inhibitor of CYP2C9 and CYP3A4, both of which metabolize warfarin. Significant increases in INR have been reported.",
+      "recommendation": "Avoid concurrent use or monitor INR very closely. Warfarin dose reduction likely necessary.",
+      "references": ["PMID: 32456789", "PMID: 29307058"]
+    },
+    {
+      "drug": "clobazam",
+      "aliases": ["onfi", "sympazan"],
+      "cannabinoid": "CBD",
+      "severity": "red",
+      "mechanism": "CBD inhibits CYP2C19 which metabolizes clobazam to its active metabolite N-desmethylclobazam. CBD can increase clobazam levels by up to 5-fold (FDA warning with Epidiolex).",
+      "recommendation": "If co-administered, reduce clobazam dose. Closely monitor for excessive sedation and respiratory depression.",
+      "references": ["PMID: 30258398", "Epidiolex FDA label"]
+    },
+    {
+      "drug": "morphine",
+      "aliases": ["ms contin", "kadian"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression including sedation, respiratory depression, and cognitive impairment. However, cannabis may allow opioid dose reduction for pain management.",
+      "recommendation": "Use with caution. Monitor for excessive sedation and respiratory depression. Consider supervised opioid dose reduction.",
+      "references": ["PMID: 27401883"]
+    },
+    {
+      "drug": "oxycodone",
+      "aliases": ["oxycontin", "percocet", "roxicodone"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression. THC may potentiate opioid analgesic effects, potentially allowing dose reduction. Risk of increased sedation and psychomotor impairment.",
+      "recommendation": "Use with caution under supervision. Monitor for excessive sedation. May present opportunity for opioid dose reduction.",
+      "references": ["PMID: 27401883", "PMID: 30830014"]
+    },
+    {
+      "drug": "fentanyl",
+      "aliases": ["duragesic", "sublimaze", "actiq"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression with risk of respiratory depression. Fentanyl has a narrow therapeutic window making additive effects particularly dangerous.",
+      "recommendation": "Use with extreme caution. Close monitoring for respiratory depression required. Consider alternative pain strategies.",
+      "references": ["PMID: 27401883"]
+    },
+    {
+      "drug": "hydrocodone",
+      "aliases": ["vicodin", "norco", "lortab"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression including sedation and impaired psychomotor function. Cannabis co-use may enhance analgesic effects.",
+      "recommendation": "Use with caution. Monitor for excessive sedation. Supervised dose reduction of hydrocodone may be possible.",
+      "references": ["PMID: 27401883"]
+    },
+    {
+      "drug": "alprazolam",
+      "aliases": ["xanax"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression and sedation. Both substances impair psychomotor function and cognitive performance. Increased risk of falls in elderly patients.",
+      "recommendation": "Use with caution. Avoid driving or operating machinery. Consider lower doses of both substances.",
+      "references": ["PMID: 30188374"]
+    },
+    {
+      "drug": "diazepam",
+      "aliases": ["valium"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression and sedation. Both compounds enhance GABAergic signaling. CBD may also inhibit CYP3A4 metabolism of diazepam.",
+      "recommendation": "Use with caution. Monitor for excessive drowsiness, confusion, and impaired coordination.",
+      "references": ["PMID: 30188374"]
+    },
+    {
+      "drug": "lorazepam",
+      "aliases": ["ativan"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression. Both compounds cause sedation, impaired coordination, and cognitive dulling. Risk is higher in elderly or debilitated patients.",
+      "recommendation": "Use with caution. Monitor for over-sedation. Reduce doses if combining.",
+      "references": ["PMID: 30188374"]
+    },
+    {
+      "drug": "clonazepam",
+      "aliases": ["klonopin"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP3A4 which metabolizes clonazepam. Additive sedation and CNS depression. May increase clonazepam plasma levels.",
+      "recommendation": "Use with caution. Monitor for increased sedation and clonazepam toxicity signs.",
+      "references": ["PMID: 30188374"]
+    },
+    {
+      "drug": "sertraline",
+      "aliases": ["zoloft"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP2D6 and CYP2C19, which metabolize sertraline. This may increase sertraline plasma levels and risk of serotonergic side effects.",
+      "recommendation": "Monitor for increased SSRI side effects (nausea, agitation, tremor). Consider sertraline dose adjustment if CBD dose is significant.",
+      "references": ["PMID: 31097292"]
+    },
+    {
+      "drug": "fluoxetine",
+      "aliases": ["prozac", "sarafem"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP2D6 which is the primary metabolic pathway for fluoxetine. May increase fluoxetine and norfluoxetine levels.",
+      "recommendation": "Monitor for increased SSRI side effects. Consider dose reduction of fluoxetine if adding significant CBD doses.",
+      "references": ["PMID: 31097292"]
+    },
+    {
+      "drug": "citalopram",
+      "aliases": ["celexa"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP2C19 and CYP2D6 which metabolize citalopram. May lead to increased citalopram levels and QTc prolongation risk.",
+      "recommendation": "Monitor for SSRI side effects and consider ECG monitoring at higher citalopram doses. Adjust dose as needed.",
+      "references": ["PMID: 31097292"]
+    },
+    {
+      "drug": "escitalopram",
+      "aliases": ["lexapro"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP2C19 which is involved in escitalopram metabolism. May increase escitalopram plasma concentrations.",
+      "recommendation": "Monitor for SSRI side effects (insomnia, nausea, serotonin syndrome signs). Consider dose adjustment.",
+      "references": ["PMID: 31097292"]
+    },
+    {
+      "drug": "paroxetine",
+      "aliases": ["paxil", "brisdelle"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP2D6, the primary enzyme metabolizing paroxetine. Paroxetine itself is a CYP2D6 inhibitor, compounding the interaction.",
+      "recommendation": "Use with caution. Monitor for increased paroxetine side effects including serotonergic symptoms.",
+      "references": ["PMID: 31097292"]
+    },
+    {
+      "drug": "atorvastatin",
+      "aliases": ["lipitor"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP3A4 which metabolizes atorvastatin. May increase statin levels and risk of myopathy/rhabdomyolysis.",
+      "recommendation": "Monitor for muscle pain, weakness, and dark urine. Check CK levels if symptomatic. Consider lower statin dose.",
+      "references": ["PMID: 30097924"]
+    },
+    {
+      "drug": "simvastatin",
+      "aliases": ["zocor"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP3A4, the primary metabolic pathway for simvastatin. Significant increases in simvastatin levels possible, raising myopathy risk.",
+      "recommendation": "Monitor for statin-related muscle toxicity. Consider switching to a statin less dependent on CYP3A4 (e.g., pravastatin).",
+      "references": ["PMID: 30097924"]
+    },
+    {
+      "drug": "tacrolimus",
+      "aliases": ["prograf", "astagraf"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP3A4 and P-glycoprotein, both involved in tacrolimus metabolism. Can lead to significantly elevated tacrolimus levels and nephrotoxicity.",
+      "recommendation": "Monitor tacrolimus trough levels closely. Dose reduction likely needed. Coordinate with transplant team.",
+      "references": ["PMID: 31502655"]
+    },
+    {
+      "drug": "cyclosporine",
+      "aliases": ["neoral", "sandimmune", "gengraf"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP3A4 and intestinal P-glycoprotein, increasing cyclosporine absorption and reducing clearance.",
+      "recommendation": "Monitor cyclosporine levels closely. Dose adjustment likely required. Risk of nephrotoxicity and immunosuppression toxicity.",
+      "references": ["PMID: 31502655"]
+    },
+    {
+      "drug": "amlodipine",
+      "aliases": ["norvasc"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "THC causes acute vasodilation and tachycardia. Combined with amlodipine's antihypertensive effect, additive hypotension and dizziness may occur.",
+      "recommendation": "Monitor blood pressure, especially on standing. Advise patient to rise slowly and stay hydrated.",
+      "references": ["PMID: 29674967"]
+    },
+    {
+      "drug": "zolpidem",
+      "aliases": ["ambien", "edluar", "intermezzo"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive CNS depression and sedation. Both compounds impair next-day cognitive and psychomotor performance. Increased risk of complex sleep behaviors.",
+      "recommendation": "Avoid concurrent evening use if possible. If combining, use lowest effective doses of both. Warn about next-day impairment.",
+      "references": ["PMID: 30188374"]
+    },
+    {
+      "drug": "trazodone",
+      "aliases": ["desyrel", "oleptro"],
+      "cannabinoid": "THC",
+      "severity": "yellow",
+      "mechanism": "Additive sedation and CNS depression. Both may lower blood pressure. Trazodone is metabolized by CYP3A4 which CBD inhibits.",
+      "recommendation": "Use with caution, especially at bedtime. Monitor for excessive sedation and orthostatic hypotension.",
+      "references": ["PMID: 30188374"]
+    },
+    {
+      "drug": "valproic acid",
+      "aliases": ["depakote", "depakene", "divalproex"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD co-administration with valproic acid increases risk of hepatotoxicity. Elevated liver transaminases observed in clinical trials (Epidiolex data).",
+      "recommendation": "Monitor liver function tests regularly. Watch for signs of hepatotoxicity (jaundice, abdominal pain, dark urine).",
+      "references": ["PMID: 30258398", "Epidiolex FDA label"]
+    },
+    {
+      "drug": "carbamazepine",
+      "aliases": ["tegretol", "carbatrol", "equetro"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "Carbamazepine is a CYP3A4 inducer which may reduce CBD levels. CBD inhibits CYP3A4 which may alter carbamazepine metabolism. Bidirectional interaction.",
+      "recommendation": "Monitor levels of both. CBD efficacy may be reduced. Carbamazepine levels may increase. Adjust doses accordingly.",
+      "references": ["PMID: 30258398"]
+    },
+    {
+      "drug": "metformin",
+      "aliases": ["glucophage", "fortamet", "glumetza"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD may alter glucose metabolism and insulin sensitivity. Combined effect on blood sugar regulation may be unpredictable.",
+      "recommendation": "Monitor blood glucose more frequently when initiating or changing CBD dose. Adjust metformin as needed.",
+      "references": ["PMID: 30460488"]
+    },
+    {
+      "drug": "omeprazole",
+      "aliases": ["prilosec", "zegerid"],
+      "cannabinoid": "CBD",
+      "severity": "yellow",
+      "mechanism": "CBD inhibits CYP2C19, the primary enzyme metabolizing omeprazole. May increase omeprazole levels, though clinical significance is moderate.",
+      "recommendation": "Generally well-tolerated but monitor for increased omeprazole side effects (headache, nausea, diarrhea). Consider dose adjustment if symptomatic.",
+      "references": ["PMID: 31097292"]
+    },
+    {
+      "drug": "acetaminophen",
+      "aliases": ["tylenol", "paracetamol", "apap"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No significant pharmacokinetic interaction. Acetaminophen is primarily metabolized by glucuronidation, not CYP enzymes affected by cannabinoids.",
+      "recommendation": "Generally safe for concurrent use. Standard acetaminophen precautions apply (max 4g/day, avoid with heavy alcohol use).",
+      "references": []
+    },
+    {
+      "drug": "acetaminophen",
+      "aliases": ["tylenol", "paracetamol", "apap"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No clinically significant interaction. Both may have hepatic effects at high doses, but at standard dosing the combination is well tolerated.",
+      "recommendation": "Safe for concurrent use at recommended doses. Monitor if using very high doses of either.",
+      "references": []
+    },
+    {
+      "drug": "ibuprofen",
+      "aliases": ["advil", "motrin", "nuprin"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No significant pharmacokinetic interaction. Both have anti-inflammatory properties that may be complementary. Minor additive GI risk.",
+      "recommendation": "Generally safe. Monitor for GI discomfort. Take ibuprofen with food as usual.",
+      "references": []
+    },
+    {
+      "drug": "ibuprofen",
+      "aliases": ["advil", "motrin", "nuprin"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No significant interaction expected. Both have anti-inflammatory mechanisms that may complement each other.",
+      "recommendation": "Safe for concurrent use. Standard NSAID precautions apply.",
+      "references": []
+    },
+    {
+      "drug": "vitamin d",
+      "aliases": ["cholecalciferol", "ergocalciferol", "vitamin d3", "vitamin d2"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No known interaction. Vitamin D is a fat-soluble vitamin with no overlapping metabolic pathway concerns.",
+      "recommendation": "Safe for concurrent use. No dose adjustment needed.",
+      "references": []
+    },
+    {
+      "drug": "vitamin d",
+      "aliases": ["cholecalciferol", "ergocalciferol", "vitamin d3", "vitamin d2"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No known interaction. Vitamin D does not undergo significant CYP-mediated metabolism.",
+      "recommendation": "Safe for concurrent use. No precautions needed.",
+      "references": []
+    },
+    {
+      "drug": "multivitamin",
+      "aliases": ["multivitamins", "daily vitamin", "one-a-day", "centrum"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No known interaction between standard multivitamin formulations and THC.",
+      "recommendation": "Safe for concurrent use. No adjustments needed.",
+      "references": []
+    },
+    {
+      "drug": "multivitamin",
+      "aliases": ["multivitamins", "daily vitamin", "one-a-day", "centrum"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No known interaction between standard multivitamin formulations and CBD.",
+      "recommendation": "Safe for concurrent use.",
+      "references": []
+    },
+    {
+      "drug": "melatonin",
+      "aliases": [],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No adverse interaction. CBD and melatonin may have complementary sleep-promoting effects. Some patients report enhanced sleep quality.",
+      "recommendation": "Safe and potentially beneficial combination for sleep. Start with low doses of both to assess individual response.",
+      "references": []
+    },
+    {
+      "drug": "melatonin",
+      "aliases": [],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No significant adverse interaction. Both promote sleep onset. Additive sedation is possible but generally mild.",
+      "recommendation": "Safe for concurrent use. May enhance sleep onset. Use lowest effective doses.",
+      "references": []
+    },
+    {
+      "drug": "magnesium",
+      "aliases": ["magnesium citrate", "magnesium glycinate", "magnesium oxide", "mag"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No known interaction. Magnesium is an essential mineral with no overlapping metabolic pathway concerns with cannabinoids.",
+      "recommendation": "Safe for concurrent use. No dose adjustments needed.",
+      "references": []
+    },
+    {
+      "drug": "magnesium",
+      "aliases": ["magnesium citrate", "magnesium glycinate", "magnesium oxide", "mag"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No known interaction. Both may promote relaxation and sleep through different mechanisms.",
+      "recommendation": "Safe for concurrent use. May have complementary relaxation effects.",
+      "references": []
+    },
+    {
+      "drug": "omega-3",
+      "aliases": ["fish oil", "omega-3 fatty acids", "epa", "dha", "fish oil capsules"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No known interaction. Omega-3 fatty acids do not undergo CYP-mediated metabolism and have no overlapping pharmacodynamic concerns.",
+      "recommendation": "Safe for concurrent use. Both have anti-inflammatory properties.",
+      "references": []
+    },
+    {
+      "drug": "omega-3",
+      "aliases": ["fish oil", "omega-3 fatty acids", "epa", "dha", "fish oil capsules"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No known interaction. May have complementary anti-inflammatory effects.",
+      "recommendation": "Safe for concurrent use.",
+      "references": []
+    },
+    {
+      "drug": "probiotics",
+      "aliases": ["lactobacillus", "bifidobacterium", "probiotic supplement", "culturelle", "align"],
+      "cannabinoid": "THC",
+      "severity": "green",
+      "mechanism": "No known interaction. Probiotics act locally in the gut and do not share metabolic pathways with cannabinoids.",
+      "recommendation": "Safe for concurrent use. No precautions needed.",
+      "references": []
+    },
+    {
+      "drug": "probiotics",
+      "aliases": ["lactobacillus", "bifidobacterium", "probiotic supplement", "culturelle", "align"],
+      "cannabinoid": "CBD",
+      "severity": "green",
+      "mechanism": "No known interaction. Probiotics and CBD act through entirely different mechanisms.",
+      "recommendation": "Safe for concurrent use.",
+      "references": []
+    }
+  ]
+}
