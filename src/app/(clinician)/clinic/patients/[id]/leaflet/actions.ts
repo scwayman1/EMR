@@ -21,18 +21,12 @@ export async function generateLeafletData(
 ): Promise<{ ok: true; data: LeafletData } | { ok: false; error: string }> {
   const user = await requireUser();
 
+  // Load encounter with patient — use separate queries for optional relations
+  // to prevent a single missing relation from crashing the whole page
   const encounter = await prisma.encounter.findFirst({
     where: { id: encounterId, organizationId: user.organizationId! },
     include: {
-      patient: {
-        include: {
-          medications: { where: { active: true } },
-          dosingRegimens: { where: { active: true }, include: { product: true } },
-          outcomeLogs: { orderBy: { loggedAt: "desc" }, take: 5 },
-          appointments: { where: { status: "confirmed" }, orderBy: { startAt: "asc" }, take: 1 },
-        },
-      },
-      provider: { include: { user: { select: { firstName: true, lastName: true } } } },
+      patient: true,
       notes: { where: { status: "finalized" }, orderBy: { finalizedAt: "desc" }, take: 1 },
     },
   });
@@ -40,13 +34,29 @@ export async function generateLeafletData(
   if (!encounter) return { ok: false, error: "Encounter not found" };
 
   const patient = encounter.patient;
+
+  // Load optional relations separately (so one failure doesn't block the page)
+  const [medications, dosingRegimens, outcomeLogs, appointments, provider] = await Promise.allSettled([
+    prisma.patientMedication.findMany({ where: { patientId: patient.id, active: true } }),
+    prisma.dosingRegimen.findMany({ where: { patientId: patient.id, active: true }, include: { product: true } }),
+    prisma.outcomeLog.findMany({ where: { patientId: patient.id }, orderBy: { loggedAt: "desc" }, take: 5 }),
+    prisma.appointment.findMany({ where: { patientId: patient.id, status: "confirmed" }, orderBy: { startAt: "asc" }, take: 1 }),
+    encounter.providerId
+      ? prisma.provider.findUnique({ where: { id: encounter.providerId }, include: { user: { select: { firstName: true, lastName: true } } } })
+      : Promise.resolve(null),
+  ]);
+
+  const medsResult = medications.status === "fulfilled" ? medications.value : [];
+  const regimensResult = dosingRegimens.status === "fulfilled" ? dosingRegimens.value : [];
+  const appointmentsResult = appointments.status === "fulfilled" ? appointments.value : [];
+  const providerResult = provider.status === "fulfilled" ? provider.value : null;
+
   const note = encounter.notes[0];
   const blocks = (note?.blocks as any[]) ?? [];
-  const provider = encounter.provider;
 
   // Build medication list
   const meds: LeafletMedication[] = [];
-  for (const r of patient.dosingRegimens) {
+  for (const r of regimensResult) {
     const p = (r as any).product;
     meds.push({
       name: p?.name ?? "Cannabis product",
@@ -55,7 +65,7 @@ export async function generateLeafletData(
       type: "cannabis",
     });
   }
-  for (const m of patient.medications) {
+  for (const m of medsResult) {
     meds.push({
       name: m.name,
       dosage: m.dosage ?? "",
@@ -75,7 +85,7 @@ export async function generateLeafletData(
   const carePlanNotes = plan || "Care plan will be updated after your next visit.";
 
   // Follow-up
-  const nextAppt = patient.appointments[0];
+  const nextAppt = appointmentsResult[0];
   const followUp = nextAppt
     ? `Your next appointment is ${formatDate(nextAppt.startAt)}.`
     : "Please schedule a follow-up visit within 2-4 weeks.";
@@ -89,7 +99,7 @@ export async function generateLeafletData(
     allergies: patient.allergies ?? [],
     visit: {
       date: formatDate(encounter.scheduledFor ?? encounter.createdAt),
-      provider: provider?.user ? fullName(provider.user.firstName, provider.user.lastName) : "Your care team",
+      provider: providerResult?.user ? fullName(providerResult.user.firstName, providerResult.user.lastName) : "Your care team",
       modality: encounter.modality,
       reason: encounter.reason,
     },
