@@ -43,7 +43,6 @@ const SECTIONS: Record<string, { title: string; tabs: TabDef[] }> = {
       { label: "Cannabis Wheel", href: "/portal/combo-wheel" },
       { label: "My Garden", href: "/portal/garden" },
       { label: "Storybook", href: "/portal/storybook" },
-      { label: "Achievements", href: "/portal/achievements" },
       { label: "Roadmap", href: "/portal/roadmap" },
     ],
   },

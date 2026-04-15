@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavItem } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
+import { BreathingBreak } from "@/components/ui/breathing-break";
 import { prisma } from "@/lib/db/prisma";
 
 export default async function ClinicianLayout({
@@ -65,6 +66,7 @@ export default async function ClinicianLayout({
       roleLabel="Provider"
     >
       <QuoteWelcomeModal userName={user.firstName} />
+      <BreathingBreak />
       {children}
     </AppShell>
   );
