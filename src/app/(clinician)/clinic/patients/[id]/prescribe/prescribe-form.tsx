@@ -90,10 +90,14 @@ const DIAGNOSIS_OPTIONS: DiagnosisOption[] = [
   { code: "R45.7", label: "State of emotional shock and stress" },
 ];
 
+/* iOS-inspired select — 48px height, xl radius, larger text */
 const SELECT_CLASS =
-  "flex w-full rounded-md border border-border-strong bg-surface px-3 h-10 text-sm text-text " +
+  "flex w-full rounded-xl border border-border-strong bg-white px-4 h-12 text-base text-text " +
   "focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed";
+  "disabled:opacity-50 disabled:cursor-not-allowed shadow-sm";
+
+const SECTION_LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-text-subtle mb-3";
+const CARD_CLASS = "rounded-2xl shadow-sm bg-white border-border/60";
 
 /* ── Submit button ──────────────────────────────────────────── */
 
@@ -103,10 +107,10 @@ function SubmitButton({ disabled }: { disabled?: boolean }) {
     <Button
       type="submit"
       size="lg"
-      className="w-full"
+      className="w-full rounded-xl h-14 text-base font-semibold shadow-sm"
       disabled={pending || disabled}
     >
-      {pending ? "Creating prescription..." : "Create prescription"}
+      {pending ? "Signing & sending..." : "Sign & send ℞"}
     </Button>
   );
 }
@@ -309,7 +313,7 @@ export function PrescribeForm({
       : "Not set";
 
   return (
-    <form action={formAction} className="space-y-8">
+    <form action={formAction}>
       <input type="hidden" name="patientId" value={patientId} />
       <input type="hidden" name="diagnosisCodes" value={diagnosisCodesJson} />
       {interactionAcknowledged && (
@@ -428,10 +432,26 @@ export function PrescribeForm({
         </Card>
       )}
 
-      {/* ── Section 1: Medication ──────────────────────────────── */}
-      <Card tone="raised">
+      {/* ── Superscription — Rx header ────────────────────────── */}
+      <Card className={CARD_CLASS}>
+        <CardContent className="pt-6 pb-4">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <p className={SECTION_LABEL}>Patient</p>
+              <p className="text-xl font-semibold text-text tracking-tight">{patientName}</p>
+            </div>
+            <span className="text-5xl font-light text-accent/30 select-none">℞</span>
+          </div>
+          <p className="text-sm text-text-muted">
+            Date of issue: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* ── Inscription — Medication ─────────────────────────── */}
+      <Card className={CARD_CLASS}>
         <CardHeader>
-          <CardTitle>1. Medication</CardTitle>
+          <CardTitle className="text-lg tracking-tight">Medication</CardTitle>
           <CardDescription>
             Select from your organization&apos;s formulary or enter a custom
             medication.
@@ -557,10 +577,10 @@ export function PrescribeForm({
         </CardContent>
       </Card>
 
-      {/* ── Section 2: Dosing (Sig) ────────────────────────────── */}
+      {/* ── Subscription & Signa — Dosing ──────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>2. Dosing (Sig)</CardTitle>
+          <CardTitle className="text-lg tracking-tight">Dosing &amp; directions</CardTitle>
           <CardDescription>
             Set the dose, frequency, supply duration, and quantity.
           </CardDescription>
@@ -693,7 +713,7 @@ export function PrescribeForm({
       {/* ── Section 3: Drug Interaction Check ──────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>3. Drug Interaction Check</CardTitle>
+          <CardTitle className="text-lg tracking-tight">Safety check</CardTitle>
           <CardDescription>
             {medications.length === 0
               ? "No medications on file for this patient."
@@ -782,7 +802,7 @@ export function PrescribeForm({
       {/* ── Section 4: Diagnosis Linking ───────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>4. Diagnosis Linking</CardTitle>
+          <CardTitle className="text-lg tracking-tight">Diagnosis</CardTitle>
           <CardDescription>
             Link relevant ICD-10 diagnosis codes to this prescription.
           </CardDescription>
@@ -883,7 +903,7 @@ export function PrescribeForm({
       {/* ── Section 5: Notes ───────────────────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle>5. Notes</CardTitle>
+          <CardTitle className="text-lg tracking-tight">Notes</CardTitle>
           <CardDescription>
             Patient-facing and pharmacy notes for this prescription.
           </CardDescription>
@@ -923,7 +943,7 @@ export function PrescribeForm({
       {/* ── Section 6: Review & Submit ─────────────────────────── */}
       <Card tone="ambient">
         <CardHeader>
-          <CardTitle>6. Review &amp; Submit</CardTitle>
+          <CardTitle className="text-lg tracking-tight">Review &amp; sign</CardTitle>
           <CardDescription>
             Review the prescription details before creating.
           </CardDescription>

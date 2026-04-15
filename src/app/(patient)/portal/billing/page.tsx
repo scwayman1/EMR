@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import Link from "next/link";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { getPatientFinancialSummary, formatMoney } from "@/lib/domain/billing";
@@ -56,6 +57,16 @@ export default async function PortalBillingPage() {
       />
 
       <PatientSectionNav section="account" />
+
+      {/* Year-end tax summary link */}
+      <div className="flex justify-end mb-4">
+        <Link href="/portal/billing/tax-summary">
+          <Button variant="ghost" size="sm">
+            Year-end tax summary
+          </Button>
+        </Link>
+      </div>
+
       {/* Hero balance card */}
       <Card
         tone="ambient"

@@ -63,8 +63,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: true,
     categoryIds: ["cat-sleep", "cat-anxiety", "cat-calm", "cat-tincture", "cat-clinician", "cat-best", "cat-beginner"],
     variants: [
-      { id: "v1a", name: "30 mL", price: 64, compareAtPrice: 78, inStock: true },
-      { id: "v1b", name: "60 mL", price: 112, inStock: true },
+      { id: "v1a", name: "30 mL", upc: "850012345001", price: 64, compareAtPrice: 78, inStock: true },
+      { id: "v1b", name: "60 mL", upc: "850012345002", price: 112, inStock: true },
     ],
     reviews: [
       { id: "r1a", authorName: "Sarah M.", rating: 5, title: "Finally sleeping through the night", body: "After years of poor sleep, this has been transformative. I fall asleep faster and stay asleep.", verified: true, createdAt: "2026-03-10" },
@@ -105,8 +105,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: true,
     categoryIds: ["cat-pain", "cat-recovery", "cat-topical", "cat-clinician", "cat-best", "cat-beginner"],
     variants: [
-      { id: "v2a", name: "2 oz", price: 48, inStock: true },
-      { id: "v2b", name: "4 oz", price: 82, inStock: true },
+      { id: "v2a", name: "2 oz", upc: "850012345003", price: 48, inStock: true },
+      { id: "v2b", name: "4 oz", upc: "850012345004", price: 82, inStock: true },
     ],
     reviews: [
       { id: "r2a", authorName: "Michael T.", rating: 5, title: "My knees thank me", body: "Applies smoothly and the relief kicks in fast. Using it daily now.", verified: true, createdAt: "2026-03-05" },
@@ -146,8 +146,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-anxiety", "cat-calm", "cat-capsule", "cat-clinician", "cat-beginner"],
     variants: [
-      { id: "v3a", name: "30 count", price: 54, inStock: true },
-      { id: "v3b", name: "60 count", price: 94, inStock: true },
+      { id: "v3a", name: "30 count", upc: "850012345005", price: 54, inStock: true },
+      { id: "v3b", name: "60 count", upc: "850012345006", price: 94, inStock: true },
     ],
     reviews: [
       { id: "r3a", authorName: "James L.", rating: 5, title: "Simple and effective", body: "Easy to take every morning. I feel more even throughout the day.", verified: true, createdAt: "2026-03-12" },
@@ -187,7 +187,7 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: true,
     categoryIds: ["cat-anxiety", "cat-calm", "cat-focus", "cat-tincture", "cat-best"],
     variants: [
-      { id: "v4a", name: "30 mL", price: 58, inStock: true },
+      { id: "v4a", name: "30 mL", upc: "850012345007", price: 58, inStock: true },
     ],
     reviews: [
       { id: "r4a", authorName: "Anna C.", rating: 5, title: "Perfect for work days", body: "Keeps me relaxed without feeling foggy. Use it every morning.", verified: true, createdAt: "2026-03-01" },
@@ -226,7 +226,7 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-pain", "cat-recovery", "cat-topical"],
     variants: [
-      { id: "v5a", name: "3 oz", price: 38, inStock: true },
+      { id: "v5a", name: "3 oz", upc: "850012345008", price: 38, inStock: true },
     ],
     reviews: [
       { id: "r5a", authorName: "Tom B.", rating: 4, title: "Great after the gym", body: "Cooling effect is immediate and the soreness fades within the hour.", verified: true, createdAt: "2026-02-18" },
@@ -265,8 +265,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: true,
     categoryIds: ["cat-pain", "cat-anxiety", "cat-nausea", "cat-calm", "cat-edible", "cat-clinician", "cat-best"],
     variants: [
-      { id: "v6a", name: "20 count", price: 36, inStock: true },
-      { id: "v6b", name: "40 count", price: 64, inStock: true },
+      { id: "v6a", name: "20 count", upc: "850012345009", price: 36, inStock: true },
+      { id: "v6b", name: "40 count", upc: "850012345010", price: 64, inStock: true },
     ],
     reviews: [
       { id: "r6a", authorName: "Rachel N.", rating: 5, title: "Taste great, work well", body: "These are my nightly go-to. Perfect dose for winding down.", verified: true, createdAt: "2026-03-08" },
@@ -306,7 +306,7 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-focus", "cat-energy", "cat-capsule"],
     variants: [
-      { id: "v7a", name: "30 count", price: 62, inStock: true },
+      { id: "v7a", name: "30 count", upc: "850012345011", price: 62, inStock: true },
     ],
     reviews: [
       { id: "r7a", authorName: "Mark J.", rating: 4, title: "Subtle but real", body: "Helps me stay on task without the jitters of coffee. Takes about a week to notice.", verified: true, createdAt: "2026-03-02" },
@@ -345,8 +345,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-pain", "cat-sleep", "cat-calm", "cat-vape"],
     variants: [
-      { id: "v8a", name: "0.5 g", price: 44, inStock: true },
-      { id: "v8b", name: "1 g", price: 72, inStock: true },
+      { id: "v8a", name: "0.5 g", upc: "850012345012", price: 44, inStock: true },
+      { id: "v8b", name: "1 g", upc: "850012345013", price: 72, inStock: true },
     ],
     reviews: [
       { id: "r8a", authorName: "Chris D.", rating: 5, title: "Instant relief", body: "When my back flares up, this is the fastest thing that helps. Use sparingly.", verified: true, createdAt: "2026-02-14" },
@@ -385,7 +385,7 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-nausea", "cat-capsule", "cat-clinician"],
     variants: [
-      { id: "v9a", name: "30 count", price: 46, inStock: true },
+      { id: "v9a", name: "30 count", upc: "850012345014", price: 46, inStock: true },
     ],
     reviews: [
       { id: "r9a", authorName: "Susan H.", rating: 5, title: "Game changer during treatment", body: "These made my chemo weeks so much more manageable. Grateful.", verified: true, createdAt: "2026-01-20" },
@@ -424,7 +424,7 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-energy", "cat-focus", "cat-tincture"],
     variants: [
-      { id: "v10a", name: "30 mL", price: 52, inStock: true },
+      { id: "v10a", name: "30 mL", upc: "850012345015", price: 52, inStock: true },
     ],
     reviews: [
       { id: "r10a", authorName: "Alicia F.", rating: 4, title: "Nice morning addition", body: "Gives me a gentle lift without any jitteriness.", verified: true, createdAt: "2026-03-15" },
@@ -464,8 +464,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-sleep", "cat-edible", "cat-beginner"],
     variants: [
-      { id: "v11a", name: "30 count", price: 34, inStock: true },
-      { id: "v11b", name: "60 count", price: 58, inStock: true },
+      { id: "v11a", name: "30 count", upc: "850012345016", price: 34, inStock: true },
+      { id: "v11b", name: "60 count", upc: "850012345017", price: 58, inStock: true },
     ],
     reviews: [
       { id: "r11a", authorName: "Janet K.", rating: 5, title: "Better than melatonin alone", body: "The CBN makes a real difference. I fall asleep faster and stay asleep longer.", verified: true, createdAt: "2026-03-04" },
@@ -505,8 +505,8 @@ export const PRODUCTS: MarketplaceProduct[] = [
     featured: false,
     categoryIds: ["cat-pain", "cat-recovery", "cat-beginner"],
     variants: [
-      { id: "v12a", name: "4-pack", price: 28, inStock: true },
-      { id: "v12b", name: "8-pack", price: 48, inStock: true },
+      { id: "v12a", name: "4-pack", upc: "850012345018", price: 28, inStock: true },
+      { id: "v12b", name: "8-pack", upc: "850012345019", price: 48, inStock: true },
     ],
     reviews: [
       { id: "r12a", authorName: "Paul V.", rating: 4, title: "Steady relief all day", body: "Put it on in the morning and forget about it. Very convenient.", verified: true, createdAt: "2026-02-22" },

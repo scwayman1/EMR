@@ -1621,7 +1621,7 @@ model ProductVariant {
   id              String    @id @default(cuid())
   productId       String
   name            String
-  sku             String?
+  upc             String?          // Universal Product Code for product itemization
   price           Float
   compareAtPrice  Float?
   inStock         Boolean   @default(true)

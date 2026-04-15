@@ -248,6 +248,20 @@ export function DosingView() {
         </Button>
       </div>
 
+      {/* ── Understanding Your Dose ────────────────── */}
+      <Card className="border-l-4 border-l-amber-400/60 bg-amber-50/30">
+        <CardContent className="py-4 px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700 mb-2">
+            Understanding your dose
+          </p>
+          <p className="text-sm text-text-muted leading-relaxed">
+            Exact cannabinoid content varies by batch as a result of the whole
+            plant infusion process. Please reference the product&apos;s unique
+            batch label for lab results.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* ── Disclaimer ──────────────────────────────── */}
       <div className="text-center space-y-1">
         <p className="text-[11px] text-text-subtle">

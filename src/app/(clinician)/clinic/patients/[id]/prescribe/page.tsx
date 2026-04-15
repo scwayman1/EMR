@@ -50,17 +50,17 @@ export default async function PrescribePage({ params }: PageProps) {
   });
 
   return (
-    <PageShell maxWidth="max-w-[800px]">
-      <div className="mb-8">
-        <Eyebrow className="mb-3">New prescription</Eyebrow>
-        <div className="flex items-center gap-4">
+    <PageShell maxWidth="max-w-[960px]">
+      <div className="mb-10">
+        <Eyebrow className="mb-3">Cannabis prescription</Eyebrow>
+        <div className="flex items-center gap-5">
           <Avatar firstName={patient.firstName} lastName={patient.lastName} size="lg" />
           <div>
             <h1 className="font-display text-3xl text-text tracking-tight">
-              Prescribe for {patient.firstName} {patient.lastName}
+              New ℞ for {patient.firstName} {patient.lastName}
             </h1>
-            <p className="text-sm text-text-muted mt-1">
-              Complete all sections below to create a new prescription.
+            <p className="text-[15px] text-text-muted mt-1.5 leading-relaxed">
+              Complete each section to create and send a pharmacy-grade cannabis prescription.
             </p>
           </div>
         </div>

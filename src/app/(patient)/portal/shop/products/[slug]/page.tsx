@@ -150,6 +150,11 @@ export default async function ProductDetailPage({ params }: SlugPageProps) {
                         ${variant.price.toFixed(2)}
                       </span>
                     )}
+                    {variant.upc && (
+                      <span className="block text-[10px] text-text-subtle font-mono mt-0.5">
+                        UPC: {variant.upc}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

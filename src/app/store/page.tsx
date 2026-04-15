@@ -28,16 +28,6 @@ const PRODUCTS = [
     badge: null,
   },
   {
-    name: "PLNT PWRD Collection",
-    brand: "AULV",
-    category: "Edibles",
-    description:
-      "Plant-powered CBD + CBG wellness products. Gummies, capsules, and tinctures formulated for daily wellness.",
-    price: "From $29.99",
-    url: "https://aulv.org/plnt-pwrd%E2%84%A2",
-    badge: "Popular",
-  },
-  {
     name: "Gold Skin Serum",
     brand: "Potency 710",
     category: "Skincare",
@@ -49,7 +39,7 @@ const PRODUCTS = [
   },
 ];
 
-const CATEGORIES = ["All", "Beverages", "Topicals", "Edibles", "Skincare"];
+const CATEGORIES = ["All", "Beverages", "Topicals", "Skincare"];
 
 export default function StorePage() {
   const [category, setCategory] = useState("All");
