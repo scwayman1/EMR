@@ -47,7 +47,6 @@ function StepIndicator() {
             {i < STEPS.length - 1 && (
               <div className="w-16 md:w-24 h-px bg-gradient-to-r from-accent/40 via-border-strong/60 to-accent/40 mx-3 mt-[-22px]" />
             )}
-      <PatientSectionNav section="account" />
           </div>
         ))}
       </div>
@@ -68,6 +67,7 @@ export default async function IntakePage() {
 
   return (
     <PageShell maxWidth="max-w-[880px]">
+      <PatientSectionNav section="account" />
       <PageHeader
         eyebrow="Intake"
         title="A few things about your care"
