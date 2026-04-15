@@ -412,6 +412,26 @@ export function NoteEditor({
           </CardContent>
         </Card>
       )}
+
+      {/* ── Generate Leaflet (after finalization) ──── */}
+      {currentStatus === "finalized" && (
+        <Card className="mt-6 border-l-4 border-l-accent">
+          <CardContent className="pt-6 pb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <LeafSprig size={20} className="text-accent" />
+                <div>
+                  <p className="text-sm font-medium text-text">Generate Leaflet</p>
+                  <p className="text-xs text-text-muted">Print a branded after-visit summary for the patient</p>
+                </div>
+              </div>
+              <a href={`/clinic/patients/${patientId}/leaflet?encounter=${noteId.split("/")[0]}`}>
+                <Button size="sm">Create Leaflet</Button>
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
