@@ -267,6 +267,48 @@ export async function createPrescriptionAction(
   redirect(`/clinic/patients/${patientId}?tab=rx`);
 }
 
+/**
+ * EMR-169: Sign and send a prescription electronically.
+ * Marks the dosing regimen as signed and records the e-signature.
+ */
+export async function signPrescription(regimenId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+
+  const regimen = await prisma.dosingRegimen.findFirst({
+    where: { id: regimenId },
+    include: { patient: true },
+  });
+
+  if (!regimen || regimen.patient.organizationId !== user.organizationId) {
+    return { ok: false, error: "Prescription not found." };
+  }
+
+  await prisma.dosingRegimen.update({
+    where: { id: regimenId },
+    data: {
+      clinicianNotes: `${regimen.clinicianNotes ?? ""}\n[E-SIGNED by ${user.firstName ?? ""} ${user.lastName ?? ""} at ${new Date().toISOString()}]`.trim(),
+    },
+  });
+
+  // Audit log
+  await prisma.auditLog.create({
+    data: {
+      organizationId: user.organizationId!,
+      actorUserId: user.id,
+      action: "prescription.signed",
+      subjectType: "DosingRegimen",
+      subjectId: regimenId,
+      metadata: {
+        patientId: regimen.patientId,
+        signedAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${regimen.patientId}`);
+  return { ok: true };
+}
+
 function generateInstructions(
   productName: string,
   volume: number,

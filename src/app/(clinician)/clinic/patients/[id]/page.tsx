@@ -21,6 +21,8 @@ import { ChartingTimer } from "./charting-timer";
 import { startVisit } from "./actions";
 import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
 import { InteractionBadge } from "@/components/ui/interaction-badge";
+import { generateCDSAlerts } from "@/lib/domain/clinical-decision-support";
+import { CDSPanel } from "./cds-panel";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -196,6 +198,37 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     billing: openClaimCount,
   };
 
+  /* ── Clinical Decision Support alerts (EMR-166) ──────────── */
+  const cannabinoids: string[] = [];
+  for (const regimen of dosingRegimens) {
+    const prod = (regimen as any).product;
+    if (prod?.thcConcentration > 0) cannabinoids.push("THC");
+    if (prod?.cbdConcentration > 0) cannabinoids.push("CBD");
+    if (prod?.cbnConcentration > 0) cannabinoids.push("CBN");
+    if (prod?.cbgConcentration > 0) cannabinoids.push("CBG");
+  }
+  const uniqueCannabinoids = [...new Set(cannabinoids)];
+
+  const cdsAlerts = generateCDSAlerts({
+    patientId: params.id,
+    medications: patientMedications.map((m: any) => ({
+      name: m.name,
+      genericName: m.genericName,
+      active: m.active,
+    })),
+    cannabinoids: uniqueCannabinoids.length > 0 ? uniqueCannabinoids : ["THC", "CBD"],
+    dateOfBirth: patient.dateOfBirth,
+    presentingConcerns: patient.presentingConcerns,
+    dosingRegimens: dosingRegimens.map((r: any) => ({
+      route: r.route ?? "oral",
+      doseAmount: r.doseAmount ?? 0,
+      doseUnit: r.doseUnit ?? "mg",
+      frequencyPerDay: r.frequencyPerDay ?? 1,
+      thcMgPerDose: r.thcMgPerDose,
+      cbdMgPerDose: r.cbdMgPerDose,
+    })),
+  });
+
   /* ── Bound start visit action ─────────────────────────────── */
   const startVisitWithPatient = startVisit.bind(null, params.id);
 
@@ -302,6 +335,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
 
             {/* Quick actions */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
+              <Link href={`/clinic/patients/${params.id}/voice-chart`}>
+                <Button variant="ghost" size="sm">
+                  Voice chart
+                </Button>
+              </Link>
               <Link href={`/clinic/patients/${params.id}/prepare`}>
                 <Button variant="highlight" size="sm">
                   Prepare for visit
@@ -339,6 +377,16 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
             ))}
           </ul>
         </Card>
+      )}
+
+      {/* ── CDS Panel (EMR-166) ──────────────────────────── */}
+      {cdsAlerts.length > 0 && (
+        <div className="mb-6">
+          <CDSPanel
+            alerts={cdsAlerts}
+            patientName={`${patient.firstName} ${patient.lastName}`}
+          />
+        </div>
       )}
 
       {/* ── Tab bar ───────────────────────────────────────── */}

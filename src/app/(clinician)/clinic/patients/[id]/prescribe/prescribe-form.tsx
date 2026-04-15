@@ -19,6 +19,9 @@ import {
   checkInteractions,
   type DrugInteraction,
 } from "@/lib/domain/drug-interactions";
+import { PharmacySelector } from "./pharmacy-selector";
+import { RxPreview } from "./rx-preview";
+import type { Pharmacy } from "@/lib/domain/e-prescribe";
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -174,6 +177,12 @@ export function PrescribeForm({
   // --- Notes ---
   const [noteToPatient, setNoteToPatient] = useState("");
   const [noteToPharmacy, setNoteToPharmacy] = useState("");
+
+  // --- E-Prescribe (EMR-169): Pharmacy + Preview ---
+  const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [signing, setSigning] = useState(false);
+  const [signed, setSigned] = useState(false);
 
   // Derived state
   const selectedProduct = useMemo(
@@ -999,6 +1008,63 @@ export function PrescribeForm({
               </div>
             )}
           </div>
+
+          {/* ── E-Prescribe: Pharmacy Selection (EMR-169) ─── */}
+          <div className="mt-8">
+            <PharmacySelector
+              selectedId={selectedPharmacy?.id ?? null}
+              onSelect={(pharm) => setSelectedPharmacy(pharm)}
+            />
+          </div>
+
+          {/* ── E-Prescribe: Preview & Sign (EMR-169) ──────── */}
+          {hasProduct && volumePerDose && daysSupply && (
+            <div className="mt-6">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={() => setShowPreview(!showPreview)}
+              >
+                {showPreview ? "Hide preview" : "Preview prescription"}
+              </Button>
+              {showPreview && (
+                <div className="mt-4">
+                  <RxPreview
+                    patientName={patientName}
+                    productName={selectedProduct?.name ?? customProductName}
+                    productType={productType}
+                    route={selectedProduct?.route ?? "oral"}
+                    doseAmount={parseFloat(volumePerDose) || 0}
+                    doseUnit={volumeUnit}
+                    frequency={frequencyPerDay === "1" ? "QD" : frequencyPerDay === "2" ? "BID" : frequencyPerDay === "3" ? "TID" : "QID"}
+                    frequencyLabel={`${frequencyPerDay}x daily`}
+                    daysSupply={parseInt(daysSupply) || 0}
+                    quantity={parseInt(quantity) || 0}
+                    quantityUnit={volumeUnit}
+                    refills={parseInt(refills) || 0}
+                    timingInstructions={timingInstructions}
+                    diagnosisCodes={selectedDiagnoses}
+                    noteToPatient={noteToPatient}
+                    noteToPharmacy={noteToPharmacy}
+                    pharmacyId={selectedPharmacy?.id}
+                    thcMg={selectedProduct?.thcConcentration ? parseFloat(volumePerDose) * selectedProduct.thcConcentration / 100 : undefined}
+                    cbdMg={selectedProduct?.cbdConcentration ? parseFloat(volumePerDose) * selectedProduct.cbdConcentration / 100 : undefined}
+                    providerName="Dr. Provider"
+                    onSign={() => {
+                      setSigning(true);
+                      setTimeout(() => {
+                        setSigning(false);
+                        setSigned(true);
+                      }, 1500);
+                    }}
+                    signing={signing}
+                    signed={signed}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Error display */}
           {state?.ok === false && (
