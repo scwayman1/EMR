@@ -984,13 +984,26 @@ model ProductPrompt {
   receivedAt     DateTime            @default(now())
   processedAt    DateTime?
   status         ProductPromptStatus @default(received)
-  // Mallik output — all nullable until the agent runs.
+  // ---- Auto pass: the rule-based fallback decomposition.
+  // Runs without a live Claude session. Covers the generic cases.
   epicSlug       String?
   epicTitle      String?
   summary        String?
   cards          Json                @default("[]") // LinearCard[]
   openQuestions  Json                @default("[]") // string[]
-  decomposedBy   String?             // agent:mallik@x.y.z
+  decomposedBy   String?             // agent:promptDecomposer@x.y.z
+  // ---- Session pass: Mallik (Claude in-session) decomposition.
+  // Richer, context-aware, written by a human-in-the-loop Claude
+  // operating as the Mallik persona. Shape:
+  //   {
+  //     epicSlug, epicTitle, summary,
+  //     notes?: string,            // regulatory/business context
+  //     cards: LinearCard[],
+  //     openQuestions: string[],
+  //     sessionBy: string,         // "claude-as-mallik@<date>"
+  //     sessionAt: string          // ISO
+  //   }
+  sessionPass    Json?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 

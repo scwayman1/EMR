@@ -120,11 +120,15 @@ export const workflows: WorkflowDefinition[] = [
     ],
   },
   {
-    name: "pm-decompose",
+    // Mallik's fallback automation. The real session pass is
+    // written by Claude-in-session; this workflow fires the rule-
+    // based auto pass for prompts that land while no session is
+    // active.
+    name: "prompt-auto-decompose",
     on: ["founder.prompt.received"],
     steps: [
       {
-        agent: "mallik",
+        agent: "promptDecomposer",
         input: (e) => ({ promptId: (e as any).promptId }),
       },
     ],

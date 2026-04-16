@@ -119,44 +119,81 @@ interface Agent<I, O> {
 - **Allowed actions:** read patient, write QualificationRecord
 - **Approval:** required on status upgrade; none on refresh
 
-### 11. Mallik — Product Manager Agent
-- **Mission:** Decompose unstructured product prompts from founders (Dr. Patel's iMessages, Slack DMs, etc.) into Linear-shaped task cards, an epic, a one-line summary, and a list of clarifying questions.
+### 11. Product Prompt Auto-Decomposer
+
+> **This is not Mallik.** Mallik is the session persona — Claude
+> operating as the PM / RCM / patient-engagement / physician-workflow
+> expert when there is a live session. See `CLAUDE.md`.
+>
+> This agent is Mallik's **fallback automation**: a rule-based
+> decomposer that runs without a live Claude session so the pipeline
+> keeps moving. The cards it writes are competent-but-generic. When
+> Mallik is available, he replaces this with a richer **session pass**
+> stored on `ProductPrompt.sessionPass`.
+
+- **Mission:** When a `ProductPrompt` row is created and no session is
+  available, decompose the raw text into a competent-but-generic Linear
+  card set (the "auto pass"). Covers the obvious structure so the
+  inbox always has something actionable to review.
 - **Triggers:** `founder.prompt.received`
-- **Inputs:** `{ promptId }` — refers to a `ProductPrompt` row holding the raw text + source + author.
-- **Outputs:** `{ epicSlug, epicTitle, summary, cardCount, openQuestionCount }`. The structured cards and open questions are written back onto the `ProductPrompt` row (`cards` JSON, `openQuestions` JSON).
-- **Card shape:** `{ title, description, labels[], priority, estimate?, acceptanceCriteria[], parentEpicSlug, dependsOn[] }` — drops straight into Linear with no massaging.
+- **Inputs:** `{ promptId }` — refers to a `ProductPrompt` row holding
+  the raw text + source + author.
+- **Outputs:** `{ epicSlug, epicTitle, summary, cardCount, openQuestionCount }`.
+  Written back to the row's top-level columns
+  (`cards` JSON, `openQuestions` JSON, `decomposedBy`).
+- **Card shape:** `{ title, description, labels[], priority, estimate?, acceptanceCriteria[], parentEpicSlug, dependsOn[] }`
+  — drops straight into Linear with no massaging.
 - **Allowed actions:** `read.productPrompt`, `write.productPrompt`
-- **Approval:** none (cards are drafts; a human PM promotes them into Linear)
+- **Approval:** none (cards are drafts; a human PM or Mallik-in-session
+  promotes them into Linear)
 - **Failure modes:**
-  - No themes matched → returns an empty card list and an explicit open question asking for human triage.
-  - Prompt truncated → Mallik detects dangling connectives ("into i…", "for the…") and flags them as open questions.
+  - No themes matched → returns an empty card list and an explicit
+    open question asking for human triage.
+  - Prompt truncated → detects dangling connectives ("into i…", "for
+    the…") and flags them as open questions.
+
+#### Registered name, file, workflow
+- Export: `promptDecomposerAgent` (in `src/lib/agents/product-manager-agent.ts`
+  — filename kept from the original scaffold; see the top comment).
+- Registry key: `promptDecomposer`
+- Audit actor: `agent:promptDecomposer@1.0.0`
+- Workflow: `prompt-auto-decompose`
 
 #### Theme system
-Mallik V1 is deterministic and rule-based. A **theme** is a small unit of product judgment:
+The auto pass is deterministic and rule-based. A **theme** is a small
+unit of product judgment:
 
 ```ts
 interface Theme {
   name: string;
   matches(normText: string, rawText: string): boolean;
-  cards(input: DecomposeInput, epicSlug: string): LinearCard[];
+  cards(input: DecomposeInput, epicSlug: string): LinearCardInput[];
 }
 ```
 
-Adding product vocabulary = appending a theme to the array in
-`src/lib/agents/product-manager-agent.ts`. The rule-based core stays
-as a safety floor even when we later plug in a real model for long-tail
-prompts.
-
-Shipped themes:
+Adding vocabulary = appending a theme to the array in
+`product-manager-agent.ts`. Shipped themes:
 - `billing-insurance-module`
 - `formulary-tier-system`
 - `prior-authorization`
 - `alternatives-engine`
 - `erx-parity`
 
+These themes are **pharma-formulary-shaped** on purpose — they represent
+the generic case. Cannabis-specific nuance (certification vs
+prescription, state MMJ programs, 280E, rescheduling, METRC/BioTrack)
+is Mallik's job, not the rule engine's. If you see generic pharma
+vocabulary in a decomposition, that's the signal the session pass
+hasn't landed yet.
+
 #### Inbound sources
-- **Dr. Patel (founder)** — sends iMessage product prompts. These are stream-of-consciousness, multi-topic, and often get truncated mid-sentence. Mallik treats truncation as a first-class signal, not an error: it emits a clarifying question and still decomposes what it understood.
-- **Other founders / operators** — same pipeline, different `author` field on the `ProductPrompt` row.
+- **Dr. Patel (founder)** — sends iMessage product prompts. These are
+  stream-of-consciousness, multi-topic, and often get truncated mid-
+  sentence. The auto pass treats truncation as a first-class signal,
+  not an error: it emits a clarifying question and still decomposes
+  what it understood.
+- **Other founders / operators** — same pipeline, different `author`
+  field on the `ProductPrompt` row.
 
 ---
 
@@ -176,7 +213,8 @@ export const agentRegistry = {
   scheduling: schedulingAgent,
   practiceLaunch: practiceLaunchAgent,
   registry: registryAgent,
-  mallik: productManagerAgent,
+  // Mallik's fallback automation — NOT Mallik himself. See CLAUDE.md.
+  promptDecomposer: promptDecomposerAgent,
 } satisfies Record<string, Agent<any, any>>;
 ```
 

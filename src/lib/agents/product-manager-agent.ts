@@ -4,6 +4,22 @@ import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
 
 // ---------------------------------------------------------------
+// Product Prompt Auto-Decomposer
+//
+// This is NOT Mallik.
+//
+// Mallik is the session persona — Claude operating as the PM /
+// RCM / patient-engagement / physician-workflow expert when there
+// is a live session. See CLAUDE.md.
+//
+// This file is Mallik's fallback automation: a rule-based
+// decomposer that runs when no session is available. It produces a
+// competent-but-generic "auto pass" so the pipeline keeps moving.
+// Mallik's real decomposition (the "session pass") is written by
+// Claude-in-session and stored on `ProductPrompt.sessionPass`.
+// ---------------------------------------------------------------
+
+// ---------------------------------------------------------------
 // Linear card schema — shaped to paste directly into Linear without
 // massaging. We keep the field set small and practical.
 // ---------------------------------------------------------------
@@ -305,7 +321,7 @@ function detectOpenQuestions(rawText: string): string[] {
   const suffix = trimmed.slice(-20);
   if (TRUNCATION_SUFFIXES.some((re) => re.test(suffix))) {
     questions.push(
-      `The prompt appears truncated ("…${suffix.replace(/\s+/g, " ")}"). Could you complete the final sentence? Mallik needs to know the intended integration target.`,
+      `The prompt appears truncated ("…${suffix.replace(/\s+/g, " ")}"). Could you complete the final sentence? The downstream cards depend on this.`,
     );
   }
 
@@ -319,7 +335,7 @@ function detectOpenQuestions(rawText: string): string[] {
   // Vague scope flags.
   if (/full\s+tier\s+system/i.test(rawText) && !/four|three|tiers?\s*\d/i.test(rawText)) {
     questions.push(
-      "How many tiers should the formulary have? Mallik proposed four (covered / step therapy / PA / not covered) — confirm before we commit to the enum.",
+      "How many tiers should the formulary have? the auto pass proposed four (covered / step therapy / PA / not covered) — confirm before we commit to the enum.",
     );
   }
 
@@ -431,11 +447,20 @@ const output = z.object({
   openQuestionCount: z.number(),
 });
 
-export const productManagerAgent: Agent<z.infer<typeof input>, z.infer<typeof output>> = {
-  name: "mallik",
+/**
+ * Product Prompt Auto-Decomposer — Mallik's fallback automation.
+ *
+ * Writes the "auto pass" onto a ProductPrompt row: a competent-but-
+ * generic set of Linear cards, an epic, a summary, and open
+ * questions. The richer "session pass" (Mallik's real work) is
+ * written separately to `ProductPrompt.sessionPass` by Claude-in-
+ * session.
+ */
+export const promptDecomposerAgent: Agent<z.infer<typeof input>, z.infer<typeof output>> = {
+  name: "promptDecomposer",
   version: "1.0.0",
   description:
-    "PM agent. Decomposes unstructured product prompts from founders (e.g. Dr. Patel's iMessages) into Linear-shaped task cards, an epic, a summary, and a list of clarifying questions.",
+    "Rule-based auto-decomposer for founder product prompts. Runs without a live Claude session. Competent-but-generic first pass; the session pass (Mallik's real work) replaces it when a human-in-the-loop Claude is available.",
   inputSchema: input,
   outputSchema: output,
   allowedActions: ["read.productPrompt", "write.productPrompt"],
@@ -452,7 +477,7 @@ export const productManagerAgent: Agent<z.infer<typeof input>, z.infer<typeof ou
       author: row.author,
     });
 
-    ctx.log("info", "Decomposed prompt", {
+    ctx.log("info", "Auto-decomposed prompt", {
       themesMatched: result.cards.length > 0,
       cardCount: result.cards.length,
       openQuestionCount: result.openQuestions.length,
@@ -469,15 +494,15 @@ export const productManagerAgent: Agent<z.infer<typeof input>, z.infer<typeof ou
         openQuestions: result.openQuestions as any,
         processedAt: new Date(),
         status: "decomposed",
-        decomposedBy: `agent:mallik@1.0.0`,
+        decomposedBy: `agent:promptDecomposer@1.0.0`,
       },
     });
 
     await writeAgentAudit(
-      "mallik",
+      "promptDecomposer",
       "1.0.0",
       row.organizationId,
-      "productPrompt.decomposed",
+      "productPrompt.autoDecomposed",
       { type: "ProductPrompt", id: promptId },
       { cardCount: result.cards.length, openQuestionCount: result.openQuestions.length },
     );
