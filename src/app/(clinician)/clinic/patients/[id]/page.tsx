@@ -24,6 +24,7 @@ import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib
 import { InteractionBadge } from "@/components/ui/interaction-badge";
 import { generateCDSAlerts } from "@/lib/domain/clinical-decision-support";
 import { CDSPanel } from "./cds-panel";
+import { TagManager } from "./tag-manager";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -321,6 +322,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                     style={{ width: `${completenessScore}%` }}
                   />
                 </div>
+              </div>
+
+              {/* Patient tags/labels */}
+              <div className="mt-3">
+                <TagManager patientId={params.id} />
               </div>
 
               {/* Allergies + contraindications alert (EMR-113) */}

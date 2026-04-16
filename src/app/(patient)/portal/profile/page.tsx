@@ -13,6 +13,7 @@ import {
 import { EditorialRule, Eyebrow } from "@/components/ui/ornament";
 import { ProfileForm, type ProfileValues } from "./profile-form";
 import { CommunicationPreferences } from "./communication-preferences";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 
 export const metadata = { title: "Profile" };
 
@@ -70,30 +71,11 @@ export default async function ProfilePage() {
       />
 
       <PatientSectionNav section="account" />
-      {/* ---- Photo placeholder ---- */}
+      {/* ---- Avatar upload ---- */}
       <div className="flex justify-center mb-8">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-28 w-28 rounded-full bg-surface-muted border-2 border-dashed border-border-strong flex items-center justify-center">
-            <svg
-              width="36"
-              height="36"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-              className="text-text-subtle"
-            >
-              <path
-                d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-                fill="currentColor"
-                opacity="0.5"
-              />
-            </svg>
-          </div>
-          <p className="text-[11px] text-text-subtle uppercase tracking-wide font-medium">
-            Photo coming soon
-          </p>
-        </div>
+        <AvatarUpload
+          initials={`${patient.firstName?.[0] ?? ""}${patient.lastName?.[0] ?? ""}`.toUpperCase()}
+        />
       </div>
 
       <EditorialRule className="mb-8" />

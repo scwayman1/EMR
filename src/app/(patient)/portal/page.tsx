@@ -14,6 +14,9 @@ import { AmbientOrb } from "@/components/ui/hero-art";
 import { HealthPlant } from "@/components/ui/health-plant";
 import { computePlantHealth, STAGE_LABELS } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
+import { OnboardingTour } from "@/components/ui/onboarding-tour";
+import { WellnessTipWidget } from "@/components/ui/wellness-tip-widget";
+import { QuickSymptomFab } from "@/components/ui/quick-symptom-fab";
 
 export const metadata = { title: "Home" };
 
@@ -208,10 +211,12 @@ export default async function PatientHome() {
 
   return (
     <PageShell maxWidth="max-w-[1040px]">
+      <OnboardingTour />
+      <QuickSymptomFab />
       {/* ── Hero greeting ────────────────────────────── */}
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised ambient mb-8">
+      <section className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-border bg-surface-raised ambient mb-6 md:mb-8">
         <AmbientOrb className="absolute -right-10 top-0 h-[260px] w-[480px] opacity-90" />
-        <div className="relative px-8 md:px-12 py-10 md:py-12 max-w-2xl">
+        <div className="relative px-6 sm:px-8 md:px-12 py-8 md:py-12 max-w-2xl">
           <Eyebrow className="mb-3">
             {new Date().toLocaleDateString("en-US", {
               weekday: "long",
@@ -219,7 +224,7 @@ export default async function PatientHome() {
               day: "numeric",
             })}
           </Eyebrow>
-          <h1 className="font-display text-3xl md:text-4xl leading-[1.05] tracking-tight text-text">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl leading-[1.1] tracking-tight text-text">
             {greeting()},{" "}
             <span className="italic text-accent">{patient.firstName}</span>.
           </h1>
@@ -227,19 +232,19 @@ export default async function PatientHome() {
             Here is your health dashboard. A quick check-in helps your care team
             see how things are trending between visits.
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Link href="/portal/outcomes">
-              <Button size="md">Log today&apos;s check-in</Button>
+          <div className="mt-5 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
+            <Link href="/portal/outcomes" className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto min-h-[44px]">Log today&apos;s check-in</Button>
             </Link>
-            <Link href="/portal/messages">
-              <Button size="md" variant="secondary">Message your team</Button>
+            <Link href="/portal/messages" className="w-full sm:w-auto">
+              <Button size="lg" variant="secondary" className="w-full sm:w-auto min-h-[44px]">Message your team</Button>
             </Link>
           </div>
         </div>
       </section>
 
       {/* ── Top row: Health grade + Lifestyle bars + AI tips ── */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-5 mb-6 md:mb-8">
         {/* Health Grade */}
         <Card tone="raised" className="md:col-span-3 text-center">
           <CardContent className="py-8">
@@ -296,7 +301,7 @@ export default async function PatientHome() {
       </div>
 
       {/* ── Second row: Cannabis module + Next visit + Mood ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
         {/* Cannabis Module */}
         <Card tone="raised">
           <CardContent className="py-6">
@@ -438,7 +443,7 @@ export default async function PatientHome() {
       </div>
 
       {/* ── Third row: Metrics sparklines ─────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 md:mb-8">
         <MetricTile label="Pain" accent="forest" value={latestPain !== undefined ? latestPain.toFixed(1) : "\u2014"} hint="0-10 scale" />
         <MetricTile label="Sleep" accent="amber" value={latestSleep !== undefined ? latestSleep.toFixed(1) : "\u2014"} hint="0-10 scale" />
         <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
@@ -451,10 +456,15 @@ export default async function PatientHome() {
         </div>
       </div>
 
+      {/* ── Wellness tip of the day ────────── */}
+      <div className="mb-6 md:mb-8">
+        <WellnessTipWidget />
+      </div>
+
       {/* ── Fourth row: Plant + Tasks + Message ────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
         {/* Plant companion */}
-        <Link href="/portal/garden" className="block">
+        <Link href="/portal/garden" className="block min-h-[44px]">
           <Card tone="raised" className="card-hover h-full">
             <CardContent className="flex items-center gap-5 py-5">
               <div className="shrink-0">
@@ -513,8 +523,8 @@ export default async function PatientHome() {
       <div className="mb-3 mt-2">
         <Eyebrow>Your progress</Eyebrow>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Link href="/portal/goals">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 md:mb-8">
+        <Link href="/portal/goals" className="min-h-[44px]">
           <Card tone="ambient" className="card-hover text-center py-5">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">🎯</span>
@@ -522,24 +532,24 @@ export default async function PatientHome() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/portal/streaks">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/streaks" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">🔥</span>
               <p className="text-sm font-medium text-text">Streak</p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/portal/efficacy">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/efficacy" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">💚</span>
               <p className="text-sm font-medium text-text">Product efficacy</p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/portal/weekly-recap">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/weekly-recap" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">📰</span>
               <p className="text-sm font-medium text-text">Weekly recap</p>
@@ -550,32 +560,32 @@ export default async function PatientHome() {
 
       {/* ── Quick links ──────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link href="/portal/storybook">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/storybook" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">{"\uD83D\uDCD6"}</span>
               <p className="text-sm font-medium text-text">My Storybook</p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/portal/education">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/education" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">{"\uD83D\uDCDA"}</span>
               <p className="text-sm font-medium text-text">Care Guide</p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/portal/roadmap">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/roadmap" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">{"\uD83D\uDDFA\uFE0F"}</span>
               <p className="text-sm font-medium text-text">Roadmap</p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/portal/medications/explainer">
-          <Card tone="ambient" className="card-hover text-center py-5">
+        <Link href="/portal/medications/explainer" className="min-h-[44px]">
+          <Card tone="ambient" className="card-hover text-center py-5 h-full">
             <CardContent className="py-0">
               <span className="text-2xl block mb-2">{"\uD83D\uDC8A"}</span>
               <p className="text-sm font-medium text-text">Med Explainer</p>

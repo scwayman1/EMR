@@ -1,0 +1,284 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input, Textarea, FieldGroup } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { IMAGING_CATALOG } from "@/lib/domain/clinical-orders";
+import { COMMON_PROBLEMS } from "@/lib/domain/problem-list";
+import { cn } from "@/lib/utils/cn";
+
+interface Props {
+  patientName: string;
+}
+
+const MODALITIES = ["X-ray", "MRI", "CT", "US", "DEXA"] as const;
+type Modality = (typeof MODALITIES)[number];
+
+export function ImagingOrderForm({ patientName }: Props) {
+  const [modality, setModality] = useState<Modality>("X-ray");
+  const [studyCode, setStudyCode] = useState<string>("");
+  const [indication, setIndication] = useState("");
+  const [icd10Query, setIcd10Query] = useState("");
+  const [icd10Selected, setIcd10Selected] = useState<string[]>([]);
+  const [priorAuth, setPriorAuth] = useState(false);
+  const [submitted, setSubmitted] = useState<{
+    orderId: string;
+    study: string;
+    when: string;
+  } | null>(null);
+
+  const availableStudies = useMemo(
+    () => IMAGING_CATALOG.filter((i) => i.modality === modality),
+    [modality],
+  );
+
+  const icd10Matches = useMemo(() => {
+    const q = icd10Query.trim().toLowerCase();
+    if (!q) return [];
+    return COMMON_PROBLEMS.filter(
+      (p) =>
+        !icd10Selected.includes(p.icd10) &&
+        (p.icd10.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q)),
+    ).slice(0, 6);
+  }, [icd10Query, icd10Selected]);
+
+  function addIcd10(code: string) {
+    setIcd10Selected((prev) => [...prev, code]);
+    setIcd10Query("");
+  }
+
+  function removeIcd10(code: string) {
+    setIcd10Selected((prev) => prev.filter((c) => c !== code));
+  }
+
+  function submit() {
+    if (!studyCode) return;
+    const study = IMAGING_CATALOG.find((i) => i.code === studyCode);
+    if (!study) return;
+    const orderId = `IMG-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    setSubmitted({
+      orderId,
+      study: study.name,
+      when: new Date().toLocaleString(),
+    });
+  }
+
+  if (submitted) {
+    return (
+      <Card tone="raised" className="border-l-4 border-l-emerald-500">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white text-xs">
+              ✓
+            </span>
+            Imaging order submitted
+          </CardTitle>
+          <CardDescription>
+            Order #{submitted.orderId} placed for {patientName} at {submitted.when}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-text mb-4">
+            Study: <span className="font-medium">{submitted.study}</span>
+          </p>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setSubmitted(null);
+              setStudyCode("");
+              setIndication("");
+              setIcd10Selected([]);
+              setPriorAuth(false);
+            }}
+          >
+            Place another order
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle className="text-base">Modality</CardTitle>
+          <CardDescription>Choose the imaging modality first.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2 flex-wrap">
+            {MODALITIES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  setModality(m);
+                  setStudyCode("");
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full border transition-colors",
+                  modality === m
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                    : "bg-surface-raised text-text-muted border-border hover:bg-surface-muted",
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle className="text-base">Study</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {availableStudies.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No studies in the catalog for this modality.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {availableStudies.map((s) => {
+                const isSelected = studyCode === s.code;
+                return (
+                  <li key={s.code}>
+                    <label
+                      className={cn(
+                        "flex items-start gap-3 p-2 rounded-md cursor-pointer border transition-colors",
+                        isSelected
+                          ? "border-emerald-300 bg-emerald-50"
+                          : "border-transparent hover:bg-surface-muted",
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="study"
+                        checked={isSelected}
+                        onChange={() => setStudyCode(s.code)}
+                        className="mt-0.5 h-4 w-4 accent-emerald-600"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-xs text-text-subtle tabular-nums">
+                            {s.code}
+                          </span>
+                          <Badge tone="accent" className="text-[10px]">
+                            {s.modality}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-text">{s.name}</p>
+                      </div>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle className="text-base">Clinical indication</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <FieldGroup label="Clinical indication">
+              <Textarea
+                value={indication}
+                onChange={(e) => setIndication(e.target.value)}
+                placeholder="Reason for the study, relevant history, previous imaging..."
+              />
+            </FieldGroup>
+
+            <div>
+              <FieldGroup label="Supporting diagnoses (ICD-10)">
+                <Input
+                  value={icd10Query}
+                  onChange={(e) => setIcd10Query(e.target.value)}
+                  placeholder="Search ICD-10..."
+                />
+              </FieldGroup>
+
+              {icd10Matches.length > 0 && (
+                <ul className="mt-2 border border-border rounded-lg divide-y divide-border/60 bg-surface-raised">
+                  {icd10Matches.map((m) => (
+                    <li key={m.icd10}>
+                      <button
+                        type="button"
+                        onClick={() => addIcd10(m.icd10)}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface-muted"
+                      >
+                        <span className="font-mono text-xs text-text-subtle tabular-nums w-20 shrink-0">
+                          {m.icd10}
+                        </span>
+                        <span className="text-text">{m.description}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {icd10Selected.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap mt-2">
+                  {icd10Selected.map((code) => {
+                    const prob = COMMON_PROBLEMS.find((p) => p.icd10 === code);
+                    return (
+                      <span
+                        key={code}
+                        className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 text-xs rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                      >
+                        <span className="font-mono">{code}</span>
+                        <span className="text-emerald-700/80">
+                          {prob?.description ?? ""}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeIcd10(code)}
+                          className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-emerald-700/70 hover:bg-emerald-200"
+                          aria-label="Remove"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={priorAuth}
+                onChange={(e) => setPriorAuth(e.target.checked)}
+                className="h-4 w-4 accent-emerald-600"
+              />
+              <span className="text-sm text-text">
+                Prior authorization required for this study
+              </span>
+            </label>
+
+            {priorAuth && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                A prior authorization packet will be generated after submission.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex items-center justify-end gap-3">
+        <Button onClick={submit} disabled={!studyCode}>
+          Submit order
+        </Button>
+      </div>
+    </div>
+  );
+}

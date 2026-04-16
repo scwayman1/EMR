@@ -17,11 +17,29 @@ const OPS_NAV: NavItem[] = [
   { label: "Eligibility", href: "/ops/eligibility" },
   { label: "Practice launch", href: "/ops/launch" },
   { label: "Analytics", href: "/ops/analytics" },
+  { label: "Analytics Lab", href: "/ops/analytics-lab" },
   { label: "Population", href: "/ops/population" },
   { label: "AI Config", href: "/ops/settings/ai-config" },
   { label: "Intake Builder", href: "/ops/intake-builder" },
   { label: "Onboarding", href: "/ops/onboarding" },
   { label: "Export", href: "/ops/export" },
+  // ── Team / Practice ──
+  { label: "Staff schedule", href: "/ops/staff-schedule" },
+  { label: "Time clock", href: "/ops/time-clock" },
+  { label: "Training", href: "/ops/training" },
+  { label: "Policies", href: "/ops/policies" },
+  { label: "Incidents", href: "/ops/incidents" },
+  { label: "Supplies", href: "/ops/supplies" },
+  { label: "Vendors", href: "/ops/vendors" },
+  { label: "Feedback", href: "/ops/feedback" },
+  { label: "Marketing", href: "/ops/marketing" },
+  { label: "Announcements", href: "/ops/announcements" },
+  // ── Admin ──
+  { label: "Webhooks", href: "/ops/webhooks" },
+  { label: "API keys", href: "/ops/api-keys" },
+  { label: "Performance", href: "/ops/performance" },
+  { label: "Feature flags", href: "/ops/feature-flags" },
+  { label: "Backups", href: "/ops/backups" },
 ];
 
 export default async function OperatorLayout({

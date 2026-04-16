@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -50,6 +51,29 @@ const STATUS_FILTERS: { key: string; label: string; countKey: keyof StatusCounts
   { key: "prospect", label: "In Intake", countKey: "prospect" },
   { key: "inactive", label: "Inactive", countKey: "inactive" },
 ];
+
+/* ------------------------------------------------------------------ */
+/*  Power filter chips (EMR-clinician power-tools)                     */
+/* ------------------------------------------------------------------ */
+
+type PowerFilter = "all" | "active" | "new" | "vip" | "high-risk";
+
+const POWER_FILTERS: { key: PowerFilter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "new", label: "New (30d)" },
+  { key: "vip", label: "VIP" },
+  { key: "high-risk", label: "High-risk" },
+];
+
+interface SavedView {
+  name: string;
+  powerFilter: PowerFilter;
+  search: string;
+  savedAt: string;
+}
+
+const SAVED_VIEWS_KEY = "patient-list-saved-views";
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -208,7 +232,47 @@ export function PatientListClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
+  const [powerFilter, setPowerFilter] = useState<PowerFilter>("all");
+  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const activeStatus = searchParams.get("status") ?? initialStatus;
+
+  /* Hydrate saved views from localStorage -------------------------- */
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(SAVED_VIEWS_KEY);
+      if (raw) setSavedViews(JSON.parse(raw) as SavedView[]);
+    } catch {
+      /* ignore parse errors */
+    }
+  }, []);
+
+  /* Power filter predicate ----------------------------------------- */
+  const matchesPowerFilter = (p: PatientRow): boolean => {
+    if (powerFilter === "all") return true;
+    if (powerFilter === "active") return p.status === "active";
+    if (powerFilter === "new") {
+      const created = new Date(p.updatedAt).getTime();
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      return created >= thirtyDaysAgo;
+    }
+    if (powerFilter === "vip") {
+      // Read VIP tag from localStorage
+      try {
+        const tags = window.localStorage.getItem(`patient-tags-${p.id}`);
+        return tags ? tags.includes("t-vip") : false;
+      } catch {
+        return false;
+      }
+    }
+    if (powerFilter === "high-risk") {
+      // Pain trending upward = high risk
+      if (p.painTrend.length >= 2) {
+        return p.painTrend[p.painTrend.length - 1] > p.painTrend[0];
+      }
+      return false;
+    }
+    return true;
+  };
 
   /* Filter + search ------------------------------------------------ */
   const filtered = useMemo(() => {
@@ -218,6 +282,9 @@ export function PatientListClient({
     if (activeStatus !== "all") {
       list = list.filter((p) => p.status === activeStatus);
     }
+
+    // Power filter
+    list = list.filter(matchesPowerFilter);
 
     // Name search
     const q = search.toLowerCase().trim();
@@ -231,7 +298,42 @@ export function PatientListClient({
     }
 
     return list;
-  }, [patients, activeStatus, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patients, activeStatus, search, powerFilter]);
+
+  /* Save/load views ------------------------------------------------ */
+  function handleSaveView() {
+    const name = window.prompt("Name this view (e.g. 'My VIPs')");
+    if (!name?.trim()) return;
+    const view: SavedView = {
+      name: name.trim(),
+      powerFilter,
+      search,
+      savedAt: new Date().toISOString(),
+    };
+    const next = [...savedViews.filter((v) => v.name !== view.name), view];
+    setSavedViews(next);
+    try {
+      window.localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage unavailable */
+    }
+  }
+
+  function applySavedView(view: SavedView) {
+    setPowerFilter(view.powerFilter);
+    setSearch(view.search);
+  }
+
+  function removeSavedView(name: string) {
+    const next = savedViews.filter((v) => v.name !== name);
+    setSavedViews(next);
+    try {
+      window.localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
 
   /* Status pill navigation ----------------------------------------- */
   function setStatus(key: string) {
@@ -274,6 +376,60 @@ export function PatientListClient({
           hint="Chart completeness"
         />
       </div>
+
+      {/* Power filter chips + saved views */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {POWER_FILTERS.map((f) => {
+          const isActive = powerFilter === f.key;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setPowerFilter(f.key)}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full border transition-colors duration-200 ${
+                isActive
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                  : "bg-surface-raised text-text-muted border-border hover:bg-surface-muted hover:border-border-strong"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="secondary" size="sm" onClick={handleSaveView}>
+            Save this view
+          </Button>
+        </div>
+      </div>
+
+      {savedViews.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-subtle font-medium">
+            Saved views
+          </span>
+          {savedViews.map((v) => (
+            <span
+              key={v.name}
+              className="inline-flex items-center gap-1 pl-3 pr-1.5 py-1 text-xs font-medium rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700"
+            >
+              <button
+                onClick={() => applySavedView(v)}
+                className="hover:underline"
+                title={`Apply: ${v.powerFilter}${v.search ? ` · "${v.search}"` : ""}`}
+              >
+                {v.name}
+              </button>
+              <button
+                onClick={() => removeSavedView(v.name)}
+                className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full text-emerald-700/70 hover:bg-emerald-200 hover:text-emerald-900"
+                aria-label={`Remove ${v.name}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Status filter strip */}
       <div className="flex items-center gap-2 flex-wrap">

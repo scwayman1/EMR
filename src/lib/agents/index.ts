@@ -41,6 +41,17 @@ import { eligibilityBenefitsAgent } from "./billing/eligibility-benefits-agent";
 import { complianceAuditAgent } from "./billing/compliance-audit-agent";
 import { priorAuthAgent } from "./billing/prior-auth-agent";
 import { clearinghouseSubmissionAgent } from "./billing/clearinghouse-submission-agent";
+// Operations & patient experience agents
+import { wellnessCoachAgent } from "./wellness-coach-agent";
+import { refillReminderAgent } from "./refill-reminder-agent";
+import { appointmentReminderAgent } from "./appointment-reminder-agent";
+import { labFollowupAgent } from "./lab-followup-agent";
+import { retentionRiskAgent } from "./retention-risk-agent";
+import { contentCreationAgent } from "./content-creation-agent";
+import { satisfactionAnalysisAgent } from "./satisfaction-analysis-agent";
+import { inventoryAlertAgent } from "./inventory-alert-agent";
+import { billingReconEnhancementAgent } from "./billing-recon-enhancement-agent";
+import { qualityImprovementAgent } from "./quality-improvement-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -91,6 +102,17 @@ export const agentRegistry = {
   complianceAudit: complianceAuditAgent,
   priorAuthVerification: priorAuthAgent,
   clearinghouseSubmission: clearinghouseSubmissionAgent,
+  // Operations & patient experience agents
+  wellnessCoach: wellnessCoachAgent,
+  refillReminder: refillReminderAgent,
+  appointmentReminder: appointmentReminderAgent,
+  labFollowup: labFollowupAgent,
+  retentionRisk: retentionRiskAgent,
+  contentCreation: contentCreationAgent,
+  satisfactionAnalysis: satisfactionAnalysisAgent,
+  inventoryAlert: inventoryAlertAgent,
+  billingReconEnhancement: billingReconEnhancementAgent,
+  qualityImprovement: qualityImprovementAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
