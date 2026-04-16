@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Button } from "@/components/ui/button";
+import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import { formatRelative } from "@/lib/utils/format";
 
 export const metadata = { title: "Messages" };
@@ -28,7 +28,7 @@ export default async function MessagesPage() {
         eyebrow="Messages"
         title="Secure messages with your care team"
         description="Everything here is private and kept as part of your record."
-        actions={<Button>New message</Button>}
+        actions={<ComingSoonButton>New message</ComingSoonButton>}
       />
 
       {threads.length === 0 ? (

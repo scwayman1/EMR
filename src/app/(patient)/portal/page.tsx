@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { Sparkline } from "@/components/ui/sparkline";
@@ -90,12 +91,8 @@ export default async function PatientHome() {
                   {nextVisit.reason ? ` · ${nextVisit.reason}` : ""}
                 </p>
                 <div className="mt-4 flex items-center gap-2">
-                  <Button size="sm" variant="secondary">
-                    View details
-                  </Button>
-                  <Button size="sm" variant="ghost">
-                    Reschedule
-                  </Button>
+                  <ComingSoonButton size="sm">View details</ComingSoonButton>
+                  <ComingSoonButton size="sm">Reschedule</ComingSoonButton>
                 </div>
               </>
             ) : (
@@ -195,9 +192,7 @@ export default async function PatientHome() {
                         </p>
                       )}
                     </div>
-                    <Button size="sm" variant="secondary">
-                      Open
-                    </Button>
+                    <ComingSoonButton size="sm">Open</ComingSoonButton>
                   </li>
                 ))}
               </ul>

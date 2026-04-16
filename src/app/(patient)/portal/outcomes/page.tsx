@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sparkline } from "@/components/ui/sparkline";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Outcomes" };
 
@@ -30,6 +32,11 @@ export default async function OutcomesPage() {
         eyebrow="Outcomes"
         title="How you've been feeling"
         description="Your trends over time. Shared with your care team to guide your plan."
+        actions={
+          <Link href="/portal/outcomes/new">
+            <Button size="md">Log a check-in</Button>
+          </Link>
+        }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

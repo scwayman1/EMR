@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/ui/sparkline";
-import { Button } from "@/components/ui/button";
+import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils/format";
 
@@ -56,8 +56,8 @@ export default async function PatientChartPage({ params }: PageProps) {
         description={patient.presentingConcerns ?? undefined}
         actions={
           <>
-            <Button variant="secondary">Message</Button>
-            <Button>Start visit</Button>
+            <ComingSoonButton>Message</ComingSoonButton>
+            <ComingSoonButton>Start visit</ComingSoonButton>
           </>
         }
       />
@@ -220,9 +220,9 @@ export default async function PatientChartPage({ params }: PageProps) {
               <CardDescription>Contextual evidence for this patient.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button size="sm" variant="secondary" className="w-full">
+              <ComingSoonButton size="sm" className="w-full">
                 Open research panel
-              </Button>
+              </ComingSoonButton>
             </CardContent>
           </Card>
         </div>

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 
 export const metadata = { title: "Assessments" };
 
@@ -26,9 +26,7 @@ export default async function AssessmentsPage() {
               <CardDescription>{a.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button size="sm" variant="secondary">
-                Start
-              </Button>
+              <ComingSoonButton size="sm">Start</ComingSoonButton>
             </CardContent>
           </Card>
         ))}

@@ -3,10 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/shell/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RatingStars } from "@/components/marketplace/RatingStars";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
+import { AddToCartIsland } from "@/components/marketplace/AddToCartIsland";
 import { getProductBySlug, getRelatedProducts } from "@/lib/marketplace/data";
 import { FORMAT_LABELS } from "@/lib/marketplace/types";
 
@@ -127,44 +127,8 @@ export default async function ProductDetailPage({ params }: SlugPageProps) {
             </div>
           )}
 
-          {/* Variant selector */}
-          {product.variants.length > 1 && (
-            <div className="space-y-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-text-subtle">
-                Size
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((variant, idx) => (
-                  <button
-                    key={variant.id}
-                    className={`rounded-md border px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-                      idx === 0
-                        ? "border-accent bg-accent-soft text-accent"
-                        : "border-border bg-surface text-text hover:bg-surface-muted"
-                    } ${!variant.inStock ? "opacity-50 cursor-not-allowed" : ""}`}
-                    disabled={!variant.inStock}
-                  >
-                    {variant.name}
-                    {variant.price !== product.variants[0]?.price && (
-                      <span className="ml-1.5 text-text-subtle">
-                        ${variant.price.toFixed(2)}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Add to cart CTA */}
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full mt-2"
-            disabled={!product.inStock}
-          >
-            {product.inStock ? "Add to Cart" : "Out of Stock"}
-          </Button>
+          {/* Variant selector + Add to Cart (client island) */}
+          <AddToCartIsland product={product} />
 
           {/* Trust signals */}
           <ul className="flex flex-col gap-1.5 mt-1">

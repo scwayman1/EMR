@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate } from "@/lib/utils/format";
@@ -30,7 +30,7 @@ export default async function RecordsPage() {
         eyebrow="Records"
         title="Your documents"
         description="Upload notes, labs, and letters. We organize them so your care team is ready for your visit."
-        actions={<Button>Upload a file</Button>}
+        actions={<ComingSoonButton>Upload a file</ComingSoonButton>}
       />
 
       <Card>
@@ -47,7 +47,7 @@ export default async function RecordsPage() {
             <EmptyState
               title="No documents yet"
               description="Drag a PDF or image here, or click upload. Everything is encrypted and only visible to your care team."
-              action={<Button>Upload a file</Button>}
+              action={<ComingSoonButton>Upload a file</ComingSoonButton>}
             />
           ) : (
             <ul className="divide-y divide-border -mx-6">
@@ -63,9 +63,7 @@ export default async function RecordsPage() {
                       {formatDate(doc.createdAt)} · {(doc.sizeBytes / 1024).toFixed(0)} KB
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost">
-                    View
-                  </Button>
+                  <ComingSoonButton size="sm">View</ComingSoonButton>
                 </li>
               ))}
             </ul>
