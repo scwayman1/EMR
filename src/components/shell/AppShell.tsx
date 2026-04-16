@@ -5,6 +5,7 @@ import { Wordmark } from "@/components/ui/logo";
 import { logoutAction } from "@/lib/auth/actions";
 import type { AuthedUser } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
+import { ROLE_HOME } from "@/lib/rbac/roles";
 import { cn } from "@/lib/utils/cn";
 import { MobileNav } from "./MobileNav";
 
@@ -32,7 +33,11 @@ export interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
+export function AppShell({ user, activeRole, nav, roleLabel, children }: AppShellProps) {
+  // Logo links to the user's role home, not the public landing page.
+  // This prevents the "logo click = logged out" UX bug.
+  const homeHref = ROLE_HOME[activeRole] ?? "/";
+
   return (
     <div className="min-h-screen bg-bg flex">
       {/* Side nav */}
@@ -48,7 +53,7 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
         />
 
         <div className="relative px-5 pt-6 pb-5">
-          <Link href="/" className="block">
+          <Link href={homeHref} className="block">
             <Wordmark size="md" />
           </Link>
           <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-text-subtle">
@@ -131,7 +136,7 @@ export function AppShell({ user, nav, roleLabel, children }: AppShellProps) {
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-border bg-surface">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href={homeHref} className="flex items-center gap-2">
             <Wordmark size="sm" />
           </Link>
           <div className="flex items-center gap-2">
