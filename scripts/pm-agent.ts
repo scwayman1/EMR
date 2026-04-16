@@ -133,28 +133,35 @@ function changelog() {
 
 function sprint() {
   console.log("\n🧠 MALLIK — Sprint Suggestions\n");
-  console.log("   Based on: 15-day launch deadline, current codebase state\n");
+  console.log("   Based on: current codebase (92 routes, 39 agents, 63 models)\n");
 
-  console.log("   LAUNCH-CRITICAL (do these first):");
-  console.log("   1. EMR-186: Patient modular dashboard (health score, lifestyle, labs, AI tips)");
-  console.log("   2. EMR-191: Wellness toolkit redesign (checkbox health score)");
-  console.log("   3. EMR-170: C-Suite about page (credibility for pitching)");
-  console.log("   4. EMR-173: 15-day launch readiness audit");
-  console.log("   5. Marketplace completion (other thread)\n");
+  console.log("   REVENUE-CRITICAL (do these first):");
+  console.log("   1. ChatCB Phase 2 — PubMed API integration (live search, citations)");
+  console.log("   2. Real telehealth video — Daily.co or Twilio SDK integration");
+  console.log("   3. State registry APIs — connect 8 state compliance forms to real systems");
+  console.log("   4. NCPDP pharmacy integration — real e-prescribe transmission");
+  console.log("   5. Onboarding wizard — guided setup for new luminary customers\n");
 
   console.log("   HIGH-IMPACT POLISH:");
-  console.log("   6. EMR-004: Dosing recommendation engine");
-  console.log("   7. EMR-003: Milligram-based dosing display");
-  console.log("   8. EMR-110: AI patient education sheets");
-  console.log("   9. EMR-012: Scheduling with SMS reminders");
-  console.log("  10. EMR-182: Schedule calendar overhaul\n");
+  console.log("   6. Outcome data export — de-identified CSV/JSON for research + insurance");
+  console.log("   7. End-to-end test suite — Playwright for critical patient flows");
+  console.log("   8. Queue board — real-time patient flow management for front desk");
+  console.log("   9. Cannabis inventory tracking — dispensary stock management");
+  console.log("  10. Chart summarizer polish — upgrade Storybook with Fairytale Agent v2\n");
 
-  console.log("   DEMO QUALITY:");
-  console.log("  11. Fix any remaining 'as any' casts in patient-facing code");
-  console.log("  12. Verify all mobile views render correctly");
-  console.log("  13. Add loading.tsx to slow pages");
-  console.log("  14. Test the full patient journey end-to-end");
-  console.log("  15. Ensure OpenRouter is working (agents produce real output)\n");
+  console.log("   COMPETITIVE ADVANTAGES TO EXTEND:");
+  console.log("  11. ChatCB voice input — speak your question, get AI answer");
+  console.log("  12. Emoji outcome trends — per-product efficacy dashboards");
+  console.log("  13. Population health cohort comparisons — 'patients like you'");
+  console.log("  14. AI-powered rebooking — Patient Outreach Agent → email/SMS");
+  console.log("  15. Marketplace personalization — recommend products from outcome data\n");
+
+  console.log("   ℹ MALLIK'S TAKE:");
+  console.log("   The platform is feature-rich. The next phase is integration depth —");
+  console.log("   connect the state forms to registries, the Rx to pharmacies, the");
+  console.log("   telehealth to real video. That's what separates a demo from a product.");
+  console.log("   ChatCB Phase 2 (live PubMed) is the quickest revenue unlock because");
+  console.log("   it makes the Education tab genuinely useful to any cannabis clinician.\n");
 }
 
 function health() {
@@ -184,7 +191,7 @@ function launch() {
     { name: "Demo credentials hidden", check: true, note: "Removed from login page" },
     { name: "Rebrand complete", check: true, note: "All references updated" },
     { name: "Mobile hamburger nav", check: fs.existsSync(path.join(ROOT, "src/components/shell/MobileNav.tsx")), note: "" },
-    { name: "27 AI agents", check: true, note: "17 RCM + 10 clinical" },
+    { name: "39 AI agents", check: true, note: "23 RCM + 16 clinical" },
     { name: "Memory harness", check: fs.existsSync(path.join(ROOT, "src/lib/agents/memory/patient-memory.ts")), note: "4 models" },
     { name: "Revenue Cockpit", check: true, note: "/ops/revenue" },
     { name: "Patient nav simplified", check: true, note: "17 → 5 items" },
