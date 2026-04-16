@@ -5,7 +5,9 @@ import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { Sparkline } from "@/components/ui/sparkline";
+import { Button } from "@/components/ui/button";
 import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils/format";
@@ -56,7 +58,9 @@ export default async function PatientChartPage({ params }: PageProps) {
         description={patient.presentingConcerns ?? undefined}
         actions={
           <>
-            <ComingSoonButton>Message</ComingSoonButton>
+            <Link href={`/clinic/messages/new?patientId=${patient.id}`}>
+              <Button variant="secondary">Message</Button>
+            </Link>
             <ComingSoonButton>Start visit</ComingSoonButton>
           </>
         }
