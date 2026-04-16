@@ -185,8 +185,6 @@ One prescribing surface that handles both pharma and cannabis. Cannabis products
 - Coverage tier resolved on product select; alternatives shown if tier_3 or tier_4
 - Signed prescription writes an audit entry
 
-## Open questions (3)
+## Open questions (1)
 
-- The prompt appears truncated ("…it integrated into i"). Could you complete the final sentence? The downstream cards depend on this.
-- Is 'integrated into i…' referring to iPad dispense terminals, iMessage status updates, inventory, or the eRx network (NCPDP SCRIPT)? The downstream cards depend on this.
 - How many tiers should the formulary have? the auto pass proposed four (covered / step therapy / PA / not covered) — confirm before we commit to the enum.
