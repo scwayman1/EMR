@@ -18,7 +18,7 @@ import {
   type ChatCBMessage,
   type CannabisConditionPair,
 } from "@/lib/domain/chatcb";
-import { askChatCB, type ChatCBResponse } from "./actions";
+import { askChatCB, searchPubMedArticles, type ChatCBResponse, type PubMedSearchResult } from "./actions";
 
 /* ── Tabs ────────────────────────────────────────────────── */
 
@@ -451,6 +451,9 @@ function DrugMixTab() {
 function ResearchTab() {
   const [cannabinoidFilter, setCannabinoidFilter] = useState("");
   const [conditionFilter, setConditionFilter] = useState("");
+  const [pubmedQuery, setPubmedQuery] = useState("");
+  const [pubmedResults, setPubmedResults] = useState<PubMedSearchResult | null>(null);
+  const [pubmedLoading, setPubmedLoading] = useState(false);
   const conditions = getConditions();
   const cannabinoids = getCannabinoids();
 
@@ -461,12 +464,106 @@ function ResearchTab() {
     return true;
   });
 
+  async function handlePubmedSearch() {
+    const q = pubmedQuery.trim();
+    if (!q || pubmedLoading) return;
+    setPubmedLoading(true);
+    try {
+      const result = await searchPubMedArticles(q);
+      setPubmedResults(result);
+    } catch {
+      setPubmedResults({ query: q, totalResults: 0, articles: [], searchTime: 0 });
+    } finally {
+      setPubmedLoading(false);
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <h2 className="font-display text-2xl text-text tracking-tight mb-2 text-center">Cannabis Research Database</h2>
       <p className="text-sm text-text-muted text-center mb-8">
         Browse cannabinoid-condition evidence pairs from 11,000+ peer-reviewed publications.
       </p>
+
+      {/* PubMed Live Search */}
+      <Card className="rounded-2xl mb-10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">PubMed</span>
+            Search PubMed
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={pubmedQuery}
+              onChange={(e) => setPubmedQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handlePubmedSearch()}
+              placeholder="Search PubMed for cannabis research..."
+              className="flex-1 h-12 rounded-xl border border-border-strong bg-white px-4 text-base text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            />
+            <Button
+              onClick={handlePubmedSearch}
+              disabled={!pubmedQuery.trim() || pubmedLoading}
+              className="rounded-xl h-12 px-6"
+            >
+              {pubmedLoading ? "Searching..." : "Search"}
+            </Button>
+          </div>
+
+          {pubmedResults && (
+            <div className="mt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Badge tone="accent" className="text-xs">
+                  {pubmedResults.totalResults.toLocaleString()} results
+                </Badge>
+                <span className="text-xs text-text-subtle">
+                  Search completed in {pubmedResults.searchTime}ms
+                </span>
+              </div>
+
+              {pubmedResults.articles.length === 0 ? (
+                <p className="text-sm text-text-muted py-4 text-center">
+                  No articles found. Try a different search term.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {pubmedResults.articles.map((article) => (
+                    <Card key={article.pmid} className="rounded-xl border border-border hover:border-accent/30 transition-colors">
+                      <CardContent className="py-4">
+                        <a
+                          href={article.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-semibold text-accent hover:underline leading-snug"
+                        >
+                          {article.title}
+                        </a>
+                        <p className="text-xs text-text-muted mt-1.5">
+                          {article.authors}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-text-subtle">{article.journal}</span>
+                          {article.year > 0 && (
+                            <Badge tone="neutral" className="text-[9px]">{article.year}</Badge>
+                          )}
+                          <span className="text-[10px] text-text-subtle ml-auto font-mono">
+                            PMID: {article.pmid}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Existing Knowledge Base Browser */}
+      <h3 className="font-display text-xl text-text tracking-tight mb-4">Knowledge base</h3>
 
       <div className="flex flex-wrap gap-3 mb-6">
         <select

@@ -22,6 +22,12 @@ import {
   type StateFormTemplate,
 } from "@/lib/domain/state-compliance";
 import { THERAPEUTIC_INDICATIONS } from "@/lib/domain/cannabis-icd10";
+import {
+  submitToRegistry,
+  getRegistryForState,
+  type StateRegistryConfig,
+  type SubmissionResult,
+} from "@/lib/domain/state-registry";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -129,6 +135,10 @@ export function ComplianceFormView({
   const [signedAt, setSignedAt] = useState<string | null>(null);
 
   const template = useMemo(() => getStateForm(selectedState), [selectedState]);
+  const registry = useMemo(() => getRegistryForState(selectedState), [selectedState]);
+  const [registrySubmitting, setRegistrySubmitting] = useState(false);
+  const [registryResult, setRegistryResult] = useState<SubmissionResult | null>(null);
+  const [registryError, setRegistryError] = useState<string[] | null>(null);
 
   // Which fields were auto-populated (read-only)
   const autoPopKeys = useMemo(() => {
@@ -143,6 +153,8 @@ export function ComplianceFormView({
       setStatus("draft");
       setSigned(false);
       setSignedAt(null);
+      setRegistryResult(null);
+      setRegistryError(null);
     },
     [prePopulatedFields],
   );
@@ -180,6 +192,29 @@ export function ComplianceFormView({
   const handlePrint = useCallback(() => {
     window.print();
   }, []);
+
+  const handleRegistrySubmit = useCallback(async () => {
+    if (!registry) return;
+    setRegistrySubmitting(true);
+    setRegistryError(null);
+    setRegistryResult(null);
+    try {
+      const result = await submitToRegistry(
+        selectedState,
+        formValues as Record<string, string | boolean | number>,
+        { npi: undefined, licenseNumber: undefined, registryId: undefined },
+      );
+      if (result.success) {
+        setRegistryResult(result);
+      } else {
+        setRegistryError(result.errors ?? ["Unknown error occurred."]);
+      }
+    } catch (err) {
+      setRegistryError([err instanceof Error ? err.message : "Submission failed. Please try again."]);
+    } finally {
+      setRegistrySubmitting(false);
+    }
+  }, [registry, selectedState, formValues]);
 
   // ─── Render field based on type ─────────────────────
 
@@ -404,6 +439,7 @@ export function ComplianceFormView({
 
       {/* Form Template */}
       {template ? (
+        <>
         <Card tone="raised" className="mb-8">
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -490,6 +526,156 @@ export function ComplianceFormView({
             </div>
           </CardFooter>
         </Card>
+        {/* Submit to State Registry */}
+        {registry && (
+          <Card tone="raised" className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LeafSprig size={16} className="text-accent" />
+                Submit to state registry
+              </CardTitle>
+              <CardDescription>
+                Submit this certification electronically to the state cannabis registry.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Registry info */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl bg-surface-muted border border-border">
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium text-text">{registry.registryName}</p>
+                    <a
+                      href={registry.registryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-accent hover:underline"
+                    >
+                      {registry.registryUrl}
+                    </a>
+                  </div>
+                  <Badge
+                    tone={registry.supportsElectronicSubmission ? "success" : "warning"}
+                    className="text-[10px] shrink-0"
+                  >
+                    {registry.supportsElectronicSubmission ? "Electronic submission" : "Manual submission"}
+                  </Badge>
+                </div>
+
+                {registry.notes && (
+                  <p className="text-xs text-text-muted leading-relaxed">{registry.notes}</p>
+                )}
+
+                {/* Electronic submission */}
+                {registry.supportsElectronicSubmission ? (
+                  <div>
+                    {!registryResult && !registryError && (
+                      <Button
+                        onClick={handleRegistrySubmit}
+                        disabled={status !== "complete" || registrySubmitting}
+                        size="md"
+                        className="w-full sm:w-auto"
+                      >
+                        {registrySubmitting ? "Submitting..." : "Submit to registry"}
+                      </Button>
+                    )}
+                    {status === "draft" && !registryResult && (
+                      <p className="text-xs text-text-muted mt-2">
+                        Generate the form first before submitting to the registry.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* Print and mail instructions */
+                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                    <p className="text-sm font-medium text-amber-800 mb-2">
+                      Print and mail required
+                    </p>
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      {registry.stateName} does not support electronic submission.
+                      Please print the completed form and mail it to the state registry.
+                      The patient will need to submit the physician certification along with
+                      their application to the state program.
+                    </p>
+                    <Button variant="secondary" size="sm" onClick={handlePrint} className="mt-3">
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mr-1">
+                        <path
+                          d="M4 6V2h8v4M4 12H2.5A1.5 1.5 0 011 10.5v-3A1.5 1.5 0 012.5 6h11A1.5 1.5 0 0115 7.5v3a1.5 1.5 0 01-1.5 1.5H12M4 10h8v4H4v-4z"
+                          stroke="currentColor"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      Print form
+                    </Button>
+                  </div>
+                )}
+
+                {/* Success state */}
+                {registryResult && registryResult.success && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className="text-emerald-600 shrink-0">
+                        <path d="M7 10l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.2" />
+                      </svg>
+                      <p className="text-sm font-medium text-emerald-800">
+                        Successfully submitted to registry
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                      {registryResult.confirmationNumber && (
+                        <div>
+                          <p className="text-[10px] text-emerald-600 uppercase tracking-wider">Confirmation #</p>
+                          <p className="text-sm font-mono text-emerald-900">{registryResult.confirmationNumber}</p>
+                        </div>
+                      )}
+                      {registryResult.registryPatientId && (
+                        <div>
+                          <p className="text-[10px] text-emerald-600 uppercase tracking-wider">Registry patient ID</p>
+                          <p className="text-sm font-mono text-emerald-900">{registryResult.registryPatientId}</p>
+                        </div>
+                      )}
+                      {registryResult.expirationDate && (
+                        <div>
+                          <p className="text-[10px] text-emerald-600 uppercase tracking-wider">Expires</p>
+                          <p className="text-sm text-emerald-900">{registryResult.expirationDate}</p>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-emerald-600 mt-2">
+                      Submitted at {new Date(registryResult.submittedAt).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {/* Error state */}
+                {registryError && (
+                  <div className="p-4 rounded-xl bg-red-50 border border-red-200 space-y-2">
+                    <p className="text-sm font-medium text-red-800">Submission failed</p>
+                    <ul className="space-y-1">
+                      {registryError.map((err, i) => (
+                        <li key={i} className="text-xs text-red-700 flex items-start gap-2">
+                          <span className="text-red-400 mt-0.5 shrink-0">-</span>
+                          {err}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      onClick={handleRegistrySubmit}
+                      variant="secondary"
+                      size="sm"
+                      disabled={registrySubmitting}
+                      className="mt-2"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        </>
       ) : (
         <Card tone="raised">
           <CardContent className="py-12 text-center">

@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import type { TelehealthChecklistItem } from "@/lib/domain/telehealth";
+import {
+  startTelehealthVisit,
+  endTelehealthVisit,
+  type TelehealthVisitResult,
+} from "./actions";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -78,6 +83,9 @@ export function VideoRoom({
   const [cameraOff, setCameraOff] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [visitData, setVisitData] = useState<TelehealthVisitResult | null>(null);
+  const [startingVisit, setStartingVisit] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const timer = useTimer(phase === "in_progress");
 
@@ -94,13 +102,37 @@ export function VideoRoom({
     .filter((c) => c.required)
     .every((c) => checkedItems.has(c.id));
 
-  const startVisit = useCallback(() => {
-    setPhase("in_progress");
-  }, []);
+  const startVisit = useCallback(async () => {
+    setStartingVisit(true);
+    try {
+      const result = await startTelehealthVisit(patient.id, encounterId);
+      setVisitData(result);
+      setPhase("in_progress");
+    } catch (err) {
+      console.error("Failed to start telehealth visit:", err);
+      alert("Failed to create video room. Please try again.");
+    } finally {
+      setStartingVisit(false);
+    }
+  }, [patient.id, encounterId]);
 
-  const endVisit = useCallback(() => {
+  const endVisit = useCallback(async () => {
     setPhase("ended");
-  }, []);
+    if (visitData?.room.name) {
+      try {
+        await endTelehealthVisit(visitData.room.name);
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+  }, [visitData]);
+
+  const copyPatientLink = useCallback(() => {
+    if (!visitData?.patientJoinUrl) return;
+    navigator.clipboard.writeText(visitData.patientJoinUrl);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }, [visitData]);
 
   const goToNotes = useCallback(() => {
     router.push(`/clinic/patients/${params.id}/notes`);
@@ -186,11 +218,11 @@ export function VideoRoom({
             <div className="px-6 pb-6">
               <Button
                 onClick={startVisit}
-                disabled={!requiredComplete}
+                disabled={!requiredComplete || startingVisit}
                 size="lg"
                 className="w-full"
               >
-                Start video visit
+                {startingVisit ? "Creating video room..." : "Start video visit"}
               </Button>
               {!requiredComplete && (
                 <p className="text-xs text-text-muted text-center mt-2">
@@ -255,9 +287,38 @@ export function VideoRoom({
                     Room URL
                   </p>
                   <p className="text-xs font-mono text-accent break-all">
-                    {roomUrl}
+                    {visitData?.room.url ?? roomUrl}
                   </p>
                 </div>
+
+                {visitData && (
+                  <div className="mt-4 pt-4 border-t border-border space-y-3">
+                    <div>
+                      <p className="text-[10px] text-text-subtle uppercase tracking-wider mb-1">
+                        Provider join URL
+                      </p>
+                      <a
+                        href={visitData.providerJoinUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono text-accent break-all hover:underline"
+                      >
+                        {visitData.providerJoinUrl}
+                      </a>
+                    </div>
+                    <Button
+                      onClick={copyPatientLink}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                    >
+                      {linkCopied ? "Copied!" : "Copy patient link"}
+                    </Button>
+                    <p className="text-[10px] text-text-subtle text-center">
+                      Room expires {new Date(visitData.room.expiresAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -666,6 +727,27 @@ export function VideoRoom({
                     <span className="text-text-muted">Provider</span>
                     <span className="text-text text-xs">{providerName}</span>
                   </div>
+                  {visitData && (
+                    <>
+                      <EditorialRule />
+                      <div>
+                        <p className="text-[10px] text-text-subtle uppercase tracking-wider mb-1.5">
+                          Room
+                        </p>
+                        <p className="text-xs font-mono text-accent break-all">
+                          {visitData.room.name}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={copyPatientLink}
+                        variant="secondary"
+                        size="sm"
+                        className="w-full"
+                      >
+                        {linkCopied ? "Copied!" : "Copy patient link"}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

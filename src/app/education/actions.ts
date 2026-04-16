@@ -7,10 +7,25 @@ import {
   type Citation,
   type CannabisConditionPair,
 } from "@/lib/domain/chatcb";
+import { searchPubMed, type PubMedSearchResult } from "@/lib/domain/pubmed";
+
+export type { PubMedSearchResult };
 
 export interface ChatCBResponse {
   answer: string;
   citations: Citation[];
+}
+
+/**
+ * Server action for PubMed live search.
+ * Searches the NLM E-utilities API for cannabis-related articles.
+ */
+export async function searchPubMedArticles(query: string): Promise<PubMedSearchResult> {
+  const q = query.trim();
+  if (!q) {
+    return { query: q, totalResults: 0, articles: [], searchTime: 0 };
+  }
+  return searchPubMed(q, 10);
 }
 
 /**
