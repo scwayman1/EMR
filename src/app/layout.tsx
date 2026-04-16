@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +17,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
+  const clerkEnabled = process.env.AUTH_PROVIDER === "clerk";
+
+  const content = (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
@@ -36,4 +39,8 @@ export default function RootLayout({
       </body>
     </html>
   );
+
+  // Wrap in ClerkProvider only when Clerk is enabled.
+  // This keeps the existing iron-session flow untouched when AUTH_PROVIDER is unset.
+  return clerkEnabled ? <ClerkProvider>{content}</ClerkProvider> : content;
 }

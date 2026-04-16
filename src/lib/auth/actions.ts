@@ -125,7 +125,15 @@ export async function signupAction(_prev: ActionResult | null, formData: FormDat
 }
 
 export async function logoutAction() {
+  // Legacy iron-session logout
   const session = await getSession();
   session.destroy();
+
+  // When Clerk is active, also redirect through Clerk's sign-out so
+  // the Clerk cookie is cleared. The iron-session destroy above is a
+  // no-op in that case, but harmless.
+  if (process.env.AUTH_PROVIDER === "clerk") {
+    redirect("/sign-in");
+  }
   redirect("/login");
 }

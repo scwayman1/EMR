@@ -53,10 +53,22 @@ export interface AuthedUser {
 }
 
 /**
- * Load the current user + roles from the session cookie.
+ * Load the current user + roles.
+ *
  * Cached per request so every server component gets the same reference.
+ *
+ * Delegates to Clerk when AUTH_PROVIDER=clerk; otherwise uses iron-session.
+ * The AuthedUser shape is identical in both cases — the 100+ callers of
+ * this function don't need to change.
  */
 export const getCurrentUser = cache(async (): Promise<AuthedUser | null> => {
+  // Delegate to Clerk when the feature flag is on
+  if (process.env.AUTH_PROVIDER === "clerk") {
+    const { getCurrentUserFromClerk } = await import("./clerk-session");
+    return getCurrentUserFromClerk();
+  }
+
+  // Legacy iron-session path (default)
   const session = await getSession();
   if (!session.userId) return null;
 
