@@ -509,6 +509,45 @@ export default async function PatientHome() {
         </Card>
       </div>
 
+      {/* ── Progress (goals, streaks, efficacy, recap) ── */}
+      <div className="mb-3 mt-2">
+        <Eyebrow>Your progress</Eyebrow>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <Link href="/portal/goals">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">🎯</span>
+              <p className="text-sm font-medium text-text">Goals</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/streaks">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">🔥</span>
+              <p className="text-sm font-medium text-text">Streak</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/efficacy">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">💚</span>
+              <p className="text-sm font-medium text-text">Product efficacy</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/portal/weekly-recap">
+          <Card tone="ambient" className="card-hover text-center py-5">
+            <CardContent className="py-0">
+              <span className="text-2xl block mb-2">📰</span>
+              <p className="text-sm font-medium text-text">Weekly recap</p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
       {/* ── Quick links ──────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Link href="/portal/storybook">

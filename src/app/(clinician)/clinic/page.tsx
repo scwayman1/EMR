@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatRelative } from "@/lib/utils/format";
+import { RecentPatients } from "@/components/shell/recent-patients";
 
 export const metadata = { title: "Mission Control" };
 
@@ -842,6 +843,9 @@ export default async function ClinicHomePage() {
 
         {/* -------- Right column (1/3): Stats + Drafts + Research -------- */}
         <div className="space-y-6">
+          {/* Recently viewed patients (client-only, hydrates from localStorage) */}
+          <RecentPatients />
+
           {/* Quick stats */}
           <div className="grid grid-cols-2 gap-3">
             <MetricTile

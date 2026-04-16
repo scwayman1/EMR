@@ -4,6 +4,8 @@ import { AppShell, type NavItem } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
+import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
+import { CommandPalette } from "@/components/ui/command-palette";
 import { prisma } from "@/lib/db/prisma";
 
 export default async function ClinicianLayout({
@@ -69,6 +71,8 @@ export default async function ClinicianLayout({
     >
       <QuoteWelcomeModal userName={user.firstName} />
       <BreathingBreak />
+      <KeyboardShortcuts />
+      <CommandPalette />
       {children}
     </AppShell>
   );

@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
+import {
+  calculateNoShowRisk,
+  type NoShowRiskFactors,
+} from "@/lib/domain/clinical-intelligence";
 
 export const metadata = { title: "Morning Brief" };
 
@@ -42,6 +46,7 @@ export default async function MorningBriefPage() {
     pendingApprovals,
     todayEncounters,
     worseningPatients,
+    todayScheduled,
   ] = await Promise.all([
     // Unsigned notes from yesterday or older
     prisma.note.findMany({
@@ -130,7 +135,72 @@ export default async function MorningBriefPage() {
            - AVG(CASE WHEN ol."loggedAt" < NOW() - INTERVAL '7 days' THEN ol.value END) >= 2
       LIMIT 10
     `.catch(() => []),
+
+    // Today's scheduled encounters — used for no-show risk scoring.
+    prisma.encounter.findMany({
+      where: {
+        organizationId: orgId,
+        status: "scheduled",
+        scheduledFor: { gte: today, lt: endOfDay },
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            encounters: {
+              where: { scheduledFor: { lt: today } },
+              orderBy: { scheduledFor: "desc" },
+              select: { status: true, scheduledFor: true },
+              take: 30,
+            },
+          },
+        },
+      },
+      orderBy: { scheduledFor: "asc" },
+    }),
   ]);
+
+  // ── Compute no-show risk for each scheduled appointment ──────────
+  const riskAppointments = todayScheduled
+    .map((enc) => {
+      const history = enc.patient.encounters;
+      const priorNoShowCount = history.filter((h) => h.status === "cancelled").length;
+      const lastVisit = history.find((h) => h.status === "complete");
+      const daysSinceLastVisit = lastVisit?.scheduledFor
+        ? Math.max(0, Math.floor((now.getTime() - lastVisit.scheduledFor.getTime()) / 86_400_000))
+        : 365;
+      const appointmentTypeIsNewPatient = history.length === 0;
+      const hoursUntilAppointment = enc.scheduledFor
+        ? Math.max(0, (enc.scheduledFor.getTime() - now.getTime()) / 3_600_000)
+        : 0;
+      const isTelehealthAppointment = enc.modality === "video" || enc.modality === "phone";
+      // Without a confirmation table we treat scheduled-but-not-started as unconfirmed.
+      const hasConfirmedAttendance = false;
+
+      const factors: NoShowRiskFactors = {
+        priorNoShowCount,
+        daysSinceLastVisit,
+        appointmentTypeIsNewPatient,
+        hoursUntilAppointment,
+        isTelehealthAppointment,
+        hasConfirmedAttendance,
+      };
+
+      const risk = calculateNoShowRisk(factors);
+
+      return {
+        id: enc.id,
+        patientId: enc.patient.id,
+        patientName: `${enc.patient.firstName} ${enc.patient.lastName}`,
+        scheduledFor: enc.scheduledFor,
+        modality: enc.modality,
+        risk,
+      };
+    })
+    .filter((a) => a.risk.level !== "low")
+    .sort((a, b) => b.risk.score - a.risk.score);
 
   // Build brief items
   const items: BriefItem[] = [];
@@ -247,6 +317,79 @@ export default async function MorningBriefPage() {
           <p className="text-xs text-text-muted mt-1">AI drafts waiting</p>
         </Card>
       </div>
+
+      {/* High-risk appointments today */}
+      {riskAppointments.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-display text-lg text-text tracking-tight">
+              High-risk appointments today
+            </h2>
+            <span className="text-xs text-text-subtle">
+              {riskAppointments.length} flagged · auto-scored
+            </span>
+          </div>
+          <div className="space-y-2">
+            {riskAppointments.map((apt) => (
+              <details
+                key={apt.id}
+                className="rounded-xl border border-border/80 bg-surface shadow-sm overflow-hidden group"
+              >
+                <summary className="flex items-center gap-3 px-4 py-3 cursor-pointer list-none">
+                  <span className="text-lg shrink-0" aria-hidden="true">
+                    {apt.risk.level === "high" ? "\uD83D\uDD34" : "\uD83D\uDFE1"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text truncate">
+                      {apt.patientName}
+                    </p>
+                    <p className="text-xs text-text-muted mt-0.5">
+                      {apt.scheduledFor
+                        ? apt.scheduledFor.toLocaleTimeString("en-US", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })
+                        : "Time TBD"}{" "}
+                      · {apt.modality}
+                    </p>
+                  </div>
+                  <Badge tone={apt.risk.level === "high" ? "danger" : "warning"}>
+                    {apt.risk.level} · {apt.risk.score}
+                  </Badge>
+                  <span className="text-xs text-text-subtle ml-1 group-open:rotate-180 transition-transform">
+                    {"\u25BE"}
+                  </span>
+                </summary>
+                <div className="px-4 pb-4 pt-1 border-t border-border/60 bg-surface-muted/30 text-sm">
+                  <p className="text-[11px] uppercase tracking-wider text-text-subtle mb-1.5">
+                    Risk factors
+                  </p>
+                  <ul className="space-y-1 mb-3">
+                    {apt.risk.factors.map((f, i) => (
+                      <li key={i} className="text-xs text-text-muted">
+                        · {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] uppercase tracking-wider text-text-subtle mb-1.5">
+                    Recommendation
+                  </p>
+                  <p className="text-xs text-text-muted leading-relaxed mb-3">
+                    {apt.risk.recommendation}
+                  </p>
+                  <div className="flex justify-end">
+                    <Link href={`/clinic/patients/${apt.patientId}`}>
+                      <Button size="sm" variant="secondary">
+                        Open chart
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </details>
+            ))}
+          </div>
+        </section>
+      )}
 
       {pendingApprovals > 0 && (
         <Link href="/clinic/approvals">

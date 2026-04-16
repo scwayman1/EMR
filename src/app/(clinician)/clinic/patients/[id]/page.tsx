@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey } from "./chart-tabs";
+import { TrackPatientView } from "@/components/shell/recent-patients";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { MemoryTab } from "./memory-tab";
@@ -262,6 +263,12 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
 
   return (
     <PageShell maxWidth="max-w-[1280px]">
+      {/* Tracks this view in the localStorage "recently viewed" strip */}
+      <TrackPatientView
+        patientId={patient.id}
+        patientName={`${patient.firstName} ${patient.lastName}`}
+      />
+
       {/* ── Dossier header ────────────────────────────────── */}
       <Card tone="ambient" className="mb-8">
         <CardContent className="pt-8 pb-8">

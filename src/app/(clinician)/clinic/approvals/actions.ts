@@ -197,6 +197,189 @@ export async function editAndApproveMessageDraft(
 }
 
 // ---------------------------------------------------------------------------
+// Batch approve / batch reject — operate on a set of message draft IDs.
+//
+// Both helpers run each draft through the same logic the single-action
+// flows do (org check, status check, feedback recording), but in a single
+// server round-trip. Failures on individual drafts are tolerated so a
+// batch of 20 doesn't get derailed by one stale row.
+// ---------------------------------------------------------------------------
+
+export interface BatchResult {
+  ok: boolean;
+  succeeded: number;
+  failed: number;
+  errors?: string[];
+}
+
+const MAX_BATCH = 100;
+
+async function loadDrafts(messageIds: string[], organizationId: string) {
+  return prisma.message.findMany({
+    where: {
+      id: { in: messageIds },
+      status: "draft",
+      thread: { patient: { organizationId } },
+    },
+    include: { thread: true },
+  });
+}
+
+export async function batchApproveMessages(
+  messageIds: string[],
+): Promise<BatchResult> {
+  const user = await requireUser();
+  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
+    return {
+      ok: false,
+      succeeded: 0,
+      failed: messageIds.length,
+      errors: ["Unauthorized — clinician role required."],
+    };
+  }
+  if (!Array.isArray(messageIds) || messageIds.length === 0) {
+    return { ok: true, succeeded: 0, failed: 0 };
+  }
+  const ids = messageIds.slice(0, MAX_BATCH);
+
+  const drafts = await loadDrafts(ids, user.organizationId!);
+  const found = new Set(drafts.map((d) => d.id));
+  const missing = ids.filter((id) => !found.has(id));
+
+  const now = new Date();
+  let succeeded = 0;
+  const errors: string[] = [];
+  const patientIdsTouched = new Set<string>();
+
+  for (const draft of drafts) {
+    try {
+      await prisma.$transaction([
+        prisma.message.update({
+          where: { id: draft.id },
+          data: {
+            status: "sent",
+            sentAt: now,
+            senderUserId: user.id,
+          },
+        }),
+        prisma.messageThread.update({
+          where: { id: draft.threadId },
+          data: { lastMessageAt: now },
+        }),
+      ]);
+      succeeded++;
+      patientIdsTouched.add(draft.thread.patientId);
+
+      try {
+        const agent = parseSenderAgent(draft.senderAgent);
+        if (agent) {
+          await recordFeedback({
+            agentName: agent.agentName,
+            agentVersion: agent.agentVersion,
+            organizationId: user.organizationId ?? null,
+            messageId: draft.id,
+            action: "approved",
+            reviewerId: user.id,
+          });
+        }
+      } catch (err) {
+        console.warn("[approvals] batch recordFeedback(approved) failed", err);
+      }
+    } catch (err) {
+      console.error("[approvals] batch approve failed for", draft.id, err);
+      errors.push(`Could not send draft ${draft.id}.`);
+    }
+  }
+
+  for (const id of missing) {
+    errors.push(`Draft ${id} not found or already sent.`);
+  }
+
+  revalidatePath("/clinic/approvals");
+  revalidatePath("/clinic/messages");
+  for (const pid of patientIdsTouched) {
+    revalidatePath(`/clinic/patients/${pid}`);
+  }
+
+  return {
+    ok: succeeded > 0,
+    succeeded,
+    failed: ids.length - succeeded,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+export async function batchRejectMessages(
+  messageIds: string[],
+): Promise<BatchResult> {
+  const user = await requireUser();
+  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
+    return {
+      ok: false,
+      succeeded: 0,
+      failed: messageIds.length,
+      errors: ["Unauthorized — clinician role required."],
+    };
+  }
+  if (!Array.isArray(messageIds) || messageIds.length === 0) {
+    return { ok: true, succeeded: 0, failed: 0 };
+  }
+  const ids = messageIds.slice(0, MAX_BATCH);
+
+  const drafts = await loadDrafts(ids, user.organizationId!);
+  const found = new Set(drafts.map((d) => d.id));
+  const missing = ids.filter((id) => !found.has(id));
+
+  let succeeded = 0;
+  const errors: string[] = [];
+  const patientIdsTouched = new Set<string>();
+
+  for (const draft of drafts) {
+    // Capture attribution before the row disappears.
+    const agent = parseSenderAgent(draft.senderAgent);
+    try {
+      await prisma.message.delete({ where: { id: draft.id } });
+      succeeded++;
+      patientIdsTouched.add(draft.thread.patientId);
+
+      try {
+        if (agent) {
+          await recordFeedback({
+            agentName: agent.agentName,
+            agentVersion: agent.agentVersion,
+            organizationId: user.organizationId ?? null,
+            action: "rejected",
+            reviewerId: user.id,
+          });
+        }
+      } catch (err) {
+        console.warn("[approvals] batch recordFeedback(rejected) failed", err);
+      }
+    } catch (err) {
+      console.error("[approvals] batch reject failed for", draft.id, err);
+      errors.push(`Could not discard draft ${draft.id}.`);
+    }
+  }
+
+  for (const id of missing) {
+    errors.push(`Draft ${id} not found or already sent.`);
+  }
+
+  revalidatePath("/clinic/approvals");
+  revalidatePath("/clinic/messages");
+  for (const pid of patientIdsTouched) {
+    revalidatePath(`/clinic/patients/${pid}`);
+  }
+
+  return {
+    ok: succeeded > 0,
+    succeeded,
+    failed: ids.length - succeeded,
+    errors: errors.length > 0 ? errors : undefined,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Reject a draft — discards it. The thread stays, the draft disappears.
 // ---------------------------------------------------------------------------
 
