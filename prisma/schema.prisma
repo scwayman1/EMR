@@ -45,6 +45,12 @@ model Organization {
   launchStatus   PracticeLaunchStatus?
   products       Product[]
   orders         Order[]
+  shifts         Shift[]
+  timeEntries    TimeEntry[]
+  trainingModules TrainingModule[]
+  incidents      Incident[]
+  vendors        Vendor[]
+  campaigns      MarketingCampaign[]
 }
 
 model User {
@@ -63,6 +69,10 @@ model User {
   sentMessages   Message[]    @relation("MessageSender")
   auditLogs      AuditLog[]
   approvedJobs   AgentJob[]   @relation("JobApprovedBy")
+  shifts         Shift[]      @relation("ShiftAssignee")
+  timeEntries    TimeEntry[]  @relation("TimeEntryUser")
+  trainingCompletions TrainingCompletion[] @relation("TrainingCompletionUser")
+  reportedIncidents Incident[] @relation("IncidentReporter")
 }
 
 model Membership {
@@ -753,4 +763,197 @@ model OrderItem {
   variant     ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@index([orderId])
+}
+
+// --------------------------------------------------------------
+// Operations: staff schedule, time clock, training,
+// incidents, vendors, marketing.
+//
+// These models power the /ops suite. They are intentionally lean
+// — the goal is to make each surface usable end-to-end without
+// pretending to be a full HRIS / EHS / CRM.
+// --------------------------------------------------------------
+
+enum ShiftStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+  no_show
+}
+
+model Shift {
+  id             String       @id @default(cuid())
+  organizationId String
+  assigneeUserId String?
+  role           String       // free-form job function: "front desk", "intake", "medical"
+  startAt        DateTime
+  endAt          DateTime
+  status         ShiftStatus  @default(scheduled)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assignee       User?        @relation("ShiftAssignee", fields: [assigneeUserId], references: [id])
+
+  @@index([organizationId, startAt])
+  @@index([assigneeUserId, startAt])
+}
+
+enum TimeEntryStatus {
+  open
+  closed
+  adjusted
+}
+
+model TimeEntry {
+  id             String          @id @default(cuid())
+  organizationId String
+  userId         String
+  clockInAt      DateTime        @default(now())
+  clockOutAt     DateTime?
+  status         TimeEntryStatus @default(open)
+  notes          String?
+  // Denormalized minutes worked, set when the entry closes.
+  minutesWorked  Int?
+  createdAt      DateTime        @default(now())
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User            @relation("TimeEntryUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([userId, clockInAt])
+}
+
+model TrainingModule {
+  id              String   @id @default(cuid())
+  organizationId  String
+  title           String
+  description     String?
+  durationMinutes Int      @default(15)
+  required        Boolean  @default(false)
+  topics          String[] @default([])
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  completions     TrainingCompletion[]
+
+  @@index([organizationId, active])
+}
+
+model TrainingCompletion {
+  id          String   @id @default(cuid())
+  moduleId    String
+  userId      String
+  completedAt DateTime @default(now())
+  score       Int?
+  notes       String?
+
+  module      TrainingModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  user        User           @relation("TrainingCompletionUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, userId])
+  @@index([userId, completedAt])
+}
+
+enum IncidentSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum IncidentStatus {
+  open
+  investigating
+  resolved
+  closed
+}
+
+model Incident {
+  id               String           @id @default(cuid())
+  organizationId   String
+  reportedByUserId String?
+  occurredAt       DateTime
+  category         String           // "safety", "privacy", "clinical", "facilities", "other"
+  severity         IncidentSeverity @default(low)
+  status           IncidentStatus   @default(open)
+  summary          String
+  resolution       String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportedBy       User?        @relation("IncidentReporter", fields: [reportedByUserId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([organizationId, severity])
+}
+
+enum VendorStatus {
+  active
+  inactive
+  on_hold
+}
+
+model Vendor {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  category       String       // "supplier", "lab", "it", "legal", "marketing", "other"
+  status         VendorStatus @default(active)
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  website        String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([organizationId, category])
+}
+
+enum CampaignStatus {
+  draft
+  scheduled
+  live
+  paused
+  completed
+}
+
+enum CampaignChannel {
+  email
+  sms
+  social
+  print
+  referral
+  event
+  other
+}
+
+model MarketingCampaign {
+  id             String          @id @default(cuid())
+  organizationId String
+  name           String
+  channel        CampaignChannel
+  status         CampaignStatus  @default(draft)
+  audience       String?
+  goal           String?
+  startAt        DateTime?
+  endAt          DateTime?
+  budget         Float?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([organizationId, channel])
 }

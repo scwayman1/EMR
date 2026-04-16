@@ -13,7 +13,22 @@ export default async function OpsOverviewPage() {
   const user = await requireUser();
   const orgId = user.organizationId!;
 
-  const [patientCount, prospectCount, openTasks, launchStatus, recentJobs] = await Promise.all([
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+
+  const [
+    patientCount,
+    prospectCount,
+    openTasks,
+    launchStatus,
+    recentJobs,
+    onShift,
+    shiftsToday,
+    openIncidents,
+    liveCampaigns,
+  ] = await Promise.all([
     prisma.patient.count({ where: { organizationId: orgId, status: "active" } }),
     prisma.patient.count({ where: { organizationId: orgId, status: "prospect" } }),
     prisma.task.count({ where: { organizationId: orgId, status: "open" } }),
@@ -22,6 +37,19 @@ export default async function OpsOverviewPage() {
       where: { organizationId: orgId },
       orderBy: { createdAt: "desc" },
       take: 6,
+    }),
+    prisma.timeEntry.count({ where: { organizationId: orgId, status: "open" } }),
+    prisma.shift.count({
+      where: { organizationId: orgId, startAt: { gte: todayStart, lt: todayEnd } },
+    }),
+    prisma.incident.count({
+      where: {
+        organizationId: orgId,
+        status: { in: ["open", "investigating"] },
+      },
+    }),
+    prisma.marketingCampaign.count({
+      where: { organizationId: orgId, status: "live" },
     }),
   ]);
 
@@ -33,7 +61,7 @@ export default async function OpsOverviewPage() {
         description={`How ${user.organizationName ?? "your practice"} is running today.`}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <MetricTile label="Active patients" value={patientCount} />
         <MetricTile label="In intake" value={prospectCount} />
         <MetricTile label="Open tasks" value={openTasks} />
@@ -41,6 +69,17 @@ export default async function OpsOverviewPage() {
           label="Launch readiness"
           value={launchStatus ? `${launchStatus.readinessScore}%` : "—"}
         />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <MetricTile label="On shift" value={onShift} hint="Clocked in right now" />
+        <MetricTile label="Shifts today" value={shiftsToday} />
+        <MetricTile
+          label="Open incidents"
+          value={openIncidents}
+          hint={openIncidents === 0 ? "All clear" : "Unresolved"}
+        />
+        <MetricTile label="Live campaigns" value={liveCampaigns} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
