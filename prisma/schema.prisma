@@ -51,6 +51,7 @@ model Organization {
   incidents      Incident[]
   vendors        Vendor[]
   campaigns      MarketingCampaign[]
+  productPrompts ProductPrompt[]
 }
 
 model User {
@@ -956,4 +957,46 @@ model MarketingCampaign {
 
   @@index([organizationId, status])
   @@index([organizationId, channel])
+}
+
+// --------------------------------------------------------------
+// Mallik — the PM agent
+//
+// Inbound: raw product prompts from founders (Dr. Patel's iMessages,
+// Slack messages, etc.). Mallik decomposes each prompt into
+// Linear-shaped task cards, an epic, a TL;DR, and a list of
+// open clarifying questions.
+// --------------------------------------------------------------
+
+enum ProductPromptStatus {
+  received
+  decomposed
+  accepted
+  archived
+}
+
+model ProductPrompt {
+  id             String              @id @default(cuid())
+  organizationId String?
+  source         String              // "imessage", "slack", "email", "manual"
+  author         String              // "dr_patel", "founder_2", ...
+  rawText        String
+  receivedAt     DateTime            @default(now())
+  processedAt    DateTime?
+  status         ProductPromptStatus @default(received)
+  // Mallik output — all nullable until the agent runs.
+  epicSlug       String?
+  epicTitle      String?
+  summary        String?
+  cards          Json                @default("[]") // LinearCard[]
+  openQuestions  Json                @default("[]") // string[]
+  decomposedBy   String?             // agent:mallik@x.y.z
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, receivedAt])
+  @@index([author])
+  @@index([status])
 }

@@ -119,6 +119,16 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "pm-decompose",
+    on: ["founder.prompt.received"],
+    steps: [
+      {
+        agent: "mallik",
+        input: (e) => ({ promptId: (e as any).promptId }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */

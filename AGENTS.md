@@ -119,6 +119,45 @@ interface Agent<I, O> {
 - **Allowed actions:** read patient, write QualificationRecord
 - **Approval:** required on status upgrade; none on refresh
 
+### 11. Mallik — Product Manager Agent
+- **Mission:** Decompose unstructured product prompts from founders (Dr. Patel's iMessages, Slack DMs, etc.) into Linear-shaped task cards, an epic, a one-line summary, and a list of clarifying questions.
+- **Triggers:** `founder.prompt.received`
+- **Inputs:** `{ promptId }` — refers to a `ProductPrompt` row holding the raw text + source + author.
+- **Outputs:** `{ epicSlug, epicTitle, summary, cardCount, openQuestionCount }`. The structured cards and open questions are written back onto the `ProductPrompt` row (`cards` JSON, `openQuestions` JSON).
+- **Card shape:** `{ title, description, labels[], priority, estimate?, acceptanceCriteria[], parentEpicSlug, dependsOn[] }` — drops straight into Linear with no massaging.
+- **Allowed actions:** `read.productPrompt`, `write.productPrompt`
+- **Approval:** none (cards are drafts; a human PM promotes them into Linear)
+- **Failure modes:**
+  - No themes matched → returns an empty card list and an explicit open question asking for human triage.
+  - Prompt truncated → Mallik detects dangling connectives ("into i…", "for the…") and flags them as open questions.
+
+#### Theme system
+Mallik V1 is deterministic and rule-based. A **theme** is a small unit of product judgment:
+
+```ts
+interface Theme {
+  name: string;
+  matches(normText: string, rawText: string): boolean;
+  cards(input: DecomposeInput, epicSlug: string): LinearCard[];
+}
+```
+
+Adding product vocabulary = appending a theme to the array in
+`src/lib/agents/product-manager-agent.ts`. The rule-based core stays
+as a safety floor even when we later plug in a real model for long-tail
+prompts.
+
+Shipped themes:
+- `billing-insurance-module`
+- `formulary-tier-system`
+- `prior-authorization`
+- `alternatives-engine`
+- `erx-parity`
+
+#### Inbound sources
+- **Dr. Patel (founder)** — sends iMessage product prompts. These are stream-of-consciousness, multi-topic, and often get truncated mid-sentence. Mallik treats truncation as a first-class signal, not an error: it emits a clarifying question and still decomposes what it understood.
+- **Other founders / operators** — same pipeline, different `author` field on the `ProductPrompt` row.
+
 ---
 
 ## Agent registry (code)
@@ -137,6 +176,7 @@ export const agentRegistry = {
   scheduling: schedulingAgent,
   practiceLaunch: practiceLaunchAgent,
   registry: registryAgent,
+  mallik: productManagerAgent,
 } satisfies Record<string, Agent<any, any>>;
 ```
 

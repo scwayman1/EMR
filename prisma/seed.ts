@@ -5,8 +5,18 @@
 
 import { PrismaClient, Role, PatientStatus, EncounterStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { decomposePrompt } from "../src/lib/agents/product-manager-agent";
 
 const prisma = new PrismaClient();
+
+const PATEL_001_RAW = `for billing and insurance module, begin structuring a full tier system
+of cannabis medications and current products to determine which ones
+are covered, which cannabis products will need a prior authorization,
+and which alternatives are recommended if the current cannabis
+medication is not covered by their insurance. We want our EMR to serve
+as a fully functional system where providers can prescribe cannabis
+exactly as they would a pharmaceutical pills and then have it
+integrated into i`;
 
 async function main() {
   console.log("Seeding demo organization...");
@@ -210,10 +220,43 @@ async function main() {
     },
   });
 
+  // ------------------------------------------------------------
+  // Mallik seed: Dr. Patel's first product prompt, pre-decomposed
+  // so /ops/product-prompts has real content on first load.
+  // ------------------------------------------------------------
+  const patel001 = decomposePrompt({
+    rawText: PATEL_001_RAW,
+    source: "imessage",
+    author: "dr_patel",
+  });
+
+  await prisma.productPrompt.upsert({
+    where: { id: "seed-patel-001" },
+    update: {},
+    create: {
+      id: "seed-patel-001",
+      organizationId: org.id,
+      source: "imessage",
+      author: "dr_patel",
+      rawText: PATEL_001_RAW,
+      status: "decomposed",
+      processedAt: new Date(),
+      epicSlug: patel001.epicSlug,
+      epicTitle: patel001.epicTitle,
+      summary: patel001.summary,
+      cards: patel001.cards as any,
+      openQuestions: patel001.openQuestions as any,
+      decomposedBy: "agent:mallik@1.0.0",
+    },
+  });
+
   console.log("Seed complete.");
   console.log("  Owner:     owner@demo.health     / password123");
   console.log("  Clinician: clinician@demo.health / password123");
   console.log("  Patient:   patient@demo.health   / password123");
+  console.log(
+    `  Mallik:    seeded patel-001 → ${patel001.cards.length} cards, ${patel001.openQuestions.length} open questions`,
+  );
 }
 
 main()

@@ -13,6 +13,7 @@ const OPS_NAV: NavItem[] = [
   { label: "Incidents", href: "/ops/incidents" },
   { label: "Vendors", href: "/ops/vendors" },
   { label: "Marketing", href: "/ops/marketing" },
+  { label: "Mallik inbox", href: "/ops/product-prompts" },
   { label: "Practice launch", href: "/ops/launch" },
 ];
 

@@ -15,7 +15,9 @@ export type AllowedAction =
   | "write.coding"
   | "write.qualification"
   | "write.outcome.reminder"
-  | "write.launchStatus";
+  | "write.launchStatus"
+  | "read.productPrompt"
+  | "write.productPrompt";
 
 export interface AgentLogEntry {
   at: string; // ISO timestamp
