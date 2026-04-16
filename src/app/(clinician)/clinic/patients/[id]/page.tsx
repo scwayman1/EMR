@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/button";
 import { ComingSoonButton } from "@/components/ui/coming-soon-button";
 import { Separator } from "@/components/ui/separator";
 import { formatDate } from "@/lib/utils/format";
+import { formatBytes } from "@/lib/storage/document-types";
+import { UploadForm } from "@/components/records/UploadForm";
+import { uploadClinicianDocumentAction } from "./documents/actions";
 
 interface PageProps {
   params: { id: string };
@@ -177,22 +180,56 @@ export default async function PatientChartPage({ params }: PageProps) {
           <Card>
             <CardHeader>
               <CardTitle>Documents</CardTitle>
+              <CardDescription>
+                PDFs, images, labs, and scanned records on file for this patient.
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {patient.documents.length === 0 ? (
                 <p className="text-sm text-text-muted">No documents uploaded.</p>
               ) : (
                 <ul className="space-y-2">
                   {patient.documents.map((d) => (
-                    <li key={d.id} className="text-sm text-text truncate">
-                      <span className="text-text-subtle tabular-nums mr-2">
-                        {formatDate(d.createdAt)}
-                      </span>
-                      {d.originalName}
+                    <li
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <a
+                          href={`/clinic/patients/${patient.id}/documents/${d.id}/view`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-text truncate block hover:underline"
+                        >
+                          {d.originalName}
+                        </a>
+                        <p className="text-xs text-text-subtle tabular-nums">
+                          {formatDate(d.createdAt)} &middot; {formatBytes(d.sizeBytes)}
+                        </p>
+                      </div>
+                      <a
+                        href={`/clinic/patients/${patient.id}/documents/${d.id}/view`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button size="sm" variant="secondary">
+                          View
+                        </Button>
+                      </a>
                     </li>
                   ))}
                 </ul>
               )}
+              <Separator />
+              <div>
+                <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-2">
+                  Upload
+                </p>
+                <UploadForm
+                  action={uploadClinicianDocumentAction}
+                  patientId={patient.id}
+                />
+              </div>
             </CardContent>
           </Card>
 
