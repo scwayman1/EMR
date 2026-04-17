@@ -26,3 +26,4 @@ Every ticket includes:
 | MALLIK-001  | Homepage — remove PLNT PWRD card, move POTENCY 710 to Partner Brands | Dr. Patel  | ready        |
 | MALLIK-002  | Clinician Portal — Schedule tab with full-page calendar              | Dr. Patel  | needs-info   |
 | MALLIK-003  | Render deploy — remove Clerk from hot boot path                      | Mallik     | shipped      |
+| MALLIK-004  | Leaflet (After Visit Summary) print view truncates content           | User (QA)  | ready        |
