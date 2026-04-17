@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,14 +11,21 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }, // private by default in V1
 };
 
+// ClerkProvider was removed from the hot boot path to unblock Render deploys.
+// The previous top-level import forced @clerk/nextjs to initialize during
+// Next.js module evaluation, which — combined with the Clerk v7 / Next 14
+// peer-dep mismatch — was crashing the web server before it could bind a
+// port. Clerk is feature-flagged off in prod (AUTH_PROVIDER=iron-session),
+// so wrapping the tree with ClerkProvider here wasn't actually doing
+// anything. Re-enable via dynamic import when Clerk is properly wired and
+// the peer-dep / env-var story is resolved.
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const clerkEnabled = process.env.AUTH_PROVIDER === "clerk";
-
-  const content = (
+  return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
@@ -39,8 +45,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-
-  // Wrap in ClerkProvider only when Clerk is enabled.
-  // This keeps the existing iron-session flow untouched when AUTH_PROVIDER is unset.
-  return clerkEnabled ? <ClerkProvider>{content}</ClerkProvider> : content;
 }

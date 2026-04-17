@@ -1,51 +1,25 @@
-// Clerk Middleware — route protection at the edge
+// Middleware — pass-through.
 //
-// This middleware runs on every request when AUTH_PROVIDER=clerk.
-// When Clerk is disabled (default), it's a no-op pass-through so the
-// existing iron-session flow continues to work unchanged.
+// Clerk was scaffolded in an earlier commit but is not yet wired in prod
+// (AUTH_PROVIDER=iron-session). The previous version imported Clerk at the
+// top of this file, which forced @clerk/nextjs to initialize during Next.js
+// boot — combined with the Clerk v7 / Next 14 peer-dep mismatch, this was
+// causing the web server to fail to bind a port on Render, triggering
+// "Timed out while running your code" deploy cancellations.
 //
-// Security model:
-//   - Public routes: landing, /education, /store, /api/webhooks/*, /share/[token]
-//   - Auth routes: /sign-in, /sign-up (redirect away if already logged in)
-//   - Protected routes: everything else (require Clerk session)
+// Until Clerk is actually enabled, keep this file Clerk-free. Route
+// protection continues to live at the layout level via `requireUser()`.
+//
+// To re-enable Clerk later:
+//   1. Ensure @clerk/nextjs is compatible with the installed Next version
+//   2. Restore the clerkMiddleware + createRouteMatcher wiring
+//   3. Guard the Clerk import behind `AUTH_PROVIDER === "clerk"` via dynamic import
 
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
-const CLERK_ENABLED = process.env.AUTH_PROVIDER === "clerk";
-
-// Public routes — no auth required
-const isPublicRoute = createRouteMatcher([
-  "/",
-  "/about",
-  "/security",
-  "/pricing",
-  "/education",
-  "/education/(.*)",
-  "/store",
-  "/store/(.*)",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/login", // legacy iron-session
-  "/signup", // legacy iron-session
-  "/api/webhooks/(.*)",
-  "/api/health",
-  "/share/(.*)",
-]);
-
-// When Clerk is DISABLED, export a pass-through middleware so route
-// protection falls back to the layout-level requireUser() checks.
-function passThrough(_req: NextRequest) {
+export default function middleware(_req: NextRequest) {
   return NextResponse.next();
 }
-
-// When Clerk is ENABLED, enforce auth on every non-public route.
-const clerkProtect = clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return;
-  await auth.protect();
-});
-
-export default CLERK_ENABLED ? clerkProtect : passThrough;
 
 export const config = {
   matcher: [
