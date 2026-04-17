@@ -65,6 +65,14 @@ async function cleanIdempotent() {
   if (!org) return; // first run — nothing to clean
 
   // Order matters because of FK constraints
+  // LabOutreach cascades from LabResult on delete, but it's safer to
+  // list both — order: children before parents.
+  await prisma.labOutreach.deleteMany({
+    where: { labResult: { organizationId: org.id } },
+  });
+  await prisma.labResult.deleteMany({
+    where: { organizationId: org.id },
+  });
   await prisma.patientMedication.deleteMany({
     where: { patient: { organizationId: org.id } },
   });
@@ -2357,6 +2365,161 @@ async function main() {
   });
 
   console.log("  RCM Fleet: billing demo data seeded (3 claims, charges, denials).");
+
+  // ------------------------------------------------------------------
+  // MALLIK-006 — Lab Review Queue demo data
+  // ------------------------------------------------------------------
+  // Each patient gets a current (pending review) lab plus one prior of
+  // the same panel so the current-vs-prior comparison has something
+  // meaningful to render. Abnormal flag is computed from refHigh/refLow.
+  // ------------------------------------------------------------------
+
+  type MarkerInput = { value: number; unit: string; refLow?: number; refHigh?: number };
+  const mk = (markers: Record<string, MarkerInput>) => {
+    const out: Record<string, MarkerInput & { abnormal: boolean }> = {};
+    for (const [name, m] of Object.entries(markers)) {
+      const high = m.refHigh !== undefined && m.value > m.refHigh;
+      const low = m.refLow !== undefined && m.value < m.refLow;
+      out[name] = { ...m, abnormal: high || low };
+    }
+    return out;
+  };
+  const isAbnormal = (results: Record<string, { abnormal: boolean }>) =>
+    Object.values(results).some((r) => r.abnormal);
+
+  // Maya — lipid panel (current: borderline; prior: mildly elevated → improving)
+  const mayaLipidPrior = mk({
+    LDL: { value: 132, unit: "mg/dL", refLow: 0, refHigh: 100 },
+    HDL: { value: 48, unit: "mg/dL", refLow: 40 },
+    TC: { value: 210, unit: "mg/dL", refLow: 125, refHigh: 200 },
+    TG: { value: 165, unit: "mg/dL", refLow: 0, refHigh: 150 },
+  });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      panelName: "Lipid panel",
+      receivedAt: daysAgo(120),
+      results: mayaLipidPrior,
+      abnormalFlag: isAbnormal(mayaLipidPrior),
+      signedById: clinicianUser.id,
+      signedAt: daysAgo(118),
+      reviewOutcome: "needs_followup",
+    },
+  });
+  const mayaLipidCurrent = mk({
+    LDL: { value: 108, unit: "mg/dL", refLow: 0, refHigh: 100 },
+    HDL: { value: 52, unit: "mg/dL", refLow: 40 },
+    TC: { value: 188, unit: "mg/dL", refLow: 125, refHigh: 200 },
+    TG: { value: 128, unit: "mg/dL", refLow: 0, refHigh: 150 },
+  });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      panelName: "Lipid panel",
+      receivedAt: daysAgo(2),
+      results: mayaLipidCurrent,
+      abnormalFlag: isAbnormal(mayaLipidCurrent),
+    },
+  });
+
+  // James — HbA1c + lipid (current diabetic pre-workup; prior from 6 months ago)
+  const jamesA1cPrior = mk({ A1C: { value: 6.1, unit: "%", refLow: 4.0, refHigh: 5.6 } });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      panelName: "HbA1c",
+      receivedAt: daysAgo(180),
+      results: jamesA1cPrior,
+      abnormalFlag: isAbnormal(jamesA1cPrior),
+      signedById: clinicianUser.id,
+      signedAt: daysAgo(178),
+      reviewOutcome: "looks_good",
+    },
+  });
+  const jamesA1cCurrent = mk({ A1C: { value: 5.9, unit: "%", refLow: 4.0, refHigh: 5.6 } });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      panelName: "HbA1c",
+      receivedAt: daysAgo(1),
+      results: jamesA1cCurrent,
+      abnormalFlag: isAbnormal(jamesA1cCurrent),
+    },
+  });
+
+  // James — CMP with LFTs (liver enzymes — current within normal, prior mildly elevated)
+  const jamesCmpPrior = mk({
+    ALT: { value: 62, unit: "U/L", refLow: 7, refHigh: 56 },
+    AST: { value: 44, unit: "U/L", refLow: 10, refHigh: 40 },
+    Cr: { value: 1.0, unit: "mg/dL", refLow: 0.6, refHigh: 1.2 },
+    eGFR: { value: 88, unit: "mL/min", refLow: 60 },
+    Na: { value: 140, unit: "mEq/L", refLow: 136, refHigh: 145 },
+    K: { value: 4.2, unit: "mEq/L", refLow: 3.5, refHigh: 5.0 },
+  });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      panelName: "CMP",
+      receivedAt: daysAgo(180),
+      results: jamesCmpPrior,
+      abnormalFlag: isAbnormal(jamesCmpPrior),
+      signedById: clinicianUser.id,
+      signedAt: daysAgo(177),
+      reviewOutcome: "needs_followup",
+    },
+  });
+  const jamesCmpCurrent = mk({
+    ALT: { value: 48, unit: "U/L", refLow: 7, refHigh: 56 },
+    AST: { value: 35, unit: "U/L", refLow: 10, refHigh: 40 },
+    Cr: { value: 1.1, unit: "mg/dL", refLow: 0.6, refHigh: 1.2 },
+    eGFR: { value: 82, unit: "mL/min", refLow: 60 },
+    Na: { value: 141, unit: "mEq/L", refLow: 136, refHigh: 145 },
+    K: { value: 4.3, unit: "mEq/L", refLow: 3.5, refHigh: 5.0 },
+  });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      panelName: "CMP",
+      receivedAt: daysAgo(1),
+      results: jamesCmpCurrent,
+      abnormalFlag: isAbnormal(jamesCmpCurrent),
+    },
+  });
+
+  // Sarah — TSH (abnormal — will be excluded from batch per MALLIK-006 rules)
+  const sarahTshPrior = mk({ TSH: { value: 3.8, unit: "mIU/L", refLow: 0.4, refHigh: 4.0 } });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: sarah.id,
+      panelName: "Thyroid panel",
+      receivedAt: daysAgo(200),
+      results: sarahTshPrior,
+      abnormalFlag: isAbnormal(sarahTshPrior),
+      signedById: clinicianUser.id,
+      signedAt: daysAgo(198),
+      reviewOutcome: "looks_good",
+    },
+  });
+  const sarahTshCurrent = mk({ TSH: { value: 6.2, unit: "mIU/L", refLow: 0.4, refHigh: 4.0 } });
+  await prisma.labResult.create({
+    data: {
+      organizationId: org.id,
+      patientId: sarah.id,
+      panelName: "Thyroid panel",
+      receivedAt: daysAgo(3),
+      results: sarahTshCurrent,
+      abnormalFlag: isAbnormal(sarahTshCurrent),
+    },
+  });
+
+  console.log("  Lab queue: 4 pending reviews + 4 prior labs seeded (Maya, James x2, Sarah).");
 
   // ------------------------------------------------------------------
   // Done

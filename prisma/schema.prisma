@@ -40,6 +40,7 @@ model Organization {
   providers        Provider[]
   encounters       Encounter[]
   documents        Document[]
+  labResults       LabResult[]
   auditLogs        AuditLog[]
   agentJobs        AgentJob[]
   agentFeedback    AgentFeedback[]
@@ -74,6 +75,8 @@ model User {
   approvedJobs    AgentJob[]   @relation("JobApprovedBy")
   notifications   Notification[]
   communicationPreference CommunicationPreference?
+  signedLabResults     LabResult[]   @relation("LabResultSigner")
+  approvedLabOutreach  LabOutreach[] @relation("LabOutreachApprover")
 }
 
 model Membership {
@@ -145,6 +148,7 @@ model Patient {
   chartSummary         ChartSummary?
   encounters           Encounter[]
   documents            Document[]
+  labResults           LabResult[]
   assessmentResponses  AssessmentResponse[]
   outcomeLogs          OutcomeLog[]
   messageThreads       MessageThread[]
@@ -1930,4 +1934,57 @@ model CommunicationPreference {
   updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// --------------------------------------------------------------
+// Lab Review — MALLIK-006 (Phase 1 Mission Control)
+// --------------------------------------------------------------
+// Structured lab result for the physician review queue. Distinct
+// from the Document-based lab flow (which is file metadata only).
+// LabResult carries marker-level values and is the source of truth
+// for the current vs. prior comparison overlay.
+// --------------------------------------------------------------
+
+model LabResult {
+  id             String    @id @default(cuid())
+  organizationId String
+  patientId      String
+  panelName      String // e.g. "CMP", "Lipid panel", "HbA1c", "Liver panel"
+  receivedAt     DateTime
+  // Structured results. Shape: { markerName: { value: number, unit: string, refLow?: number, refHigh?: number, abnormal: boolean } }
+  results        Json
+  // Denormalized signal for queue filtering. Computed on insert: true if any marker is outside its refRange.
+  abnormalFlag   Boolean   @default(false)
+  // Sign-off tracking (null until clinician signs)
+  signedById     String?
+  signedAt       DateTime?
+  reviewOutcome  String? // "looks_good" | "needs_followup" | "repeat" | "routed_to_ma"
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  signedBy     User?         @relation("LabResultSigner", fields: [signedById], references: [id])
+  outreach     LabOutreach?
+
+  @@index([organizationId, signedAt])
+  @@index([patientId, receivedAt])
+}
+
+model LabOutreach {
+  id            String    @id @default(cuid())
+  labResultId   String    @unique
+  patientDraft  String // AI-drafted patient-friendly message
+  maDraft       String // AI-drafted MA task one-liner
+  physicianNote String // AI-drafted chart one-liner
+  // Channel selection: { patientMessage: bool, sms: bool, voice: bool, pdf: bool, fax: bool, maTask: bool }
+  routing       Json
+  status        String    @default("draft") // "draft" | "approved" | "sent"
+  approvedById  String?
+  approvedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  labResult  LabResult @relation(fields: [labResultId], references: [id], onDelete: Cascade)
+  approvedBy User?     @relation("LabOutreachApprover", fields: [approvedById], references: [id])
 }

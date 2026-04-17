@@ -52,6 +52,8 @@ import { satisfactionAnalysisAgent } from "./satisfaction-analysis-agent";
 import { inventoryAlertAgent } from "./inventory-alert-agent";
 import { billingReconEnhancementAgent } from "./billing-recon-enhancement-agent";
 import { qualityImprovementAgent } from "./quality-improvement-agent";
+// Mission Control — Phase 1 (MALLIK-006)
+import { labSummarizerAgent } from "./lab-summarizer-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -113,6 +115,8 @@ export const agentRegistry = {
   inventoryAlert: inventoryAlertAgent,
   billingReconEnhancement: billingReconEnhancementAgent,
   qualityImprovement: qualityImprovementAgent,
+  // Mission Control — Phase 1 (MALLIK-006)
+  labSummarizer: labSummarizerAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 export type AgentName = keyof typeof agentRegistry;
