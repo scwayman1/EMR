@@ -21,9 +21,21 @@ Every ticket includes:
 
 ## Index
 
-| ID          | Title                                                                | Reporter   | Status       |
-| ----------- | -------------------------------------------------------------------- | ---------- | ------------ |
-| MALLIK-001  | Homepage — remove PLNT PWRD card, move POTENCY 710 to Partner Brands | Dr. Patel  | ready        |
-| MALLIK-002  | Clinician Portal — Schedule tab with full-page calendar              | Dr. Patel  | needs-info   |
-| MALLIK-003  | Render deploy — remove Clerk from hot boot path                      | Mallik     | shipped      |
-| MALLIK-004  | Leaflet (After Visit Summary) print view truncates content           | User (QA)  | ready        |
+| ID          | Title                                                                | Reporter   | Status                  |
+| ----------- | -------------------------------------------------------------------- | ---------- | ----------------------- |
+| MALLIK-001  | Homepage — remove PLNT PWRD card, move POTENCY 710 to Partner Brands | Dr. Patel  | ready                   |
+| MALLIK-002  | Clinician Portal — Schedule tab with full-page calendar              | Dr. Patel  | needs-info              |
+| MALLIK-003  | Render deploy — remove Clerk from hot boot path                      | Mallik     | shipped                 |
+| MALLIK-004  | Leaflet (After Visit Summary) print view truncates content           | User (QA)  | ready                   |
+| **MALLIK-005**  | **EPIC: Physician Mission Control**                              | Dr. Patel  | **approved-to-plan**    |
+| MALLIK-006  | Lab Review Queue with auto-compare + outreach drafting (Phase 1)     | Dr. Patel  | ready-to-build          |
+| MALLIK-007  | Refill Queue with batch sign & send (Phase 1)                        | Dr. Patel  | reserved                |
+| MALLIK-008  | Document Review Queue — imaging, sleep, PT, prior auths (Phase 1)    | Dr. Patel  | reserved                |
+| MALLIK-009  | Message Triage upgrade on /clinic/messages (Phase 1)                 | Dr. Patel  | reserved                |
+| MALLIK-010  | Mission Control dashboard assembly on /clinic (Phase 1)              | Dr. Patel  | reserved                |
+
+## Supporting documents
+
+- `prds/mission-control.md` — full PRD for MALLIK-005
+- `research/dr-patel-interview-1.md` — verbatim Dr. Patel interview (2026-04-17)
+- `wireframes/dr-patel-mission-control-v1.md` — hand-drawn wireframe transcription
