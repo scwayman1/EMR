@@ -11,7 +11,11 @@ services:
     # - db push syncs the Prisma schema to Postgres (no migration files needed for V1)
     # - db:seed is idempotent (upserts) — safe to run on every deploy
     preDeployCommand: npx prisma db push --accept-data-loss && npm run db:seed
-    startCommand: npm run start
+    # Belt-and-suspenders: also push the schema at start-time. Render's
+    # preDeployCommand is not guaranteed to run on every plan/config, and when
+    # it silently skips, new models (e.g. LabResult, RefillRequest) never hit
+    # the database — which takes down the clinician layout on the next login.
+    startCommand: npx prisma db push --accept-data-loss --skip-generate && npm run start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
