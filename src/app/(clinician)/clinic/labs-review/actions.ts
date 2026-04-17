@@ -83,3 +83,122 @@ export async function updateLabOutreachAction(
   });
   return { ok: true };
 }
+
+export type SignResult =
+  | { ok: true; signed: number; skipped: Array<{ id: string; reason: string }> }
+  | { ok: false; error: string };
+
+/**
+ * Sign a single lab result. Writes signedAt/signedById on the lab, bumps
+ * the outreach to "approved" if one exists, and drops an AuditLog row.
+ * The "Send" part of "Sign & Send" is stubbed until Phase 3 delivery
+ * integrations ship — for now we mark the outreach approved and the
+ * downstream worker (or a human MA) routes it to the patient.
+ */
+export async function signLabResultAction(
+  labResultId: string
+): Promise<SignResult> {
+  return signLabs([labResultId]);
+}
+
+/**
+ * Batch-sign a list of labs. Abnormal labs are silently skipped and
+ * reported back in `skipped` — per MALLIK-006 rule #4, abnormals can
+ * never enter the batch lane. Signing is atomic per-item: one failure
+ * does not halt the rest.
+ */
+export async function batchSignLabResultsAction(
+  labResultIds: string[]
+): Promise<SignResult> {
+  if (labResultIds.length === 0) {
+    return { ok: false, error: "Nothing selected." };
+  }
+  return signLabs(labResultIds);
+}
+
+async function signLabs(labResultIds: string[]): Promise<SignResult> {
+  const user = await requireUser();
+
+  const labs = await prisma.labResult.findMany({
+    where: {
+      id: { in: labResultIds },
+      organizationId: user.organizationId ?? "__no_org__",
+    },
+    select: {
+      id: true,
+      organizationId: true,
+      abnormalFlag: true,
+      signedAt: true,
+      panelName: true,
+      outreach: { select: { id: true } },
+    },
+  });
+
+  const skipped: Array<{ id: string; reason: string }> = [];
+  let signed = 0;
+
+  for (const lab of labs) {
+    if (lab.signedAt) {
+      skipped.push({ id: lab.id, reason: "already signed" });
+      continue;
+    }
+    // Batch lane excludes abnormals, but single-lab sign-off can still
+    // go through (clinician is actively reviewing it in the overlay).
+    // The UI enforces the abnormal-in-batch block; this server-side
+    // gate only protects against multi-item calls from a malicious client.
+    if (lab.abnormalFlag && labResultIds.length > 1) {
+      skipped.push({
+        id: lab.id,
+        reason: "abnormal lab cannot be batch-signed — review individually",
+      });
+      continue;
+    }
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.labResult.update({
+          where: { id: lab.id },
+          data: {
+            signedById: user.id,
+            signedAt: new Date(),
+            reviewOutcome: "looks_good",
+          },
+        });
+        if (lab.outreach) {
+          await tx.labOutreach.update({
+            where: { id: lab.outreach.id },
+            data: {
+              status: "approved",
+              approvedById: user.id,
+              approvedAt: new Date(),
+            },
+          });
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          organizationId: lab.organizationId,
+          actorUserId: user.id,
+          action: "labResult.signed",
+          subjectType: "LabResult",
+          subjectId: lab.id,
+          metadata: {
+            panelName: lab.panelName,
+            abnormal: lab.abnormalFlag,
+            batchSize: labResultIds.length,
+          },
+        },
+      });
+      signed += 1;
+    } catch (err) {
+      skipped.push({
+        id: lab.id,
+        reason: err instanceof Error ? err.message : "unknown error",
+      });
+    }
+  }
+
+  revalidatePath("/clinic/labs-review");
+  return { ok: true, signed, skipped };
+}

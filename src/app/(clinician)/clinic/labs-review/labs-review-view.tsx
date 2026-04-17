@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils/cn";
 import { explainLabValue } from "@/lib/domain/lab-explainer";
-import { draftLabOutreachAction, updateLabOutreachAction } from "./actions";
+import {
+  draftLabOutreachAction,
+  updateLabOutreachAction,
+  signLabResultAction,
+  batchSignLabResultsAction,
+} from "./actions";
 
 // ---------------------------------------------------------------------------
 // Types — mirror the server page's LabRow shape
@@ -76,57 +81,148 @@ function patientLabel(first: string, last: string) {
 
 export function LabsReviewView({ rows }: { rows: LabRow[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [batch, setBatch] = useState<Set<string>>(new Set());
+  const [pending, startTransition] = useTransition();
+  const [trayMsg, setTrayMsg] = useState<string | null>(null);
+
   const selected = rows.find((r) => r.id === selectedId) ?? null;
+
+  const toggleBatch = (id: string) => {
+    setBatch((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const signBatch = () => {
+    if (batch.size === 0) return;
+    setTrayMsg(null);
+    const ids = Array.from(batch);
+    startTransition(async () => {
+      const res = await batchSignLabResultsAction(ids);
+      if (!res.ok) {
+        setTrayMsg(res.error);
+        return;
+      }
+      const skipped = res.skipped.length;
+      setTrayMsg(
+        `Signed ${res.signed} lab${res.signed === 1 ? "" : "s"}` +
+          (skipped > 0 ? ` · skipped ${skipped}` : "")
+      );
+      setBatch(new Set());
+      // Server action revalidates /clinic/labs-review; the page re-renders
+      // with the newly-signed labs removed from the pending queue.
+    });
+  };
 
   return (
     <>
       <Card>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
-            {rows.map((row) => (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedId(row.id)}
-                  className="w-full text-left flex items-center gap-4 px-6 py-4 hover:bg-surface-muted transition-colors"
-                >
-                  <Avatar
-                    firstName={row.patientFirstName}
-                    lastName={row.patientLastName}
-                    size="md"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-text">
-                        {patientLabel(row.patientFirstName, row.patientLastName)}
+            {rows.map((row) => {
+              const checked = batch.has(row.id);
+              return (
+                <li key={row.id} className="flex items-center">
+                  {/* Batch checkbox — disabled on abnormal labs per MALLIK-006 rule #4 */}
+                  <label
+                    className={cn(
+                      "pl-6 pr-2 py-4 flex items-center",
+                      row.abnormalFlag
+                        ? "cursor-not-allowed opacity-50"
+                        : "cursor-pointer"
+                    )}
+                    title={
+                      row.abnormalFlag
+                        ? "Abnormal labs can't be batch-signed. Open the lab and review individually."
+                        : "Add to batch sign"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={row.abnormalFlag}
+                      onChange={() => toggleBatch(row.id)}
+                      className="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent/30"
+                      aria-label={`Add ${row.panelName} for ${row.patientFirstName} ${row.patientLastName} to batch`}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(row.id)}
+                    className="flex-1 text-left flex items-center gap-4 pr-6 py-4 hover:bg-surface-muted transition-colors"
+                  >
+                    <Avatar
+                      firstName={row.patientFirstName}
+                      lastName={row.patientLastName}
+                      size="md"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-text">
+                          {patientLabel(row.patientFirstName, row.patientLastName)}
+                        </p>
+                        <span className="text-xs text-text-subtle">·</span>
+                        <p className="text-sm text-text-muted">{row.panelName}</p>
+                        {row.abnormalFlag && (
+                          <Badge tone="danger" className="text-[10px]">
+                            abnormal
+                          </Badge>
+                        )}
+                        {row.outreach && (
+                          <Badge tone="accent" className="text-[10px]">
+                            draft ready
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-text-subtle mt-0.5">
+                        Received {fmtDate(row.receivedAt)}
+                        {row.prior
+                          ? ` · prior on file from ${fmtDate(row.prior.receivedAt)}`
+                          : " · no prior on file"}
                       </p>
-                      <span className="text-xs text-text-subtle">·</span>
-                      <p className="text-sm text-text-muted">{row.panelName}</p>
-                      {row.abnormalFlag && (
-                        <Badge tone="danger" className="text-[10px]">
-                          abnormal
-                        </Badge>
-                      )}
-                      {row.outreach && (
-                        <Badge tone="accent" className="text-[10px]">
-                          draft ready
-                        </Badge>
-                      )}
                     </div>
-                    <p className="text-xs text-text-subtle mt-0.5">
-                      Received {fmtDate(row.receivedAt)}
-                      {row.prior
-                        ? ` · prior on file from ${fmtDate(row.prior.receivedAt)}`
-                        : " · no prior on file"}
-                    </p>
-                  </div>
-                  <span className="text-xs text-accent">Review &rarr;</span>
-                </button>
-              </li>
-            ))}
+                    <span className="text-xs text-accent">Review &rarr;</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </CardContent>
       </Card>
+
+      {/* Batch sign tray — sticky at the bottom while items are selected */}
+      {batch.size > 0 && (
+        <div className="sticky bottom-4 mt-4 z-20">
+          <Card className="shadow-lg border-accent/30">
+            <CardContent className="py-3 px-5 flex items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-text">
+                  {batch.size} lab{batch.size === 1 ? "" : "s"} selected for
+                  batch sign
+                </p>
+                {trayMsg && (
+                  <p className="text-xs text-text-subtle mt-0.5">{trayMsg}</p>
+                )}
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setBatch(new Set())}
+                disabled={pending}
+              >
+                Clear
+              </Button>
+              <Button size="sm" onClick={signBatch} disabled={pending}>
+                {pending ? "Signing…" : "Sign & Send All"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {selected && (
         <LabOverlay row={selected} onClose={() => setSelectedId(null)} />
@@ -413,16 +509,73 @@ function LabOverlay({ row, onClose }: { row: LabRow; onClose: () => void }) {
             )}
           </section>
 
-          {/* Phase 1 — sign / batch controls are next commit */}
+          {/* Sign lab */}
           <section className="pt-4 border-t border-border">
-            <p className="text-xs text-text-subtle">
-              <strong>Phase 1 note:</strong> drafts save as you edit. Signing
-              and batch sign-off land in the next iteration. For now, closing
-              this overlay keeps your edited drafts on file.
-            </p>
+            <SignLabFooter
+              labResultId={row.id}
+              hasDrafts={!!drafts}
+              abnormal={row.abnormalFlag}
+              onSigned={onClose}
+            />
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SignLabFooter({
+  labResultId,
+  hasDrafts,
+  abnormal,
+  onSigned,
+}: {
+  labResultId: string;
+  hasDrafts: boolean;
+  abnormal: boolean;
+  onSigned: () => void;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const sign = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await signLabResultAction(labResultId);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      if (res.signed === 0 && res.skipped.length > 0) {
+        setError(res.skipped[0].reason);
+        return;
+      }
+      // Queue revalidates via the server action; close the overlay so
+      // the clinician lands back on the pending list minus this row.
+      onSigned();
+    });
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex-1">
+        {!hasDrafts && (
+          <p className="text-xs text-text-subtle">
+            Generate outreach drafts above before signing, or sign now if no
+            patient message is needed.
+          </p>
+        )}
+        {abnormal && (
+          <p className="text-xs text-warning">
+            Abnormal values flagged. You can sign here individually, but this
+            lab cannot be added to a batch.
+          </p>
+        )}
+        {error && <p className="text-xs text-danger mt-1">{error}</p>}
+      </div>
+      <Button onClick={sign} disabled={pending}>
+        {pending ? "Signing…" : "Sign lab"}
+      </Button>
     </div>
   );
 }
