@@ -4,8 +4,10 @@
 - **Owner:** Mallik
 - **Status:** approved-to-plan
 - **Source materials:**
-  - `docs/pm/research/dr-patel-interview-1.md` (45-min workflow walk-through, 2026-04-17)
+  - `docs/pm/research/dr-patel-interview-1.md` (workflow walk-through, 2026-04-17)
+  - `docs/pm/research/dr-patel-interview-2.md` (chart / encounter / billing follow-up, 2026-04-17)
   - `docs/pm/wireframes/dr-patel-mission-control-v1.md` (hand-drawn provider front page, 2026-04-17)
+  - `docs/pm/decisions/` — product decisions that override Dr. Patel's stated preferences
   - Synthesized PRD draft (included below, rewritten into Leafjourney terms)
 
 ## Product thesis
@@ -86,18 +88,32 @@ The modules lean on five AI copilots. Some already exist in the agent fleet (`AG
 
 Ship order: 006 → 007 → 008 → 010 → 009. 006 and 007 are the "pain relief" payload; 010 makes them visible as a unified surface; 008 clones the 006 pattern; 009 polishes the inbox.
 
-### Phase 2 — encounter & charting (~3–4 weeks)
+### Phase 2 — encounter & charting (~4–5 weeks)
 
-- Encounter note generation inside the encounter (scribe agent already exists — wire it into the visit workspace)
-- Vitals auto-ingestion (staff entry or device feed)
-- Imaging/document AI summaries inside the review overlays
+Expanded by Interview 2. Ticket IDs **reserved**; full spec bodies filed when Phase 1 is in user testing so they can incorporate learnings.
 
-### Phase 3 — billing, OCR, outreach (~3–4 weeks)
+- **MALLIK-014 — Chart Opening View.** When a clinician opens a patient chart, the landing view surfaces critical context in one glance: latest labs (A1C, LDL, HDL, total cholesterol, GFR, LFTs, thyroid if applicable), active problem list, active meds, most recent encounter summary, open tasks, care gaps. (Source: Interview 2, "I open it, it has all the stuff I need from their chart, their latest labs, like their critical numbers.")
+- **MALLIK-015 — Encounter note authoring (dictation + ambient scribe).** Multiple input modes: (a) structured typing, (b) dictation with autopopulation, (c) opt-in ambient scribe that AI-structures the visit. All three pipelines converge into the same SOAP-structured draft for review. Dictation is Dr. Patel's stated preference; ambient is opt-in per clinician (see `docs/pm/decisions/2026-04-17-ai-note-taking-override.md`).
+- **MALLIK-016 — Vitals auto-ingestion (wireless device integration).** Wireless BP cuff, pulse ox, thermometer, scale. Otoscope / ophthalmoscope / digital stethoscope as stretch goals. Device → room → patient → chart binding. Likely a per-device integration layer (BLE / WiFi / vendor APIs). Split into sub-tickets per device family.
+- **MALLIK-017 — Drag-and-drop ICD-10 / diagnosis linking.** Type "anxiety" in the assessment; system suggests F41.1 and adjacent codes; drag to the problem list or visit diagnosis. Also: bidirectional — dragging a diagnosis off the chart removes it from active.
+- Imaging / document AI summaries inside the review overlays (carries over from PRD original).
 
-- Digital superbill with AI-suggested ICD-10 / CPT / E&M codes (coding-readiness agent exists; wire it to the billing flow)
-- Handwritten note OCR pipeline with physician validation step
-- AI voice/text patient outreach (the "voice in physician's voice" capability Dr. Patel asked for)
-- Population-level trend analytics on the dashboard's right rail
+### Phase 3 — billing, OCR, outreach (~4–5 weeks)
+
+Expanded by Interview 2 — billing gets much more specific.
+
+- **MALLIK-018 — Digital superbill generated from AI note.** The AI-structured note (MALLIK-015 output) feeds into an AI coder that produces a digital superbill: ICD-10 codes, CPT codes, E&M level, modifiers. Physician reviews, edits, signs. Replaces the paper-circle + fax workflow.
+- **MALLIK-019 — Bill-level optimization ("bill at highest appropriate amount").** The AI coder should recommend the highest E&M level supported by the note content + MDM criteria — without upcoding. This is a compliance surface: documentation must justify the level. Build in a "coding justification" panel that shows *why* the level was chosen from the note content, so the physician can verify / down-code if appropriate.
+- **MALLIK-020 — Payment tracking from superbill.** Once the superbill is signed + exported to the billing partner, the EMR tracks status back: submitted → accepted → paid / denied → reason. Surfaces overdue / denied claims on the physician's dashboard and the billing-team ops console. (Source: Interview 2, "so we can then track and see, is the patient paying or not?")
+- Handwritten note OCR pipeline with physician validation step (carries over from PRD original).
+- AI voice / text patient outreach (carries over — includes "voice in physician's voice" from Interview 1).
+- Population-level trend analytics on the dashboard's right rail (carries over).
+
+## Product decisions log
+
+Decisions that diverge from Dr. Patel's stated preferences in the research interviews are captured in `docs/pm/decisions/` as dated markdown files. Operating rule: Dr. Patel describes his workflow, pain, and wishes; the product owner (Scott) decides what ships.
+
+- `decisions/2026-04-17-ai-note-taking-override.md` — AI-assisted note-taking is in scope for Phase 2 (ambient scribe opt-in per clinician, dictation always available, AI draft refinement always on). Overrides Dr. Patel's "not really big on AI recording" preference.
 
 ## Success metrics
 

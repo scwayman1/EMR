@@ -26,8 +26,10 @@ Phase 1 complete when Dr. Patel can:
 ## Source materials (read these before designing)
 
 - `docs/pm/prds/mission-control.md` — full PRD
-- `docs/pm/research/dr-patel-interview-1.md` — verbatim interview
+- `docs/pm/research/dr-patel-interview-1.md` — interview 1 (workflow)
+- `docs/pm/research/dr-patel-interview-2.md` — interview 2 (chart / encounter / billing)
 - `docs/pm/wireframes/dr-patel-mission-control-v1.md` — hand-drawn wireframe
+- `docs/pm/decisions/` — product decisions that override user-research preferences (e.g. AI note-taking is in scope despite Dr. Patel's personal preference)
 - `AGENTS.md` — existing agent fleet (we reuse `scribe`, `messagingAssistant`, `codingReadiness`; we add `labSummarizer`, `refillCopilot`)
 
 ## Child tickets
@@ -44,13 +46,24 @@ Ship sequence: 006 → 007 → 010 (makes the first two visible as a unified sur
 
 ### Phase 2 — encounter & charting
 
-- Ticket IDs reserved — will be filed after Phase 1 is in user testing
-- Work items: encounter-native note authoring, vitals auto-ingestion, imaging/document AI summaries inside overlays
+Ticket IDs reserved with short descriptions in `docs/pm/README.md`. Full spec bodies filed when Phase 1 is in user testing.
+
+- **MALLIK-014** — Chart Opening View (critical labs + problem list + meds + recent encounters)
+- **MALLIK-015** — Encounter note authoring (dictation + opt-in ambient scribe + always-on AI draft refinement — see `decisions/2026-04-17-ai-note-taking-override.md`)
+- **MALLIK-016** — Vitals auto-ingestion from wireless devices (BP cuff, pulse ox, scale, thermometer; stretch: otoscope / ophthalmoscope / digital stethoscope)
+- **MALLIK-017** — Drag-and-drop ICD-10 / diagnosis linking
+- Imaging / document AI summaries inside review overlays (absorbed from Phase 1 scope carry-over)
 
 ### Phase 3 — billing, OCR, outreach
 
-- Ticket IDs reserved — will be filed after Phase 2
-- Work items: digital superbill + coding, handwritten-note OCR pipeline, AI voice/text outreach, population-level trends panel
+Ticket IDs reserved. Full bodies filed when Phase 2 is in user testing.
+
+- **MALLIK-018** — Digital superbill generated from AI-structured note
+- **MALLIK-019** — Bill-level optimization ("highest appropriate E&M level" with compliance justification panel)
+- **MALLIK-020** — Payment tracking from signed superbill through billing partner → paid / denied
+- Handwritten note OCR pipeline with physician validation (Interview 1 ask)
+- AI voice / text patient outreach (including "voice in physician's voice")
+- Population-level trend analytics on dashboard right rail
 
 ## Safety rails (enforced across all child tickets)
 
