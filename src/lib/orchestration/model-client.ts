@@ -78,20 +78,30 @@ export function isModelError(err: unknown): err is ModelError {
 /**
  * Deterministic templated model client. Used in dev, tests, and CI — so the
  * agent harness is runnable with zero external dependencies.
+ *
+ * SAFETY: this client must NEVER echo the prompt back in its response. Prompts
+ * contain internal templates ("You are an AI clinical writing assistant...")
+ * that leak straight into the clinician UI when the stub is accidentally used
+ * in production (e.g. when AGENT_MODEL_CLIENT is unset or the OpenRouter
+ * client throws and some caller has a silent fallback). Keep outputs short,
+ * generic, and clearly marked as stub.
  */
+const STUB_UNAVAILABLE_NOTICE =
+  "AI output unavailable in this environment. Set AGENT_MODEL_CLIENT=openrouter with a valid OPENROUTER_API_KEY to enable real drafting.";
+
 export class StubModelClient implements ModelClient {
   async complete(prompt: string, _options?: { maxTokens?: number; temperature?: number }) {
-    const trimmed = prompt.trim().slice(0, 240);
-    if (/summar(y|ize)/i.test(prompt)) {
-      return `Summary draft (stub): ${trimmed}`;
-    }
     if (/classify/i.test(prompt)) {
+      // Classification callers expect a single-word label, not prose.
       return "other";
     }
-    if (/note/i.test(prompt)) {
-      return "Draft note (stub): see chart summary and recent outcome trends.";
+    if (/summar(y|ize)/i.test(prompt)) {
+      return `Summary placeholder — ${STUB_UNAVAILABLE_NOTICE}`;
     }
-    return `[stub response] ${trimmed}`;
+    if (/note/i.test(prompt)) {
+      return `Draft placeholder — ${STUB_UNAVAILABLE_NOTICE}`;
+    }
+    return STUB_UNAVAILABLE_NOTICE;
   }
 }
 

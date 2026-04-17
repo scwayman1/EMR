@@ -101,8 +101,12 @@ export default async function MorningBriefPage() {
       },
       include: {
         patient: {
-          select: { id: true, firstName: true, lastName: true },
-          include: { chartSummary: { select: { completenessScore: true } } },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            chartSummary: { select: { completenessScore: true } },
+          },
         },
       },
       take: 10,
