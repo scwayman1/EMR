@@ -111,8 +111,8 @@ export async function summarizeLabResult(
     orderBy: { receivedAt: "desc" },
   });
 
-  const currentMarkers = lab.results as Record<string, MarkerValue>;
-  const priorMarkers = (prior?.results ?? {}) as Record<string, MarkerValue>;
+  const currentMarkers = lab.results as unknown as Record<string, MarkerValue>;
+  const priorMarkers = (prior?.results ?? {}) as unknown as Record<string, MarkerValue>;
 
   const medList = lab.patient.medications.map((m) => m.name).join(", ") || "none on file";
 
