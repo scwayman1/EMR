@@ -32,6 +32,13 @@ services:
         value: google/gemma-2-9b-it:free
       - key: OPENROUTER_APP_NAME
         value: Leafjourney
+      # Supabase Storage (for document uploads)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STORAGE_BUCKET
+        value: documents
       # Payment gateway — defaults to "stub" until Payabli credentials are wired
       - key: PAYMENT_GATEWAY
         value: stub

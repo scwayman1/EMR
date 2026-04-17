@@ -29,7 +29,11 @@ export function UploadForm({ onClose }: { onClose?: () => void }) {
 
   const handleFile = useCallback((f: File) => {
     setFile(f);
-    // Simulate upload progress
+    if (inputRef.current) {
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      inputRef.current.files = dt.files;
+    }
     setSimulating(true);
     setProgress(0);
     let current = 0;
@@ -113,10 +117,7 @@ export function UploadForm({ onClose }: { onClose?: () => void }) {
 
   return (
     <form action={formAction} className="space-y-4">
-      {/* Hidden fields to pass file metadata to server action */}
-      <input type="hidden" name="originalName" value={file?.name ?? ""} />
-      <input type="hidden" name="mimeType" value={file?.type ?? ""} />
-      <input type="hidden" name="sizeBytes" value={file?.size ?? 0} />
+      {/* File is carried by the named input below; no metadata fields needed */}
 
       {/* Drop zone */}
       <div
@@ -157,9 +158,10 @@ export function UploadForm({ onClose }: { onClose?: () => void }) {
         </div>
         <input
           ref={inputRef}
+          name="file"
           type="file"
           className="hidden"
-          accept=".pdf,.png,.jpg,.jpeg,.gif,.tiff,.doc,.docx"
+          accept=".pdf,.png,.jpg,.jpeg,.gif,.tiff,.doc,.docx,.xlsx,.xls,.csv,.txt,.heic"
           onChange={handleInputChange}
         />
       </div>

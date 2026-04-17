@@ -5,6 +5,12 @@ import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { dispatch } from "@/lib/orchestration/dispatch";
 import { runTick } from "@/lib/orchestration/runner";
+import { uploadDocument, storageIsConfigured } from "@/lib/storage/documents";
+import {
+  ALLOWED_MIME_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  inferKind,
+} from "@/lib/storage/document-types";
 
 export type UploadResult =
   | { ok: true; documentId: string }
@@ -16,12 +22,22 @@ export async function uploadDocumentAction(
 ): Promise<UploadResult> {
   const user = await requireRole("patient");
 
-  const originalName = formData.get("originalName") as string | null;
-  const mimeType = formData.get("mimeType") as string | null;
-  const sizeBytes = Number(formData.get("sizeBytes"));
+  if (!storageIsConfigured()) {
+    return {
+      ok: false,
+      error: "Document storage is not configured. Ask an admin to set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+    };
+  }
 
-  if (!originalName || !mimeType || !sizeBytes || isNaN(sizeBytes)) {
-    return { ok: false, error: "Missing file information." };
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "No file selected." };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    return { ok: false, error: "File is over the 25 MB limit." };
+  }
+  if (file.type && !ALLOWED_MIME_TYPES.has(file.type)) {
+    return { ok: false, error: `Unsupported file type: ${file.type}` };
   }
 
   const patient = await prisma.patient.findUnique({
@@ -29,22 +45,30 @@ export async function uploadDocumentAction(
   });
   if (!patient) return { ok: false, error: "No patient profile found." };
 
-  const storageKey = `demo/${patient.id}/${Date.now()}-${originalName}`;
+  const mimeType = file.type || "application/octet-stream";
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  const storageKey = await uploadDocument({
+    organizationId: patient.organizationId,
+    patientId: patient.id,
+    filename: file.name,
+    contentType: mimeType,
+    body: buffer,
+  });
 
   const document = await prisma.document.create({
     data: {
       organizationId: patient.organizationId,
       patientId: patient.id,
       uploadedById: user.id,
-      originalName,
+      originalName: file.name.slice(0, 200),
       mimeType,
-      sizeBytes,
+      sizeBytes: file.size,
       storageKey,
-      kind: "unclassified",
+      kind: inferKind(mimeType),
     },
   });
 
-  // Fire a domain event so the Document Organizer Agent classifies it.
   await dispatch({
     name: "document.uploaded",
     documentId: document.id,
@@ -52,17 +76,15 @@ export async function uploadDocumentAction(
     organizationId: patient.organizationId,
   });
 
-  // In dev mode, run the tick inline so classification happens immediately.
   if (process.env.NODE_ENV === "development") {
     try {
       await runTick("dev-inline", 1);
     } catch {
-      // Non-fatal: the agent may not be fully wired yet in dev.
+      // Non-fatal
     }
   }
 
   revalidatePath("/portal/records");
-
   return { ok: true, documentId: document.id };
 }
 
@@ -85,16 +107,13 @@ export async function deleteDocumentAction(
       deletedAt: null,
     },
   });
-
   if (!document) return { ok: false, error: "Document not found." };
 
-  // Soft delete
   await prisma.document.update({
     where: { id: document.id },
     data: { deletedAt: new Date() },
   });
 
   revalidatePath("/portal/records");
-
   return { ok: true };
 }

@@ -201,6 +201,19 @@ export function DocumentCard({ doc }: { doc: DocumentData }) {
             )}
 
             <div className="flex items-center justify-end gap-2 pt-1">
+              <a
+                href={`/portal/records/${doc.id}/view`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="secondary" size="sm">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mr-1">
+                    <path d="M7 3C4 3 1.5 7 1.5 7s2.5 4 5.5 4 5.5-4 5.5-4S10 3 7 3Z" stroke="currentColor" strokeWidth="1"/>
+                    <circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1"/>
+                  </svg>
+                  View
+                </Button>
+              </a>
               <Button
                 variant="secondary"
                 size="sm"

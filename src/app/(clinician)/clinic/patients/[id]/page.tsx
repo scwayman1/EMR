@@ -25,6 +25,7 @@ import { InteractionBadge } from "@/components/ui/interaction-badge";
 import { generateCDSAlerts } from "@/lib/domain/clinical-decision-support";
 import { CDSPanel } from "./cds-panel";
 import { TagManager } from "./tag-manager";
+import { ClinicianUploadForm } from "./documents/clinician-upload-form";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -412,8 +413,8 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           medications={patientMedications}
         />
       )}
-      {tab === "records" && <RecordsTab documents={recordDocs} />}
-      {tab === "images" && <ImagesTab documents={imageDocs} />}
+      {tab === "records" && <RecordsTab documents={recordDocs} patientId={params.id} />}
+      {tab === "images" && <ImagesTab documents={imageDocs} patientId={params.id} />}
       {tab === "labs" && (
         <LabsTab
           labDocuments={labDocs}
@@ -752,16 +753,13 @@ function ScreeningReminders({
    Records tab
    ═══════════════════════════════════════════════════════════════════ */
 
-function RecordsTab({ documents }: { documents: any[] }) {
+function RecordsTab({ documents, patientId }: { documents: any[]; patientId: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-display text-xl text-text tracking-tight">
           Records
         </h2>
-        <Button variant="secondary" size="sm">
-          Upload
-        </Button>
       </div>
 
       {documents.length === 0 ? (
@@ -798,9 +796,14 @@ function RecordsTab({ documents }: { documents: any[] }) {
                         <Badge tone="neutral">Pending</Badge>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-text truncate">
+                    <a
+                      href={`/clinic/patients/${patientId}/documents/${doc.id}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-text truncate block hover:underline"
+                    >
                       {doc.originalName}
-                    </p>
+                    </a>
                     <p className="text-xs text-text-muted mt-0.5">
                       {doc.mimeType} &middot; {formatFileSize(doc.sizeBytes)}
                     </p>
@@ -817,8 +820,17 @@ function RecordsTab({ documents }: { documents: any[] }) {
                       </div>
                     )}
                   </div>
-                  <div className="text-xs text-text-subtle tabular-nums shrink-0 text-right">
-                    <span className="font-display">{formatDate(doc.createdAt)}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`/clinic/patients/${patientId}/documents/${doc.id}/view`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="secondary" size="sm">View</Button>
+                    </a>
+                    <div className="text-xs text-text-subtle tabular-nums text-right">
+                      <span className="font-display">{formatDate(doc.createdAt)}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -826,6 +838,13 @@ function RecordsTab({ documents }: { documents: any[] }) {
           ))}
         </div>
       )}
+
+      <Card tone="outlined" className="mt-4">
+        <CardContent className="pt-5 pb-5">
+          <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-3">Upload a document</p>
+          <ClinicianUploadForm patientId={patientId} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -834,16 +853,13 @@ function RecordsTab({ documents }: { documents: any[] }) {
    Images tab
    ═══════════════════════════════════════════════════════════════════ */
 
-function ImagesTab({ documents }: { documents: any[] }) {
+function ImagesTab({ documents, patientId }: { documents: any[]; patientId: string }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-display text-xl text-text tracking-tight">
           Images
         </h2>
-        <Button variant="secondary" size="sm">
-          Upload image
-        </Button>
       </div>
 
       {documents.length === 0 ? (
@@ -854,8 +870,14 @@ function ImagesTab({ documents }: { documents: any[] }) {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {documents.map((doc) => (
-            <Card key={doc.id} tone="raised" className="card-hover overflow-hidden">
-              {/* Thumbnail placeholder */}
+            <a
+              key={doc.id}
+              href={`/clinic/patients/${patientId}/documents/${doc.id}/view`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+            <Card tone="raised" className="card-hover overflow-hidden">
               <div className="aspect-square bg-surface-muted flex flex-col items-center justify-center p-4 rounded-t-xl">
                 <svg
                   width="40"
@@ -903,9 +925,17 @@ function ImagesTab({ documents }: { documents: any[] }) {
                 </p>
               </CardContent>
             </Card>
+            </a>
           ))}
         </div>
       )}
+
+      <Card tone="outlined" className="mt-4">
+        <CardContent className="pt-5 pb-5">
+          <p className="text-xs font-medium text-text-muted uppercase tracking-wide mb-3">Upload an image</p>
+          <ClinicianUploadForm patientId={patientId} />
+        </CardContent>
+      </Card>
 
       {/* DICOM banner */}
       <Card tone="outlined" className="mt-6">
