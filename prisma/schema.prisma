@@ -41,6 +41,7 @@ model Organization {
   encounters       Encounter[]
   documents        Document[]
   labResults       LabResult[]
+  refillRequests   RefillRequest[]
   auditLogs        AuditLog[]
   agentJobs        AgentJob[]
   agentFeedback    AgentFeedback[]
@@ -75,8 +76,9 @@ model User {
   approvedJobs    AgentJob[]   @relation("JobApprovedBy")
   notifications   Notification[]
   communicationPreference CommunicationPreference?
-  signedLabResults     LabResult[]   @relation("LabResultSigner")
-  approvedLabOutreach  LabOutreach[] @relation("LabOutreachApprover")
+  signedLabResults     LabResult[]     @relation("LabResultSigner")
+  approvedLabOutreach  LabOutreach[]   @relation("LabOutreachApprover")
+  signedRefills        RefillRequest[] @relation("RefillSigner")
 }
 
 model Membership {
@@ -149,6 +151,7 @@ model Patient {
   encounters           Encounter[]
   documents            Document[]
   labResults           LabResult[]
+  refillRequests       RefillRequest[]
   assessmentResponses  AssessmentResponse[]
   outcomeLogs          OutcomeLog[]
   messageThreads       MessageThread[]
@@ -1502,7 +1505,8 @@ model PatientMedication {
   notes       String?
   createdAt   DateTime       @default(now())
 
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  refillRequests RefillRequest[]
 
   @@index([patientId, active])
 }
@@ -1962,10 +1966,11 @@ model LabResult {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  patient      Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  signedBy     User?         @relation("LabResultSigner", fields: [signedById], references: [id])
-  outreach     LabOutreach?
+  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  signedBy       User?           @relation("LabResultSigner", fields: [signedById], references: [id])
+  outreach       LabOutreach?
+  monitoringFor  RefillRequest[] @relation("RefillMonitoringLab")
 
   @@index([organizationId, signedAt])
   @@index([patientId, receivedAt])
@@ -1987,4 +1992,55 @@ model LabOutreach {
 
   labResult  LabResult @relation(fields: [labResultId], references: [id], onDelete: Cascade)
   approvedBy User?     @relation("LabOutreachApprover", fields: [approvedById], references: [id])
+}
+
+// --------------------------------------------------------------
+// Refill Queue — MALLIK-007 (Phase 1 Mission Control)
+// --------------------------------------------------------------
+// Physician-facing refill request queue. Each row surfaces the
+// minimum context a physician needs to approve without opening
+// the patient chart: med + dose + qty + pharmacy + last relevant
+// lab. The Refill Copilot (src/lib/agents/refill-copilot-agent.ts)
+// precomputes a suggested action plus any safety flags.
+//
+// Pharmacy is inlined as scalar fields at Phase 1. When the
+// Surescripts integration lands (MALLIK-012) we normalize into a
+// Pharmacy model and point this FK at it.
+// --------------------------------------------------------------
+
+model RefillRequest {
+  id              String    @id @default(cuid())
+  organizationId  String
+  patientId       String
+  medicationId    String
+  requestedQty    Int
+  requestedDays   Int?
+  // Pharmacy (denormalized for Phase 1)
+  pharmacyName    String
+  pharmacyPhone   String?
+  pharmacyAddress String?
+  // Copilot context
+  lastRelevantLabId String? // optional link to the lab the copilot thinks matters
+  // Copilot outputs
+  copilotSuggestion String? // "approve" | "deny" | "review"
+  safetyFlags     Json      @default("[]") // string[] of flag codes
+  rationale       String? // one-liner from the copilot
+  // Lifecycle
+  receivedAt      DateTime  @default(now())
+  status          String    @default("new") // "new" | "flagged" | "approved" | "sent" | "denied"
+  signedById      String?
+  signedAt        DateTime?
+  deniedReason    String?
+  faxPdfUrl       String? // populated by Phase 1 fax-PDF stub on sign
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  medication      PatientMedication  @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  signedBy        User?              @relation("RefillSigner", fields: [signedById], references: [id])
+  lastRelevantLab LabResult?         @relation("RefillMonitoringLab", fields: [lastRelevantLabId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([patientId, receivedAt])
 }

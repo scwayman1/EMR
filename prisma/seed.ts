@@ -67,6 +67,9 @@ async function cleanIdempotent() {
   // Order matters because of FK constraints
   // LabOutreach cascades from LabResult on delete, but it's safer to
   // list both — order: children before parents.
+  await prisma.refillRequest.deleteMany({
+    where: { organizationId: org.id },
+  });
   await prisma.labOutreach.deleteMany({
     where: { labResult: { organizationId: org.id } },
   });
@@ -2520,6 +2523,141 @@ async function main() {
   });
 
   console.log("  Lab queue: 4 pending reviews + 4 prior labs seeded (Maya, James x2, Sarah).");
+
+  // ------------------------------------------------------------------
+  // MALLIK-007 — Refill Queue demo data
+  // ------------------------------------------------------------------
+  // A handful of meds + pending refills with variety: a clean routine
+  // approval, a controlled-substance flag, a stale-monitoring-lab flag,
+  // and a missing-monitoring-lab flag. The Refill Copilot (called lazily
+  // from the overlay) produces a suggestion + flag list; we leave those
+  // fields unset at seed time so the physician sees a live evaluation.
+  // ------------------------------------------------------------------
+
+  // James — Metformin (A1C monitoring exists and is fresh → approve)
+  const jamesMetformin = await prisma.patientMedication.create({
+    data: {
+      patientId: james.id,
+      name: "Metformin",
+      genericName: "metformin hydrochloride",
+      type: MedicationType.prescription,
+      dosage: "500mg twice daily",
+      prescriber: "Dr. Okafor",
+      active: true,
+      startDate: daysAgo(200),
+      notes: "Pre-diabetes management.",
+    },
+  });
+
+  // James — Warfarin (INR monitoring — no INR on file → missing-lab flag)
+  const jamesWarfarin = await prisma.patientMedication.create({
+    data: {
+      patientId: james.id,
+      name: "Warfarin",
+      genericName: "warfarin sodium",
+      type: MedicationType.prescription,
+      dosage: "5mg daily",
+      prescriber: "Dr. Okafor",
+      active: true,
+      startDate: daysAgo(45),
+      notes: "Anticoagulation — monitor INR.",
+    },
+  });
+
+  // Sarah — Levothyroxine (TSH monitoring; her TSH is recent and abnormal)
+  const sarahLevo = await prisma.patientMedication.create({
+    data: {
+      patientId: sarah.id,
+      name: "Levothyroxine",
+      genericName: "levothyroxine sodium",
+      type: MedicationType.prescription,
+      dosage: "50mcg daily",
+      prescriber: "Dr. Okafor",
+      active: true,
+      startDate: daysAgo(60),
+      notes: "Hypothyroidism.",
+    },
+  });
+
+  // Maya — Clonazepam (controlled substance → always at least review)
+  const mayaClonazepam = await prisma.patientMedication.create({
+    data: {
+      patientId: maya.id,
+      name: "Clonazepam",
+      genericName: "clonazepam",
+      type: MedicationType.prescription,
+      dosage: "0.5mg as needed",
+      prescriber: "Dr. Okafor",
+      active: true,
+      startDate: daysAgo(30),
+      notes: "PRN anxiety. DEA schedule IV.",
+    },
+  });
+
+  const sharedPharmacy = {
+    pharmacyName: "Green Leaf Pharmacy — Long Beach",
+    pharmacyPhone: "(562) 555-0142",
+    pharmacyAddress: "1250 E Ocean Blvd, Long Beach, CA 90802",
+  };
+
+  await prisma.refillRequest.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      medicationId: jamesMetformin.id,
+      requestedQty: 180,
+      requestedDays: 90,
+      ...sharedPharmacy,
+      receivedAt: daysAgo(1),
+      status: "new",
+    },
+  });
+
+  await prisma.refillRequest.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      medicationId: jamesWarfarin.id,
+      requestedQty: 30,
+      requestedDays: 30,
+      ...sharedPharmacy,
+      pharmacyName: "CVS Pharmacy — Belmont Shore",
+      pharmacyPhone: "(562) 555-0198",
+      pharmacyAddress: "5252 E 2nd St, Long Beach, CA 90803",
+      receivedAt: daysAgo(2),
+      status: "new",
+    },
+  });
+
+  await prisma.refillRequest.create({
+    data: {
+      organizationId: org.id,
+      patientId: sarah.id,
+      medicationId: sarahLevo.id,
+      requestedQty: 90,
+      requestedDays: 90,
+      ...sharedPharmacy,
+      receivedAt: daysAgo(1),
+      status: "new",
+    },
+  });
+
+  await prisma.refillRequest.create({
+    data: {
+      organizationId: org.id,
+      patientId: maya.id,
+      medicationId: mayaClonazepam.id,
+      requestedQty: 15,
+      requestedDays: 30,
+      ...sharedPharmacy,
+      receivedAt: daysAgo(1),
+      status: "new",
+    },
+  });
+
+  console.log(
+    "  Refill queue: 4 pending refills seeded (Metformin routine, Warfarin missing-INR, Levothyroxine, Clonazepam controlled)."
+  );
 
   // ------------------------------------------------------------------
   // Done

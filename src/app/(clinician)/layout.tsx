@@ -23,7 +23,7 @@ export default async function ClinicianLayout({
   // Live counts so the nav can telegraph agent activity the moment you log in.
   // Pending AI drafts = Nurse Nora (et al.) needs your sign-off.
   // Emergency count promotes the pill to red + pulse.
-  const [pendingCount, emergencyCount, labsPendingCount] = user.organizationId
+  const [pendingCount, emergencyCount, labsPendingCount, refillsPendingCount] = user.organizationId
     ? await Promise.all([
         prisma.message.count({
           where: {
@@ -48,8 +48,15 @@ export default async function ClinicianLayout({
             signedAt: null,
           },
         }),
+        prisma.refillRequest.count({
+          where: {
+            organizationId: user.organizationId,
+            status: { in: ["new", "flagged"] },
+            signedAt: null,
+          },
+        }),
       ])
-    : [0, 0, 0];
+    : [0, 0, 0, 0];
 
   const nav: NavItem[] = [
     { label: "Command", href: "/clinic" },
@@ -66,6 +73,12 @@ export default async function ClinicianLayout({
       label: "Labs",
       href: "/clinic/labs-review",
       count: labsPendingCount,
+      countTone: "highlight",
+    },
+    {
+      label: "Refills",
+      href: "/clinic/refills",
+      count: refillsPendingCount,
       countTone: "highlight",
     },
     { label: "Providers", href: "/clinic/providers" },
