@@ -62,15 +62,15 @@ Ship sequence: 006 → 007 → 010 (makes the first two visible as a unified sur
 6. Refill safety checks (opioid MME, benzo+opioid combos, renal dosing) are mandatory.
 7. OCR content requires physician validation before clinical use.
 
-## Open questions (blocking Phase 1 kickoff)
+## Open questions (RESOLVED 2026-04-17 by user sign-off)
 
-See PRD open questions list. Critical ones for sequencing:
+Resolved decisions below. See `docs/pm/prds/mission-control.md` for scope impact per decision. Any future reversal should create a new decision row, not edit these in place.
 
-1. **Lab data source:** fixture-only in Phase 1, or wire to real lab feed?
-2. **Pharmacy roundtrip:** Surescripts integration in Phase 1, or fax PDF generation?
-3. **Grid layout:** static grid in Phase 1, drag-resize in Phase 1.5?
-4. **Route:** evolve `/clinic` or add `/clinic/mission-control`?
-5. **Mobile:** in or out of Phase 1 scope?
+1. **Lab data source:** Phase 1 = fixtures only. Real feed = its own epic → **MALLIK-011** (backlog).
+2. **Pharmacy roundtrip:** Phase 1 = fax PDF stub for demo. Surescripts e-prescribing = Phase 2 → **MALLIK-012** (backlog).
+3. **Grid layout:** Phase 1 = static grid. Drag / resize = Phase 1.5 polish → **MALLIK-013** (reserved).
+4. **Route:** Evolve existing `/clinic` into Mission Control. Do not add `/clinic/mission-control`.
+5. **Mobile:** Desktop-first in Phase 1. Tablet / phone layouts deferred to a later ticket.
 
 ## Non-goals (for this epic)
 

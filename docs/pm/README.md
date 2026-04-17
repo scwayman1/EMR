@@ -29,10 +29,13 @@ Every ticket includes:
 | MALLIK-004  | Leaflet (After Visit Summary) print view truncates content           | User (QA)  | ready                   |
 | **MALLIK-005**  | **EPIC: Physician Mission Control**                              | Dr. Patel  | **approved-to-plan**    |
 | MALLIK-006  | Lab Review Queue with auto-compare + outreach drafting (Phase 1)     | Dr. Patel  | ready-to-build          |
-| MALLIK-007  | Refill Queue with batch sign & send (Phase 1)                        | Dr. Patel  | reserved                |
-| MALLIK-008  | Document Review Queue — imaging, sleep, PT, prior auths (Phase 1)    | Dr. Patel  | reserved                |
-| MALLIK-009  | Message Triage upgrade on /clinic/messages (Phase 1)                 | Dr. Patel  | reserved                |
-| MALLIK-010  | Mission Control dashboard assembly on /clinic (Phase 1)              | Dr. Patel  | reserved                |
+| MALLIK-007  | Refill Queue with batch sign & send (Phase 1)                        | Dr. Patel  | ready-to-build          |
+| MALLIK-008  | Document Review Queue — imaging, sleep, PT, prior auths (Phase 1)    | Dr. Patel  | ready-to-build          |
+| MALLIK-009  | Message Triage upgrade on /clinic/messages (Phase 1)                 | Dr. Patel  | ready-to-build          |
+| MALLIK-010  | Mission Control dashboard assembly on /clinic (Phase 1)              | Dr. Patel  | ready-to-build          |
+| MALLIK-011  | Real lab feed integration (HL7 / FHIR / Quest / LabCorp)             | Dr. Patel  | backlog                 |
+| MALLIK-012  | Surescripts e-prescribing integration (Phase 2)                      | Dr. Patel  | backlog                 |
+| MALLIK-013  | Dashboard drag / resize / reorder modules (Phase 1.5 polish)         | Dr. Patel  | reserved                |
 
 ## Supporting documents
 
