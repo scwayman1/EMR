@@ -29,6 +29,9 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude Code local state (agent worktrees, hook outputs, transcripts)
+.claude/
+
 # Prisma
 prisma/dev.db
 prisma/*.db-journal
