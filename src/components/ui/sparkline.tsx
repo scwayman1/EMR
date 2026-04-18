@@ -22,6 +22,9 @@ export function Sparkline({
   showDots?: boolean;
   className?: string;
 }) {
+  // Hooks must run unconditionally on every render, before any early return.
+  const gradientId = React.useId().replace(/:/g, "");
+
   if (data.length < 2) {
     return (
       <div
@@ -51,7 +54,6 @@ export function Sparkline({
   const area = `${padding},${height - padding} ${line} ${width - padding},${height - padding}`;
 
   const last = pts[pts.length - 1];
-  const gradientId = React.useId().replace(/:/g, "");
 
   return (
     <svg
