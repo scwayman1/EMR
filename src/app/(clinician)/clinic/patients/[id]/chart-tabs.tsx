@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
+import { useChartFrame } from "./chart-frame";
 
 const TABS = [
   { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]" },
@@ -70,6 +71,11 @@ interface ChartTabsProps {
 export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
   const searchParams = useSearchParams();
   const active = (searchParams.get("tab") as TabKey) || "records";
+
+  // Position + compact come from the ChartFrame wrapper so the tab bar
+  // and the tab content share one source of truth about layout.
+  const { position, setPosition, compact, setCompact } = useChartFrame();
+  const onBottom = position === "bottom";
 
   // Tab order. Seeded with the canonical order so SSR output matches
   // the server render; hydrated from localStorage in an effect so the
@@ -190,7 +196,13 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
 
   return (
     <nav
-      className="relative flex flex-wrap items-center gap-1 border-b border-border mb-8"
+      className={cn(
+        "relative flex flex-wrap items-center gap-1 border-border",
+        // Border + outer margin swap sides based on where the bar
+        // is anchored, so the hairline sits against the tab content
+        // (not the page edge) regardless of position.
+        onBottom ? "border-t mt-8" : "border-b mb-8"
+      )}
       aria-label="Chart sections"
     >
       {order.map((key) => {
@@ -244,8 +256,11 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
               draggable={false}
               aria-haspopup={hasPeek ? "true" : undefined}
               aria-expanded={hasPeek ? isOpen : undefined}
+              title={compact ? tab.label : undefined}
               className={cn(
-                "relative flex items-center gap-2 pl-3 pr-4 py-2.5 text-sm font-medium transition-colors rounded-t-md whitespace-nowrap cursor-grab active:cursor-grabbing",
+                "relative flex items-center gap-2 pl-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing",
+                compact ? "pr-3" : "pr-4",
+                onBottom ? "rounded-b-md" : "rounded-t-md",
                 isActive
                   ? "text-accent"
                   : "text-text-muted hover:text-text hover:bg-surface-muted"
@@ -267,7 +282,7 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
                   isActive ? tab.dot : "bg-border-strong/50"
                 )}
               />
-              {tab.label}
+              {!compact && <span>{tab.label}</span>}
               <span
                 className={cn(
                   "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-medium rounded-full tabular-nums",
@@ -279,7 +294,12 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
                 {count}
               </span>
               {isActive && (
-                <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full" />
+                <span
+                  className={cn(
+                    "absolute left-2 right-2 h-0.5 bg-accent rounded-full",
+                    onBottom ? "top-0" : "bottom-0"
+                  )}
+                />
               )}
             </Link>
 
@@ -290,28 +310,39 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
                 seeAllHref={`/clinic/patients/${patientId}?tab=${tab.key}`}
                 onLeave={scheduleClose}
                 onEnter={cancelClose}
+                anchor={onBottom ? "above" : "below"}
               />
             )}
           </div>
         );
       })}
 
-      {isReordered && (
-        <button
-          type="button"
-          onClick={resetOrder}
-          className="ml-auto mr-2 text-[11px] text-text-subtle hover:text-accent transition-colors"
-          title="Restore the default tab order"
-        >
-          Reset order
-        </button>
-      )}
+      <div className="ml-auto mr-1 flex items-center gap-1">
+        {isReordered && (
+          <button
+            type="button"
+            onClick={resetOrder}
+            className="text-[11px] text-text-subtle hover:text-accent transition-colors px-2 py-1"
+            title="Restore the default tab order"
+          >
+            Reset order
+          </button>
+        )}
+        <ChartTabsSettingsMenu
+          position={position}
+          setPosition={setPosition}
+          compact={compact}
+          setCompact={setCompact}
+          anchor={onBottom ? "above" : "below"}
+        />
+      </div>
     </nav>
   );
 }
 
 /**
- * Hover-peek popover. Anchored beneath its tab, shows the last five
+ * Hover-peek popover. Anchored beside its tab (below when the bar is
+ * on top, above when the bar is on bottom), shows the last five
  * entries from that section plus a "See all" link. Keeps the popover
  * open while the cursor is inside it via the onEnter/onLeave hooks
  * (the parent tab container handles open/close timing).
@@ -322,12 +353,14 @@ function TabPeekPopover({
   seeAllHref,
   onEnter,
   onLeave,
+  anchor,
 }: {
   label: string;
   entries: PeekEntry[];
   seeAllHref: string;
   onEnter: () => void;
   onLeave: () => void;
+  anchor: "above" | "below";
 }) {
   return (
     <div
@@ -336,8 +369,9 @@ function TabPeekPopover({
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       className={cn(
-        "absolute left-0 top-full mt-1 z-30 w-80 max-w-[calc(100vw-2rem)]",
-        "rounded-lg border border-border bg-surface shadow-lg"
+        "absolute left-0 z-30 w-80 max-w-[calc(100vw-2rem)]",
+        "rounded-lg border border-border bg-surface shadow-lg",
+        anchor === "above" ? "bottom-full mb-1" : "top-full mt-1"
       )}
     >
       <div className="px-4 pt-3 pb-2 border-b border-border/60">
@@ -380,5 +414,173 @@ function TabPeekPopover({
         </Link>
       </div>
     </div>
+  );
+}
+
+
+/**
+ * Right-end settings menu on the tab bar. Two toggles — tab position
+ * (top vs bottom) and compact mode (dots + counts, labels hidden).
+ * Closes on outside-click and Escape. Anchors above or below the bar
+ * so the panel never collides with the chart content.
+ */
+function ChartTabsSettingsMenu({
+  position,
+  setPosition,
+  compact,
+  setCompact,
+  anchor,
+}: {
+  position: "top" | "bottom";
+  setPosition: (p: "top" | "bottom") => void;
+  compact: boolean;
+  setCompact: (c: boolean) => void;
+  anchor: "above" | "below";
+}) {
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current) return;
+      if (!rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Tab bar settings"
+        title="Tab bar settings"
+        className={cn(
+          "flex items-center justify-center h-7 w-7 rounded-md text-text-subtle hover:text-text hover:bg-surface-muted transition-colors",
+          open && "bg-surface-muted text-text"
+        )}
+      >
+        <SettingsIcon />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          aria-label="Tab bar settings"
+          className={cn(
+            "absolute right-0 z-40 w-56",
+            "rounded-lg border border-border bg-surface shadow-lg p-1",
+            anchor === "above" ? "bottom-full mb-1" : "top-full mt-1"
+          )}
+        >
+          <SettingsSection label="Position">
+            <SettingsToggle
+              active={position === "top"}
+              onClick={() => setPosition("top")}
+              label="Top"
+            />
+            <SettingsToggle
+              active={position === "bottom"}
+              onClick={() => setPosition("bottom")}
+              label="Bottom"
+            />
+          </SettingsSection>
+          <SettingsSection label="Density">
+            <SettingsToggle
+              active={!compact}
+              onClick={() => setCompact(false)}
+              label="Show labels"
+            />
+            <SettingsToggle
+              active={compact}
+              onClick={() => setCompact(true)}
+              label="Dots only"
+            />
+          </SettingsSection>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="px-1 py-1">
+      <p className="text-[10px] uppercase tracking-wider text-text-subtle font-medium px-2 pt-1 pb-1.5">
+        {label}
+      </p>
+      <div className="flex flex-col gap-0.5">{children}</div>
+    </div>
+  );
+}
+
+function SettingsToggle({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitemradio"
+      aria-checked={active}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-sm text-left transition-colors",
+        active
+          ? "bg-accent-soft/60 text-accent"
+          : "text-text-muted hover:bg-surface-muted hover:text-text"
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "h-1.5 w-1.5 rounded-full shrink-0",
+          active ? "bg-accent" : "bg-border-strong/40"
+        )}
+      />
+      {label}
+    </button>
+  );
+}
+
+function SettingsIcon() {
+  // Inline SVG — keeps bundle free of an icon dep, matches the
+  // text-subtle stroke weight of the rest of the bar chrome.
+  return (
+    <svg
+      aria-hidden="true"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
   );
 }
