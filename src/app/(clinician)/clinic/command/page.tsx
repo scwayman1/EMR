@@ -3,6 +3,7 @@ import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Tile, TilePlaceholder } from "@/components/ui/tile";
 import { TileGrid } from "@/components/ui/tile-grid";
 import { ScheduleTile } from "@/components/command/schedule-tile";
+import { MessagesTile } from "@/components/command/messages-tile";
 
 export const metadata = { title: "Command Center" };
 
@@ -37,19 +38,10 @@ export default async function CommandCenterPage() {
             to visit duration. Real component now live. */}
         <ScheduleTile user={user} />
 
-        {/* Pillar 2 — Messages. AI-summarized inbox with keyword priority
-            (urgent in red), inline C/M/Rx/📞 actions, voice dictation. */}
-        <Tile
-          eyebrow="Inbox"
-          title="Messages"
-          description="AI-summarized, priority-sorted. Urgent floats to the top."
-          icon="💬"
-          span="1x2"
-          href="/clinic/messages"
-          tone="warm"
-        >
-          <TilePlaceholder note="Summaries + quick actions land in slice 2." />
-        </Tile>
+        {/* Pillar 2 — Messages. AI-triaged inbox preview, urgent in red.
+            Reuses the existing smart-inbox triage logic so the tile and
+            the full inbox agree on priority/category. */}
+        <MessagesTile user={user} />
 
         {/* Pillar 3 — Patient snapshot. Hover over a patient → facesheet
             preview (vitals, meds, labs sparklines, surgeries). */}
