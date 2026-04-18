@@ -1,20 +1,23 @@
+
+# Render deploy pipeline — kept deliberately small.
+#
+# Rules of the road:
+#   1. `main` is the only branch that deploys. Open PRs into main; never
+#      point a Render service at a feature branch.
+#   2. Schema sync happens in `startCommand`, right before the app starts
+#      serving traffic. No reliance on preDeployCommand (it's a no-op on
+#      Starter and failed silently for weeks).
+#   3. Seeding is a one-off, not part of every deploy. Run `npm run db:seed`
+#      manually from a Render shell when spinning up a fresh database.
+
 services:
-  # -----------------------------------------------------------------
-  # Web — Next.js app (UI, API routes, server actions)
-  # -----------------------------------------------------------------
+  # Web — the Next.js app (UI, API routes, server actions).
   - type: web
     name: emr-web
     env: node
     plan: starter
+    branch: main
     buildCommand: npm ci && npx prisma generate && npm run build
-    # preDeploy runs once per deploy, before the new version goes live.
-    # - db push syncs the Prisma schema to Postgres (no migration files needed for V1)
-    # - db:seed is idempotent (upserts) — safe to run on every deploy
-    preDeployCommand: npx prisma db push --accept-data-loss && npm run db:seed
-    # Belt-and-suspenders: also push the schema at start-time. Render's
-    # preDeployCommand is not guaranteed to run on every plan/config, and when
-    # it silently skips, new models (e.g. LabResult, RefillRequest) never hit
-    # the database — which takes down the clinician layout on the next login.
     startCommand: npx prisma db push --accept-data-loss --skip-generate && npm run start
     healthCheckPath: /api/health
     envVars:
@@ -36,14 +39,12 @@ services:
         value: google/gemma-2-9b-it:free
       - key: OPENROUTER_APP_NAME
         value: Leafjourney
-      # Supabase Storage (for document uploads)
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: STORAGE_BUCKET
         value: documents
-      # Payment gateway — defaults to "stub" until Payabli credentials are wired
       - key: PAYMENT_GATEWAY
         value: stub
       - key: PAYABLI_API_TOKEN
@@ -55,13 +56,12 @@ services:
       - key: PAYABLI_WEBHOOK_SECRET
         sync: false
 
-  # -----------------------------------------------------------------
-  # Worker — long-running agent runner
-  # -----------------------------------------------------------------
+  # Worker — processes the AgentJob queue. Pinned to main.
   - type: worker
     name: emr-agent-worker
     env: node
     plan: starter
+    branch: main
     buildCommand: npm ci && npx prisma generate
     startCommand: npm run worker
     envVars:
@@ -82,12 +82,11 @@ services:
       - key: OPENROUTER_APP_NAME
         value: Leafjourney
 
-  # -----------------------------------------------------------------
-  # Scheduler — cron that enqueues recurring workflows
-  # -----------------------------------------------------------------
+  # Scheduler — enqueues recurring workflows every 15 minutes. Pinned to main.
   - type: cron
     name: emr-scheduler
     env: node
+    branch: main
     schedule: "*/15 * * * *"
     buildCommand: npm ci && npx prisma generate
     startCommand: npx tsx src/workers/scheduler.ts
@@ -101,8 +100,6 @@ services:
 
 databases:
   - name: emr-postgres
-    # basic-256mb is the cheapest currently-supported Render Postgres plan.
-    # Legacy names like `starter` are no longer accepted for new databases.
     plan: basic-256mb
     databaseName: emr
     user: emr
