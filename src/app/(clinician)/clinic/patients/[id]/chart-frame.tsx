@@ -3,7 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
-export type ChartTabPosition = "top" | "bottom";
+export type ChartTabPosition = "top" | "bottom" | "left" | "right";
 
 export interface ChartFrameSettings {
   position: ChartTabPosition;
@@ -20,6 +20,13 @@ const Ctx = React.createContext<ChartFrameSettings | null>(null);
 
 const STORAGE_KEY = "chart-tabs:settings:v1";
 
+const VALID_POSITIONS: ReadonlySet<ChartTabPosition> = new Set([
+  "top",
+  "bottom",
+  "left",
+  "right",
+]);
+
 type StoredSettings = {
   position?: ChartTabPosition;
   compact?: boolean;
@@ -31,8 +38,11 @@ function readStored(): StoredSettings {
     if (!raw) return {};
     const parsed = JSON.parse(raw);
     const out: StoredSettings = {};
-    if (parsed?.position === "top" || parsed?.position === "bottom") {
-      out.position = parsed.position;
+    if (
+      typeof parsed?.position === "string" &&
+      VALID_POSITIONS.has(parsed.position as ChartTabPosition)
+    ) {
+      out.position = parsed.position as ChartTabPosition;
     }
     if (typeof parsed?.compact === "boolean") {
       out.compact = parsed.compact;
@@ -103,17 +113,25 @@ export function ChartFrame({
     writeStored({ position, compact: c });
   };
 
+  const isVertical = position === "left" || position === "right";
+
   return (
     <Ctx.Provider
       value={{ position, setPosition, compact, setCompact, hydrated }}
     >
       <div
         className={cn(
-          "flex flex-col",
-          position === "bottom" && "flex-col-reverse"
+          "flex",
+          position === "top" && "flex-col",
+          position === "bottom" && "flex-col-reverse",
+          position === "left" && "flex-row",
+          position === "right" && "flex-row-reverse"
         )}
       >
-        {nav}
+        {/* Vertical rails need a fixed-width wrapper so the chart
+            content keeps a stable column; horizontal bars render the
+            nav directly so the existing top/bottom DOM is unchanged. */}
+        {isVertical ? <div className="w-52 shrink-0">{nav}</div> : nav}
         <div className="flex-1 min-w-0">{children}</div>
       </div>
     </Ctx.Provider>
