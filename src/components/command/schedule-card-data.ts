@@ -48,6 +48,27 @@ function emptyEnrichment(): ScheduleEnrichment {
 }
 
 /**
+ * Run a Prisma query and swallow + log any failure. The Schedule tile
+ * has nine independent enrichment queries; if any one of them throws
+ * (a missing table after schema drift, a Prisma client mismatch, an
+ * enum-in-where surprise) the whole tile falls back to its error
+ * body — even though the other eight queries would have been fine.
+ *
+ * Wrapping each query individually lets the tile degrade gracefully:
+ * the failing piece returns an empty array, the others render their
+ * data, and the failure is logged so Render shows it in the stack
+ * trace without us having to chase it via per-tile fallbacks.
+ */
+async function safeQuery<T>(label: string, fn: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`[command-center] schedule enrichment "${label}" failed:`, err);
+    return [];
+  }
+}
+
+/**
  * Load enrichment for a batch of patients. Returns a Map from patientId
  * to its enrichment record. Patients with no data still get an entry
  * (all fields null / empty chips) so the caller can use `.get()` without
@@ -79,86 +100,97 @@ export async function loadScheduleEnrichment(
     concernObservations,
     concernMemories,
   ] = await Promise.all([
-    // allergies for the allergy chip
-    prisma.patient.findMany({
-      where: { id: { in: patientIds } },
-      select: { id: true, allergies: true },
-    }),
-    // today's Encounter (reason + briefing) per patient if one exists
-    prisma.encounter.findMany({
-      where: {
-        patientId: { in: patientIds },
-        scheduledFor: { gte: todayStart, lt: tomorrowStart },
-      },
-      orderBy: { scheduledFor: "asc" },
-      select: {
-        patientId: true,
-        reason: true,
-        briefingContext: true,
-      },
-    }),
-    // pain logs for the trend arrow
-    prisma.outcomeLog.findMany({
-      where: {
-        patientId: { in: patientIds },
-        metric: "pain",
-        loggedAt: { gte: thirtyDaysAgo },
-      },
-      orderBy: { loggedAt: "asc" },
-      select: { patientId: true, value: true, loggedAt: true },
-    }),
-    // active regimens → expected doses/day for adherence math
-    prisma.dosingRegimen.findMany({
-      where: { patientId: { in: patientIds }, active: true },
-      select: { patientId: true, frequencyPerDay: true },
-    }),
-    // actual doses last 7 days
-    prisma.doseLog.findMany({
-      where: {
-        patientId: { in: patientIds },
-        loggedAt: { gte: sevenDaysAgo },
-      },
-      select: { patientId: true },
-    }),
-    // pending refill → chip
-    prisma.refillRequest.findMany({
-      where: {
-        patientId: { in: patientIds },
-        status: { in: ["new", "flagged"] },
-      },
-      select: { patientId: true },
-    }),
-    // latest abnormal lab → chip
-    prisma.labResult.findMany({
-      where: { patientId: { in: patientIds }, abnormalFlag: true },
-      orderBy: { receivedAt: "desc" },
-      select: { patientId: true, panelName: true },
-    }),
-    // open urgent/concern observation → chip + fallback brief line
-    prisma.clinicalObservation.findMany({
-      where: {
-        patientId: { in: patientIds },
-        severity: { in: ["urgent", "concern"] },
-        resolvedAt: null,
-      },
-      orderBy: [{ severity: "desc" }, { createdAt: "desc" }],
-      select: {
-        patientId: true,
-        severity: true,
-        summary: true,
-      },
-    }),
-    // concern memory → fallback brief line
-    prisma.patientMemory.findMany({
-      where: {
-        patientId: { in: patientIds },
-        kind: "concern",
-        validUntil: null,
-        supersededById: null,
-      },
-      orderBy: { updatedAt: "desc" },
-      select: { patientId: true, content: true },
-    }),
+    safeQuery("patients", () =>
+      prisma.patient.findMany({
+        where: { id: { in: patientIds } },
+        select: { id: true, allergies: true },
+      })
+    ),
+    safeQuery("encounters", () =>
+      prisma.encounter.findMany({
+        where: {
+          patientId: { in: patientIds },
+          scheduledFor: { gte: todayStart, lt: tomorrowStart },
+        },
+        orderBy: { scheduledFor: "asc" },
+        select: {
+          patientId: true,
+          reason: true,
+          briefingContext: true,
+        },
+      })
+    ),
+    safeQuery("painLogs", () =>
+      prisma.outcomeLog.findMany({
+        where: {
+          patientId: { in: patientIds },
+          metric: "pain",
+          loggedAt: { gte: thirtyDaysAgo },
+        },
+        orderBy: { loggedAt: "asc" },
+        select: { patientId: true, value: true, loggedAt: true },
+      })
+    ),
+    safeQuery("regimens", () =>
+      prisma.dosingRegimen.findMany({
+        where: { patientId: { in: patientIds }, active: true },
+        select: { patientId: true, frequencyPerDay: true },
+      })
+    ),
+    safeQuery("doseLogs", () =>
+      prisma.doseLog.findMany({
+        where: {
+          patientId: { in: patientIds },
+          loggedAt: { gte: sevenDaysAgo },
+        },
+        select: { patientId: true },
+      })
+    ),
+    safeQuery("pendingRefills", () =>
+      prisma.refillRequest.findMany({
+        where: {
+          patientId: { in: patientIds },
+          status: { in: ["new", "flagged"] },
+        },
+        select: { patientId: true },
+      })
+    ),
+    safeQuery("abnormalLabs", () =>
+      prisma.labResult.findMany({
+        where: { patientId: { in: patientIds }, abnormalFlag: true },
+        orderBy: { receivedAt: "desc" },
+        select: { patientId: true, panelName: true },
+      })
+    ),
+    safeQuery("concernObservations", () =>
+      prisma.clinicalObservation.findMany({
+        where: {
+          patientId: { in: patientIds },
+          severity: { in: ["urgent", "concern"] },
+          resolvedAt: null,
+        },
+        // Sort by createdAt only; some Prisma versions reject orderBy
+        // on enum fields, and recency is the right tiebreaker anyway.
+        orderBy: { createdAt: "desc" },
+        select: {
+          patientId: true,
+          severity: true,
+          summary: true,
+        },
+      })
+    ),
+    safeQuery("concernMemories", () =>
+      prisma.patientMemory.findMany({
+        where: {
+          patientId: { in: patientIds },
+          kind: "concern",
+          validUntil: null,
+          supersededById: null,
+        },
+        orderBy: { updatedAt: "desc" },
+        select: { patientId: true, content: true },
+      })
+    ),
   ]);
 
   const out = new Map<string, ScheduleEnrichment>();
