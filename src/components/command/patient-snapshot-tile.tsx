@@ -135,6 +135,13 @@ async function renderSnapshotTile(user: AuthedUser) {
     );
   }
 
+  // Legacy rows can have allergies=NULL in the DB even though the
+  // Prisma schema declares a non-null default — the default is applied
+  // at write time, not retroactively. Normalize once so downstream
+  // code can treat it as a plain array. Same defensive guard the
+  // patient chart page + share page already apply.
+  const allergies = patient.allergies ?? [];
+
   const age = computeAge(patient.dateOfBirth);
   const isUpcoming = featured.startAt.getTime() > now.getTime();
   const apptLabel = isUpcoming ? "Up next" : "Today";
@@ -163,9 +170,9 @@ async function renderSnapshotTile(user: AuthedUser) {
           </div>
         </div>
 
-        {patient.allergies.length > 0 && (
+        {allergies.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {patient.allergies.slice(0, 3).map((a) => (
+            {allergies.slice(0, 3).map((a) => (
               <span
                 key={a}
                 className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-800 border border-red-200/70"
@@ -174,9 +181,9 @@ async function renderSnapshotTile(user: AuthedUser) {
                 ⚠ {a}
               </span>
             ))}
-            {patient.allergies.length > 3 && (
+            {allergies.length > 3 && (
               <span className="text-[10px] text-text-subtle self-center">
-                +{patient.allergies.length - 3}
+                +{allergies.length - 3}
               </span>
             )}
           </div>
