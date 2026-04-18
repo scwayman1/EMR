@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Tile, TilePlaceholder } from "@/components/ui/tile";
 import { TileGrid } from "@/components/ui/tile-grid";
+import { ScheduleTile } from "@/components/command/schedule-tile";
 
 export const metadata = { title: "Command Center" };
 
@@ -33,18 +34,8 @@ export default async function CommandCenterPage() {
 
       <TileGrid>
         {/* Pillar 1 — Schedule. Today's patients, card height proportional
-            to visit duration, hover to preview the facesheet. */}
-        <Tile
-          eyebrow="Today"
-          title="Schedule"
-          description="Time-sized patient cards with AI-summarized reason for visit."
-          icon="📅"
-          span="2x2"
-          href="/clinic"
-          tone="default"
-        >
-          <TilePlaceholder note="Schedule tile ships next. Tap to preview today in the current view." />
-        </Tile>
+            to visit duration. Real component now live. */}
+        <ScheduleTile user={user} />
 
         {/* Pillar 2 — Messages. AI-summarized inbox with keyword priority
             (urgent in red), inline C/M/Rx/📞 actions, voice dictation. */}
