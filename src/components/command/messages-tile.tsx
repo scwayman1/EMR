@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { AuthedUser } from "@/lib/auth/session";
 import { Tile } from "@/components/ui/tile";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TileErrorBody } from "@/components/command/tile-error";
 import {
   triageThread,
   type MessagePriority,
@@ -55,8 +56,23 @@ export async function MessagesTile({ user }: { user: AuthedUser }) {
     return <MessagesTileShell count={0} urgentCount={0} />;
   }
 
+  try {
+    return await renderMessagesTile(user.organizationId);
+  } catch (err) {
+    // Keep the Command Center usable if messaging or triage explodes —
+    // log the stack for Render logs and show a calm fallback body.
+    console.error("[command-center] MessagesTile render failed:", err);
+    return (
+      <MessagesTileShell count={0} urgentCount={0}>
+        <TileErrorBody label="the messages inbox" />
+      </MessagesTileShell>
+    );
+  }
+}
+
+async function renderMessagesTile(organizationId: string) {
   const threads = await prisma.messageThread.findMany({
-    where: { patient: { organizationId: user.organizationId } },
+    where: { patient: { organizationId } },
     orderBy: { lastMessageAt: "desc" },
     include: {
       patient: { select: { id: true, userId: true, firstName: true, lastName: true } },
