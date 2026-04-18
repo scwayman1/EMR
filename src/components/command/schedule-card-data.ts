@@ -164,13 +164,17 @@ export async function loadScheduleEnrichment(
   const out = new Map<string, ScheduleEnrichment>();
   for (const id of patientIds) out.set(id, emptyEnrichment());
 
-  // allergies
+  // allergies — null-guard because legacy rows may have allergies=NULL
+  // despite the schema default (default applies at write time, not to
+  // pre-existing data).
   for (const p of patients) {
     const e = out.get(p.id);
-    if (e && p.allergies.length > 0) {
+    if (!e) continue;
+    const allergies = p.allergies ?? [];
+    if (allergies.length > 0) {
       e.chips.push({
         emoji: "⚠",
-        label: p.allergies.length === 1 ? p.allergies[0] : `${p.allergies.length} allergies`,
+        label: allergies.length === 1 ? allergies[0] : `${allergies.length} allergies`,
         tone: "danger",
       });
     }
