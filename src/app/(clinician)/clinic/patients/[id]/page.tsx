@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
-import { ChartTabs, type TabKey } from "./chart-tabs";
+import { ChartTabs, type TabKey, type TabPeeks } from "./chart-tabs";
 import { TrackPatientView } from "@/components/shell/recent-patients";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
@@ -199,6 +199,42 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     correspondence: threads.length,
     rx: activeRegimens.length,
     billing: openClaimCount,
+  };
+
+  /* ── Hover-peek entries (slice 3a) ───────────────────────────
+   * Five most recent items per tab, derived from the data we already
+   * fetched. No new queries — just a reshape. Starts with labs, notes,
+   * and rx; the remaining tabs (records, correspondence, etc.) ship in
+   * slice 3b once the peek pattern has been battle-tested here. */
+  const tabPeeks: TabPeeks = {
+    labs: labDocs.slice(0, 5).map((d) => ({
+      id: d.id,
+      title: d.originalName || "Untitled lab",
+      meta: formatRelative(d.createdAt),
+      href: `/clinic/patients/${params.id}?tab=labs`,
+    })),
+    notes: allNotes.slice(0, 5).map((n) => {
+      // Notes store their chief complaint inside a Json `blocks` payload
+      // whose shape is validated at write-time. For peek purposes we just
+      // read defensively and fall back to the narrative or a generic label.
+      const chiefComplaint =
+        typeof (n.blocks as { chiefComplaint?: unknown })?.chiefComplaint === "string"
+          ? ((n.blocks as { chiefComplaint: string }).chiefComplaint).trim()
+          : "";
+      const raw = chiefComplaint || n.narrative?.trim() || "Untitled note";
+      return {
+        id: n.id,
+        title: raw.length > 60 ? raw.slice(0, 60) + "…" : raw,
+        meta: `${n.status} · ${formatRelative(n.createdAt)}`,
+        href: `/clinic/patients/${params.id}/notes/${n.id}`,
+      };
+    }),
+    rx: activeRegimens.slice(0, 5).map((r: any) => ({
+      id: r.id,
+      title: r.product?.name ?? "Cannabis regimen",
+      meta: [r.dosage, r.product?.format].filter(Boolean).join(" · ") || "Active",
+      href: `/clinic/patients/${params.id}?tab=rx`,
+    })),
   };
 
   /* ── Clinical Decision Support alerts (EMR-166) ──────────── */
@@ -404,7 +440,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       )}
 
       {/* ── Tab bar ───────────────────────────────────────── */}
-      <ChartTabs patientId={params.id} counts={counts} />
+      <ChartTabs patientId={params.id} counts={counts} peeks={tabPeeks} />
 
       {/* ── Tab content ───────────────────────────────────── */}
       {tab === "demographics" && (

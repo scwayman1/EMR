@@ -49,19 +49,17 @@ export default async function CommandCenterPage() {
             count, last lab. Tap-through goes straight to the full chart. */}
         <PatientSnapshotTile user={user} />
 
-        {/* Pillar 4 — Mindful break. Click → 10-min max reset (breathe, move,
-            game, tranquil picture/sound). "Back to work!" on exit. */}
+        {/* Pillar 4 — Mindful break. Breathe is live; Move and Inspire
+            land as their own slices. 10-minute cap on every path. */}
         <Tile
           eyebrow="Reset"
           title="Mindful Break"
-          description="Breathe, move, or play for up to ten minutes. Back to work when you're ready."
+          description="Breathe, move, or take in something beautiful. Ten minutes, then back to work."
           icon="🧘"
           span="1x1"
-          href="#"
+          href="/clinic/mindful"
           tone="calm"
-        >
-          <TilePlaceholder note="Full module in slice 4." />
-        </Tile>
+        />
 
         {/* Placeholder tile — reminds us that the tabbed sidebar is Phase 3
             and should land once the four content pillars are in. Using a
