@@ -212,10 +212,14 @@ export default async function ClinicHomePage() {
     recentObservations,
   ] = await Promise.all([
     // 1. Today's encounters
+    //    Exclude encounters whose patient has been soft-deleted — otherwise
+    //    the card would render with a ghost patient and the Prepare button
+    //    would 404 downstream.
     prisma.encounter.findMany({
       where: {
         organizationId,
         scheduledFor: { gte: startOfDay, lt: endOfDay },
+        patient: { deletedAt: null },
       },
       include: { patient: { include: { chartSummary: true } } },
       orderBy: { scheduledFor: "asc" },
@@ -277,8 +281,13 @@ export default async function ClinicHomePage() {
     }),
 
     // 9. Recent completed encounters (activity feed)
+    //    Same deleted-patient guard as the today list.
     prisma.encounter.findMany({
-      where: { organizationId, status: "complete" },
+      where: {
+        organizationId,
+        status: "complete",
+        patient: { deletedAt: null },
+      },
       include: { patient: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { completedAt: "desc" },
       take: 5,
