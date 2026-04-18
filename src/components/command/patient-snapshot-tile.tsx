@@ -4,6 +4,7 @@ import type { AuthedUser } from "@/lib/auth/session";
 import { Tile } from "@/components/ui/tile";
 import { Avatar } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TileErrorBody } from "@/components/command/tile-error";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -31,6 +32,23 @@ export async function PatientSnapshotTile({ user }: { user: AuthedUser }) {
   if (!user.organizationId) {
     return <SnapshotShell />;
   }
+
+  try {
+    return await renderSnapshotTile(user);
+  } catch (err) {
+    // Never take down the whole Command Center because one tile threw.
+    // Log the stack so Render logs surface it, render a calm fallback.
+    console.error("[command-center] PatientSnapshotTile render failed:", err);
+    return (
+      <SnapshotShell>
+        <TileErrorBody label="the patient snapshot" />
+      </SnapshotShell>
+    );
+  }
+}
+
+async function renderSnapshotTile(user: AuthedUser) {
+  if (!user.organizationId) return <SnapshotShell />;
 
   const provider = user.roles.includes("clinician")
     ? await prisma.provider.findFirst({

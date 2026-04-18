@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { AuthedUser } from "@/lib/auth/session";
 import { Tile } from "@/components/ui/tile";
 import { EmptyState } from "@/components/ui/empty-state";
+import { TileErrorBody } from "@/components/command/tile-error";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -28,69 +29,81 @@ export async function ScheduleTile({ user }: { user: AuthedUser }) {
     return <ScheduleTileShell count={0} />;
   }
 
-  // Scope to this provider's day when the user has a Provider record.
-  // Owners always see the full org.
-  const provider = user.roles.includes("clinician")
-    ? await prisma.provider.findFirst({
-        where: { userId: user.id, organizationId: user.organizationId },
-        select: { id: true },
-      })
-    : null;
+  try {
+    // Scope to this provider's day when the user has a Provider record.
+    // Owners always see the full org.
+    const provider = user.roles.includes("clinician")
+      ? await prisma.provider.findFirst({
+          where: { userId: user.id, organizationId: user.organizationId },
+          select: { id: true },
+        })
+      : null;
 
-  const now = new Date();
-  const startOfDay = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    0,
-    0,
-    0,
-    0
-  );
-  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0
+    );
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      startAt: { gte: startOfDay, lt: endOfDay },
-      patient: { organizationId: user.organizationId, deletedAt: null },
-      ...(provider ? { providerId: provider.id } : {}),
-    },
-    orderBy: { startAt: "asc" },
-    include: {
-      patient: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          dateOfBirth: true,
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        startAt: { gte: startOfDay, lt: endOfDay },
+        patient: { organizationId: user.organizationId, deletedAt: null },
+        ...(provider ? { providerId: provider.id } : {}),
+      },
+      orderBy: { startAt: "asc" },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            dateOfBirth: true,
+          },
         },
       },
-    },
-    take: 12,
-  });
+      take: 12,
+    });
 
-  return (
-    <ScheduleTileShell count={appointments.length}>
-      {appointments.length === 0 ? (
-        <div className="h-full flex items-center justify-center">
-          <EmptyState
-            title="No visits today"
-            description="A quiet day. Time to catch up on notes."
-          />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2 h-full overflow-y-auto pr-1">
-          {appointments.map((appt) => (
-            <ScheduleCard
-              key={appt.id}
-              appointment={appt}
-              nowTs={now.getTime()}
+    return (
+      <ScheduleTileShell count={appointments.length}>
+        {appointments.length === 0 ? (
+          <div className="h-full flex items-center justify-center">
+            <EmptyState
+              title="No visits today"
+              description="A quiet day. Time to catch up on notes."
             />
-          ))}
-        </div>
-      )}
-    </ScheduleTileShell>
-  );
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 h-full overflow-y-auto pr-1">
+            {appointments.map((appt) => (
+              <ScheduleCard
+                key={appt.id}
+                appointment={appt}
+                nowTs={now.getTime()}
+              />
+            ))}
+          </div>
+        )}
+      </ScheduleTileShell>
+    );
+  } catch (err) {
+    // A single tile crash should never take down the whole Command
+    // Center. Log the stack so Render has it, and render the Shell
+    // with a fallback body so the grid layout + other tiles survive.
+    console.error("[command-center] ScheduleTile render failed:", err);
+    return (
+      <ScheduleTileShell count={0}>
+        <TileErrorBody label="today's schedule" />
+      </ScheduleTileShell>
+    );
+  }
 }
 
 function ScheduleTileShell({
