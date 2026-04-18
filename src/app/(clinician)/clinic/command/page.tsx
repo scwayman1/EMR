@@ -4,6 +4,7 @@ import { Tile, TilePlaceholder } from "@/components/ui/tile";
 import { TileGrid } from "@/components/ui/tile-grid";
 import { ScheduleTile } from "@/components/command/schedule-tile";
 import { MessagesTile } from "@/components/command/messages-tile";
+import { PatientSnapshotTile } from "@/components/command/patient-snapshot-tile";
 
 export const metadata = { title: "Command Center" };
 
@@ -43,19 +44,10 @@ export default async function CommandCenterPage() {
             the full inbox agree on priority/category. */}
         <MessagesTile user={user} />
 
-        {/* Pillar 3 — Patient snapshot. Hover over a patient → facesheet
-            preview (vitals, meds, labs sparklines, surgeries). */}
-        <Tile
-          eyebrow="Roster"
-          title="Patient Snapshot"
-          description="Hover any patient to see vitals, meds, trending labs, and preventatives."
-          icon="👤"
-          span="1x1"
-          href="/clinic/patients"
-          tone="accent"
-        >
-          <TilePlaceholder note="Hover-preview comes in slice 3." />
-        </Tile>
+        {/* Pillar 3 — Patient snapshot. The next-upcoming visit's facesheet
+            compressed into a 1×1 tile: demographics, allergy chips, med
+            count, last lab. Tap-through goes straight to the full chart. */}
+        <PatientSnapshotTile user={user} />
 
         {/* Pillar 4 — Mindful break. Breathe is live; Move and Inspire
             land as their own slices. 10-minute cap on every path. */}
