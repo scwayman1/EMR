@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey, type TabPeeks } from "./chart-tabs";
+import { ChartFrame } from "./chart-frame";
 import { TrackPatientView } from "@/components/shell/recent-patients";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
@@ -472,10 +473,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         </div>
       )}
 
-      {/* ── Tab bar ───────────────────────────────────────── */}
-      <ChartTabs patientId={params.id} counts={counts} peeks={tabPeeks} />
-
-      {/* ── Tab content ───────────────────────────────────── */}
+      {/* ── Tab bar + content ─────────────────────────────── */}
+      {/* ChartFrame lets the clinician toggle tab bar position (top /
+          bottom) and density (labels / dots). Both preferences are
+          persisted in localStorage and scoped to the whole chart. */}
+      <ChartFrame
+        nav={<ChartTabs patientId={params.id} counts={counts} peeks={tabPeeks} />}
+      >
       {tab === "demographics" && (
         <DemographicsTab
           patient={patient}
@@ -529,6 +533,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           patientId={params.id}
         />
       )}
+      </ChartFrame>
     </PageShell>
   );
 }
