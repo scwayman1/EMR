@@ -23,38 +23,57 @@ export default async function ClinicianLayout({
   // Live counts so the nav can telegraph agent activity the moment you log in.
   // Pending AI drafts = Nurse Nora (et al.) needs your sign-off.
   // Emergency count promotes the pill to red + pulse.
+  // Each count is wrapped: a missing table (P2021) or any transient DB error
+  // must never block login. The nav falls back to 0 and the page still renders.
+  const safeCount = async (fn: () => Promise<number>) => {
+    try {
+      return await fn();
+    } catch (err) {
+      console.error("[clinician-layout] count failed, defaulting to 0:", err);
+      return 0;
+    }
+  };
+
   const [pendingCount, emergencyCount, labsPendingCount, refillsPendingCount] = user.organizationId
     ? await Promise.all([
-        prisma.message.count({
-          where: {
-            status: "draft",
-            aiDrafted: true,
-            thread: { patient: { organizationId: user.organizationId } },
-          },
-        }),
-        prisma.message.count({
-          where: {
-            status: "draft",
-            aiDrafted: true,
-            thread: {
-              triageUrgency: "emergency",
-              patient: { organizationId: user.organizationId },
+        safeCount(() =>
+          prisma.message.count({
+            where: {
+              status: "draft",
+              aiDrafted: true,
+              thread: { patient: { organizationId: user.organizationId } },
             },
-          },
-        }),
-        prisma.labResult.count({
-          where: {
-            organizationId: user.organizationId,
-            signedAt: null,
-          },
-        }),
-        prisma.refillRequest.count({
-          where: {
-            organizationId: user.organizationId,
-            status: { in: ["new", "flagged"] },
-            signedAt: null,
-          },
-        }),
+          })
+        ),
+        safeCount(() =>
+          prisma.message.count({
+            where: {
+              status: "draft",
+              aiDrafted: true,
+              thread: {
+                triageUrgency: "emergency",
+                patient: { organizationId: user.organizationId },
+              },
+            },
+          })
+        ),
+        safeCount(() =>
+          prisma.labResult.count({
+            where: {
+              organizationId: user.organizationId,
+              signedAt: null,
+            },
+          })
+        ),
+        safeCount(() =>
+          prisma.refillRequest.count({
+            where: {
+              organizationId: user.organizationId,
+              status: { in: ["new", "flagged"] },
+              signedAt: null,
+            },
+          })
+        ),
       ])
     : [0, 0, 0, 0];
 
