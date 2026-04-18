@@ -19,6 +19,34 @@ const TABS = [
 
 export type TabKey = (typeof TABS)[number]["key"];
 
+const TAB_BY_KEY = new Map<TabKey, (typeof TABS)[number]>(
+  TABS.map((t) => [t.key, t])
+);
+const DEFAULT_ORDER: TabKey[] = TABS.map((t) => t.key);
+const STORAGE_KEY = "chart-tabs:order:v1";
+
+/**
+ * Reconcile a stored order array against the canonical TABS list.
+ * Drops stale keys (tab removed), appends any new keys (tab added) at
+ * the end so the physician doesn't silently lose access to a section
+ * just because their saved order predates the schema.
+ */
+function reconcileOrder(stored: unknown): TabKey[] {
+  if (!Array.isArray(stored)) return DEFAULT_ORDER;
+  const seen = new Set<TabKey>();
+  const valid: TabKey[] = [];
+  for (const k of stored) {
+    if (typeof k === "string" && TAB_BY_KEY.has(k as TabKey) && !seen.has(k as TabKey)) {
+      valid.push(k as TabKey);
+      seen.add(k as TabKey);
+    }
+  }
+  for (const k of DEFAULT_ORDER) {
+    if (!seen.has(k)) valid.push(k);
+  }
+  return valid;
+}
+
 /** A single "last N entries" row inside a tab's hover-peek popover. */
 export interface PeekEntry {
   id: string;
@@ -43,11 +71,49 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
   const searchParams = useSearchParams();
   const active = (searchParams.get("tab") as TabKey) || "records";
 
-  // Which tab's peek popover is open right now. At most one open at a time.
+  // Tab order. Seeded with the canonical order so SSR output matches
+  // the server render; hydrated from localStorage in an effect so the
+  // personalized order takes effect on the first paint after mount.
+  const [order, setOrder] = React.useState<TabKey[]>(DEFAULT_ORDER);
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) setOrder(reconcileOrder(JSON.parse(raw)));
+    } catch {
+      // Corrupt JSON or blocked storage — silently fall back to the default.
+    }
+    setHydrated(true);
+  }, []);
+
+  const persistOrder = React.useCallback((next: TabKey[]) => {
+    setOrder(next);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Safari private mode or quota exhausted — order stays in memory only.
+    }
+  }, []);
+
+  const resetOrder = React.useCallback(() => {
+    setOrder(DEFAULT_ORDER);
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Drag state — source tab + whichever tab's slot is being hovered,
+  // so the insertion indicator can render on the drop target.
+  const [draggingKey, setDraggingKey] = React.useState<TabKey | null>(null);
+  const [dragOverKey, setDragOverKey] = React.useState<TabKey | null>(null);
+
+  // Hover-peek state. At most one open at a time.
   const [openKey, setOpenKey] = React.useState<TabKey | null>(null);
   // A small close delay keeps the popover open while the cursor slides
-  // from the tab onto the popover itself. Without this, the popover
-  // flickers shut as soon as you exit the tab's hit area.
+  // from the tab onto the popover itself.
   const closeTimer = React.useRef<number | null>(null);
 
   const scheduleClose = () => {
@@ -63,23 +129,78 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
 
   React.useEffect(() => () => cancelClose(), []);
 
+  const handleDragStart = (key: TabKey) => (e: React.DragEvent) => {
+    setDraggingKey(key);
+    setOpenKey(null); // peek would obscure the drop zones
+    cancelClose();
+    // Firefox requires dataTransfer to have data set for drag to initiate.
+    e.dataTransfer.setData("text/plain", key);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (key: TabKey) => (e: React.DragEvent) => {
+    if (!draggingKey) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverKey !== key) setDragOverKey(key);
+  };
+
+  const handleDragLeave = (key: TabKey) => () => {
+    if (dragOverKey === key) setDragOverKey(null);
+  };
+
+  const handleDrop = (targetKey: TabKey) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const source = draggingKey;
+    setDraggingKey(null);
+    setDragOverKey(null);
+    if (!source || source === targetKey) return;
+    const next = order.filter((k) => k !== source);
+    const targetIdx = next.indexOf(targetKey);
+    if (targetIdx < 0) return;
+    next.splice(targetIdx, 0, source);
+    persistOrder(next);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingKey(null);
+    setDragOverKey(null);
+  };
+
+  const isReordered =
+    hydrated && order.some((k, i) => k !== DEFAULT_ORDER[i]);
+
   return (
     <nav
       className="relative flex flex-wrap items-center gap-1 border-b border-border mb-8"
       aria-label="Chart sections"
     >
-      {TABS.map((tab) => {
+      {order.map((key) => {
+        const tab = TAB_BY_KEY.get(key);
+        if (!tab) return null;
         const isActive = active === tab.key;
         const count = counts[tab.key];
         const entries = peeks?.[tab.key];
         const hasPeek = entries !== undefined;
-        const isOpen = openKey === tab.key;
+        const isOpen = openKey === tab.key && !draggingKey;
+        const isDragging = draggingKey === tab.key;
+        const isDropTarget = dragOverKey === tab.key && draggingKey !== tab.key;
 
         return (
           <div
             key={tab.key}
-            className="relative"
+            draggable
+            onDragStart={handleDragStart(tab.key)}
+            onDragOver={handleDragOver(tab.key)}
+            onDragLeave={handleDragLeave(tab.key)}
+            onDrop={handleDrop(tab.key)}
+            onDragEnd={handleDragEnd}
+            className={cn(
+              "relative group/tab transition-opacity",
+              isDragging && "opacity-40"
+            )}
             onMouseEnter={() => {
+              if (draggingKey) return;
               cancelClose();
               if (hasPeek) setOpenKey(tab.key);
             }}
@@ -90,18 +211,35 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
             }}
             onBlur={scheduleClose}
           >
+            {isDropTarget && (
+              <span
+                aria-hidden="true"
+                className="absolute -left-0.5 top-2 bottom-2 w-0.5 rounded-full bg-accent"
+              />
+            )}
             <Link
               href={`/clinic/patients/${patientId}?tab=${tab.key}`}
               scroll={false}
+              draggable={false}
               aria-haspopup={hasPeek ? "true" : undefined}
               aria-expanded={hasPeek ? isOpen : undefined}
               className={cn(
-                "relative flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors rounded-t-md whitespace-nowrap",
+                "relative flex items-center gap-2 pl-3 pr-4 py-2.5 text-sm font-medium transition-colors rounded-t-md whitespace-nowrap cursor-grab active:cursor-grabbing",
                 isActive
                   ? "text-accent"
                   : "text-text-muted hover:text-text hover:bg-surface-muted"
               )}
             >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "text-text-subtle/40 leading-none text-[10px] tracking-tighter select-none transition-opacity",
+                  "opacity-0 group-hover/tab:opacity-100"
+                )}
+                title="Drag to reorder"
+              >
+                ⋮⋮
+              </span>
               <span
                 className={cn(
                   "h-2 w-2 rounded-full shrink-0",
@@ -136,6 +274,17 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
           </div>
         );
       })}
+
+      {isReordered && (
+        <button
+          type="button"
+          onClick={resetOrder}
+          className="ml-auto mr-2 text-[11px] text-text-subtle hover:text-accent transition-colors"
+          title="Restore the default tab order"
+        >
+          Reset order
+        </button>
+      )}
     </nav>
   );
 }
