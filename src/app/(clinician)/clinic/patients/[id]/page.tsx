@@ -201,11 +201,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     billing: openClaimCount,
   };
 
-  /* ── Hover-peek entries (slice 3a) ───────────────────────────
+  /* ── Hover-peek entries (slices 3a + 3b) ────────────────────
    * Five most recent items per tab, derived from the data we already
-   * fetched. No new queries — just a reshape. Starts with labs, notes,
-   * and rx; the remaining tabs (records, correspondence, etc.) ship in
-   * slice 3b once the peek pattern has been battle-tested here. */
+   * fetched. No new queries — just a reshape. 3a introduced labs,
+   * notes, and rx; 3b adds records, images, correspondence, memory,
+   * and billing so every tab that carries a list has a peek. */
   const tabPeeks: TabPeeks = {
     labs: labDocs.slice(0, 5).map((d) => ({
       id: d.id,
@@ -234,6 +234,39 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       title: r.product?.name ?? "Cannabis regimen",
       meta: [r.dosage, r.product?.format].filter(Boolean).join(" · ") || "Active",
       href: `/clinic/patients/${params.id}?tab=rx`,
+    })),
+    records: recordDocs.slice(0, 5).map((d) => ({
+      id: d.id,
+      title: d.originalName || "Untitled document",
+      meta: `${d.kind} · ${formatRelative(d.createdAt)}`,
+      href: `/clinic/patients/${params.id}?tab=records`,
+    })),
+    images: imageDocs.slice(0, 5).map((d) => ({
+      id: d.id,
+      title: d.originalName || "Untitled image",
+      meta: formatRelative(d.createdAt),
+      href: `/clinic/patients/${params.id}?tab=images`,
+    })),
+    correspondence: threads.slice(0, 5).map((t) => ({
+      id: t.id,
+      title: t.subject || "No subject",
+      meta: `${t.messages.length} message${t.messages.length === 1 ? "" : "s"} · ${formatRelative(t.lastMessageAt)}`,
+      href: `/clinic/patients/${params.id}?tab=correspondence`,
+    })),
+    memory: patientMemories.slice(0, 5).map((m) => ({
+      id: m.id,
+      title:
+        m.content.length > 60 ? m.content.slice(0, 60) + "…" : m.content,
+      meta: `${m.kind} · ${formatRelative(m.createdAt)}`,
+      href: `/clinic/patients/${params.id}?tab=memory`,
+    })),
+    billing: patientClaims.slice(0, 5).map((c) => ({
+      id: c.id,
+      // Money is stored in cents; peek rows render the dollar amount
+      // rounded to the nearest dollar — we're not trying to be a ledger.
+      title: `${c.payerName ?? "Claim"} · $${Math.round(c.billedAmountCents / 100)}`,
+      meta: `${c.status} · ${formatRelative(c.serviceDate)}`,
+      href: `/clinic/patients/${params.id}?tab=billing`,
     })),
   };
 
