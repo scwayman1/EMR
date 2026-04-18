@@ -66,9 +66,11 @@ interface ChartTabsProps {
   patientId: string;
   counts: Record<TabKey, number>;
   peeks?: TabPeeks;
+  /** AI-generated 1-2 sentence summary per tab, rendered atop the peek popover. */
+  peekSummaries?: Partial<Record<TabKey, string>>;
 }
 
-export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
+export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabsProps) {
   const searchParams = useSearchParams();
   const active = (searchParams.get("tab") as TabKey) || "records";
 
@@ -307,6 +309,7 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
               <TabPeekPopover
                 label={tab.label}
                 entries={entries}
+                summary={peekSummaries?.[tab.key]}
                 seeAllHref={`/clinic/patients/${patientId}?tab=${tab.key}`}
                 onLeave={scheduleClose}
                 onEnter={cancelClose}
@@ -350,6 +353,7 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
 function TabPeekPopover({
   label,
   entries,
+  summary,
   seeAllHref,
   onEnter,
   onLeave,
@@ -357,6 +361,7 @@ function TabPeekPopover({
 }: {
   label: string;
   entries: PeekEntry[];
+  summary?: string;
   seeAllHref: string;
   onEnter: () => void;
   onLeave: () => void;
@@ -375,6 +380,11 @@ function TabPeekPopover({
       )}
     >
       <div className="px-4 pt-3 pb-2 border-b border-border/60">
+        {summary && (
+          <p className="text-[12px] italic text-text-muted leading-snug mb-1.5">
+            {summary}
+          </p>
+        )}
         <p className="text-[10px] uppercase tracking-wider text-text-subtle font-medium">
           Recent · {label}
         </p>
