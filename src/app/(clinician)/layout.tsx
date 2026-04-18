@@ -34,48 +34,50 @@ export default async function ClinicianLayout({
     }
   };
 
-  const [pendingCount, emergencyCount, labsPendingCount, refillsPendingCount] = user.organizationId
-    ? await Promise.all([
-        safeCount(() =>
-          prisma.message.count({
-            where: {
-              status: "draft",
-              aiDrafted: true,
-              thread: { patient: { organizationId: user.organizationId } },
+  const [pendingCount, emergencyCount, labsPendingCount, refillsPendingCount] = await (async () => {
+    const orgId = user.organizationId;
+    if (!orgId) return [0, 0, 0, 0] as const;
+    return Promise.all([
+      safeCount(() =>
+        prisma.message.count({
+          where: {
+            status: "draft",
+            aiDrafted: true,
+            thread: { patient: { organizationId: orgId } },
+          },
+        })
+      ),
+      safeCount(() =>
+        prisma.message.count({
+          where: {
+            status: "draft",
+            aiDrafted: true,
+            thread: {
+              triageUrgency: "emergency",
+              patient: { organizationId: orgId },
             },
-          })
-        ),
-        safeCount(() =>
-          prisma.message.count({
-            where: {
-              status: "draft",
-              aiDrafted: true,
-              thread: {
-                triageUrgency: "emergency",
-                patient: { organizationId: user.organizationId },
-              },
-            },
-          })
-        ),
-        safeCount(() =>
-          prisma.labResult.count({
-            where: {
-              organizationId: user.organizationId,
-              signedAt: null,
-            },
-          })
-        ),
-        safeCount(() =>
-          prisma.refillRequest.count({
-            where: {
-              organizationId: user.organizationId,
-              status: { in: ["new", "flagged"] },
-              signedAt: null,
-            },
-          })
-        ),
-      ])
-    : [0, 0, 0, 0];
+          },
+        })
+      ),
+      safeCount(() =>
+        prisma.labResult.count({
+          where: {
+            organizationId: orgId,
+            signedAt: null,
+          },
+        })
+      ),
+      safeCount(() =>
+        prisma.refillRequest.count({
+          where: {
+            organizationId: orgId,
+            status: { in: ["new", "flagged"] },
+            signedAt: null,
+          },
+        })
+      ),
+    ]);
+  })();
 
   const nav: NavItem[] = [
     { label: "Command", href: "/clinic" },
