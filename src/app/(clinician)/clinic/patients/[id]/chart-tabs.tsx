@@ -105,10 +105,14 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
     }
   }, []);
 
-  // Drag state — source tab + whichever tab's slot is being hovered,
-  // so the insertion indicator can render on the drop target.
+  // Drag state — source tab plus which tab + edge the cursor is over,
+  // so the insertion indicator can render on the right side of the
+  // drop target. Without the "side" bit we can only insert *before*
+  // the hovered tab, making the end-of-list slot unreachable in a
+  // single drag (Codex review on PR #18, P2).
   const [draggingKey, setDraggingKey] = React.useState<TabKey | null>(null);
   const [dragOverKey, setDragOverKey] = React.useState<TabKey | null>(null);
+  const [dropSide, setDropSide] = React.useState<"before" | "after">("before");
 
   // Hover-peek state. At most one open at a time.
   const [openKey, setOpenKey] = React.useState<TabKey | null>(null);
@@ -142,7 +146,15 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
     if (!draggingKey) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    // Which half of the target the cursor is over decides whether we
+    // insert before or after it. This is what makes the end-of-list
+    // slot reachable — drop on the right half of the rightmost tab
+    // and the dragged tab lands after it.
+    const rect = e.currentTarget.getBoundingClientRect();
+    const side: "before" | "after" =
+      e.clientX < rect.left + rect.width / 2 ? "before" : "after";
     if (dragOverKey !== key) setDragOverKey(key);
+    if (dropSide !== side) setDropSide(side);
   };
 
   const handleDragLeave = (key: TabKey) => () => {
@@ -152,13 +164,19 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
   const handleDrop = (targetKey: TabKey) => (e: React.DragEvent) => {
     e.preventDefault();
     const source = draggingKey;
+    const side = dropSide;
     setDraggingKey(null);
     setDragOverKey(null);
     if (!source || source === targetKey) return;
-    const next = order.filter((k) => k !== source);
-    const targetIdx = next.indexOf(targetKey);
+    const without = order.filter((k) => k !== source);
+    const targetIdx = without.indexOf(targetKey);
     if (targetIdx < 0) return;
-    next.splice(targetIdx, 0, source);
+    const insertAt = side === "before" ? targetIdx : targetIdx + 1;
+    const next = [
+      ...without.slice(0, insertAt),
+      source,
+      ...without.slice(insertAt),
+    ];
     persistOrder(next);
   };
 
@@ -214,7 +232,10 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
             {isDropTarget && (
               <span
                 aria-hidden="true"
-                className="absolute -left-0.5 top-2 bottom-2 w-0.5 rounded-full bg-accent"
+                className={cn(
+                  "absolute top-2 bottom-2 w-0.5 rounded-full bg-accent",
+                  dropSide === "before" ? "-left-0.5" : "-right-0.5"
+                )}
               />
             )}
             <Link
