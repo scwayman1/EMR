@@ -50,7 +50,11 @@ export const underpaymentDetectionAgent: Agent<
   inputSchema: input,
   outputSchema: output,
   allowedActions: ["read.claim", "write.task"],
-  requiresApproval: false,
+  // Asserts that a payer underpaid and drives recovery actions (appeal,
+  // rebill, contract-dispute). False positives damage payer relationships
+  // and waste biller cycles; false negatives lose revenue. Every batch of
+  // underpayment claims must be human-reviewed before follow-up fires.
+  requiresApproval: true,
 
   async run({ organizationId }, ctx) {
     ctx.assertCan("read.claim");

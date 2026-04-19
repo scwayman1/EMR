@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
+import { assertOrgMatch } from "@/lib/orchestration/guards";
 import {
   classifyDenial,
   NEXT_ACTION_LABEL,
@@ -20,13 +21,19 @@ import {
 
 const input = z.object({ claimId: z.string() });
 
-const output = z.object({
-  claimId: z.string(),
-  category: z.string(),
-  suggestedAction: z.string(),
-  urgency: z.string(),
-  taskId: z.string().nullable(),
-});
+const output = z.union([
+  z.object({
+    claimId: z.string(),
+    category: z.string(),
+    suggestedAction: z.string(),
+    urgency: z.string(),
+    taskId: z.string().nullable(),
+  }),
+  z.object({
+    triaged: z.literal(false),
+    reason: z.string(),
+  }),
+]);
 
 export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof output>> = {
   name: "denialTriage",
@@ -37,7 +44,11 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
   inputSchema: input,
   outputSchema: output,
   allowedActions: ["read.claim", "write.denial.triage", "write.task"],
-  requiresApproval: false,
+  // Classifies denials and creates the tasks that drive downstream appeal or
+  // write-off decisions. A misclassification routes real revenue to the wrong
+  // next action (e.g. writing off an appealable denial), so a human must
+  // confirm the category before the task fans out.
+  requiresApproval: true,
 
   async run({ claimId }, ctx) {
     ctx.assertCan("read.claim");
@@ -48,7 +59,29 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
       include: { patient: { select: { firstName: true, lastName: true } } },
     });
 
-    if (!claim) throw new Error(`Claim ${claimId} not found`);
+    if (!claim) {
+      ctx.log("info", "Claim not found — skipping", { claimId });
+      return { triaged: false as const, reason: "claim_not_found" };
+    }
+
+    // Security invariant: every downstream write (Task, FinancialEvent) is
+    // scoped to claim.organizationId. Before we trust that value, assert it
+    // matches the org the job was invoked under — otherwise a malicious or
+    // buggy dispatch could drive writes into a different tenant's queue.
+    //
+    // ctx.organizationId may be null for unscoped runs; denialTriage only
+    // makes sense in an org scope, so refuse null too.
+    if (ctx.organizationId == null) {
+      ctx.log("warn", "Org scope missing — refusing to triage", {
+        claimId,
+        claimOrg: claim.organizationId,
+      });
+      throw new Error(
+        `Org scope violation: denialTriage invoked without an organizationId ` +
+          `on job context; claim ${claimId} belongs to org ${claim.organizationId}.`,
+      );
+    }
+    assertOrgMatch(claim.organizationId, ctx.organizationId, "claim", claim.id);
 
     if (claim.status !== "denied" && claim.status !== "appealed") {
       ctx.log("warn", "Claim is not in denied state — skipping triage", {
