@@ -340,12 +340,53 @@ export interface FeaturedSnapshot {
     receivedAt: Date;
     abnormalFlag: boolean;
   } | null;
+  /** Top-5 active meds (conventional + supplements). Display order: prescription > otc > supplement. */
+  activeMeds: Array<{
+    name: string;
+    dosage: string | null;
+    type: string;
+  }>;
+  /** Top-5 active cannabis regimens with product name + calculated mg/day. */
+  activeRegimens: Array<{
+    productName: string;
+    thcMgPerDay: number | null;
+    cbdMgPerDay: number | null;
+    frequencyPerDay: number;
+  }>;
+  /** Top-3 unacknowledged, unresolved ClinicalObservations. Severity desc, createdAt desc. */
+  recentObservations: Array<{
+    id: string;
+    severity: string;
+    category: string;
+    summary: string;
+    actionSuggested: string | null;
+    createdAt: Date;
+  }>;
+  /** Last 30 days of pain OutcomeLog values for the sparkline. Oldest first. */
+  painSparkline: Array<{ value: number; loggedAt: Date }>;
+  /** Snippet from the most recently completed encounter's finalized note. */
+  lastEncounter: {
+    reason: string | null;
+    snippet: string | null;
+    completedAt: Date;
+  } | null;
 }
 
 export async function loadFeaturedSnapshot(
   patientId: string
 ): Promise<FeaturedSnapshot | null> {
-  const [patient, activeMeds, latestLab] = await Promise.all([
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
+
+  const [
+    patient,
+    activeMedCount,
+    latestLab,
+    activeMeds,
+    regimens,
+    observations,
+    painLogs,
+    lastEncounter,
+  ] = await Promise.all([
     prisma.patient
       .findUnique({
         where: { id: patientId },
@@ -362,12 +403,143 @@ export async function loadFeaturedSnapshot(
         select: { panelName: true, receivedAt: true, abnormalFlag: true },
       })
       .catch(() => null),
+    prisma.patientMedication
+      .findMany({
+        where: { patientId, active: true },
+        orderBy: { startDate: "desc" },
+        take: 5,
+        select: { name: true, dosage: true, type: true },
+      })
+      .catch(() => []),
+    prisma.dosingRegimen
+      .findMany({
+        where: { patientId, active: true },
+        orderBy: { startDate: "desc" },
+        take: 5,
+        select: {
+          frequencyPerDay: true,
+          calculatedThcMgPerDay: true,
+          calculatedCbdMgPerDay: true,
+          product: { select: { name: true } },
+        },
+      })
+      .catch(() => []),
+    prisma.clinicalObservation
+      .findMany({
+        where: {
+          patientId,
+          acknowledgedAt: null,
+          resolvedAt: null,
+        },
+        // Sort by createdAt only; some Prisma versions reject orderBy
+        // on severity enum, and in-memory sort handles priority below.
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          severity: true,
+          category: true,
+          summary: true,
+          actionSuggested: true,
+          createdAt: true,
+        },
+      })
+      .catch(() => []),
+    prisma.outcomeLog
+      .findMany({
+        where: {
+          patientId,
+          metric: "pain",
+          loggedAt: { gte: thirtyDaysAgo },
+        },
+        orderBy: { loggedAt: "asc" },
+        select: { value: true, loggedAt: true },
+      })
+      .catch(() => []),
+    prisma.encounter
+      .findFirst({
+        where: {
+          patientId,
+          status: "complete",
+          completedAt: { not: null },
+        },
+        orderBy: { completedAt: "desc" },
+        select: {
+          reason: true,
+          completedAt: true,
+          notes: {
+            where: { status: "finalized" },
+            orderBy: { finalizedAt: "desc" },
+            take: 1,
+            select: { blocks: true, narrative: true },
+          },
+        },
+      })
+      .catch(() => null),
   ]);
 
   if (!patient) return null;
+
+  // Pick the top-3 observations by severity then recency. Severity rank
+  // handles the common case where Prisma's enum orderBy misbehaves.
+  const severityRank: Record<string, number> = {
+    urgent: 0,
+    concern: 1,
+    notable: 2,
+    info: 3,
+  };
+  const recentObservations = [...observations]
+    .sort((a, b) => {
+      const rank =
+        (severityRank[a.severity] ?? 9) - (severityRank[b.severity] ?? 9);
+      if (rank !== 0) return rank;
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    })
+    .slice(0, 3);
+
+  const lastEncounterSummary = lastEncounter?.completedAt
+    ? {
+        reason: lastEncounter.reason,
+        snippet: snippetFromNote(lastEncounter.notes[0]),
+        completedAt: lastEncounter.completedAt,
+      }
+    : null;
+
   return {
     allergies: patient.allergies ?? [],
-    activeMedCount: activeMeds,
+    activeMedCount,
     latestLab,
+    activeMeds,
+    activeRegimens: regimens.map((r) => ({
+      productName: r.product.name,
+      thcMgPerDay: r.calculatedThcMgPerDay,
+      cbdMgPerDay: r.calculatedCbdMgPerDay,
+      frequencyPerDay: r.frequencyPerDay,
+    })),
+    recentObservations,
+    painSparkline: painLogs,
+    lastEncounter: lastEncounterSummary,
   };
+}
+
+/** Extract a ~140-char snippet from the finalized note's assessment / plan /
+ *  narrative, whichever is present. Favors assessment > plan > narrative. */
+function snippetFromNote(
+  note: { blocks: unknown; narrative: string | null } | undefined,
+): string | null {
+  if (!note) return null;
+  const blocks = Array.isArray(note.blocks)
+    ? (note.blocks as Array<{ type?: string; body?: string }>)
+    : [];
+  const preferred = ["assessment", "plan", "findings", "summary"];
+  for (const type of preferred) {
+    const block = blocks.find((b) => b.type === type);
+    if (block?.body && block.body.trim().length > 0) {
+      return truncate(block.body.trim(), 140);
+    }
+  }
+  if (note.narrative && note.narrative.trim().length > 0) {
+    return truncate(note.narrative.trim(), 140);
+  }
+  return null;
 }
