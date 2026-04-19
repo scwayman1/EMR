@@ -288,19 +288,36 @@ async function main() {
     },
   });
 
-  // Maya — Outcome logs (past 10 days, pain/sleep/anxiety)
-  const mayaMetrics = ["pain", "sleep", "anxiety"] as const;
-  for (let day = 10; day >= 0; day--) {
-    for (const metric of mayaMetrics) {
-      await prisma.outcomeLog.create({
-        data: {
-          patientId: maya.id,
-          metric,
-          value: parseFloat((3 + Math.random() * 4).toFixed(1)),
-          loggedAt: daysAgo(day),
-        },
-      });
-    }
+  // Maya — Outcome logs (past 30 days, pain/sleep/anxiety) with a clearly
+  // improving pain trend so the Command Center peek sparkline visually
+  // communicates "getting better" to the featured-patient viewer.
+  // Pain: 7 → 3 over 30 days, sleep: 4 → 7 (improving), anxiety: ~5 flat.
+  for (let day = 29; day >= 0; day--) {
+    const progress = (29 - day) / 29; // 0 → 1 over the window
+    // Pain: starts 7, ends 3 (lower = better)
+    const painBase = 7 - progress * 4;
+    const painValue = Math.max(
+      1,
+      Math.min(10, parseFloat((painBase + (Math.random() - 0.5) * 0.8).toFixed(1)))
+    );
+    // Sleep: starts 4, ends 7 (higher = better)
+    const sleepBase = 4 + progress * 3;
+    const sleepValue = Math.max(
+      1,
+      Math.min(10, parseFloat((sleepBase + (Math.random() - 0.5) * 0.8).toFixed(1)))
+    );
+    // Anxiety: 5 ± 1 (flat)
+    const anxietyValue = parseFloat((4.5 + Math.random() * 1).toFixed(1));
+
+    await prisma.outcomeLog.create({
+      data: { patientId: maya.id, metric: "pain", value: painValue, loggedAt: daysAgo(day) },
+    });
+    await prisma.outcomeLog.create({
+      data: { patientId: maya.id, metric: "sleep", value: sleepValue, loggedAt: daysAgo(day) },
+    });
+    await prisma.outcomeLog.create({
+      data: { patientId: maya.id, metric: "anxiety", value: anxietyValue, loggedAt: daysAgo(day) },
+    });
   }
 
   // Maya — 2 encounters: 1 completed 7 days ago, 1 scheduled 3 days from now
@@ -2657,6 +2674,453 @@ async function main() {
 
   console.log(
     "  Refill queue: 4 pending refills seeded (Metformin routine, Warfarin missing-INR, Levothyroxine, Clonazepam controlled)."
+  );
+
+  // ------------------------------------------------------------------
+  // Command Center demo enrichment (Schedule peek "chart-at-a-glance")
+  // ------------------------------------------------------------------
+  // The Schedule tile on the Command Center renders a featured pre-visit
+  // snapshot for whichever appointment is next upcoming — pulling
+  // allergies, active meds, active cannabis regimens, last lab, recent
+  // unacknowledged observations, a 30-day pain sparkline, and a snippet
+  // from the last completed encounter's finalized note.
+  //
+  // In demo the featured patient rotates as appointments shift through
+  // the day (initially James Chen @ +1h, then Sarah Thompson @ +3h,
+  // then tomorrow's Maya visit). We make sure every candidate has a
+  // richly populated chart so the peek never collapses to the empty
+  // "— meds · No labs" state.
+  //
+  // All data added below is idempotent: allergies use patient.update,
+  // and every child row that cleanIdempotent() wipes at the top of the
+  // seed is re-created here.
+  console.log("Seeding Command Center demo enrichment...");
+
+  // ─── Allergies — patient.update so re-seeds re-apply the list ───
+  await prisma.patient.update({
+    where: { id: maya.id },
+    data: { allergies: ["Ibuprofen", "Sulfa drugs", "Latex"] },
+  });
+  await prisma.patient.update({
+    where: { id: james.id },
+    data: { allergies: ["Penicillin", "Shellfish", "Contrast dye"] },
+  });
+  await prisma.patient.update({
+    where: { id: sarah.id },
+    data: { allergies: ["Peanuts", "NSAIDs", "Codeine"] },
+  });
+
+  // ─── James — 3 additional conventional medications ───────────────
+  // (He already has Metformin + Warfarin seeded in the Refill Queue
+  // section above, so this brings him to 5 active meds.)
+  await prisma.patientMedication.createMany({
+    data: [
+      {
+        patientId: james.id,
+        name: "Lisinopril",
+        genericName: "lisinopril",
+        type: MedicationType.prescription,
+        dosage: "10mg daily",
+        prescriber: "Dr. Patel (PCP)",
+        active: true,
+        startDate: daysAgo(220),
+        notes: "Hypertension. Stable on current dose.",
+      },
+      {
+        patientId: james.id,
+        name: "Atorvastatin",
+        genericName: "atorvastatin calcium",
+        type: MedicationType.prescription,
+        dosage: "20mg nightly",
+        prescriber: "Dr. Patel (PCP)",
+        active: true,
+        startDate: daysAgo(180),
+        notes: "Hyperlipidemia. Monitor LFTs annually.",
+      },
+      {
+        patientId: james.id,
+        name: "Vitamin D3",
+        genericName: "cholecalciferol",
+        type: MedicationType.supplement,
+        dosage: "2000 IU daily",
+        active: true,
+        startDate: daysAgo(90),
+        notes: "Supplementation; last 25-OH vitamin D was 24 ng/mL.",
+      },
+    ],
+  });
+
+  // ─── Sarah — 3 additional conventional medications ──────────────
+  // (She already has Levothyroxine from the Refill Queue section.)
+  await prisma.patientMedication.createMany({
+    data: [
+      {
+        patientId: sarah.id,
+        name: "Sumatriptan",
+        genericName: "sumatriptan succinate",
+        type: MedicationType.prescription,
+        dosage: "50mg at migraine onset",
+        prescriber: "Dr. Okafor",
+        active: true,
+        startDate: daysAgo(60),
+        notes: "Abortive therapy for migraine with aura. Max 2 doses in 24h.",
+      },
+      {
+        patientId: sarah.id,
+        name: "Propranolol",
+        genericName: "propranolol hydrochloride",
+        type: MedicationType.prescription,
+        dosage: "40mg twice daily",
+        prescriber: "Dr. Okafor",
+        active: true,
+        startDate: daysAgo(90),
+        notes: "Migraine prophylaxis. Monitor BP and HR.",
+      },
+      {
+        patientId: sarah.id,
+        name: "Magnesium glycinate",
+        genericName: "magnesium glycinate",
+        type: MedicationType.supplement,
+        dosage: "400mg nightly",
+        active: true,
+        startDate: daysAgo(45),
+        notes: "Migraine prevention adjunct.",
+      },
+    ],
+  });
+
+  // ─── Additional cannabis products for James + Sarah regimens ────
+  const highCbdTincture = await prisma.cannabisProduct.create({
+    data: {
+      organizationId: org.id,
+      name: "High-CBD Tincture 20:1",
+      productType: ProductType.tincture,
+      route: DeliveryRoute.sublingual,
+      thcConcentration: 1,
+      cbdConcentration: 20,
+      thcCbdRatio: "1:20",
+      concentrationUnit: "mg/mL",
+    },
+  });
+
+  const nightCapsule = await prisma.cannabisProduct.create({
+    data: {
+      organizationId: org.id,
+      name: "THC:CBN Nighttime Capsule 5mg/2mg",
+      productType: ProductType.capsule,
+      route: DeliveryRoute.oral,
+      thcConcentration: 5,
+      cbdConcentration: 0,
+      thcCbdRatio: "5:0",
+      concentrationUnit: "mg/unit",
+    },
+  });
+
+  // ─── James — active cannabis regimen (bedtime THC:CBN capsule) ──
+  const jamesRegimen = await prisma.dosingRegimen.create({
+    data: {
+      patientId: james.id,
+      productId: nightCapsule.id,
+      prescribedById: clinicianUser.id,
+      volumePerDose: 1,
+      volumeUnit: "unit",
+      frequencyPerDay: 1,
+      timingInstructions: "60 minutes before bed",
+      calculatedThcMgPerDose: 5,
+      calculatedCbdMgPerDose: 0,
+      calculatedThcMgPerDay: 5,
+      calculatedCbdMgPerDay: 0,
+      patientInstructions:
+        "Swallow one capsule with water about 60 minutes before bedtime. Skip if driving in the morning is still required within 8 hours.",
+      clinicianNotes:
+        "Short trial to address sleep onset. Reassess in 2 weeks. HOLD starting until cardiology workup is cleared.",
+      startDate: daysAgo(14),
+      active: true,
+    },
+  });
+
+  // A few dose logs so adherence is visible on the Schedule card chip
+  for (let day = 6; day >= 0; day--) {
+    // ~70% adherence — a believable miss rate for a new patient
+    if (day === 3 || day === 5) continue;
+    await prisma.doseLog.create({
+      data: {
+        patientId: james.id,
+        regimenId: jamesRegimen.id,
+        actualVolume: 1,
+        volumeUnit: "unit",
+        estimatedThcMg: 5,
+        estimatedCbdMg: 0,
+        route: DeliveryRoute.oral,
+        note: day === 0 ? "Fell asleep in under 30 min" : null,
+        loggedAt: daysAgo(day),
+      },
+    });
+  }
+
+  // ─── Sarah — active high-CBD regimen for migraine prophylaxis ──
+  const sarahRegimen = await prisma.dosingRegimen.create({
+    data: {
+      patientId: sarah.id,
+      productId: highCbdTincture.id,
+      prescribedById: clinicianUser.id,
+      volumePerDose: 1,
+      volumeUnit: "mL",
+      frequencyPerDay: 2,
+      timingInstructions: "Morning and evening with food",
+      calculatedThcMgPerDose: 1,
+      calculatedCbdMgPerDose: 20,
+      calculatedThcMgPerDay: 2,
+      calculatedCbdMgPerDay: 40,
+      patientInstructions:
+        "Take 1 mL under the tongue twice daily — once in the morning with breakfast and once with dinner. Hold under the tongue for 60 seconds before swallowing.",
+      clinicianNotes:
+        "CBD-forward daily regimen for migraine prophylaxis. Re-evaluate frequency at 4 weeks against headache diary.",
+      startDate: daysAgo(21),
+      active: true,
+    },
+  });
+
+  for (let day = 6; day >= 0; day--) {
+    for (let dose = 0; dose < 2; dose++) {
+      // ~85% adherence
+      if (day === 4 && dose === 1) continue;
+      await prisma.doseLog.create({
+        data: {
+          patientId: sarah.id,
+          regimenId: sarahRegimen.id,
+          actualVolume: 1,
+          volumeUnit: "mL",
+          estimatedThcMg: 1,
+          estimatedCbdMg: 20,
+          route: DeliveryRoute.sublingual,
+          loggedAt: daysAgo(day),
+        },
+      });
+    }
+  }
+
+  // ─── OutcomeLog — pain trend for James and Sarah (30-day window) ──
+  // James: worsening trend (3 → 6) after post-surgical flare
+  // Sarah: flat trend (~5) — migraine frequency stable
+  for (let day = 29; day >= 0; day--) {
+    const progress = (29 - day) / 29;
+    const jamesPain = Math.max(
+      1,
+      Math.min(10, parseFloat((3 + progress * 3 + (Math.random() - 0.5) * 0.6).toFixed(1)))
+    );
+    const sarahPain = parseFloat((4.5 + Math.random() * 1).toFixed(1));
+    await prisma.outcomeLog.create({
+      data: { patientId: james.id, metric: "pain", value: jamesPain, loggedAt: daysAgo(day) },
+    });
+    await prisma.outcomeLog.create({
+      data: { patientId: sarah.id, metric: "pain", value: sarahPain, loggedAt: daysAgo(day) },
+    });
+  }
+
+  // ─── Additional clinical observations so every candidate patient
+  // has at least one urgent + one concern for the Patient Impact tile
+  // ranking and the Schedule peek "Fleet is noticing" list. ────────
+  await prisma.clinicalObservation.createMany({
+    data: [
+      // Maya — add a concern + an urgent to complement her existing
+      // positive_signal + symptom_trend notable observations.
+      {
+        patientId: maya.id,
+        observedBy: "preVisitIntelligence",
+        observedByKind: "agent",
+        category: "side_effect",
+        severity: "concern",
+        summary:
+          "Maya reports persistent morning dry mouth rated 4/10 on the last three check-ins. Consider recommending a hydration protocol or reducing the evening tincture volume by 0.1 mL.",
+        evidence: {} as Prisma.InputJsonValue,
+        actionSuggested:
+          "At the upcoming visit, discuss hydration plan and whether to pull back the evening dose.",
+        createdAt: daysAgo(3),
+      },
+      {
+        patientId: maya.id,
+        observedBy: "correspondenceNurse",
+        observedByKind: "agent",
+        category: "medication_response",
+        severity: "urgent",
+        summary:
+          "Maya's last sertraline refill is 4 days overdue despite an open refill request. She has a known risk for SSRI discontinuation syndrome if she misses more than 3 days.",
+        evidence: {} as Prisma.InputJsonValue,
+        actionSuggested:
+          "Confirm the pharmacy fill status today and message her to bridge until it's ready.",
+        createdAt: daysAgo(1),
+      },
+
+      // James — add a concern (he already has an urgent red_flag).
+      {
+        patientId: james.id,
+        observedBy: "preVisitIntelligence",
+        observedByKind: "agent",
+        category: "symptom_trend",
+        severity: "concern",
+        summary:
+          "James's self-reported pain has trended from 3/10 to 6/10 over the last 3 weeks. Sleep remains poor (3-4/10). Correlates with the post-surgical flare flagged at intake.",
+        evidence: {} as Prisma.InputJsonValue,
+        actionSuggested:
+          "Review pain diary at the visit and consider adding a daytime CBD-forward component once cardiology clears.",
+        createdAt: daysAgo(2),
+      },
+      {
+        patientId: james.id,
+        observedBy: "preVisitIntelligence",
+        observedByKind: "agent",
+        category: "medication_response",
+        severity: "notable",
+        summary:
+          "Warfarin INR has not been checked in 6 weeks despite a monthly target cadence. Refill request is pending clinical review.",
+        evidence: {} as Prisma.InputJsonValue,
+        actionSuggested:
+          "Order an INR today or decline the refill until a current value is on file.",
+        createdAt: daysAgo(1),
+      },
+
+      // Sarah — she only had one info engagement observation. Add a
+      // concern and an urgent so the featured peek has signal.
+      {
+        patientId: sarah.id,
+        observedBy: "preVisitIntelligence",
+        observedByKind: "agent",
+        category: "symptom_trend",
+        severity: "concern",
+        summary:
+          "Sarah's TSH came back at 6.2 mIU/L (reference 0.4-4.0) — consistent with under-replaced hypothyroidism on her current 50 mcg levothyroxine dose.",
+        evidence: {} as Prisma.InputJsonValue,
+        actionSuggested:
+          "Plan to titrate levothyroxine at today's visit and reorder TSH in 6 weeks.",
+        createdAt: daysAgo(3),
+      },
+      {
+        patientId: sarah.id,
+        observedBy: "correspondenceNurse",
+        observedByKind: "agent",
+        category: "red_flag",
+        severity: "urgent",
+        summary:
+          "Sarah reported two episodes of visual aura without headache in the last 7 days — new pattern for her. Could reflect migraine evolution or a transient neurologic event that needs same-day triage.",
+        evidence: {} as Prisma.InputJsonValue,
+        actionSuggested:
+          "Triage neurology symptoms at today's visit; consider neurology referral if features persist.",
+        createdAt: daysAgo(0),
+      },
+    ],
+  });
+
+  // ─── Completed encounter + finalized note for James ─────────────
+  const jamesCompletedEncounter = await prisma.encounter.create({
+    data: {
+      organizationId: org.id,
+      patientId: james.id,
+      providerId: provider.id,
+      status: EncounterStatus.complete,
+      scheduledFor: daysAgo(21),
+      startedAt: daysAgo(21),
+      completedAt: daysAgo(21),
+      modality: "video",
+      reason: "Initial consultation: insomnia and post-surgical anxiety",
+    },
+  });
+
+  await prisma.note.create({
+    data: {
+      encounterId: jamesCompletedEncounter.id,
+      authorUserId: clinicianUser.id,
+      status: NoteStatus.finalized,
+      aiDrafted: true,
+      aiConfidence: 0.88,
+      finalizedAt: daysAgo(21),
+      blocks: [
+        {
+          type: "summary",
+          heading: "Summary",
+          body: "47M, retired electrician, presenting with chronic insomnia (3/10 sleep quality) and generalized anxiety (7/10) that worsened after a knee replacement 6 months ago. Prior cannabis experience with edibles and tinctures; reports relaxation and sleep benefit.",
+        },
+        {
+          type: "findings",
+          heading: "Relevant Findings",
+          body: "SSRIs poorly tolerated. Trazodone effective but over-sedating next day. HbA1c 5.9%, LFTs within normal limits on most recent CMP. On lisinopril, atorvastatin, metformin, warfarin.",
+        },
+        {
+          type: "assessment",
+          heading: "Assessment",
+          body: "Chronic insomnia with comorbid generalized anxiety disorder, likely exacerbated by post-surgical deconditioning. Reasonable candidate for a low-THC bedtime cannabis regimen with careful monitoring given concurrent anticoagulation.",
+        },
+        {
+          type: "plan",
+          heading: "Plan",
+          body: "Start THC:CBN 5mg bedtime capsule 60 min before sleep. Hold on daytime component until anxiety baseline is reassessed. Keep sleep diary. Reconfirm INR within 2 weeks given warfarin concurrency. Follow up in 3 weeks.",
+        },
+        {
+          type: "followUp",
+          heading: "Follow-up",
+          body: "Video visit in 3 weeks to evaluate sleep response and discuss daytime anxiety adjunct.",
+        },
+      ],
+      narrative: null,
+    },
+  });
+
+  // ─── Completed encounter + finalized note for Sarah ─────────────
+  const sarahCompletedEncounter = await prisma.encounter.create({
+    data: {
+      organizationId: org.id,
+      patientId: sarah.id,
+      providerId: provider.id,
+      status: EncounterStatus.complete,
+      scheduledFor: daysAgo(28),
+      startedAt: daysAgo(28),
+      completedAt: daysAgo(28),
+      modality: "in_person",
+      reason: "Initial consultation: chronic migraine prophylaxis",
+    },
+  });
+
+  await prisma.note.create({
+    data: {
+      encounterId: sarahCompletedEncounter.id,
+      authorUserId: clinicianUser.id,
+      status: NoteStatus.finalized,
+      aiDrafted: true,
+      aiConfidence: 0.9,
+      finalizedAt: daysAgo(28),
+      blocks: [
+        {
+          type: "summary",
+          heading: "Summary",
+          body: "33F with chronic migraine with aura, 10-12 headache days per month. Propranolol prophylaxis effective but not sufficient; interested in evidence-based cannabis adjunct.",
+        },
+        {
+          type: "findings",
+          heading: "Relevant Findings",
+          body: "Thyroid panel: TSH trending up (3.8 → 6.2). On levothyroxine 50 mcg. Reports NSAID and codeine allergies — sumatriptan is her current abortive. Headache diary shows aura episodes cluster midweek.",
+        },
+        {
+          type: "assessment",
+          heading: "Assessment",
+          body: "Chronic migraine with aura, suboptimally controlled on propranolol alone, with newly abnormal TSH suggesting under-replaced hypothyroidism that may be contributing. Reasonable candidate for a daily CBD-forward tincture as a prophylactic adjunct.",
+        },
+        {
+          type: "plan",
+          heading: "Plan",
+          body: "Start high-CBD 20:1 tincture, 1 mL sublingual BID. Increase levothyroxine dose pending today's TSH review. Reinforce headache diary. Expect 4 weeks to assess migraine frequency trend.",
+        },
+        {
+          type: "followUp",
+          heading: "Follow-up",
+          body: "In-person follow-up in 4 weeks; earlier if aura pattern changes.",
+        },
+      ],
+      narrative: null,
+    },
+  });
+
+  console.log(
+    "  Command Center: allergies + meds + regimens + pain logs + observations + finalized notes for Maya/James/Sarah."
   );
 
   // ------------------------------------------------------------------
