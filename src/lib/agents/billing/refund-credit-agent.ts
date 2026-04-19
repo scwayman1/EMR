@@ -51,7 +51,11 @@ export const refundCreditAgent: Agent<
   inputSchema: input,
   outputSchema: output,
   allowedActions: ["read.claim", "read.payment", "write.task"],
-  requiresApproval: false,
+  // Drives refund / credit-transfer recommendations. The agent's own
+  // description promises it is approval-gated ("never auto-issues refunds") —
+  // this flag enforces that contract. Money leaving the practice must have a
+  // human signature upstream of the recommendation task.
+  requiresApproval: true,
 
   async run({ organizationId }, ctx) {
     ctx.assertCan("read.claim");
