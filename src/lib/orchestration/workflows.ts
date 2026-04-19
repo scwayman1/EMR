@@ -426,6 +426,20 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "message-urgency-observe",
+    on: ["message.received"],
+    steps: [
+      {
+        agent: "messageUrgencyObserver",
+        input: (e) => ({
+          messageId: (e as any).messageId,
+          threadId: (e as any).threadId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
