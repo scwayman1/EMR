@@ -14,6 +14,7 @@ import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { ChartTabs, type TabKey, type TabPeeks } from "./chart-tabs";
 import { ChartFrame } from "./chart-frame";
+import { loadPeekSummaries } from "./peek-summary";
 import { TrackPatientView } from "@/components/shell/recent-patients";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
@@ -271,6 +272,19 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     })),
   };
 
+  /* ── AI peek summaries (slice 3) ────────────────────────────
+   * One-to-two sentence narrative per tab, rendered atop the hover
+   * popover. Wrapped in try/catch so an LLM outage degrades gracefully
+   * to the existing entry-list peek (same pattern as Command Center
+   * tile loaders). */
+  let peekSummaries: Partial<Record<TabKey, string>> | undefined;
+  try {
+    peekSummaries = await loadPeekSummaries(patient.firstName, tabPeeks);
+  } catch (err) {
+    console.error("[patient-chart] peek summary generation failed:", err);
+    peekSummaries = undefined;
+  }
+
   /* ── Clinical Decision Support alerts (EMR-166) ──────────── */
   const cannabinoids: string[] = [];
   for (const regimen of dosingRegimens) {
@@ -478,7 +492,14 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           bottom) and density (labels / dots). Both preferences are
           persisted in localStorage and scoped to the whole chart. */}
       <ChartFrame
-        nav={<ChartTabs patientId={params.id} counts={counts} peeks={tabPeeks} />}
+        nav={
+          <ChartTabs
+            patientId={params.id}
+            counts={counts}
+            peeks={tabPeeks}
+            peekSummaries={peekSummaries}
+          />
+        }
       >
       {tab === "demographics" && (
         <DemographicsTab
