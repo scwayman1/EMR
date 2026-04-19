@@ -101,28 +101,54 @@ async function renderSnapshotTile(user: AuthedUser) {
     );
   }
 
-  // Pull the facesheet bits in parallel. Each query is tiny and scoped
-  // to the featured patient; keeping them separate lets the tile still
-  // render if, say, LabResult is unavailable for any reason.
+  // Pull the facesheet bits in parallel. Each query catches its own
+  // failure and returns a sentinel (null / 0) so a single table being
+  // unavailable — the classic `LabResult` schema-drift case — can't
+  // take down the whole tile. The caller sees "— " where the missing
+  // data would have been and gets the rest of the snapshot.
   const [patient, activeMeds, latestLab] = await Promise.all([
-    prisma.patient.findUnique({
-      where: { id: featured.patientId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        dateOfBirth: true,
-        allergies: true,
-      },
-    }),
-    prisma.patientMedication.count({
-      where: { patientId: featured.patientId, active: true },
-    }),
-    prisma.labResult.findFirst({
-      where: { patientId: featured.patientId },
-      orderBy: { receivedAt: "desc" },
-      select: { panelName: true, receivedAt: true, abnormalFlag: true },
-    }),
+    prisma.patient
+      .findUnique({
+        where: { id: featured.patientId },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          dateOfBirth: true,
+          allergies: true,
+        },
+      })
+      .catch((err) => {
+        console.error(
+          "[command-center] PatientSnapshot patient load failed:",
+          err
+        );
+        return null;
+      }),
+    prisma.patientMedication
+      .count({
+        where: { patientId: featured.patientId, active: true },
+      })
+      .catch((err) => {
+        console.error(
+          "[command-center] PatientSnapshot meds count failed:",
+          err
+        );
+        return 0;
+      }),
+    prisma.labResult
+      .findFirst({
+        where: { patientId: featured.patientId },
+        orderBy: { receivedAt: "desc" },
+        select: { panelName: true, receivedAt: true, abnormalFlag: true },
+      })
+      .catch((err) => {
+        console.error(
+          "[command-center] PatientSnapshot lab load failed:",
+          err
+        );
+        return null;
+      }),
   ]);
 
   if (!patient) {
