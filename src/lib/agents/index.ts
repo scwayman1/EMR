@@ -19,6 +19,7 @@ import { dosingRecommendationAgent } from "./dosing-recommendation-agent";
 import { trendAlertAgent } from "./trend-alert-agent";
 import { titrationAgent } from "./titration-agent";
 import { prescriptionSafetyAgent } from "./prescription-safety-agent";
+import { diagnosisSafetyAgent } from "./diagnosis-safety-agent";
 import { adherenceDriftDetectorAgent } from "./adherence-drift-detector-agent";
 import { messageUrgencyObserverAgent } from "./message-urgency-observer-agent";
 import { visitDiscoveryWhispererAgent } from "./visit-discovery-whisperer-agent";
@@ -87,6 +88,7 @@ export const agentRegistry = {
   trendAlert: trendAlertAgent,
   titration: titrationAgent,
   prescriptionSafety: prescriptionSafetyAgent,
+  diagnosisSafety: diagnosisSafetyAgent,
   adherenceDriftDetector: adherenceDriftDetectorAgent,
   messageUrgencyObserver: messageUrgencyObserverAgent,
   visitDiscoveryWhisperer: visitDiscoveryWhispererAgent,
