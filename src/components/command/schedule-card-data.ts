@@ -325,3 +325,49 @@ function truncate(s: string, max: number): string {
   if (clean.length <= max) return clean;
   return clean.slice(0, max - 1).trimEnd() + "…";
 }
+
+/**
+ * Featured-appointment snapshot — the "walking into the room" payload
+ * that used to live in PatientSnapshotTile. Loaded for one patient
+ * (the next-upcoming visit) so hovering the featured Schedule card
+ * reveals the full pre-visit facesheet without a dedicated tile.
+ */
+export interface FeaturedSnapshot {
+  allergies: string[];
+  activeMedCount: number;
+  latestLab: {
+    panelName: string;
+    receivedAt: Date;
+    abnormalFlag: boolean;
+  } | null;
+}
+
+export async function loadFeaturedSnapshot(
+  patientId: string
+): Promise<FeaturedSnapshot | null> {
+  const [patient, activeMeds, latestLab] = await Promise.all([
+    prisma.patient
+      .findUnique({
+        where: { id: patientId },
+        select: { allergies: true },
+      })
+      .catch(() => null),
+    prisma.patientMedication
+      .count({ where: { patientId, active: true } })
+      .catch(() => 0),
+    prisma.labResult
+      .findFirst({
+        where: { patientId },
+        orderBy: { receivedAt: "desc" },
+        select: { panelName: true, receivedAt: true, abnormalFlag: true },
+      })
+      .catch(() => null),
+  ]);
+
+  if (!patient) return null;
+  return {
+    allergies: patient.allergies ?? [],
+    activeMedCount: activeMeds,
+    latestLab,
+  };
+}

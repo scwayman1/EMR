@@ -1,22 +1,25 @@
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { Tile } from "@/components/ui/tile";
 import { TileGrid } from "@/components/ui/tile-grid";
 import { ScheduleTile } from "@/components/command/schedule-tile";
 import { MessagesTile } from "@/components/command/messages-tile";
-import { PatientSnapshotTile } from "@/components/command/patient-snapshot-tile";
+import { ClinicalFlowTile } from "@/components/command/clinical-flow-tile";
+import { ClinicalDiscoveryTile } from "@/components/command/clinical-discovery-tile";
+import { PatientImpactTile } from "@/components/command/patient-impact-tile";
 
 export const metadata = { title: "Command Center" };
 
 /**
  * Clinical Command Center — the clinician's single-pane dashboard.
  *
- * This page is the *shell* for the feature set sketched in the
- * Mission Control notebook: schedule, messages, patient snapshot,
- * mindful break. Each pillar ships as its own PR into its own tile.
- * The framework here is intentionally empty so the tile layout,
- * responsive grid, and nav wiring can be reviewed in isolation
- * before any feature content is written.
+ * Top row carries the operational work — Schedule (pre-visit snapshot
+ * lives in the featured card's hover peek) and Messages.
+ *
+ * Bottom row carries the reflective and assistive work, the narrative
+ * arc Dr. Patel wanted: time → insight → action.
+ *   - Clinical Flow     — how your day moved (left)
+ *   - Clinical Discovery — what you uncovered (middle, agent surface)
+ *   - Patient Impact     — who still needs you (right)
  *
  * Accessible to: clinician, practice_owner (enforced at the layout).
  */
@@ -31,22 +34,15 @@ export default async function CommandCenterPage() {
       <PageHeader
         eyebrow="Command Center"
         title={`${greeting}, ${user.firstName}.`}
-        description="Your day at a glance. Schedule, messages, patient snapshots, and a mindful reset — all in one place."
+        description="Your day at a glance — what's happening, what you uncovered, and where you're needed next."
       />
 
       <TileGrid>
         <ScheduleTile user={user} />
         <MessagesTile user={user} />
-        <PatientSnapshotTile user={user} />
-        <Tile
-          eyebrow="Reset"
-          title="Mindful Break"
-          description="Breathe, move, or take in something beautiful. Ten minutes, then back to work."
-          icon="🧘"
-          span="1x1"
-          href="/clinic/mindful"
-          tone="calm"
-        />
+        <ClinicalFlowTile user={user} />
+        <ClinicalDiscoveryTile user={user} />
+        <PatientImpactTile user={user} />
       </TileGrid>
     </PageShell>
   );
