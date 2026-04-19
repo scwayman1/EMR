@@ -472,9 +472,23 @@ function SchedulePeek({
         </div>
       )}
 
-      {/* Pain sparkline — featured only, only if >=2 data points */}
-      {snapshot && snapshot.painSparkline.length >= 2 && (
-        <PainSparkline points={snapshot.painSparkline} />
+      {/* Multi-metric sparkline stack — featured only. Each metric renders
+          only if it has >=2 data points in the last 30 days. Rendered server-
+          side; no hydration cost. */}
+      {snapshot && (
+        <div className="mt-3 space-y-2">
+          {METRIC_ORDER.map((m) =>
+            snapshot.metricSparklines[m].length >= 2 ? (
+              <MetricSparkline
+                key={m}
+                label={METRIC_LABELS[m]}
+                points={snapshot.metricSparklines[m]}
+                invertTrend={INVERTED_TRENDS.has(m)}
+                yMax={m === "adherence" ? 100 : 10}
+              />
+            ) : null,
+          )}
+        </div>
       )}
 
       {/* Active meds list — featured only */}
@@ -643,58 +657,103 @@ function formatRegimenDose(r: {
 }
 
 /**
- * Inline SVG sparkline of the patient's pain scores (0-10 scale) over the
- * last 30 days. Pure SVG — no chart library, no hydration cost. Y-axis
- * is inverted so higher pain points visually rise to the top.
+ * Peek sparkline-stack configuration. Keeps the peek's render call site
+ * terse while letting us centralize label copy and trend-direction polarity.
+ *
+ * `invertTrend` controls the color semantics: for pain / anxiety, LOWER is
+ * clinically better, so a dropping line is green. For sleep / mood /
+ * adherence, HIGHER is clinically better — the color rule flips.
  */
-function PainSparkline({
+const METRIC_ORDER = ["pain", "sleep", "anxiety", "mood", "adherence"] as const;
+
+type SparklineMetric = (typeof METRIC_ORDER)[number];
+
+const METRIC_LABELS: Record<SparklineMetric, string> = {
+  pain: "Pain",
+  sleep: "Sleep",
+  anxiety: "Anxiety",
+  mood: "Mood",
+  adherence: "Adherence",
+};
+
+const INVERTED_TRENDS: ReadonlySet<SparklineMetric> = new Set([
+  "sleep",
+  "mood",
+  "adherence",
+]);
+
+/**
+ * Inline SVG sparkline of a single outcome metric (pain / sleep / anxiety /
+ * mood / adherence) over the last 30 days. Pure SVG — no chart library, no
+ * hydration cost. Y-axis is inverted so higher values visually rise to the top.
+ *
+ * `invertTrend` flips the trend-color semantics: when true (sleep / mood /
+ * adherence), a RISING line is green because higher is clinically better.
+ * When false (pain / anxiety), a DROPPING line is green.
+ *
+ * `yMax` lets adherence scale to its 0-100% range while other metrics stay
+ * on the 0-10 outcome scale.
+ */
+function MetricSparkline({
+  label,
   points,
+  invertTrend = false,
+  yMax = 10,
 }: {
+  label: string;
   points: Array<{ value: number; loggedAt: Date }>;
+  invertTrend?: boolean;
+  yMax?: number;
 }) {
   if (points.length < 2) return null;
   const first = points[0].value;
   const last = points[points.length - 1].value;
   const delta = last - first;
-  // Pain is inverted — lower is clinically better. Trend colors follow
-  // clinical direction, not axis direction.
-  const trendColor =
-    delta <= -1
-      ? "var(--success, #16a34a)"
-      : delta >= 1
-        ? "#dc2626"
-        : "var(--text-subtle, #737373)";
+
+  // "Improving" means delta < 0 for pain/anxiety (lower = better), delta > 0
+  // for sleep/mood/adherence (higher = better). A small threshold keeps
+  // near-flat noise from reading as a trend.
+  const threshold = yMax >= 100 ? 5 : 1;
+  const isImproving = invertTrend ? delta >= threshold : delta <= -threshold;
+  const isWorsening = invertTrend ? delta <= -threshold : delta >= threshold;
+  const trendColor = isImproving
+    ? "var(--success, #16a34a)"
+    : isWorsening
+      ? "#dc2626"
+      : "var(--text-subtle, #737373)";
 
   const width = 320;
   const height = 40;
   const pad = 2;
   const xStep = (width - pad * 2) / Math.max(1, points.length - 1);
-  // Pain is 0-10. Pin to the full range so sparkline doesn't exaggerate
-  // small swings on a patient who lives at 3-4.
-  const yMax = 10;
   const coords = points.map((p, i) => {
     const x = pad + i * xStep;
-    // Invert: higher pain → higher on chart.
-    const y = height - pad - (Math.min(yMax, Math.max(0, p.value)) / yMax) * (height - pad * 2);
+    // Invert: higher raw value → higher on chart.
+    const y =
+      height - pad - (Math.min(yMax, Math.max(0, p.value)) / yMax) * (height - pad * 2);
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const pathD = `M ${coords.join(" L ")}`;
 
+  // Adherence shows as a percentage; everything else as a raw 0-10 score.
+  const fmt = (v: number) =>
+    yMax >= 100 ? `${Math.round(v)}%` : `${Math.round(v * 10) / 10}`;
+
   return (
-    <div className="mt-3">
+    <div>
       <div className="flex items-baseline justify-between">
-        <p className="text-[11px] uppercase tracking-[0.1em] text-text-subtle font-semibold">
-          Pain · 30d
+        <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle font-semibold">
+          {label} · 30d
         </p>
-        <p className="text-[11px] tabular-nums" style={{ color: trendColor }}>
-          {first} → {last}
+        <p className="text-[10px] tabular-nums" style={{ color: trendColor }}>
+          {fmt(first)} → {fmt(last)}
         </p>
       </div>
       <svg
         role="img"
-        aria-label={`Pain trend sparkline. Started at ${first}, currently ${last}, ${points.length} data points.`}
+        aria-label={`${label} trend sparkline. Started at ${fmt(first)}, currently ${fmt(last)}, ${points.length} data points.`}
         viewBox={`0 0 ${width} ${height}`}
-        className="mt-1 w-full h-8"
+        className="mt-0.5 w-full h-6"
         preserveAspectRatio="none"
       >
         <path
