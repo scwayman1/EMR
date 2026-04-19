@@ -1,16 +1,28 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
-import type { NavItem } from "./AppShell";
+import { NavSections } from "./NavSections";
+import type { NavItem, NavSection } from "./nav-sections";
 
 interface MobileNavProps {
-  nav: NavItem[];
+  /**
+   * Preferred grouped sections. When both `sections` and the legacy `nav`
+   * prop are provided, `sections` wins.
+   */
+  sections?: NavSection[];
+  /** Legacy flat nav list, wrapped in a single unlabeled section. */
+  nav?: NavItem[];
 }
 
-export function MobileNav({ nav }: MobileNavProps) {
+export function MobileNav({ sections, nav }: MobileNavProps) {
   const [open, setOpen] = React.useState(false);
+
+  const resolved: NavSection[] = React.useMemo(() => {
+    if (sections && sections.length > 0) return sections;
+    if (nav && nav.length > 0) return [{ items: nav }];
+    return [];
+  }, [sections, nav]);
 
   // Close drawer on route change (link click)
   const closeDrawer = () => setOpen(false);
@@ -114,52 +126,15 @@ export function MobileNav({ nav }: MobileNavProps) {
         </div>
 
         {/* Nav items */}
-        <nav aria-label="Mobile navigation" className="flex-1 overflow-y-auto px-3 py-3">
-          <ul className="space-y-0.5">
-            {nav.map((item) => {
-              const count = item.count ?? 0;
-              const tone = item.countTone ?? "highlight";
-              const toneClass =
-                tone === "danger"
-                  ? "bg-danger/10 text-danger border-danger/30 animate-pulse"
-                  : tone === "accent"
-                    ? "bg-accent-soft text-accent border-accent/25"
-                    : "bg-highlight-soft text-[color:var(--highlight-hover)] border-highlight/30";
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={closeDrawer}
-                    aria-label={
-                      count > 0
-                        ? `${item.label} (${count} waiting)`
-                        : item.label
-                    }
-                    className={cn(
-                      "group flex items-center gap-2.5 px-3 py-3 min-h-[44px] rounded-md text-sm text-text-muted",
-                      "hover:bg-surface-muted hover:text-text transition-colors duration-200 ease-smooth"
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-1 w-1 rounded-full bg-border-strong group-hover:bg-accent transition-colors"
-                    />
-                    <span className="flex-1">{item.label}</span>
-                    {count > 0 && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold leading-none rounded-full border px-1.5 py-0.5 tabular-nums",
-                          toneClass
-                        )}
-                      >
-                        {count > 99 ? "99+" : count}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        <nav
+          aria-label="Mobile navigation"
+          className="flex-1 overflow-y-auto px-3 py-3"
+        >
+          <NavSections
+            sections={resolved}
+            onItemClick={closeDrawer}
+            variant="drawer"
+          />
         </nav>
       </div>
     </>
