@@ -440,6 +440,19 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "visit-discovery-whisper",
+    on: ["note.finalized"],
+    steps: [
+      {
+        agent: "visitDiscoveryWhisperer",
+        input: (e) => ({
+          noteId: (e as any).noteId,
+          encounterId: (e as any).encounterId,
+        }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */

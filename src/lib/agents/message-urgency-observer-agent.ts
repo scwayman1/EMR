@@ -167,7 +167,7 @@ export const messageUrgencyObserverAgent: Agent<
   },
 };
 
-function truncate(s: string, max: number): string {
+export function truncate(s: string, max: number): string {
   const clean = s.replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;
   return clean.slice(0, max - 1).trimEnd() + "…";

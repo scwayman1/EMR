@@ -119,6 +119,95 @@ function buildSimulatedTranscript(
   }));
 }
 
+// ── Real transcription w/ simulated fallback ────────────────────
+
+/**
+ * Posts the recorded audio to /api/transcribe and returns real
+ * segments when the backend is configured. On any failure —
+ * including the "transcription_not_configured" 503 the API
+ * emits when TRANSCRIPTION_PROVIDER=simulated — falls back to
+ * the simulated transcript so the voice-chart flow still works
+ * end-to-end in dev / demo environments.
+ */
+async function transcribeOrFallback(opts: {
+  audioChunks: Blob[];
+  mimeType: string;
+  durationSec: number;
+  patientName: string;
+  presentingConcerns: string | null;
+  treatmentGoals: string | null;
+}): Promise<TranscriptSegment[]> {
+  const {
+    audioChunks,
+    mimeType,
+    durationSec,
+    patientName,
+    presentingConcerns,
+    treatmentGoals,
+  } = opts;
+
+  const fallback = () =>
+    buildSimulatedTranscript(
+      patientName,
+      presentingConcerns,
+      treatmentGoals,
+      durationSec,
+    );
+
+  if (audioChunks.length === 0) {
+    return fallback();
+  }
+
+  const blob = new Blob(audioChunks, { type: mimeType || "audio/webm" });
+  if (blob.size === 0) return fallback();
+
+  try {
+    const form = new FormData();
+    form.append("audio", blob, filenameForMime(mimeType));
+
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: form,
+    });
+
+    if (response.status === 503) {
+      // Expected in dev: TRANSCRIPTION_PROVIDER=simulated.
+      // Fall back silently — no console noise.
+      return fallback();
+    }
+
+    if (!response.ok) {
+      console.warn(
+        `[VoiceRecorder] /api/transcribe returned ${response.status} — using simulated transcript.`,
+      );
+      return fallback();
+    }
+
+    const payload = (await response.json()) as {
+      segments?: TranscriptSegment[];
+    };
+    if (!Array.isArray(payload.segments) || payload.segments.length === 0) {
+      return fallback();
+    }
+    return payload.segments;
+  } catch (err) {
+    console.warn(
+      "[VoiceRecorder] transcription request failed — using simulated transcript:",
+      err,
+    );
+    return fallback();
+  }
+}
+
+function filenameForMime(mime: string): string {
+  const lower = (mime ?? "").toLowerCase();
+  if (lower.includes("webm")) return "recording.webm";
+  if (lower.includes("mp4")) return "recording.mp4";
+  if (lower.includes("m4a")) return "recording.m4a";
+  if (lower.includes("ogg")) return "recording.ogg";
+  return "recording.webm";
+}
+
 // ── Waveform bar component ─────────────────────────────────────
 
 function WaveformBars({ active }: { active: boolean }) {
@@ -222,6 +311,8 @@ export function VoiceRecorder({
   // Audio refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioMimeTypeRef = useRef<string>("");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const durationRef = useRef(0);
 
@@ -268,7 +359,21 @@ export function VoiceRecorder({
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
 
-      recorder.start();
+      // Reset + collect audio chunks as they arrive so we can post the
+      // full recording to /api/transcribe on stop. Default to the mime
+      // type the browser actually gave us (webm on Chrome, mp4 on
+      // Safari) so Whisper knows what it's decoding.
+      audioChunksRef.current = [];
+      audioMimeTypeRef.current = recorder.mimeType || "audio/webm";
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      // Fire dataavailable every 1s so a browser crash doesn't lose
+      // the whole recording — we still have partial audio to recover.
+      recorder.start(1000);
       durationRef.current = 0;
       setDuration(0);
       startTimer();
@@ -302,10 +407,17 @@ export function VoiceRecorder({
   const handleStop = async () => {
     stopTimer();
 
-    // Stop the media recorder and tracks
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-    }
+    // Stop the media recorder and tracks. MediaRecorder.stop() flushes a
+    // final ondataavailable before firing onstop, so we await that via a
+    // promise before assembling the audio blob for transcription.
+    const recorder = mediaRecorderRef.current;
+    const stopRecorder = recorder
+      ? new Promise<void>((resolve) => {
+          recorder.addEventListener("stop", () => resolve(), { once: true });
+          recorder.stop();
+        })
+      : Promise.resolve();
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -313,28 +425,41 @@ export function VoiceRecorder({
 
     setState("processing");
 
-    // Simulate transcript from recorded duration
-    const simulated = buildSimulatedTranscript(
+    await stopRecorder;
+
+    // Try the real transcription pipeline first. If the server isn't
+    // configured (503 transcription_not_configured) or the provider
+    // returns an error, fall back to the simulated transcript so the
+    // demo / dev flow still works end-to-end.
+    const segments = await transcribeOrFallback({
+      audioChunks: audioChunksRef.current,
+      mimeType: audioMimeTypeRef.current,
+      durationSec: durationRef.current,
       patientName,
       presentingConcerns,
       treatmentGoals,
-      durationRef.current
-    );
-    setTranscript(simulated);
+    });
+
+    setTranscript(segments);
 
     // Save transcript to encounter
     if (encounterId) {
       try {
-        await saveTranscriptToEncounter(encounterId, simulated);
+        await saveTranscriptToEncounter(encounterId, segments);
       } catch (err) {
         console.error("[VoiceRecorder] save transcript error:", err);
       }
     }
 
     // Format transcript and process through AI
-    const formatted = simulated
+    const formatted = segments
       .map((s) => {
-        const speaker = s.speaker === "clinician" ? "Dr" : "Pt";
+        const speaker =
+          s.speaker === "clinician"
+            ? "Dr"
+            : s.speaker === "patient"
+              ? "Pt"
+              : "??";
         return `[${formatDuration(s.startTime)}] ${speaker}: ${s.text}`;
       })
       .join("\n");
