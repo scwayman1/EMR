@@ -37,7 +37,11 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
   inputSchema: input,
   outputSchema: output,
   allowedActions: ["read.claim", "write.denial.triage", "write.task"],
-  requiresApproval: false,
+  // Classifies denials and creates the tasks that drive downstream appeal or
+  // write-off decisions. A misclassification routes real revenue to the wrong
+  // next action (e.g. writing off an appealable denial), so a human must
+  // confirm the category before the task fans out.
+  requiresApproval: true,
 
   async run({ claimId }, ctx) {
     ctx.assertCan("read.claim");

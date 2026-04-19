@@ -49,7 +49,10 @@ export const clearinghouseSubmissionAgent: Agent<
     "write.claim.status",
     "write.financialEvent",
   ],
-  requiresApproval: false,
+  // Financial submission to external clearinghouse — sends 837P EDI to a third
+  // party, transitions claim.status, and writes the submission ledger entry.
+  // A human must sign off before any batch so we never wire a bad claim out.
+  requiresApproval: true,
 
   async run({ claimId, organizationId, scrubResultId }, ctx) {
     const trace = startReasoning("clearinghouseSubmission", "1.0.0", ctx.jobId);
