@@ -415,6 +415,16 @@ export const workflows: WorkflowDefinition[] = [
     ],
   },
   {
+    name: "diagnosis-safety-check",
+    on: ["patient.diagnosis.updated"],
+    steps: [
+      {
+        agent: "diagnosisSafety",
+        input: (e) => ({ patientId: (e as any).patientId }),
+      },
+    ],
+  },
+  {
     name: "adherence-drift-check",
     on: ["adherence.checkup.requested"],
     steps: [
