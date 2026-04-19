@@ -45,6 +45,34 @@ function daysAgo(date: Date): number {
   return Math.floor((Date.now() - date.getTime()) / (86_400_000));
 }
 
+/**
+ * Best-effort write of the generated briefing to `Encounter.briefingContext`.
+ * A db failure must never abort a successful briefing — the agent's primary
+ * contract is to return the briefing to the caller; persistence is a
+ * side-effect that lets downstream surfaces (Schedule tile brief line, scribe
+ * pre-seed) read it without re-running the agent. On failure we log via
+ * `console.warn` with a clear prefix so the issue surfaces in server logs
+ * without breaking the calling flow.
+ */
+async function persistBriefingToEncounter(
+  encounterId: string | undefined,
+  briefing: unknown,
+): Promise<void> {
+  if (!encounterId) return;
+  try {
+    await prisma.encounter.update({
+      where: { id: encounterId },
+      data: { briefingContext: briefing as any },
+    });
+  } catch (err) {
+    console.warn(
+      "[preVisitIntelligence] persistence failed:",
+      err instanceof Error ? err.message : String(err),
+      { encounterId },
+    );
+  }
+}
+
 function trendDirection(values: number[]): "improving" | "stable" | "worsening" | "insufficient" {
   if (values.length < 2) return "insufficient";
   const recent = values.slice(-3);
@@ -60,7 +88,17 @@ function trendDirection(values: number[]): "improving" | "stable" | "worsening" 
 // Schemas
 // ---------------------------------------------------------------------------
 
-const input = z.object({ patientId: z.string() });
+const input = z.object({
+  patientId: z.string(),
+  /**
+   * When provided, the agent will best-effort persist the generated briefing
+   * to `Encounter.briefingContext` on this encounter so downstream surfaces
+   * (e.g. the Schedule tile's brief line, the scribe's pre-seeded note) can
+   * read it without re-running the agent. A db write failure never aborts
+   * the briefing — callers always receive the output regardless.
+   */
+  encounterId: z.string().optional(),
+});
 
 const briefingSection = z.object({
   title: z.string(),
@@ -348,7 +386,7 @@ export const preVisitIntelligenceAgent: Agent<
       });
       await trace.persist();
 
-      return {
+      const briefing = {
         patientSummary: parsed.patientSummary ?? buildFallbackSummary(patient, age),
         lastVisitSummary: parsed.lastVisitSummary ?? lastNoteSummary,
         talkingPoints: parsed.talkingPoints ?? [],
@@ -356,6 +394,10 @@ export const preVisitIntelligenceAgent: Agent<
         riskFlags: parsed.riskFlags ?? [],
         confidence: parsed.confidence ?? 0.8,
       };
+
+      await persistBriefingToEncounter(input.encounterId, briefing);
+
+      return briefing;
     }
 
     // Fallback: build deterministic briefing from data
@@ -459,7 +501,7 @@ export const preVisitIntelligenceAgent: Agent<
     });
     await trace.persist();
 
-    return {
+    const briefing = {
       patientSummary: buildFallbackSummary(patient, age),
       lastVisitSummary: lastNoteSummary,
       talkingPoints,
@@ -467,6 +509,10 @@ export const preVisitIntelligenceAgent: Agent<
       riskFlags,
       confidence: 0.75,
     };
+
+    await persistBriefingToEncounter(input.encounterId, briefing);
+
+    return briefing;
   },
 };
 
