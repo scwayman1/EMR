@@ -98,7 +98,7 @@ export async function ScheduleTile({ user }: { user: AuthedUser }) {
     console.error("[command-center] ScheduleTile render failed:", err);
     return (
       <ScheduleTileShell count={0}>
-        <TileErrorBody label="today's schedule" />
+        <TileErrorBody label="today's schedule" error={err} />
       </ScheduleTileShell>
     );
   }
