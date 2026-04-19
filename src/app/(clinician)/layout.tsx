@@ -7,6 +7,11 @@ import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { prisma } from "@/lib/db/prisma";
+import {
+  computeApprovalsBadge,
+  computeLabsBadge,
+  computeRefillsBadge,
+} from "@/lib/domain/nav-badges";
 
 export default async function ClinicianLayout({
   children,
@@ -34,9 +39,15 @@ export default async function ClinicianLayout({
     }
   };
 
-  const [pendingCount, emergencyCount, labsPendingCount, refillsPendingCount] = await (async () => {
+  const [
+    pendingCount,
+    emergencyCount,
+    labsPendingCount,
+    labsAbnormalCount,
+    refillsPendingCount,
+  ] = await (async () => {
     const orgId = user.organizationId;
-    if (!orgId) return [0, 0, 0, 0] as const;
+    if (!orgId) return [0, 0, 0, 0, 0] as const;
     return Promise.all([
       safeCount(() =>
         prisma.message.count({
@@ -64,6 +75,15 @@ export default async function ClinicianLayout({
           where: {
             organizationId: orgId,
             signedAt: null,
+          },
+        })
+      ),
+      safeCount(() =>
+        prisma.labResult.count({
+          where: {
+            organizationId: orgId,
+            signedAt: null,
+            abnormalFlag: true,
           },
         })
       ),
@@ -100,20 +120,23 @@ export default async function ClinicianLayout({
         {
           label: "Approvals",
           href: "/clinic/approvals",
-          count: pendingCount,
-          countTone: emergencyCount > 0 ? "danger" : "highlight",
+          badge: computeApprovalsBadge({
+            pendingCount,
+            emergencyCount,
+          }),
         },
         {
           label: "Labs",
           href: "/clinic/labs-review",
-          count: labsPendingCount,
-          countTone: "highlight",
+          badge: computeLabsBadge({
+            unsignedCount: labsPendingCount,
+            abnormalCount: labsAbnormalCount,
+          }),
         },
         {
           label: "Refills",
           href: "/clinic/refills",
-          count: refillsPendingCount,
-          countTone: "highlight",
+          badge: computeRefillsBadge({ pendingCount: refillsPendingCount }),
         },
       ],
     },

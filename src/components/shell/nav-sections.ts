@@ -4,12 +4,16 @@
  * These are framework-free so they can be covered by the node-only vitest
  * suite. The AppShell + MobileNav consume them at render time.
  *
- *   NavItem     — a single leaf link (existing shape, unchanged).
- *   NavSection  — a group of items with an optional label + default state.
- *   Helpers     — aggregate counts, smart-collapse resolution, localStorage
- *                 merge. Every helper is pure: given the same inputs it
- *                 returns the same output, no side effects.
+ *   NavItem        — a single leaf link with legacy count + optional semantic badge.
+ *   NavSection     — a group of items with an optional label + default state.
+ *   NavBadge       — re-exported from lib/domain/nav-badges (severity + context).
+ *   Helpers        — aggregate counts, aggregate semantic badge, smart-collapse
+ *                    resolution, localStorage merge, pathname matching.
  */
+
+import { aggregateBadge, type NavBadge } from "@/lib/domain/nav-badges";
+
+export type { NavBadge } from "@/lib/domain/nav-badges";
 
 export type CountTone = "highlight" | "danger" | "accent";
 
@@ -17,8 +21,11 @@ export interface NavItem {
   label: string;
   href: string;
   icon?: unknown;
+  /** Legacy numeric badge — still rendered if `badge` is not set. */
   count?: number;
   countTone?: CountTone;
+  /** Semantic badge — preferred. Takes precedence over count/countTone. */
+  badge?: NavBadge | null;
 }
 
 export interface NavSection {
@@ -34,6 +41,11 @@ export interface NavSection {
    * Defaults to false (expanded).
    */
   defaultCollapsed?: boolean;
+  /**
+   * Optional explicit semantic badge for the group. When omitted, the
+   * aggregate of the child items' `badge` fields is used.
+   */
+  badge?: NavBadge | null;
 }
 
 /**
@@ -52,9 +64,13 @@ export interface AggregateBadge {
 }
 
 /**
- * Sum the counts on a section's items and pick the loudest tone among
- * items that actually contribute a non-zero count. Returns null if the
- * section has no live badges worth showing.
+ * Legacy count-based aggregate: sum the numeric counts on a section's items
+ * and pick the loudest tone among items that actually contribute a non-zero
+ * count. Returns null if the section has no live count badges worth showing.
+ *
+ * Kept for backward compatibility on items still using the count/countTone
+ * fields. New nav items should use `badge` (semantic) and rely on
+ * `getSectionBadge` below.
  */
 export function aggregateSectionBadge(section: NavSection): AggregateBadge | null {
   let total = 0;
@@ -76,10 +92,31 @@ export function aggregateSectionBadge(section: NavSection): AggregateBadge | nul
 }
 
 /**
+ * Semantic badge for a section header. If the section has an explicit
+ * `badge`, use it; otherwise aggregate the items' `badge` fields via the
+ * severity-ranked rollup in `lib/domain/nav-badges`.
+ *
+ * Returns null when the entire section is silent-green ("ok") — the header
+ * badge slot stays empty.
+ */
+export function getSectionBadge(section: NavSection): NavBadge | null {
+  if (section.badge !== undefined) return section.badge;
+  return aggregateBadge(section.items.map((i) => i.badge ?? null));
+}
+
+/**
+ * Type guard so a renderer can walk a mixed list of items and sections.
+ */
+export function isNavSection(node: NavItem | NavSection): node is NavSection {
+  return Array.isArray((node as NavSection).items);
+}
+
+export type NavNode = NavItem | NavSection;
+
+/**
  * Does the current pathname match any item in the given section?
  *
- * Match rules (intentionally strict to avoid "everything under /clinic"
- * lighting up every section):
+ * Match rules:
  *   • exact pathname === item.href, OR
  *   • pathname starts with `item.href + "/"`.
  *
@@ -95,8 +132,6 @@ export function sectionContainsPath(section: NavSection, pathname: string): bool
 
 export function itemMatchesPath(href: string, pathname: string): boolean {
   if (href === pathname) return true;
-  // Short top-level hrefs only match exactly — otherwise "/clinic" would
-  // claim every child route in the clinician tree.
   const segments = href.split("/").filter(Boolean);
   if (segments.length <= 1) return false;
   return pathname.startsWith(href + "/");
@@ -118,11 +153,8 @@ export interface ResolveCollapseInput {
  * Rules, in order:
  *   1. A section with no label is never collapsible — skipped.
  *   2. If the section contains the current pathname, force expanded.
- *      (This is the "follow me into the group I just clicked" rule.)
  *   3. Else if the user explicitly persisted a choice, honor it.
  *   4. Else fall back to section.defaultCollapsed (default: false).
- *
- * Returns a map keyed by section label → collapsed boolean.
  */
 export function resolveInitialCollapseState(
   input: ResolveCollapseInput,
@@ -146,18 +178,14 @@ export function resolveInitialCollapseState(
 
 /**
  * localStorage key convention: `nav:group:<label>:collapsed`.
- * Exported so both the renderer and any test can reach it.
  */
 export function collapseStorageKey(label: string): string {
   return `nav:group:${label}:collapsed`;
 }
 
 /**
- * Given a raw localStorage-like getter, read the persisted collapsed state
- * for every labeled section into a plain map.
- *
- * The getter is abstracted so tests can pass a stub. Missing, malformed, or
- * non-boolean values are ignored (the key is simply absent from the output).
+ * Read persisted collapsed state from any localStorage-like getter.
+ * Missing, malformed, or non-boolean values are omitted.
  */
 export function readPersistedCollapseState(
   sections: NavSection[],
@@ -174,8 +202,7 @@ export function readPersistedCollapseState(
 }
 
 /**
- * Merge a user toggle into an existing resolved map. Pure so tests can
- * verify we never mutate the input.
+ * Merge a user toggle into an existing resolved map. Pure — never mutates.
  */
 export function toggleCollapseState(
   state: Record<string, boolean>,
@@ -185,8 +212,7 @@ export function toggleCollapseState(
 }
 
 /**
- * Flatten a set of sections back to a plain item list — useful when the
- * consumer (e.g. a test, or a legacy surface) just wants every link.
+ * Flatten sections back to a plain item list.
  */
 export function flattenSectionItems(sections: NavSection[]): NavItem[] {
   const out: NavItem[] = [];

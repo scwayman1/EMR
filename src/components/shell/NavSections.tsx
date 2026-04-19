@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils/cn";
 import {
   aggregateSectionBadge,
   collapseStorageKey,
+  getSectionBadge,
   readPersistedCollapseState,
   resolveInitialCollapseState,
   sectionContainsPath,
@@ -14,6 +15,7 @@ import {
   type NavItem,
   type NavSection,
 } from "./nav-sections";
+import type { BadgeSeverity, NavBadge } from "@/lib/domain/nav-badges";
 
 /**
  * Rail renderer for the 3-tier IA.
@@ -49,6 +51,75 @@ function CountBadge({ count, tone }: { count: number; tone: CountTone }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Semantic badge presentation
+// ─────────────────────────────────────────────────────────────────────────────
+// `ok` severity renders nothing — the section is silent-green. The dot color
+// signals severity at a glance; the label gives the punchline; `context`
+// becomes a native title-attribute tooltip.
+
+const SEVERITY_DOT_CLASS: Record<Exclude<BadgeSeverity, "ok">, string> = {
+  critical: "bg-red-600",
+  warn: "bg-amber-500",
+  info: "bg-accent",
+};
+
+const SEVERITY_TEXT_CLASS: Record<Exclude<BadgeSeverity, "ok">, string> = {
+  critical: "text-red-700",
+  warn: "text-amber-700",
+  info: "text-text-muted",
+};
+
+export function SemanticBadge({ badge }: { badge: NavBadge }) {
+  if (badge.severity === "ok") return null;
+  const dot = SEVERITY_DOT_CLASS[badge.severity];
+  const text = SEVERITY_TEXT_CLASS[badge.severity];
+  return (
+    <span
+      title={badge.context}
+      className={cn(
+        "inline-flex items-center gap-1.5 text-[11px] font-medium tabular-nums",
+        text,
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn("h-1.5 w-1.5 rounded-full", dot)}
+      />
+      {badge.label}
+    </span>
+  );
+}
+
+/**
+ * Render the right-side indicator on a nav row. Prefers semantic badge over
+ * legacy count-based pill, returning null when nothing to show.
+ */
+export function NavItemBadge({ item }: { item: NavItem }) {
+  if (item.badge) {
+    if (item.badge.severity === "ok") return null;
+    return <SemanticBadge badge={item.badge} />;
+  }
+  const count = item.count ?? 0;
+  if (count <= 0) return null;
+  const tone = item.countTone ?? "highlight";
+  return <CountBadge count={count} tone={tone} />;
+}
+
+/**
+ * Compose the aria-label for a nav row, surfacing badge context to screen
+ * readers.
+ */
+export function navItemAriaLabel(item: NavItem): string {
+  if (item.badge && item.badge.severity !== "ok") {
+    const ctx = item.badge.context ? `, ${item.badge.context}` : "";
+    return `${item.label}: ${item.badge.label}${ctx}`;
+  }
+  const count = item.count ?? 0;
+  if (count > 0) return `${item.label} (${count} waiting)`;
+  return item.label;
+}
+
 function ItemLink({
   item,
   onClick,
@@ -58,13 +129,11 @@ function ItemLink({
   onClick?: () => void;
   isActive: boolean;
 }) {
-  const count = item.count ?? 0;
-  const tone = item.countTone ?? "highlight";
   return (
     <Link
       href={item.href}
       onClick={onClick}
-      aria-label={count > 0 ? `${item.label} (${count} waiting)` : item.label}
+      aria-label={navItemAriaLabel(item)}
       aria-current={isActive ? "page" : undefined}
       className={cn(
         "group flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors duration-200 ease-smooth",
@@ -81,7 +150,7 @@ function ItemLink({
         )}
       />
       <span className="flex-1">{item.label}</span>
-      {count > 0 && <CountBadge count={count} tone={tone} />}
+      <NavItemBadge item={item} />
     </Link>
   );
 }
@@ -168,7 +237,11 @@ export function NavSections({ sections, onItemClick, variant = "rail" }: NavSect
 
         const label = section.label!;
         const isCollapsed = collapsed[label] ?? section.defaultCollapsed ?? false;
-        const badge = aggregateSectionBadge(section);
+        // Prefer the semantic rollup (severity-ranked across child `badge`
+        // fields) when any item in the section carries a semantic badge.
+        // Fall back to the legacy count aggregate otherwise.
+        const semanticBadge = getSectionBadge(section);
+        const countBadge = semanticBadge ? null : aggregateSectionBadge(section);
         const headerId = `nav-group-${label.toLowerCase().replace(/\s+/g, "-")}`;
         const panelId = `${headerId}-panel`;
         const activeWithin = sectionContainsPath(section, pathname);
@@ -200,7 +273,12 @@ export function NavSections({ sections, onItemClick, variant = "rail" }: NavSect
               >
                 {label}
               </span>
-              {badge && <CountBadge count={badge.count} tone={badge.tone} />}
+              {semanticBadge && semanticBadge.severity !== "ok" && (
+                <SemanticBadge badge={semanticBadge} />
+              )}
+              {countBadge && (
+                <CountBadge count={countBadge.count} tone={countBadge.tone} />
+              )}
               <svg
                 aria-hidden="true"
                 width="12"
