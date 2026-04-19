@@ -10,6 +10,7 @@ import {
   type FeaturedSnapshot,
   type ScheduleEnrichment,
 } from "@/components/command/schedule-card-data";
+import { SchedulePeekObservations } from "@/components/command/schedule-peek-observations";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -510,30 +511,7 @@ function SchedulePeek({
 
       {/* Recent observations — featured only */}
       {snapshot && snapshot.recentObservations.length > 0 && (
-        <div className="mt-3 border-t border-border/60 pt-2.5">
-          <p className="text-[11px] uppercase tracking-[0.1em] text-text-subtle font-semibold">
-            The fleet is noticing
-          </p>
-          <ul className="mt-1.5 space-y-1.5">
-            {snapshot.recentObservations.map((o) => (
-              <li key={o.id} className="flex items-baseline gap-1.5">
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full shrink-0 translate-y-[-2px]",
-                    o.severity === "urgent" && "bg-red-500",
-                    o.severity === "concern" && "bg-amber-500",
-                    o.severity === "notable" && "bg-accent",
-                    o.severity === "info" && "bg-border-strong/60",
-                  )}
-                />
-                <p className="text-xs text-text line-clamp-2 leading-snug">
-                  {o.summary}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <SchedulePeekObservations observations={snapshot.recentObservations} />
       )}
 
       {/* Today's visit context */}
