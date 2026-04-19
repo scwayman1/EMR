@@ -69,7 +69,7 @@ const VALID_SEVERITIES: ObservationSeverity[] = [
   "urgent",
 ];
 
-interface DiscoveryResponse {
+export interface DiscoveryResponse {
   discovery: "found" | "none";
   category?: string;
   severity?: string;
@@ -258,7 +258,7 @@ ${opts.noteText}
 JSON only:`;
 }
 
-function parseDiscoveryResponse(raw: string): DiscoveryResponse | null {
+export function parseDiscoveryResponse(raw: string): DiscoveryResponse | null {
   // Strip common model artifacts: markdown fences, leading/trailing chatter.
   const trimmed = raw.trim();
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -298,7 +298,9 @@ function parseDiscoveryResponse(raw: string): DiscoveryResponse | null {
   }
 }
 
-function coerceCategory(raw: string | undefined): ObservationCategory | null {
+export function coerceCategory(
+  raw: string | undefined,
+): ObservationCategory | null {
   if (!raw) return null;
   const normalized = raw.toLowerCase().trim();
   return (
@@ -306,7 +308,9 @@ function coerceCategory(raw: string | undefined): ObservationCategory | null {
   );
 }
 
-function coerceSeverity(raw: string | undefined): ObservationSeverity | null {
+export function coerceSeverity(
+  raw: string | undefined,
+): ObservationSeverity | null {
   if (!raw) return null;
   const normalized = raw.toLowerCase().trim();
   return VALID_SEVERITIES.find((s) => s === normalized) ?? null;
@@ -320,7 +324,10 @@ interface NoteBlock {
   body?: string;
 }
 
-function renderNoteForPrompt(blocks: unknown, narrative: string | null): string {
+export function renderNoteForPrompt(
+  blocks: unknown,
+  narrative: string | null,
+): string {
   const parts: string[] = [];
 
   if (Array.isArray(blocks)) {

@@ -234,7 +234,7 @@ export const prescriptionSafetyAgent: Agent<
   },
 };
 
-function extractOverriddenContraindicationIds(
+export function extractOverriddenContraindicationIds(
   override: unknown,
 ): string[] {
   if (!override || typeof override !== "object") return [];
