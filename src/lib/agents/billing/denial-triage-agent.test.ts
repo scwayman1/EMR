@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildDenialTriagePlan,
+  denialTriageAgent,
   dueDaysForUrgency,
   isTriageEligible,
   TRIAGE_ELIGIBLE_STATUSES,
 } from "./denial-triage-agent";
 import { classifyDenial, NEXT_ACTION_LABEL } from "@/lib/billing/denials";
+import type { AgentContext } from "@/lib/orchestration/types";
 
 // ---------------------------------------------------------------------------
 // Denial Triage Agent — pure helper tests
@@ -140,7 +142,8 @@ describe("buildDenialTriagePlan", () => {
   it("handles null reason gracefully", () => {
     const plan = buildDenialTriagePlan(null, NOW);
     expect(plan.category).toBe("other");
-import { beforeEach, describe, expect, it, vi } from "vitest";
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Prisma mock
@@ -169,9 +172,6 @@ vi.mock("@/lib/db/prisma", () => ({
     },
   },
 }));
-
-import { denialTriageAgent } from "./denial-triage-agent";
-import type { AgentContext } from "@/lib/orchestration/types";
 
 function makeCtx(organizationId: string | null): AgentContext {
   return {

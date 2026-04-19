@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   ALREADY_SUBMITTED_STATUSES,
+  evaluateRetryGuard,
   evaluateSubmissionEligibility,
   isRejectionRetryEligible,
   isRetryAllowed,
+  SUBMISSION_COOLDOWN_MS,
+  SUBMISSION_RETRY_LIMIT,
+  type PriorSubmissionInput,
   validateForSubmission,
 } from "./clearinghouse-submission-agent";
 
@@ -204,11 +208,8 @@ describe("validateForSubmission", () => {
   it("flags missing place of service", () => {
     const errors = validateForSubmission(validClaim({ placeOfService: null }));
     expect(errors).toContain("Missing place of service code");
-  evaluateRetryGuard,
-  SUBMISSION_COOLDOWN_MS,
-  SUBMISSION_RETRY_LIMIT,
-  type PriorSubmissionInput,
-} from "./clearinghouse-submission-agent";
+  });
+});
 
 const NOW = new Date("2026-04-19T12:00:00Z");
 
