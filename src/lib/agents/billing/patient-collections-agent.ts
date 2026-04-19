@@ -4,6 +4,112 @@ import type { Agent } from "@/lib/orchestration/types";
 import { formatMoney } from "@/lib/domain/billing";
 
 // ---------------------------------------------------------------------------
+// Pure helpers (extracted for testing)
+// ---------------------------------------------------------------------------
+
+export type CollectionsIntent =
+  | "gentle_reminder"
+  | "second_notice"
+  | "final_notice"
+  | "payment_plan_offer";
+
+export type CollectionsClaim = {
+  patientRespCents: number;
+  payments: Array<{ source: string; amountCents: number }>;
+};
+
+export type CollectionsStatement = {
+  createdAt: Date;
+};
+
+/** Sum how much the patient still owes across all their open claims.
+ * Claims can have multiple patient payments; the outstanding figure is
+ * max(0, patientResp - sum of patient payments). */
+export function computeTotalOwedCents(claims: CollectionsClaim[]): number {
+  return claims.reduce((acc, claim) => {
+    const patientPaid = claim.payments
+      .filter((p) => p.source === "patient")
+      .reduce((a, p) => a + p.amountCents, 0);
+    return acc + Math.max(0, claim.patientRespCents - patientPaid);
+  }, 0);
+}
+
+/** How old is the oldest outstanding statement, in days? Statements are
+ * assumed to be sorted desc by createdAt (the agent's Prisma query orders
+ * that way). Returns 0 when there are no statements. */
+export function oldestStatementAgeDays(
+  statements: CollectionsStatement[],
+  now: Date = new Date(),
+): number {
+  if (!statements || statements.length === 0) return 0;
+  const oldest = statements[statements.length - 1];
+  return Math.floor(
+    (now.getTime() - new Date(oldest.createdAt).getTime()) / (24 * 60 * 60 * 1000),
+  );
+}
+
+/** Tone guidance is a simple intent → prose map. Exposed so tests and UI
+ * previews can reuse the authoritative copy. */
+export const TONE_BY_INTENT: Record<CollectionsIntent, string> = {
+  gentle_reminder:
+    "Warm and helpful. This is a friendly nudge — they likely just forgot.",
+  second_notice:
+    "Still respectful but a bit more direct. Make it easy to act now.",
+  final_notice:
+    "Professional, clear about consequences (account may go to collections), but never threatening.",
+  payment_plan_offer:
+    "Empathetic. Acknowledge that healthcare bills can be hard. Offer the plan as a solution.",
+};
+
+export function toneForIntent(intent: CollectionsIntent): string {
+  return TONE_BY_INTENT[intent] ?? TONE_BY_INTENT.gentle_reminder;
+}
+
+/** Template fallback message used when the LLM call fails or returns a
+ * stub. Keeps the dunning tone consistent across LLM + fallback paths. */
+export function buildFallbackCollectionsMessage(params: {
+  firstName: string;
+  totalOwed: string;
+  intent: CollectionsIntent;
+}): string {
+  const { firstName, totalOwed, intent } = params;
+  const greeting = `Hi ${firstName},`;
+  const body =
+    intent === "gentle_reminder"
+      ? `Just a friendly reminder that you have a balance of ${totalOwed} from your recent care. You can pay online through your patient portal whenever it's convenient.`
+      : intent === "second_notice"
+        ? `Your balance of ${totalOwed} is still open and we wanted to check in. Paying online takes just a minute, and we're happy to set up a payment plan if that's easier.`
+        : intent === "final_notice"
+          ? `Your balance of ${totalOwed} is significantly past due. Please reach out so we can find a path forward together — we have payment plans available and want to help.`
+          : `We know healthcare bills can be hard. We'd love to set up a payment plan for your ${totalOwed} balance — small monthly payments, no fees.`;
+  const closing = `If anything is confusing, just reply to this message and someone from our billing team will explain. — Your care team`;
+  return `${greeting}\n\n${body}\n\n${closing}`;
+}
+
+/** Decide whether an LLM completion is usable or we should fall back to
+ * the template. Non-empty and not a "[stub…]" placeholder. */
+export function shouldUseLlmDraft(raw: string): boolean {
+  const trimmed = raw.trim();
+  return trimmed.length > 20 && !trimmed.startsWith("[stub");
+}
+
+/** Core outreach decision: should we draft a collections message at all,
+ * and if so what intent? "pause" means the patient has nothing owed (no
+ * outreach necessary) — kept as a pure function so the pause rule stays
+ * testable. */
+export function shouldSendCollectionsOutreach(params: {
+  totalOwedCents: number;
+  intent: CollectionsIntent;
+}):
+  | { send: true; intent: CollectionsIntent }
+  | { send: false; reason: "paid_in_full" } {
+  if (params.totalOwedCents <= 0) {
+    return { send: false, reason: "paid_in_full" };
+  }
+  return { send: true, intent: params.intent };
+}
+
+// ---------------------------------------------------------------------------
 // Patient Collections Agent
 // ---------------------------------------------------------------------------
 // Per PRD §13.2 #8: "Maximize patient collections ethically and efficiently."
@@ -28,17 +134,6 @@ const output = z.object({
   oldestBalanceDays: z.number(),
   draftMessageId: z.string().nullable(),
 });
-
-const TONE_BY_INTENT: Record<string, string> = {
-  gentle_reminder:
-    "Warm and helpful. This is a friendly nudge — they likely just forgot.",
-  second_notice:
-    "Still respectful but a bit more direct. Make it easy to act now.",
-  final_notice:
-    "Professional, clear about consequences (account may go to collections), but never threatening.",
-  payment_plan_offer:
-    "Empathetic. Acknowledge that healthcare bills can be hard. Offer the plan as a solution.",
-};
 
 export const patientCollectionsAgent: Agent<
   z.infer<typeof input>,
@@ -74,14 +169,13 @@ export const patientCollectionsAgent: Agent<
     if (!patient) throw new Error(`Patient ${patientId} not found`);
 
     // Compute current owed
-    const totalOwedCents = patient.claims.reduce((acc, claim) => {
-      const patientPaid = claim.payments
-        .filter((p) => p.source === "patient")
-        .reduce((a, p) => a + p.amountCents, 0);
-      return acc + Math.max(0, claim.patientRespCents - patientPaid);
-    }, 0);
+    const totalOwedCents = computeTotalOwedCents(patient.claims);
 
-    if (totalOwedCents === 0) {
+    const outreachDecision = shouldSendCollectionsOutreach({
+      totalOwedCents,
+      intent,
+    });
+    if (!outreachDecision.send) {
       ctx.log("info", "Patient has no outstanding balance — skipping");
       return {
         patientId,
@@ -96,14 +190,9 @@ export const patientCollectionsAgent: Agent<
     const totalOwed = formatMoney(totalOwedCents);
 
     // Oldest balance age
-    const oldest = patient.statements.length
-      ? Math.floor(
-          (Date.now() - new Date(patient.statements[patient.statements.length - 1].createdAt).getTime()) /
-            (24 * 60 * 60 * 1000),
-        )
-      : 0;
+    const oldest = oldestStatementAgeDays(patient.statements);
 
-    const tone = TONE_BY_INTENT[intent] ?? TONE_BY_INTENT.gentle_reminder;
+    const tone = toneForIntent(intent);
 
     const prompt = `You are drafting a billing message to a patient on behalf of a cannabis care practice that prides itself on being warm and human.
 
@@ -135,7 +224,7 @@ Return ONLY the message text. No subject line, no signature, no JSON.`;
         temperature: 0.5,
       });
       draftMessage = raw.trim();
-      usedLLM = draftMessage.length > 20 && !draftMessage.startsWith("[stub");
+      usedLLM = shouldUseLlmDraft(draftMessage);
     } catch (err) {
       ctx.log("warn", "LLM call failed — using template fallback", {
         error: err instanceof Error ? err.message : String(err),
@@ -143,17 +232,11 @@ Return ONLY the message text. No subject line, no signature, no JSON.`;
     }
 
     if (!usedLLM) {
-      const greeting = `Hi ${patient.firstName},`;
-      const body =
-        intent === "gentle_reminder"
-          ? `Just a friendly reminder that you have a balance of ${totalOwed} from your recent care. You can pay online through your patient portal whenever it's convenient.`
-          : intent === "second_notice"
-            ? `Your balance of ${totalOwed} is still open and we wanted to check in. Paying online takes just a minute, and we're happy to set up a payment plan if that's easier.`
-            : intent === "final_notice"
-              ? `Your balance of ${totalOwed} is significantly past due. Please reach out so we can find a path forward together — we have payment plans available and want to help.`
-              : `We know healthcare bills can be hard. We'd love to set up a payment plan for your ${totalOwed} balance — small monthly payments, no fees.`;
-      const closing = `If anything is confusing, just reply to this message and someone from our billing team will explain. — Your care team`;
-      draftMessage = `${greeting}\n\n${body}\n\n${closing}`;
+      draftMessage = buildFallbackCollectionsMessage({
+        firstName: patient.firstName,
+        totalOwed,
+        intent,
+      });
     }
 
     // Find or create message thread

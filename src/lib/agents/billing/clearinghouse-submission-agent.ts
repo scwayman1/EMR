@@ -223,7 +223,7 @@ export const clearinghouseSubmissionAgent: Agent<
         submissionId: submission.id,
         rejectionCode: "VALIDATION_FAIL",
         rejectionMessage: validationErrors.join("; "),
-        retryEligible: priorSubmissionCount < 2,
+        retryEligible: isRejectionRetryEligible(priorSubmissionCount),
         organizationId,
       });
 
@@ -350,6 +350,87 @@ export const clearinghouseSubmissionAgent: Agent<
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Claim statuses that indicate the claim has already been handed to the
+ * clearinghouse (or beyond) and should NOT be resubmitted. */
+export const ALREADY_SUBMITTED_STATUSES = [
+  "submitted",
+  "accepted",
+  "adjudicated",
+  "paid",
+  "partial",
+] as const;
+
+/**
+ * Pure retry-guard check. Returns whether a new submission attempt is allowed
+ * given the number of prior submissions already on file. Kept as a standalone
+ * helper so the threshold can be covered by unit tests without touching
+ * Prisma.
+ */
+export function isRetryAllowed(
+  priorSubmissionCount: number,
+  maxAttempts = 3,
+): { allowed: true } | { allowed: false; reason: "retry_limit_exceeded" } {
+  if (priorSubmissionCount >= maxAttempts) {
+    return { allowed: false, reason: "retry_limit_exceeded" };
+  }
+  return { allowed: true };
+}
+
+/** Decide whether a rejected claim is still eligible for automatic retry.
+ * Public so downstream callers (and tests) can reuse the same invariant. */
+export function isRejectionRetryEligible(
+  priorSubmissionCount: number,
+  maxAttempts = 3,
+): boolean {
+  // After this rejection the claim has one more attempt recorded, so the
+  // total attempt count at retry time is priorSubmissionCount + 1. We only
+  // want to auto-retry if THAT count is still strictly below maxAttempts.
+  return priorSubmissionCount + 1 < maxAttempts;
+}
+
+export type SubmissionEligibility =
+  | { submittable: true }
+  | {
+      submittable: false;
+      reason:
+        | "already_submitted"
+        | "blocked_by_scrub"
+        | "retry_limit_exceeded";
+      detail?: string;
+    };
+
+/** Single decision point for "should we attempt a clearinghouse submission
+ * right now?". Encapsulates idempotency, scrub gating, and retry guard so
+ * the rules are testable in isolation. */
+export function evaluateSubmissionEligibility(params: {
+  claimStatus: string;
+  scrubStatus: string | null;
+  priorSubmissionCount: number;
+  maxAttempts?: number;
+}): SubmissionEligibility {
+  const max = params.maxAttempts ?? 3;
+
+  if (
+    (ALREADY_SUBMITTED_STATUSES as readonly string[]).includes(params.claimStatus)
+  ) {
+    return {
+      submittable: false,
+      reason: "already_submitted",
+      detail: params.claimStatus,
+    };
+  }
+
+  if (params.scrubStatus === "blocked") {
+    return { submittable: false, reason: "blocked_by_scrub" };
+  }
+
+  if (params.priorSubmissionCount >= max) {
+    return { submittable: false, reason: "retry_limit_exceeded" };
+  }
+
+  return { submittable: true };
+}
+
 /**
  * Build a minimal 837P EDI stub for audit storage. In production this would
  * be a full ANSI X12 837P transaction set built from claim + patient + payer
@@ -385,7 +466,7 @@ function formatDate(d: Date): string {
  * Pre-submission validation checks. Returns an array of error strings.
  * Empty array means the claim passes basic validation.
  */
-function validateForSubmission(claim: {
+export function validateForSubmission(claim: {
   billingNpi: string | null;
   payerId: string | null;
   billedAmountCents: number;
