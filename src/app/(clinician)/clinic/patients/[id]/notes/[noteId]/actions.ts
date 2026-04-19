@@ -95,6 +95,10 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     data: { status: "complete", completedAt: new Date() },
   });
 
+  // If every note for this encounter is now finalized, stamp
+  // chartingCompletedAt so the Clinical Flow tile can compute carryover.
+  await markChartingCompletedIfReady(note.encounterId);
+
   // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
     name: "note.finalized",
@@ -118,6 +122,24 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
   return { ok: true, status: "finalized" };
+}
+
+/**
+ * If all notes for an encounter are finalized, set
+ * Encounter.chartingCompletedAt to now (if not already set). This is the
+ * documentation-complete marker, distinct from completedAt (= when the
+ * physician stopped seeing the patient).
+ */
+async function markChartingCompletedIfReady(encounterId: string): Promise<void> {
+  const unfinalized = await prisma.note.count({
+    where: { encounterId, status: { not: "finalized" } },
+  });
+  if (unfinalized > 0) return;
+
+  await prisma.encounter.update({
+    where: { id: encounterId },
+    data: { chartingCompletedAt: new Date() },
+  });
 }
 
 /**
@@ -158,6 +180,10 @@ export async function saveAndFinalizeNote(
     where: { id: note.encounterId },
     data: { status: "complete", completedAt: new Date() },
   });
+
+  // If every note for this encounter is now finalized, stamp
+  // chartingCompletedAt so the Clinical Flow tile can compute carryover.
+  await markChartingCompletedIfReady(note.encounterId);
 
   // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
