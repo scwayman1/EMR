@@ -52,7 +52,34 @@ async function main() {
     });
   }
 
-  console.log(`[scheduler] enqueued outcome=${patients.length} stalled=${stalled.length}`);
+  // 3. Adherence drift sweep — once per day, at the 09:00 UTC tick.
+  //    The scheduler runs every 15 minutes; gating on hour+minute keeps
+  //    this fleet-wide scan to a single execution per day.
+  let adherenceEnqueued = 0;
+  const utcHour = new Date().getUTCHours();
+  const utcMinute = new Date().getUTCMinutes();
+  if (utcHour === 9 && utcMinute < 15) {
+    const withActiveRegimen = await prisma.patient.findMany({
+      where: {
+        status: "active",
+        deletedAt: null,
+        dosingRegimens: { some: { active: true } },
+      },
+      select: { id: true, organizationId: true },
+    });
+    for (const p of withActiveRegimen) {
+      await dispatch({
+        name: "adherence.checkup.requested",
+        patientId: p.id,
+        organizationId: p.organizationId,
+      });
+    }
+    adherenceEnqueued = withActiveRegimen.length;
+  }
+
+  console.log(
+    `[scheduler] enqueued outcome=${patients.length} stalled=${stalled.length} adherence=${adherenceEnqueued}`,
+  );
 }
 
 main()

@@ -414,6 +414,18 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "adherence-drift-check",
+    on: ["adherence.checkup.requested"],
+    steps: [
+      {
+        agent: "adherenceDriftDetector",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
