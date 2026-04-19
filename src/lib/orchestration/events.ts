@@ -21,6 +21,7 @@ export type DomainEvent =
   | { name: "message.received"; messageId: string; threadId: string; patientId: string; organizationId: string }
   | { name: "appointment.created"; appointmentId: string }
   | { name: "appointment.cancelled"; appointmentId: string }
+  | { name: "dosing.regimen.created"; regimenId: string; patientId: string; productId: string; organizationId: string; prescribedById: string }
   | { name: "research.query.submitted"; queryId: string; query: string; patientId?: string }
   | { name: "practice.onboarding.started"; organizationId: string }
   // Billing events — Phase 3 (existing)

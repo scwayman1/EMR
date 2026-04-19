@@ -401,6 +401,19 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "prescription-safety-check",
+    on: ["dosing.regimen.created"],
+    steps: [
+      {
+        agent: "prescriptionSafety",
+        input: (e) => ({
+          regimenId: (e as any).regimenId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */
