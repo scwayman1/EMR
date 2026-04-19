@@ -64,7 +64,7 @@ export async function MessagesTile({ user }: { user: AuthedUser }) {
     console.error("[command-center] MessagesTile render failed:", err);
     return (
       <MessagesTileShell count={0} urgentCount={0}>
-        <TileErrorBody label="the messages inbox" />
+        <TileErrorBody label="the messages inbox" error={err} />
       </MessagesTileShell>
     );
   }

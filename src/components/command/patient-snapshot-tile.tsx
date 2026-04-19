@@ -41,7 +41,7 @@ export async function PatientSnapshotTile({ user }: { user: AuthedUser }) {
     console.error("[command-center] PatientSnapshotTile render failed:", err);
     return (
       <SnapshotShell>
-        <TileErrorBody label="the patient snapshot" />
+        <TileErrorBody label="the patient snapshot" error={err} />
       </SnapshotShell>
     );
   }
