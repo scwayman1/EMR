@@ -70,30 +70,30 @@ export function Tile({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-3">
+      <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4">
         <div className="min-w-0 flex-1">
           {eyebrow && (
-            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-text-subtle">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-text-subtle">
               {eyebrow}
             </p>
           )}
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-2">
             {icon && (
-              <span className="text-xl leading-none" aria-hidden="true">
+              <span className="text-lg leading-none" aria-hidden="true">
                 {icon}
               </span>
             )}
-            <h3 className="font-display text-base font-medium text-text tracking-tight truncate">
+            <h3 className="font-display text-base font-semibold text-text tracking-tight truncate">
               {title}
             </h3>
           </div>
           {description && (
-            <p className="text-xs text-text-muted mt-1.5 line-clamp-2">
+            <p className="text-[13px] text-text-muted mt-2 leading-snug line-clamp-2">
               {description}
             </p>
           )}
         </div>
-        {action && <div className="shrink-0">{action}</div>}
+        {action && <div className="shrink-0 pt-0.5">{action}</div>}
       </div>
 
       {children && <div className="flex-1 min-h-0 px-5 pb-5">{children}</div>}

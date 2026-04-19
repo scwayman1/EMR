@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { Tile, TilePlaceholder } from "@/components/ui/tile";
+import { Tile } from "@/components/ui/tile";
 import { TileGrid } from "@/components/ui/tile-grid";
 import { ScheduleTile } from "@/components/command/schedule-tile";
 import { MessagesTile } from "@/components/command/messages-tile";
@@ -35,22 +35,9 @@ export default async function CommandCenterPage() {
       />
 
       <TileGrid>
-        {/* Pillar 1 — Schedule. Today's patients, card height proportional
-            to visit duration. Real component now live. */}
         <ScheduleTile user={user} />
-
-        {/* Pillar 2 — Messages. AI-triaged inbox preview, urgent in red.
-            Reuses the existing smart-inbox triage logic so the tile and
-            the full inbox agree on priority/category. */}
         <MessagesTile user={user} />
-
-        {/* Pillar 3 — Patient snapshot. The next-upcoming visit's facesheet
-            compressed into a 1×1 tile: demographics, allergy chips, med
-            count, last lab. Tap-through goes straight to the full chart. */}
         <PatientSnapshotTile user={user} />
-
-        {/* Pillar 4 — Mindful break. Breathe is live; Move and Inspire
-            land as their own slices. 10-minute cap on every path. */}
         <Tile
           eyebrow="Reset"
           title="Mindful Break"
@@ -60,25 +47,7 @@ export default async function CommandCenterPage() {
           href="/clinic/mindful"
           tone="calm"
         />
-
-        {/* Placeholder tile — reminds us that the tabbed sidebar is Phase 3
-            and should land once the four content pillars are in. Using a
-            non-clickable tile so it doesn't pretend to be functional. */}
-        <Tile
-          eyebrow="Navigation"
-          title="Tabbed Sidebar"
-          description="Google-tab style, draggable, hover to peek the last 3–5 entries per tab."
-          icon="🗂️"
-          span="1x1"
-          tone="default"
-        >
-          <TilePlaceholder note="Phase 3 — after the four pillars are in." />
-        </Tile>
       </TileGrid>
-
-      <p className="mt-12 text-xs text-text-subtle italic text-center">
-        Framework preview · content ships tile by tile · each slice is its own PR.
-      </p>
     </PageShell>
   );
 }
