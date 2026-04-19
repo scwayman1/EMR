@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { checkInteractions } from "@/lib/domain/drug-interactions";
+import { dispatch } from "@/lib/orchestration/dispatch";
 
 const schema = z.object({
   patientId: z.string(),
@@ -252,6 +253,19 @@ export async function createPrescriptionAction(
         },
       });
     }
+
+    // Hand the regimen off to the prescription-safety agent. It runs
+    // a cold-temperature interaction + contraindication scan in the
+    // background and posts ClinicalObservations into the Command
+    // Center's Discovery tile when it finds something.
+    await dispatch({
+      name: "dosing.regimen.created",
+      regimenId: regimen.id,
+      patientId,
+      productId: resolvedProductId!,
+      organizationId: user.organizationId!,
+      prescribedById: user.id,
+    });
   } catch (err) {
     console.error("[prescribe] failed to create regimen:", err);
     return {

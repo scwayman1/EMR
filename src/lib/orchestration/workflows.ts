@@ -401,6 +401,45 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "prescription-safety-check",
+    on: ["dosing.regimen.created"],
+    steps: [
+      {
+        agent: "prescriptionSafety",
+        input: (e) => ({
+          regimenId: (e as any).regimenId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "adherence-drift-check",
+    on: ["adherence.checkup.requested"],
+    steps: [
+      {
+        agent: "adherenceDriftDetector",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "message-urgency-observe",
+    on: ["message.received"],
+    steps: [
+      {
+        agent: "messageUrgencyObserver",
+        input: (e) => ({
+          messageId: (e as any).messageId,
+          threadId: (e as any).threadId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
 ];
 
 /** Find every workflow step that should fire for a given event. */

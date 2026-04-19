@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { TileErrorBody } from "@/components/command/tile-error";
 import {
   loadScheduleEnrichment,
+  loadFeaturedSnapshot,
+  type FeaturedSnapshot,
   type ScheduleEnrichment,
 } from "@/components/command/schedule-card-data";
 import { cn } from "@/lib/utils/cn";
@@ -71,6 +73,15 @@ export async function ScheduleTile({ user }: { user: AuthedUser }) {
     const patientIds = Array.from(new Set(appointments.map((a) => a.patient.id)));
     const enrichment = await loadScheduleEnrichment(patientIds);
 
+    // Featured appointment = first one whose end time hasn't passed.
+    // Its card carries the full pre-visit snapshot (allergies, active
+    // meds, last lab) — the "walking into the room" payload that
+    // used to live in a dedicated Patient Snapshot tile.
+    const featured = appointments.find((a) => a.endAt.getTime() >= now.getTime());
+    const featuredSnapshot = featured
+      ? await loadFeaturedSnapshot(featured.patient.id)
+      : null;
+
     return (
       <ScheduleTileShell count={appointments.length}>
         {appointments.length === 0 ? (
@@ -87,6 +98,7 @@ export async function ScheduleTile({ user }: { user: AuthedUser }) {
                 key={appt.id}
                 appointment={appt}
                 enrichment={enrichment.get(appt.patient.id)}
+                snapshot={appt.id === featured?.id ? featuredSnapshot : null}
                 nowTs={now.getTime()}
               />
             ))}
@@ -151,10 +163,12 @@ type AppointmentWithPatient = {
 function ScheduleCard({
   appointment,
   enrichment,
+  snapshot,
   nowTs,
 }: {
   appointment: AppointmentWithPatient;
   enrichment: ScheduleEnrichment | undefined;
+  snapshot: FeaturedSnapshot | null;
   nowTs: number;
 }) {
   const durationMin = Math.max(
@@ -238,14 +252,16 @@ function ScheduleCard({
 
       {/* Hover peek. Renders to the right of the card so it doesn't cover
           the card underneath it. Tile body has overflow-y auto, but the
-          popover uses z-40 to stack above neighbors inside the tile. */}
-      {enrichment && (
+          popover uses z-40 to stack above neighbors inside the tile.
+          The featured card also surfaces the full pre-visit snapshot. */}
+      {(enrichment || snapshot) && (
         <SchedulePeek
           patient={appointment.patient}
           timeLabel={timeLabel}
           durationMin={durationMin}
           reason={reason}
-          enrichment={enrichment}
+          enrichment={enrichment ?? null}
+          snapshot={snapshot}
         />
       )}
     </div>
@@ -344,14 +360,22 @@ function SchedulePeek({
   durationMin,
   reason,
   enrichment,
+  snapshot,
 }: {
   patient: AppointmentWithPatient["patient"];
   timeLabel: string;
   durationMin: number;
   reason: string | null;
-  enrichment: ScheduleEnrichment;
+  enrichment: ScheduleEnrichment | null;
+  snapshot: FeaturedSnapshot | null;
 }) {
   const age = computeAge(patient.dateOfBirth);
+  const labDate = snapshot?.latestLab?.receivedAt
+    ? snapshot.latestLab.receivedAt.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : null;
   return (
     <div
       role="tooltip"
@@ -364,7 +388,7 @@ function SchedulePeek({
       )}
     >
       <p className="text-[11px] uppercase tracking-[0.1em] text-text-subtle font-semibold">
-        Pre-visit brief
+        {snapshot ? "Walking in" : "Pre-visit brief"}
       </p>
       <p className="text-sm font-semibold text-text mt-1.5">
         {patient.firstName} {patient.lastName}
@@ -378,6 +402,53 @@ function SchedulePeek({
         {timeLabel} · {durationMin}m
       </p>
 
+      {snapshot && snapshot.allergies.length > 0 && (
+        <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+          <span aria-hidden="true" className="text-red-600 text-xs">⚠</span>
+          {snapshot.allergies.slice(0, 4).map((a, i) => (
+            <span key={a} className="text-[11px] font-medium text-red-700">
+              {a}
+              {i < Math.min(snapshot.allergies.length, 4) - 1 && (
+                <span className="ml-1.5 text-red-300">·</span>
+              )}
+            </span>
+          ))}
+          {snapshot.allergies.length > 4 && (
+            <span className="text-[11px] text-red-500/70 font-medium">
+              +{snapshot.allergies.length - 4}
+            </span>
+          )}
+        </div>
+      )}
+
+      {snapshot && (
+        <div className="mt-2 flex items-center gap-2.5 text-xs text-text-muted tabular-nums">
+          <span>
+            <span className="font-semibold text-text">
+              {snapshot.activeMedCount > 0 ? snapshot.activeMedCount : "—"}
+            </span>{" "}
+            meds
+          </span>
+          <span className="text-text-subtle/40">·</span>
+          {snapshot.latestLab ? (
+            <span className="truncate">
+              <span
+                className={cn(
+                  "font-semibold",
+                  snapshot.latestLab.abnormalFlag ? "text-amber-700" : "text-text"
+                )}
+              >
+                {snapshot.latestLab.panelName}
+                {snapshot.latestLab.abnormalFlag && " •"}
+              </span>
+              <span className="ml-1.5 text-text-subtle">{labDate}</span>
+            </span>
+          ) : (
+            <span className="text-text-subtle">No labs</span>
+          )}
+        </div>
+      )}
+
       {reason && (
         <p className="text-xs text-text-muted mt-3 leading-relaxed">
           <span className="font-semibold text-text">Reason. </span>
@@ -385,19 +456,19 @@ function SchedulePeek({
         </p>
       )}
 
-      {(enrichment.painTrend || enrichment.adherencePct != null) && (
+      {enrichment && (enrichment.painTrend || enrichment.adherencePct != null) && (
         <div className="mt-3">
           <OutcomeRow enrichment={enrichment} />
         </div>
       )}
 
-      {enrichment.chips.length > 0 && (
+      {enrichment && enrichment.chips.length > 0 && (
         <div className="mt-3">
           <ChipRow chips={enrichment.chips} />
         </div>
       )}
 
-      {enrichment.briefLine && (
+      {enrichment?.briefLine && (
         <p className="text-xs italic text-text-muted mt-3 leading-relaxed border-l-2 border-accent/30 pl-2.5">
           {enrichment.briefLine}
         </p>

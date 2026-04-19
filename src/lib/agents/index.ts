@@ -18,6 +18,9 @@ import { patientSimplifierAgent, patientEducationAgent } from "./patient-educati
 import { dosingRecommendationAgent } from "./dosing-recommendation-agent";
 import { trendAlertAgent } from "./trend-alert-agent";
 import { titrationAgent } from "./titration-agent";
+import { prescriptionSafetyAgent } from "./prescription-safety-agent";
+import { adherenceDriftDetectorAgent } from "./adherence-drift-detector-agent";
+import { messageUrgencyObserverAgent } from "./message-urgency-observer-agent";
 // Billing agents — Phase 3 of the Revenue Cycle PRD
 import { chargeIntegrityAgent } from "./billing/charge-integrity-agent";
 import { denialTriageAgent } from "./billing/denial-triage-agent";
@@ -82,6 +85,9 @@ export const agentRegistry = {
   dosingRecommendation: dosingRecommendationAgent,
   trendAlert: trendAlertAgent,
   titration: titrationAgent,
+  prescriptionSafety: prescriptionSafetyAgent,
+  adherenceDriftDetector: adherenceDriftDetectorAgent,
+  messageUrgencyObserver: messageUrgencyObserverAgent,
   // Billing agents (Phase 3)
   chargeIntegrity: chargeIntegrityAgent,
   denialTriage: denialTriageAgent,
