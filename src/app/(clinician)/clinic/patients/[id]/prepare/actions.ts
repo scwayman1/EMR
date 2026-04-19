@@ -70,6 +70,32 @@ export async function generateBriefing(patientId: string): Promise<BriefingResul
     };
   }
 
+  // Find the encounter that should receive this briefing (if any). We prefer
+  // an in-progress encounter (clinician is already in the room) and fall back
+  // to today's scheduled encounter. When neither exists, the briefing still
+  // runs but won't be persisted — the user can click "Start Visit" and
+  // `startVisitWithBriefing` will create the encounter with the briefing
+  // attached. Passing encounterId here lets the Schedule tile's brief line
+  // and any other downstream surface read the briefing the moment it's
+  // generated, without waiting for the physician to start the visit.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const encounterForBriefing = await prisma.encounter.findFirst({
+    where: {
+      patientId,
+      organizationId: user.organizationId!,
+      OR: [
+        { status: "in_progress" },
+        { scheduledFor: { gte: todayStart, lte: todayEnd } },
+      ],
+    },
+    orderBy: [{ status: "asc" }, { scheduledFor: "asc" }],
+    select: { id: true },
+  });
+
   // Build a mock context that captures logs as steps
   const logs: AgentLogEntry[] = [];
   const steps: BriefingStep[] = STEP_LABELS.map((label, i) => ({
@@ -117,7 +143,7 @@ export async function generateBriefing(patientId: string): Promise<BriefingResul
 
   try {
     const result = await preVisitIntelligenceAgent.run(
-      { patientId },
+      { patientId, encounterId: encounterForBriefing?.id },
       ctx,
     );
 
