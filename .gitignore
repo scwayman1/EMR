@@ -29,8 +29,14 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Claude Code local state (agent worktrees, hook outputs, transcripts)
-.claude/
+# Claude Code local state — ignore everything except shared project config
+.claude/*
+!.claude/settings.json
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
+.claude/settings.local.json
 
 # Prisma
 prisma/dev.db
