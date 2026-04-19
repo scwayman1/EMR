@@ -176,9 +176,16 @@ async function renderSnapshotTile(user: AuthedUser) {
     minute: "2-digit",
   });
 
+  const labDate = latestLab
+    ? latestLab.receivedAt.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+
   return (
     <SnapshotShell patientId={patient.id}>
-      <div className="flex flex-col h-full gap-3">
+      <div className="flex flex-col h-full gap-4">
         <div className="flex items-center gap-3">
           <Avatar
             firstName={patient.firstName}
@@ -186,58 +193,70 @@ async function renderSnapshotTile(user: AuthedUser) {
             size="md"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-text truncate">
+            <p className="text-[15px] font-semibold text-text truncate leading-tight">
               {patient.firstName} {patient.lastName}
+              {age != null && (
+                <span className="ml-1.5 text-text-subtle font-normal text-[13px]">
+                  {age}
+                </span>
+              )}
             </p>
-            <p className="text-xs text-text-subtle">
-              {age != null ? `${age}y · ` : ""}
-              {apptLabel} {apptTime}
+            <p className="text-xs text-text-subtle tabular-nums mt-0.5">
+              <span className="font-medium text-text-muted">{apptLabel}</span>
+              <span className="mx-1 text-text-subtle/50">·</span>
+              {apptTime}
             </p>
           </div>
         </div>
 
         {allergies.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {allergies.slice(0, 3).map((a) => (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span aria-hidden="true" className="text-red-600 text-xs">⚠</span>
+            {allergies.slice(0, 3).map((a, i) => (
               <span
                 key={a}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-red-800 border border-red-200/70"
+                className="text-[11px] font-medium text-red-700"
                 title={`Allergy: ${a}`}
               >
-                ⚠ {a}
+                {a}
+                {i < Math.min(allergies.length, 3) - 1 && (
+                  <span className="ml-1.5 text-red-300">·</span>
+                )}
               </span>
             ))}
             {allergies.length > 3 && (
-              <span className="text-[10px] text-text-subtle self-center">
+              <span className="text-[11px] text-red-500/70 font-medium">
                 +{allergies.length - 3}
               </span>
             )}
           </div>
         )}
 
-        <dl className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
-          <SnapshotStat
-            label="Active meds"
-            value={activeMeds > 0 ? String(activeMeds) : "—"}
-          />
-          <SnapshotStat
-            label="Last lab"
-            value={
-              latestLab
-                ? `${latestLab.panelName}${latestLab.abnormalFlag ? " •" : ""}`
-                : "—"
-            }
-            hint={
-              latestLab
-                ? latestLab.receivedAt.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                : undefined
-            }
-            tone={latestLab?.abnormalFlag ? "warn" : "default"}
-          />
-        </dl>
+        <div className="mt-auto flex items-center gap-3 text-xs text-text-muted tabular-nums">
+          <span>
+            <span className="font-semibold text-text">
+              {activeMeds > 0 ? activeMeds : "—"}
+            </span>{" "}
+            meds
+          </span>
+          <span className="text-text-subtle/40">·</span>
+          {latestLab ? (
+            <span className="truncate">
+              <span
+                className={cn(
+                  "font-semibold",
+                  latestLab.abnormalFlag ? "text-amber-700" : "text-text"
+                )}
+              >
+                {latestLab.panelName}
+                {latestLab.abnormalFlag && " •"}
+              </span>
+              <span className="ml-1.5 text-text-subtle">{labDate}</span>
+            </span>
+          ) : (
+            <span className="text-text-subtle">No labs</span>
+          )}
+        </div>
       </div>
     </SnapshotShell>
   );
@@ -270,37 +289,6 @@ function SnapshotShell({
     >
       {children}
     </Tile>
-  );
-}
-
-function SnapshotStat({
-  label,
-  value,
-  hint,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  tone?: "default" | "warn";
-}) {
-  return (
-    <div>
-      <dt className="text-[10px] uppercase tracking-wider text-text-subtle">
-        {label}
-      </dt>
-      <dd
-        className={cn(
-          "text-sm font-medium tabular-nums truncate",
-          tone === "warn" ? "text-amber-700" : "text-text"
-        )}
-      >
-        {value}
-      </dd>
-      {hint && (
-        <p className="text-[10px] text-text-subtle tabular-nums">{hint}</p>
-      )}
-    </div>
   );
 }
 

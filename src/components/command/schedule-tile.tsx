@@ -186,50 +186,50 @@ function ScheduleCard({
       <Link
         href={`/clinic/patients/${appointment.patient.id}`}
         className={cn(
-          "block rounded-lg border px-3 py-2.5 transition-all",
-          "hover:border-accent/40 hover:shadow-sm",
+          "block rounded-xl border px-3.5 py-3 transition-all duration-200",
+          "hover:shadow-sm hover:-translate-y-px",
           isPast
-            ? "bg-surface border-border/60 opacity-70"
+            ? "bg-surface border-border/50 opacity-60 hover:opacity-80"
             : isNow
-              ? "bg-accent-soft/60 border-accent/40 ring-1 ring-accent/20"
-              : "bg-surface border-border/80"
+              ? "bg-surface border-accent/50 shadow-[0_0_0_3px_var(--accent-soft)]"
+              : "bg-surface border-border/70 hover:border-border-strong/60"
         )}
         style={{
           flexGrow: durationMin,
           flexBasis: 0,
-          minHeight: "54px",
+          minHeight: "72px",
         }}
       >
         <div className="flex items-start justify-between gap-3 h-full">
-          <div className="min-w-0 flex-1 flex flex-col justify-center gap-1">
-            <p className="text-[11px] font-medium tabular-nums text-text-subtle">
+          <div className="min-w-0 flex-1 flex flex-col justify-center gap-1.5">
+            <p className="text-[11px] font-semibold tabular-nums text-text-subtle tracking-wide">
               {timeLabel}
-              <span className="ml-1.5 text-text-subtle/70">
-                · {durationMin}m
+              <span className="ml-2 font-normal text-text-subtle/60">
+                {durationMin}m
               </span>
             </p>
-            <p className="text-sm font-medium text-text group-hover/card:text-accent transition-colors truncate">
+            <p className="text-[15px] font-semibold text-text group-hover/card:text-accent transition-colors truncate leading-tight">
               {appointment.patient.firstName} {appointment.patient.lastName}
               {age != null && (
-                <span className="ml-1.5 text-text-subtle font-normal text-xs">
-                  · {age}y
+                <span className="ml-2 text-text-subtle font-normal text-[13px]">
+                  {age}
                 </span>
               )}
             </p>
             {showReason && (
-              <p className="text-xs text-text-muted line-clamp-1">{reason}</p>
+              <p className="text-[13px] text-text-muted line-clamp-1 leading-snug">{reason}</p>
             )}
             {showOutcomeRow && <OutcomeRow enrichment={enrichment!} />}
             {showChips && <ChipRow chips={chips} />}
             {showBrief && (
-              <p className="text-[11px] italic text-text-subtle line-clamp-2 leading-snug">
+              <p className="text-xs italic text-text-subtle line-clamp-2 leading-snug">
                 {enrichment!.briefLine}
               </p>
             )}
           </div>
           {isNow && (
             <span
-              className="shrink-0 mt-1 h-2 w-2 rounded-full bg-accent animate-pulse"
+              className="shrink-0 mt-1.5 h-2 w-2 rounded-full bg-accent animate-pulse"
               aria-label="Happening now"
             />
           )}
@@ -260,11 +260,11 @@ function ScheduleCard({
 function OutcomeRow({ enrichment }: { enrichment: ScheduleEnrichment }) {
   const { painTrend, adherencePct } = enrichment;
   return (
-    <div className="flex items-center gap-3 text-[11px]">
+    <div className="flex items-center gap-3 text-xs">
       {painTrend && (
         <span
           className={cn(
-            "inline-flex items-center gap-0.5 font-medium tabular-nums",
+            "inline-flex items-center gap-1 font-medium tabular-nums",
             painTrend === "down" && "text-[color:var(--success)]",
             painTrend === "up" && "text-red-600",
             painTrend === "flat" && "text-text-subtle"
@@ -284,7 +284,7 @@ function OutcomeRow({ enrichment }: { enrichment: ScheduleEnrichment }) {
       {adherencePct != null && (
         <span
           className={cn(
-            "inline-flex items-center gap-1 tabular-nums",
+            "inline-flex items-center gap-1 tabular-nums font-medium",
             adherencePct >= 80
               ? "text-[color:var(--success)]"
               : adherencePct >= 50
@@ -293,7 +293,7 @@ function OutcomeRow({ enrichment }: { enrichment: ScheduleEnrichment }) {
           )}
           title="Adherence over the last 7 days"
         >
-          Adherence {adherencePct}%
+          {adherencePct}% adhered
         </span>
       )}
     </div>
@@ -306,16 +306,16 @@ function ChipRow({
   chips: ScheduleEnrichment["chips"];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1">
+    <div className="flex flex-wrap items-center gap-1.5">
       {chips.slice(0, 4).map((chip, i) => (
         <span
           key={i}
           className={cn(
-            "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border leading-none",
-            chip.tone === "danger" && "bg-red-50 text-red-900 border-red-200/70",
-            chip.tone === "warn" && "bg-amber-50 text-amber-900 border-amber-200/70",
-            chip.tone === "info" && "bg-[color:var(--info-soft)]/60 text-[color:var(--info)] border-[color:var(--info)]/20",
-            chip.tone === "success" && "bg-[color:var(--success-soft)]/60 text-[color:var(--success)] border-[color:var(--success)]/20"
+            "inline-flex items-center gap-1 px-2 py-[3px] rounded-full text-[11px] font-medium leading-none",
+            chip.tone === "danger" && "bg-red-50 text-red-800",
+            chip.tone === "warn" && "bg-amber-50 text-amber-800",
+            chip.tone === "info" && "bg-[color:var(--info-soft)]/60 text-[color:var(--info)]",
+            chip.tone === "success" && "bg-[color:var(--success-soft)]/60 text-[color:var(--success)]"
           )}
           title={chip.label}
         >
@@ -324,7 +324,7 @@ function ChipRow({
         </span>
       ))}
       {chips.length > 4 && (
-        <span className="text-[10px] text-text-subtle">
+        <span className="text-[11px] text-text-subtle font-medium">
           +{chips.length - 4}
         </span>
       )}
@@ -363,24 +363,24 @@ function SchedulePeek({
         "group-focus-within/card:opacity-100 group-focus-within/card:translate-x-0 group-focus-within/card:pointer-events-auto"
       )}
     >
-      <p className="text-[10px] uppercase tracking-wider text-text-subtle font-medium">
+      <p className="text-[11px] uppercase tracking-[0.1em] text-text-subtle font-semibold">
         Pre-visit brief
       </p>
-      <p className="text-sm font-medium text-text mt-1">
+      <p className="text-sm font-semibold text-text mt-1.5">
         {patient.firstName} {patient.lastName}
         {age != null && (
-          <span className="ml-1.5 text-text-subtle font-normal text-xs">
-            · {age}y
+          <span className="ml-2 text-text-subtle font-normal text-xs">
+            {age}
           </span>
         )}
       </p>
-      <p className="text-[11px] text-text-subtle tabular-nums mt-0.5">
+      <p className="text-xs text-text-subtle tabular-nums mt-0.5">
         {timeLabel} · {durationMin}m
       </p>
 
       {reason && (
         <p className="text-xs text-text-muted mt-3 leading-relaxed">
-          <span className="font-medium text-text">Reason. </span>
+          <span className="font-semibold text-text">Reason. </span>
           {reason}
         </p>
       )}
@@ -398,13 +398,13 @@ function SchedulePeek({
       )}
 
       {enrichment.briefLine && (
-        <p className="text-[11px] italic text-text-muted mt-3 leading-relaxed border-l-2 border-accent/30 pl-2">
+        <p className="text-xs italic text-text-muted mt-3 leading-relaxed border-l-2 border-accent/30 pl-2.5">
           {enrichment.briefLine}
         </p>
       )}
 
-      <p className="text-[10px] text-text-subtle mt-3 text-right">
-        Click card to open chart →
+      <p className="text-[11px] text-text-subtle mt-3 text-right">
+        Open chart →
       </p>
     </div>
   );
