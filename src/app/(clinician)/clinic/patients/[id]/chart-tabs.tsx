@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { useChartFrame } from "./chart-frame";
+import { useChartFrame, type ChartTabPosition } from "./chart-frame";
 
 const TABS = [
   { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]" },
@@ -62,6 +62,9 @@ export interface PeekEntry {
 /** Peek data per tab. Only tabs present here show a peek popover. */
 export type TabPeeks = Partial<Record<TabKey, PeekEntry[]>>;
 
+/** Where an anchored popover (peek or settings menu) opens out from. */
+type PeekAnchor = "above" | "below" | "left" | "right";
+
 interface ChartTabsProps {
   patientId: string;
   counts: Record<TabKey, number>;
@@ -76,6 +79,19 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
   // and the tab content share one source of truth about layout.
   const { position, setPosition, compact, setCompact } = useChartFrame();
   const onBottom = position === "bottom";
+  const onLeft = position === "left";
+  const onRight = position === "right";
+  const isVertical = onLeft || onRight;
+  // Hover-peek anchors out from the tab into the content area, never
+  // toward the page edge — keeps popovers fully on-screen regardless
+  // of which side the rail is docked to.
+  const peekAnchor: PeekAnchor = onBottom
+    ? "above"
+    : onLeft
+      ? "right"
+      : onRight
+        ? "left"
+        : "below";
 
   // Tab order. Seeded with the canonical order so SSR output matches
   // the server render; hydrated from localStorage in an effect so the
@@ -153,12 +169,18 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     // Which half of the target the cursor is over decides whether we
-    // insert before or after it. This is what makes the end-of-list
-    // slot reachable — drop on the right half of the rightmost tab
-    // and the dragged tab lands after it.
+    // insert before or after it. The relevant axis swaps with
+    // orientation — Y midpoint when the bar is a vertical rail,
+    // X midpoint when it's horizontal — so end-of-list stays
+    // reachable in a single drag in any layout.
     const rect = e.currentTarget.getBoundingClientRect();
-    const side: "before" | "after" =
-      e.clientX < rect.left + rect.width / 2 ? "before" : "after";
+    const side: "before" | "after" = isVertical
+      ? e.clientY < rect.top + rect.height / 2
+        ? "before"
+        : "after"
+      : e.clientX < rect.left + rect.width / 2
+        ? "before"
+        : "after";
     if (dragOverKey !== key) setDragOverKey(key);
     if (dropSide !== side) setDropSide(side);
   };
@@ -197,11 +219,20 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
   return (
     <nav
       className={cn(
-        "relative flex flex-wrap items-center gap-1 border-border",
-        // Border + outer margin swap sides based on where the bar
-        // is anchored, so the hairline sits against the tab content
-        // (not the page edge) regardless of position.
-        onBottom ? "border-t mt-8" : "border-b mb-8"
+        "relative gap-1 border-border",
+        // Layout direction follows orientation. Horizontal bars wrap
+        // (long lists overflow to a second row); vertical rails fill
+        // the rail wrapper's height and pin the trailing controls to
+        // the bottom via mt-auto on the trailing group.
+        isVertical
+          ? "flex flex-col items-stretch h-full"
+          : "flex flex-wrap items-center",
+        // Border + outer spacing sit against the chart content (not
+        // the page edge) regardless of which side the bar is on.
+        onBottom && "border-t mt-8",
+        position === "top" && "border-b mb-8",
+        onLeft && "border-r pr-2 mr-4",
+        onRight && "border-l pl-2 ml-4"
       )}
       aria-label="Chart sections"
     >
@@ -245,8 +276,16 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
               <span
                 aria-hidden="true"
                 className={cn(
-                  "absolute top-2 bottom-2 w-0.5 rounded-full bg-accent",
-                  dropSide === "before" ? "-left-0.5" : "-right-0.5"
+                  "absolute rounded-full bg-accent",
+                  isVertical
+                    ? cn(
+                        "left-2 right-2 h-0.5",
+                        dropSide === "before" ? "-top-0.5" : "-bottom-0.5"
+                      )
+                    : cn(
+                        "top-2 bottom-2 w-0.5",
+                        dropSide === "before" ? "-left-0.5" : "-right-0.5"
+                      )
                 )}
               />
             )}
@@ -258,9 +297,17 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
               aria-expanded={hasPeek ? isOpen : undefined}
               title={compact ? tab.label : undefined}
               className={cn(
-                "relative flex items-center gap-2 pl-3 py-2.5 text-sm font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing",
-                compact ? "pr-3" : "pr-4",
-                onBottom ? "rounded-b-md" : "rounded-t-md",
+                "relative flex items-center gap-2 text-sm font-medium transition-colors whitespace-nowrap cursor-grab active:cursor-grabbing",
+                // Vertical rails fill the rail width and use a slightly
+                // tighter vertical rhythm so all 9 tabs read as a list;
+                // horizontal bars keep the original padding.
+                isVertical
+                  ? "w-full px-3 py-2 rounded-md"
+                  : cn(
+                      "pl-3 py-2.5",
+                      compact ? "pr-3" : "pr-4",
+                      onBottom ? "rounded-b-md" : "rounded-t-md"
+                    ),
                 isActive
                   ? "text-accent"
                   : "text-text-muted hover:text-text hover:bg-surface-muted"
@@ -282,10 +329,15 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
                   isActive ? tab.dot : "bg-border-strong/50"
                 )}
               />
-              {!compact && <span>{tab.label}</span>}
+              {!compact && (
+                <span className={cn(isVertical && "flex-1 truncate")}>
+                  {tab.label}
+                </span>
+              )}
               <span
                 className={cn(
-                  "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-medium rounded-full tabular-nums",
+                  "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-medium rounded-full tabular-nums shrink-0",
+                  isVertical && "ml-auto",
                   isActive
                     ? "bg-accent-soft text-accent"
                     : "bg-surface-muted text-text-subtle"
@@ -296,8 +348,16 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
               {isActive && (
                 <span
                   className={cn(
-                    "absolute left-2 right-2 h-0.5 bg-accent rounded-full",
-                    onBottom ? "top-0" : "bottom-0"
+                    "absolute bg-accent rounded-full",
+                    isVertical
+                      ? cn(
+                          "top-2 bottom-2 w-0.5",
+                          // Active bar sits on the inner edge — flush
+                          // against the chart content, away from the
+                          // page edge.
+                          onLeft ? "right-0" : "left-0"
+                        )
+                      : cn("left-2 right-2 h-0.5", onBottom ? "top-0" : "bottom-0")
                   )}
                 />
               )}
@@ -310,19 +370,33 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
                 seeAllHref={`/clinic/patients/${patientId}?tab=${tab.key}`}
                 onLeave={scheduleClose}
                 onEnter={cancelClose}
-                anchor={onBottom ? "above" : "below"}
+                anchor={peekAnchor}
               />
             )}
           </div>
         );
       })}
 
-      <div className="ml-auto mr-1 flex items-center gap-1">
+      {/* Trailing controls — pinned to the end of the bar regardless
+          of orientation. Horizontal bars push to the right via
+          ml-auto; vertical rails push to the bottom via mt-auto so
+          the gear stays out of the tab list. */}
+      <div
+        className={cn(
+          "flex items-center gap-1",
+          isVertical
+            ? "mt-auto pt-2 flex-col items-stretch"
+            : "ml-auto mr-1"
+        )}
+      >
         {isReordered && (
           <button
             type="button"
             onClick={resetOrder}
-            className="text-[11px] text-text-subtle hover:text-accent transition-colors px-2 py-1"
+            className={cn(
+              "text-[11px] text-text-subtle hover:text-accent transition-colors px-2 py-1",
+              isVertical && "text-left"
+            )}
             title="Restore the default tab order"
           >
             Reset order
@@ -333,7 +407,7 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
           setPosition={setPosition}
           compact={compact}
           setCompact={setCompact}
-          anchor={onBottom ? "above" : "below"}
+          anchor={peekAnchor}
         />
       </div>
     </nav>
@@ -341,11 +415,11 @@ export function ChartTabs({ patientId, counts, peeks }: ChartTabsProps) {
 }
 
 /**
- * Hover-peek popover. Anchored beside its tab (below when the bar is
- * on top, above when the bar is on bottom), shows the last five
- * entries from that section plus a "See all" link. Keeps the popover
- * open while the cursor is inside it via the onEnter/onLeave hooks
- * (the parent tab container handles open/close timing).
+ * Hover-peek popover. Anchored beside its tab — below for top bars,
+ * above for bottom bars, right for left rails, left for right rails —
+ * so the popover always opens into the chart content area, never
+ * past the page edge. Stays open while the cursor is inside via the
+ * onEnter/onLeave hooks (parent tab container handles timing).
  */
 function TabPeekPopover({
   label,
@@ -360,7 +434,7 @@ function TabPeekPopover({
   seeAllHref: string;
   onEnter: () => void;
   onLeave: () => void;
-  anchor: "above" | "below";
+  anchor: PeekAnchor;
 }) {
   return (
     <div
@@ -369,9 +443,12 @@ function TabPeekPopover({
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       className={cn(
-        "absolute left-0 z-30 w-80 max-w-[calc(100vw-2rem)]",
+        "absolute z-30 w-80 max-w-[calc(100vw-2rem)]",
         "rounded-lg border border-border bg-surface shadow-lg",
-        anchor === "above" ? "bottom-full mb-1" : "top-full mt-1"
+        anchor === "above" && "bottom-full mb-1 left-0",
+        anchor === "below" && "top-full mt-1 left-0",
+        anchor === "right" && "left-full ml-1 top-0",
+        anchor === "left" && "right-full mr-1 top-0"
       )}
     >
       <div className="px-4 pt-3 pb-2 border-b border-border/60">
@@ -419,10 +496,11 @@ function TabPeekPopover({
 
 
 /**
- * Right-end settings menu on the tab bar. Two toggles — tab position
- * (top vs bottom) and compact mode (dots + counts, labels hidden).
- * Closes on outside-click and Escape. Anchors above or below the bar
- * so the panel never collides with the chart content.
+ * Trailing settings menu on the tab bar. Two preferences — bar
+ * position (top / bottom / left / right) and density (labels vs
+ * dots only). Closes on outside-click and Escape. Anchors out of
+ * the bar in the same direction as the hover-peek popovers so the
+ * panel never collides with the chart content.
  */
 function ChartTabsSettingsMenu({
   position,
@@ -431,11 +509,11 @@ function ChartTabsSettingsMenu({
   setCompact,
   anchor,
 }: {
-  position: "top" | "bottom";
-  setPosition: (p: "top" | "bottom") => void;
+  position: ChartTabPosition;
+  setPosition: (p: ChartTabPosition) => void;
   compact: boolean;
   setCompact: (c: boolean) => void;
-  anchor: "above" | "below";
+  anchor: PeekAnchor;
 }) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -478,9 +556,14 @@ function ChartTabsSettingsMenu({
           role="menu"
           aria-label="Tab bar settings"
           className={cn(
-            "absolute right-0 z-40 w-56",
+            "absolute z-40 w-56",
             "rounded-lg border border-border bg-surface shadow-lg p-1",
-            anchor === "above" ? "bottom-full mb-1" : "top-full mt-1"
+            // Anchor in the same direction as hover-peek popovers so
+            // the panel always opens into the chart content area.
+            anchor === "above" && "bottom-full mb-1 right-0",
+            anchor === "below" && "top-full mt-1 right-0",
+            anchor === "right" && "left-full ml-1 bottom-0",
+            anchor === "left" && "right-full mr-1 bottom-0"
           )}
         >
           <SettingsSection label="Position">
@@ -493,6 +576,16 @@ function ChartTabsSettingsMenu({
               active={position === "bottom"}
               onClick={() => setPosition("bottom")}
               label="Bottom"
+            />
+            <SettingsToggle
+              active={position === "left"}
+              onClick={() => setPosition("left")}
+              label="Left"
+            />
+            <SettingsToggle
+              active={position === "right"}
+              onClick={() => setPosition("right")}
+              label="Right"
             />
           </SettingsSection>
           <SettingsSection label="Density">
