@@ -1,6 +1,14 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
+import {
+  IconLayoutGrid,
+  IconDollar,
+  IconUsers,
+  IconBuilding,
+  IconChart,
+  IconServer,
+} from "@/components/shell/nav-icons";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { prisma } from "@/lib/db/prisma";
@@ -15,11 +23,6 @@ import {
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const MS_PER_HOUR = 1000 * 60 * 60;
-
-// Standard 90-day appeal window from the date of denial. Real payer-specific
-// rules vary; this is a conservative default the badge uses to estimate the
-// "next appeal deadline" so we can flash critical when a claim is about to age
-// out of its appeal window.
 const APPEAL_WINDOW_DAYS = 90;
 
 export default async function OperatorLayout({
@@ -30,7 +33,6 @@ export default async function OperatorLayout({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  // Role check: only operators, practice owners, and system users
   const allowed = user.roles.some(
     (r) => r === "operator" || r === "practice_owner" || r === "system"
   );
@@ -39,18 +41,12 @@ export default async function OperatorLayout({
     redirect(ROLE_HOME[primary] ?? "/");
   }
 
-  // Org isolation: user must have an active org membership.
-  // All data queries downstream filter by user.organizationId,
-  // so even if this check is bypassed, data access is scoped.
   if (!user.organizationId) {
     redirect("/login");
   }
 
   const orgId = user.organizationId;
 
-  // Per-section state for semantic badges. Each load is wrapped — a missing
-  // table or transient DB hiccup must never block the operator from logging
-  // in. The nav silently degrades to "no badge" on failure.
   const safe = async <T,>(fn: () => Promise<T>, fallback: T): Promise<T> => {
     try {
       return await fn();
@@ -79,7 +75,6 @@ export default async function OperatorLayout({
           const deadlineMs =
             d.createdAt.getTime() + APPEAL_WINDOW_DAYS * MS_PER_DAY;
           const hoursLeft = (deadlineMs - now) / MS_PER_HOUR;
-          // Only count not-yet-elapsed deadlines for the "imminent" check.
           if (hoursLeft >= 0) {
             if (minHoursToDeadline === null || hoursLeft < minHoursToDeadline) {
               minHoursToDeadline = hoursLeft;
@@ -96,7 +91,6 @@ export default async function OperatorLayout({
     ),
     safe(
       async () => {
-        // Past-due = open claims older than 30 days with outstanding balance.
         const cutoff = new Date(Date.now() - 30 * MS_PER_DAY);
         const claims = await prisma.claim.findMany({
           where: {
@@ -131,25 +125,15 @@ export default async function OperatorLayout({
   const denialsBadge = computeDenialsBadge(denialsState);
   const agingBadge = computeAgingBadge(agingState);
 
-  // Ambient agent-activity index — "an AI is working on this row right now".
-  // Failures return [] so the rail silently degrades to no-dot.
   const activityIndex = indexActivityByHref(
     await getActiveAgentActivity(orgId),
   );
 
-  // 3-tier IA for the operator console.
-  //
-  //   Tier 1 (always visible) — 5 daily-use items plus the Command Center
-  //                             escape hatch into the clinician space.
-  //   Tier 2 (collapsible)    — Billing (hot zone, expanded by default),
-  //                             Operations, Practice Setup, Intelligence,
-  //                             System (quiet by default).
-  //   Tier 3 (⌘K palette)     — all 35 routes, searchable by name.
-  //
-  // Groups are verb-framed where possible ("Review", "Clear") so the operator
-  // thinks "I'm clearing denials" rather than "I'm in the Billing tab".
   const sections: NavSection[] = [
     {
+      label: "Overview",
+      pillar: "overview",
+      icon: IconLayoutGrid,
       items: [
         { label: "Overview", href: "/ops" },
         { label: "Mission Control", href: "/ops/mission-control" },
@@ -160,6 +144,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Billing",
+      icon: IconDollar,
       items: [
         { label: "Billing", href: "/ops/billing" },
         { label: "Scrub", href: "/ops/scrub" },
@@ -169,10 +154,10 @@ export default async function OperatorLayout({
         { label: "Revenue", href: "/ops/revenue" },
         { label: "Eligibility", href: "/ops/eligibility" },
       ],
-      // Hot zone — expanded on first visit.
     },
     {
       label: "Operations",
+      icon: IconUsers,
       items: [
         { label: "Staff schedule", href: "/ops/staff-schedule" },
         { label: "Time clock", href: "/ops/time-clock" },
@@ -189,6 +174,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Practice Setup",
+      icon: IconBuilding,
       items: [
         { label: "Onboarding", href: "/ops/onboarding" },
         { label: "Practice launch", href: "/ops/launch" },
@@ -199,6 +185,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Intelligence",
+      icon: IconChart,
       items: [
         { label: "Analytics", href: "/ops/analytics" },
         { label: "Analytics Lab", href: "/ops/analytics-lab" },
@@ -208,6 +195,7 @@ export default async function OperatorLayout({
     },
     {
       label: "System",
+      icon: IconServer,
       items: [
         { label: "AI Config", href: "/ops/settings/ai-config" },
         { label: "Webhooks", href: "/ops/webhooks" },
@@ -220,7 +208,6 @@ export default async function OperatorLayout({
     },
   ];
 
-  // Decorate nav items where an agent job is currently running for that href.
   for (const section of sections) {
     for (const item of section.items) {
       const hit = activityIndex[item.href];
