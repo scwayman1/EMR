@@ -62,13 +62,22 @@ export interface AuthedUser {
  * this function don't need to change.
  */
 export const getCurrentUser = cache(async (): Promise<AuthedUser | null> => {
-  // Delegate to Clerk when the feature flag is on
+  // EMR-205: when AUTH_PROVIDER=clerk is set but the legacy iron-session
+  // login action still writes its own cookie, Clerk returns null for
+  // iron-session users and the whole app 401s. Fall through to
+  // iron-session so both auth paths keep working until we finish the
+  // Clerk migration.
   if (process.env.AUTH_PROVIDER === "clerk") {
-    const { getCurrentUserFromClerk } = await import("./clerk-session");
-    return getCurrentUserFromClerk();
+    try {
+      const { getCurrentUserFromClerk } = await import("./clerk-session");
+      const clerkUser = await getCurrentUserFromClerk();
+      if (clerkUser) return clerkUser;
+    } catch (err) {
+      console.warn("[auth] Clerk session lookup failed, falling back:", err);
+    }
   }
 
-  // Legacy iron-session path (default)
+  // Legacy iron-session path (default, and fallback when Clerk has no session)
   const session = await getSession();
   if (!session.userId) return null;
 
