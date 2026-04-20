@@ -55,6 +55,7 @@ model Organization {
   intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
+  weeklyOutcomes   WeeklyOutcome[]
 }
 
 model User {
@@ -179,6 +180,8 @@ model Patient {
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
+  // Weekly subjective outcome scales (pain/sleep/anxiety/mood)
+  weeklyOutcomes       WeeklyOutcome[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -2044,4 +2047,33 @@ model RefillRequest {
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
+}
+
+// --------------------------------------------------------------
+// Weekly Outcome Scales (Dr. Patel Directive)
+//
+// Captures a single weekly snapshot of the four headline subjective
+// outcome dimensions — pain, sleep, anxiety, mood — on a 1-10 scale
+// with anchor-label emojis. One row per patient per ISO week (Monday
+// UTC as the canonical weekStartDate). Resubmits within the same week
+// overwrite via upsert on [patientId, weekStartDate].
+// --------------------------------------------------------------
+
+model WeeklyOutcome {
+  id             String   @id @default(cuid())
+  patientId      String
+  organizationId String
+  weekStartDate  DateTime // Monday 00:00:00 UTC of the ISO week
+  painScore      Int // 1-10, higher = worse pain
+  sleepScore     Int // 1-10, higher = better sleep
+  anxietyScore   Int // 1-10, higher = more anxious
+  moodScore      Int // 1-10, higher = better mood
+  submittedAt    DateTime @default(now())
+
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, weekStartDate])
+  @@index([organizationId, weekStartDate])
+  @@index([patientId, weekStartDate])
 }
