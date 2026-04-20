@@ -141,3 +141,80 @@ export function getProtocolsByCondition(condition: string): DosingProtocol[] {
   const q = condition.toLowerCase();
   return DOSING_PROTOCOLS.filter((p) => p.condition.toLowerCase().includes(q));
 }
+
+/* ────────────────────────────────────────────────────────────────
+ * UI helpers — identifiers, cannabinoid inference, filtering
+ * ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Stable slug identifier derived from condition + route + experience level.
+ * Protocols don't carry their own ID, so we derive one deterministically
+ * for URLs. Lowercase + non-alphanum → dash.
+ */
+export function protocolId(p: DosingProtocol): string {
+  return [p.condition, p.route, p.experienceLevel]
+    .join(" ")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export function findProtocolById(id: string): DosingProtocol | null {
+  return DOSING_PROTOCOLS.find((p) => protocolId(p) === id) ?? null;
+}
+
+/**
+ * Infer which cannabinoids the protocol uses based on its dosing profile.
+ * A protocol is THC-dominant if any step has non-zero THC; CBD-only if
+ * all steps are THC=0; otherwise combination.
+ */
+export type CannabinoidProfile = "THC" | "CBD" | "THC+CBD";
+
+export function cannabinoidProfile(p: DosingProtocol): CannabinoidProfile {
+  const hasThc = p.startingDose.thcMg > 0 || p.titrationSteps.some((s) => s.thcMg > 0);
+  const hasCbd = p.startingDose.cbdMg > 0 || p.titrationSteps.some((s) => s.cbdMg > 0);
+  if (hasThc && hasCbd) return "THC+CBD";
+  if (hasThc) return "THC";
+  return "CBD";
+}
+
+export interface ProtocolFilters {
+  condition?: string;
+  cannabinoid?: CannabinoidProfile | string;
+  route?: string;
+}
+
+/**
+ * Pure filter for protocol lists. All filters are case-insensitive and
+ * substring-matched (condition, route), except cannabinoid which is an
+ * exact profile match after uppercasing. Omitted filters are ignored.
+ */
+export function filterProtocols(
+  protocols: DosingProtocol[],
+  filters: ProtocolFilters = {},
+): DosingProtocol[] {
+  const condQ = filters.condition?.trim().toLowerCase();
+  const routeQ = filters.route?.trim().toLowerCase();
+  const cbQ = filters.cannabinoid?.toString().trim().toUpperCase();
+
+  return protocols.filter((p) => {
+    if (condQ && !p.condition.toLowerCase().includes(condQ)) return false;
+    if (routeQ && !p.route.toLowerCase().includes(routeQ)) return false;
+    if (cbQ && cbQ !== "ALL" && cannabinoidProfile(p) !== cbQ) return false;
+    return true;
+  });
+}
+
+/** Unique condition names present in the protocol library, sorted. */
+export function uniqueConditions(protocols: DosingProtocol[] = DOSING_PROTOCOLS): string[] {
+  return Array.from(new Set(protocols.map((p) => p.condition))).sort();
+}
+
+/** Unique cannabinoid profiles present, in canonical order. */
+export function uniqueCannabinoids(
+  protocols: DosingProtocol[] = DOSING_PROTOCOLS,
+): CannabinoidProfile[] {
+  const set = new Set<CannabinoidProfile>(protocols.map(cannabinoidProfile));
+  const order: CannabinoidProfile[] = ["THC", "CBD", "THC+CBD"];
+  return order.filter((c) => set.has(c));
+}
