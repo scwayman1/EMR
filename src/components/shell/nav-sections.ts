@@ -12,6 +12,7 @@
  */
 
 import { aggregateBadge, type NavBadge } from "@/lib/domain/nav-badges";
+import type { NavAgentActivity } from "@/lib/domain/nav-agent-activity";
 import type * as React from "react";
 
 export type { NavBadge } from "@/lib/domain/nav-badges";
@@ -34,6 +35,13 @@ export interface NavItem {
   countTone?: CountTone;
   /** Semantic badge — preferred. Takes precedence over count/countTone. */
   badge?: NavBadge | null;
+  /**
+   * Ambient "an AI agent is actively working here" indicator. Additive —
+   * renders alongside the existing count / semantic badge, not in place of it.
+   * Populated by the layout by calling `getActiveAgentActivity()`; null/undef
+   * means no agent is currently running for this nav entry.
+   */
+  activity?: NavAgentActivity | null;
 }
 
 export interface NavSection {
