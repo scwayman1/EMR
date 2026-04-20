@@ -12,6 +12,10 @@ import {
   computeLabsBadge,
   computeRefillsBadge,
 } from "@/lib/domain/nav-badges";
+import {
+  getActiveAgentActivity,
+  indexActivityByHref,
+} from "@/lib/domain/nav-agent-activity";
 
 export default async function ClinicianLayout({
   children,
@@ -38,6 +42,15 @@ export default async function ClinicianLayout({
       return 0;
     }
   };
+
+  // Ambient agent-activity indicators (emerald/sky pulsing dot on the rail).
+  // Loaded in parallel with the count queries; failures return [] silently so
+  // they can never block login.
+  const activityIndex = indexActivityByHref(
+    user.organizationId
+      ? await getActiveAgentActivity(user.organizationId)
+      : [],
+  );
 
   const [
     pendingCount,
@@ -158,6 +171,15 @@ export default async function ClinicianLayout({
       defaultCollapsed: true,
     },
   ];
+
+  // Decorate any nav item whose href has a currently-running agent job. Pure
+  // in-place pass over the section tree we just built.
+  for (const section of sections) {
+    for (const item of section.items) {
+      const hit = activityIndex[item.href];
+      if (hit) item.activity = hit;
+    }
+  }
 
   return (
     <AppShell
