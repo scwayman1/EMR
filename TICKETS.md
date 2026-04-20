@@ -2293,6 +2293,43 @@ Two marketing polish items on the public landing page:
 
 ---
 
+### EMR-205: P1 BUG — Patient Portal Stuck on Loading Skeleton (`/portal`)
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel (live demo environment, 2026-04-20)
+**Status:** open, needs investigation on deployed build
+
+**Symptom:**
+Hitting `/portal` (and `/clinic` per Dr. Patel) shows the shell + sidebar + authed user correctly, but the main content area is stuck on the skeleton placeholders from `src/app/(patient)/portal/loading.tsx`. Nav items do not click — hydration never completes, so client-side Link clicks are no-ops.
+
+**Diagnosis so far:**
+Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The server component `PatientHome` in `src/app/(patient)/portal/page.tsx:126` never returns → Suspense boundary stays on `loading.tsx` → React never hydrates → clicks dead.
+
+**Top suspects (ordered):**
+1. `prisma.patient.findUnique(...)` at `page.tsx:129` with 6 nested includes — DB pool exhaustion or unreachable DATABASE_URL yields a silent hang (not an error).
+2. `computePlantHealth(patient.id)` at `page.tsx:157` — fires multiple Prisma queries; same pool exposure.
+3. Clerk auth scaffolding (`commit 7bf2d4d`) — if `AUTH_PROVIDER=clerk` is set in the env but keys are missing/invalid, the dynamic import in `getCurrentUser` can hang.
+
+**Demo-time triage (already communicated):**
+1. Hard refresh (Cmd+Shift+R)
+2. Sign out → sign back in
+3. Redeploy (Vercel) to reset the DB pool
+4. Demo from a sub-route (`/portal/log-dose`, `/portal/garden`, `/portal/combo-wheel`) which each load independently
+
+**Fix plan (post-demo):**
+- Wrap the home-page data loads in `Promise.race` with a 5s timeout + graceful empty-state fallback so a hanging DB call never wedges the whole page.
+- Add query-level timeouts to `computePlantHealth`.
+- Audit DB pool size vs. deployed concurrency; confirm DATABASE_URL reachable from the runtime.
+- Verify `AUTH_PROVIDER` env var matches the running auth backend; fail fast if misconfigured.
+- Add an observability hook (server log + Sentry) around the home-page query so the next hang surfaces with context, not silence.
+
+**Acceptance criteria:**
+- `/portal` returns content (or a graceful empty state) within 5s even if one downstream query stalls
+- Hydration completes; nav links clickable
+- Root cause of the hang documented and fixed at the source
+- Regression test: integration test that mocks a slow Prisma response and asserts the page still renders
+
+---
+
 ## Updated Summary (after Wave 16+ backlog expansion)
 
 | # | Title | Priority | Status |
@@ -2409,5 +2446,6 @@ Two marketing polish items on the public landing page:
 | 202 | Education page — Justin Kander research PDF under Research tab | Normal | backlog |
 | 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
 | 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
+| 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **open** |
 
-**Grand total: 204 tickets.** Product Drop #9.
+**Grand total: 205 tickets.** Product Drop #9.
