@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { requireRole } from "@/lib/auth/session";
+import { getCurrentUser, requireRole } from "@/lib/auth/session";
 
 /**
  * Post-dose follow-up check-in action.
@@ -78,4 +78,87 @@ export async function createFollowUpLog(input: {
   revalidatePath("/portal/weekly-recap");
 
   return { ok: true };
+}
+
+/**
+ * Post-dose emoji check-in.
+ *
+ * Writes one `EmojiOutcome` row scoped to the current user's
+ * organization. Returns `{ ok: true }` on success or a human-readable
+ * error. Never throws for expected validation / auth problems so the
+ * client can render inline feedback.
+ */
+
+const emojiOutcomeSchema = z.object({
+  feeling: z.enum([
+    "much_better",
+    "better",
+    "same",
+    "worse",
+    "much_worse",
+  ]),
+  reliefLevel: z.coerce.number().int().min(1).max(10),
+  productId: z.string().trim().max(64).optional().nullable(),
+  takenAt: z
+    .string()
+    .datetime({ offset: true })
+    .optional()
+    .nullable(),
+});
+
+export type EmojiOutcomeInput = z.input<typeof emojiOutcomeSchema>;
+
+export type EmojiOutcomeResult =
+  | { ok: true; id: string }
+  | { ok: false; error: string };
+
+export async function logEmojiOutcome(
+  input: EmojiOutcomeInput,
+): Promise<EmojiOutcomeResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not signed in." };
+  if (!user.roles.includes("patient")) {
+    return { ok: false, error: "Only patients can log dose check-ins." };
+  }
+  if (!user.organizationId) {
+    return { ok: false, error: "No organization on account." };
+  }
+
+  const parsed = emojiOutcomeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid check-in payload." };
+  }
+
+  const patient = await prisma.patient.findUnique({
+    where: { userId: user.id },
+    select: { id: true, organizationId: true },
+  });
+  if (!patient) return { ok: false, error: "No patient profile found." };
+  // Defensive: make sure the patient row belongs to the same org as the
+  // caller's active membership before we persist anything.
+  if (patient.organizationId !== user.organizationId) {
+    return { ok: false, error: "Organization mismatch." };
+  }
+
+  const takenAt = parsed.data.takenAt
+    ? new Date(parsed.data.takenAt)
+    : new Date();
+
+  const row = await prisma.emojiOutcome.create({
+    data: {
+      patientId: patient.id,
+      organizationId: user.organizationId,
+      productId: parsed.data.productId ?? null,
+      feeling: parsed.data.feeling,
+      reliefLevel: parsed.data.reliefLevel,
+      takenAt,
+    },
+    select: { id: true },
+  });
+
+  revalidatePath("/portal/log-dose");
+  revalidatePath("/portal/outcomes");
+  revalidatePath("/portal/efficacy");
+
+  return { ok: true, id: row.id };
 }

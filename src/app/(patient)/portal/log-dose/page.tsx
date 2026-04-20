@@ -4,6 +4,7 @@ import { PageShell, PageHeader } from "@/components/shell/PageHeader";
 import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { Eyebrow } from "@/components/ui/ornament";
 import { QuickDoseLogger } from "./quick-dose-logger";
+import { EmojiCheckin } from "@/components/patient/emoji-checkin";
 
 export const metadata = { title: "Log Dose" };
 
@@ -57,6 +58,10 @@ export default async function LogDosePage() {
       </div>
 
       <QuickDoseLogger patientId={patient.id} products={products} />
+
+      <div className="mt-10">
+        <EmojiCheckin />
+      </div>
     </PageShell>
   );
 }
