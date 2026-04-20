@@ -55,6 +55,7 @@ model Organization {
   intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
+  voiceEnrollments VoiceEnrollment[]
 }
 
 model User {
@@ -79,6 +80,7 @@ model User {
   signedLabResults     LabResult[]     @relation("LabResultSigner")
   approvedLabOutreach  LabOutreach[]   @relation("LabOutreachApprover")
   signedRefills        RefillRequest[] @relation("RefillSigner")
+  voiceEnrollments     VoiceEnrollment[]
 }
 
 model Membership {
@@ -2044,4 +2046,40 @@ model RefillRequest {
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
+}
+
+// --------------------------------------------------------------
+// Voice Enrollment — speaker diarization scaffolding
+// --------------------------------------------------------------
+// One row per (user, organization) capturing the state of their
+// speaker enrollment. Voice dictation today recognizes only a
+// single speaker; populating sampleAudioUrl + embeddingRef lets a
+// future speaker-recognition provider (Azure Speaker Recognition,
+// AssemblyAI speaker identification, pyannote) tie clips to the
+// correct clinician or patient. This is a stub: no provider calls
+// yet, just the data model + UI surface.
+// --------------------------------------------------------------
+
+enum VoiceEnrollmentStatus {
+  pending
+  enrolled
+  failed
+}
+
+model VoiceEnrollment {
+  id             String                @id @default(cuid())
+  userId         String
+  organizationId String
+  status         VoiceEnrollmentStatus @default(pending)
+  sampleAudioUrl String? // S3 (or equivalent) URL for the captured sample; null until a sample is stored
+  embeddingRef   String? // opaque provider ID (e.g. Azure Speaker Recognition profile ID); null until provider call succeeds
+  enrolledAt     DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, status])
 }
