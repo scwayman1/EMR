@@ -3,6 +3,96 @@ import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 
 // ---------------------------------------------------------------------------
+// Pure helpers (extracted for testing)
+// ---------------------------------------------------------------------------
+
+export type ReconPayment = {
+  id: string;
+  amountCents: number;
+  source: string;
+};
+
+export type ReconLedgerEvent = {
+  paymentId: string;
+  amountCents: number;
+  type: string;
+};
+
+export type ReconException = {
+  paymentId: string;
+  reason: string;
+  amountCents: number;
+};
+
+/** Map a payment source onto the financial-event type the reconciliation
+ * agent looks for. Pure so tests can assert the contract. */
+export function expectedEventTypeFor(source: string): "insurance_paid" | "patient_payment" {
+  return source === "insurance" ? "insurance_paid" : "patient_payment";
+}
+
+/** Pure payment-to-ledger matcher. Given a payment and the candidate
+ * financial event (or null if none found), return either a matched result
+ * or a variance exception. Extracted so all of the "is this reconciled?"
+ * logic can be covered without touching Prisma. */
+export function matchPaymentToEvent(
+  payment: ReconPayment,
+  event: ReconLedgerEvent | null,
+): { matched: true } | { matched: false; exception: ReconException } {
+  if (!event) {
+    return {
+      matched: false,
+      exception: {
+        paymentId: payment.id,
+        reason: "Payment recorded but no matching ledger event",
+        amountCents: payment.amountCents,
+      },
+    };
+  }
+
+  if (event.amountCents !== payment.amountCents) {
+    return {
+      matched: false,
+      exception: {
+        paymentId: payment.id,
+        reason: `Ledger event amount (${event.amountCents / 100}) does not match payment amount (${payment.amountCents / 100})`,
+        amountCents: payment.amountCents,
+      },
+    };
+  }
+
+  return { matched: true };
+}
+
+/** Fold a list of payments + their matched events into a reconciliation
+ * summary. Tests can feed fixture inputs rather than spinning up Prisma. */
+export function reconcilePayments(
+  pairs: Array<{ payment: ReconPayment; event: ReconLedgerEvent | null }>,
+): {
+  matched: number;
+  exceptions: ReconException[];
+  totalCheckedCents: number;
+  totalUnmatchedCents: number;
+} {
+  let matched = 0;
+  let totalCheckedCents = 0;
+  let totalUnmatchedCents = 0;
+  const exceptions: ReconException[] = [];
+
+  for (const { payment, event } of pairs) {
+    totalCheckedCents += payment.amountCents;
+    const res = matchPaymentToEvent(payment, event);
+    if (res.matched) {
+      matched++;
+    } else {
+      exceptions.push(res.exception);
+      totalUnmatchedCents += payment.amountCents;
+    }
+  }
+
+  return { matched, exceptions, totalCheckedCents, totalUnmatchedCents };
+}
+
+// ---------------------------------------------------------------------------
 // Reconciliation Agent
 // ---------------------------------------------------------------------------
 // Per PRD §13.2 #9: "Reconcile payments, settlements, deposits, and ledger
@@ -72,45 +162,38 @@ export const reconciliationAgent: Agent<
       include: { claim: true },
     });
 
-    const exceptions: { paymentId: string; reason: string; amountCents: number }[] = [];
-    let matched = 0;
-    let totalCheckedCents = 0;
-    let totalUnmatchedCents = 0;
-
+    // Collect each payment + its candidate ledger event, then fold through
+    // the pure reconciler so all variance logic is exercised in one place.
+    const pairs: Array<{ payment: ReconPayment; event: ReconLedgerEvent | null }> = [];
     for (const payment of payments) {
-      totalCheckedCents += payment.amountCents;
-
-      // Look for a matching financial event
       const matchingEvent = await prisma.financialEvent.findFirst({
         where: {
           paymentId: payment.id,
-          type: payment.source === "insurance" ? "insurance_paid" : "patient_payment",
+          type: expectedEventTypeFor(payment.source),
         },
       });
-
-      if (!matchingEvent) {
-        exceptions.push({
-          paymentId: payment.id,
-          reason: "Payment recorded but no matching ledger event",
+      pairs.push({
+        payment: {
+          id: payment.id,
           amountCents: payment.amountCents,
-        });
-        totalUnmatchedCents += payment.amountCents;
-        continue;
-      }
-
-      // Verify amounts match
-      if (matchingEvent.amountCents !== payment.amountCents) {
-        exceptions.push({
-          paymentId: payment.id,
-          reason: `Ledger event amount (${matchingEvent.amountCents / 100}) does not match payment amount (${payment.amountCents / 100})`,
-          amountCents: payment.amountCents,
-        });
-        totalUnmatchedCents += payment.amountCents;
-        continue;
-      }
-
-      matched++;
+          source: payment.source,
+        },
+        event: matchingEvent
+          ? {
+              paymentId: matchingEvent.paymentId ?? payment.id,
+              amountCents: matchingEvent.amountCents,
+              type: matchingEvent.type,
+            }
+          : null,
+      });
     }
+
+    const {
+      matched,
+      exceptions,
+      totalCheckedCents,
+      totalUnmatchedCents,
+    } = reconcilePayments(pairs);
 
     // Write reconciliation summary as a financial event so it shows up in audit
     if (payments.length > 0) {

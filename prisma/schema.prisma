@@ -280,6 +280,7 @@ model Encounter {
   scheduledFor        DateTime?
   startedAt           DateTime?
   completedAt         DateTime?
+  chartingCompletedAt DateTime? // When the physician finalized all notes for this encounter. NULL while documentation is still in draft / incomplete.
   modality            String          @default("in_person") // in_person | video | phone
   placeOfService      String? // 2-digit POS code: 11=office, 02=telehealth
   renderingProviderId String? // if different from scheduling provider
