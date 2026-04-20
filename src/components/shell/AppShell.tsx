@@ -13,6 +13,7 @@ import type { NavItem, NavSection } from "./nav-sections";
 // Re-export so existing consumers (each layout) can keep importing the
 // NavItem / NavSection types from this module.
 export type { NavItem, NavSection } from "./nav-sections";
+export type { BadgeSeverity, NavBadge } from "@/lib/domain/nav-badges";
 
 export interface AppShellProps {
   user: AuthedUser;
