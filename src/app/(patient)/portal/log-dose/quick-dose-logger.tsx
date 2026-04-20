@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,11 @@ import {
   type EmojiRating,
   type QuickDoseLog,
 } from "@/lib/domain/emoji-outcomes";
+import { useSmartDefault } from "@/lib/hooks/useSmartDefault";
 import { createFollowUpLog } from "./actions";
+
+/** Smart-defaults form id — stable across releases; versioned via the storage prefix. */
+const DOSE_LOG_FORM_ID = "dose-log";
 
 /* ── Types ──────────────────────────────────────────────── */
 
@@ -47,6 +51,31 @@ export function QuickDoseLogger({ patientId, products }: Props) {
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [prompt] = useState(getRandomPrompt);
 
+  /* ── Smart defaults (rule 4: auto-population everywhere) ─── */
+  // Remembers the patient's most-recently-picked product id so the UI
+  // can surface it as "Pre-filled from your last session".
+  const [lastProductId, setLastProductId, productMeta] = useSmartDefault<
+    string | null
+  >(patientId, DOSE_LOG_FORM_ID, "last-product-id", null);
+  // Remember the dose amount used last time for this product. Keyed per
+  // product id so switching products doesn't surface a stale amount.
+  const [lastDoseAmount, setLastDoseAmount, doseMeta] = useSmartDefault<
+    number | null
+  >(patientId, DOSE_LOG_FORM_ID, "last-dose-amount", null);
+
+  // Sort products so the last-picked one floats to the top of the
+  // picker — that is the "auto-populated dropdown" from rule 4.
+  const orderedProducts = useMemo(() => {
+    if (!lastProductId) return products;
+    const hit = products.find((p) => p.id === lastProductId);
+    if (!hit) return products;
+    return [hit, ...products.filter((p) => p.id !== lastProductId)];
+  }, [products, lastProductId]);
+
+  const prefilledProduct = productMeta.prefilled
+    ? products.find((p) => p.id === lastProductId) ?? null
+    : null;
+
   // Only show the 3 most relevant scales based on product type
   const relevantScales = OUTCOME_SCALES.slice(0, 3);
 
@@ -56,6 +85,14 @@ export function QuickDoseLogger({ patientId, products }: Props) {
     setEmoji(null);
     setScales({});
     setSelectedEffects([]);
+  }
+
+  function pickProduct(p: ProductInfo) {
+    setSelectedProduct(p);
+    // Persist for next visit — the dropdown + amount will pre-fill.
+    setLastProductId(p.id);
+    setLastDoseAmount(p.doseAmount);
+    setStep("emoji");
   }
 
   /* ── Step 1: Pick product ─────────────────────────────── */
@@ -79,14 +116,42 @@ export function QuickDoseLogger({ patientId, products }: Props) {
         <p className="text-center text-sm text-text-muted mb-4">
           What did you just take?
         </p>
-        {products.map((p) => (
+        {prefilledProduct && (
+          <div className="rounded-xl bg-accent-soft/60 border border-accent/20 px-4 py-2.5 text-[12px] text-accent flex items-center justify-between">
+            <span>
+              <span aria-hidden>✨</span> Pre-filled from your last session —{" "}
+              <span className="font-medium">{prefilledProduct.name}</span>
+              {doseMeta.prefilled && lastDoseAmount !== null && (
+                <>
+                  {" "}at{" "}
+                  <span className="font-medium">
+                    {lastDoseAmount} {prefilledProduct.doseUnit}
+                  </span>
+                </>
+              )}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                productMeta.clear();
+                doseMeta.clear();
+              }}
+              className="text-[11px] text-text-muted hover:text-accent underline-offset-2 hover:underline shrink-0 ml-3"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+        {orderedProducts.map((p) => (
           <button
             key={p.id}
-            onClick={() => {
-              setSelectedProduct(p);
-              setStep("emoji");
-            }}
-            className="w-full text-left rounded-2xl border border-border bg-white p-5 hover:border-accent hover:shadow-sm transition-all active:scale-[0.98]"
+            onClick={() => pickProduct(p)}
+            className={cn(
+              "w-full text-left rounded-2xl border bg-white p-5 hover:border-accent hover:shadow-sm transition-all active:scale-[0.98]",
+              prefilledProduct?.id === p.id
+                ? "border-accent shadow-sm ring-1 ring-accent/30"
+                : "border-border",
+            )}
           >
             <div className="flex items-center justify-between">
               <div>
