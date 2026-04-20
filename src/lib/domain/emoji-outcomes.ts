@@ -93,3 +93,65 @@ export const CHECK_IN_PROMPTS = [
 export function getRandomPrompt(): string {
   return CHECK_IN_PROMPTS[Math.floor(Math.random() * CHECK_IN_PROMPTS.length)];
 }
+
+// ── Post-dose check-in enum helpers ────────────────────
+// These helpers power the EmojiOutcome model. Kept framework-free so
+// they can be unit-tested under node vitest with zero Prisma/React deps.
+
+export type EmojiFeeling =
+  | "much_better"
+  | "better"
+  | "same"
+  | "worse"
+  | "much_worse";
+
+export interface FeelingLabel {
+  emoji: string;
+  label: string;
+}
+
+export const FEELING_LABELS: Record<EmojiFeeling, FeelingLabel> = {
+  much_better: { emoji: "😊", label: "Much better" },
+  better: { emoji: "🙂", label: "Better" },
+  same: { emoji: "😐", label: "About the same" },
+  worse: { emoji: "😕", label: "Worse" },
+  much_worse: { emoji: "😢", label: "Much worse" },
+};
+
+export interface EmojiOutcomeRecord {
+  feeling: EmojiFeeling;
+  reliefLevel: number;
+}
+
+/**
+ * Average relief level across a list of outcomes. Returns 0 for an empty
+ * list (caller decides how to display "no data yet"). Rounded to 2
+ * decimals so UI doesn't flash 7.3333333.
+ */
+export function computeAverageRelief(
+  outcomes: ReadonlyArray<EmojiOutcomeRecord>,
+): number {
+  if (outcomes.length === 0) return 0;
+  const total = outcomes.reduce((sum, o) => sum + o.reliefLevel, 0);
+  return Math.round((total / outcomes.length) * 100) / 100;
+}
+
+/**
+ * Bucket outcomes by feeling enum. Returns every key — absent feelings
+ * default to 0 so charts don't need null-guards.
+ */
+export function countByFeeling(
+  outcomes: ReadonlyArray<EmojiOutcomeRecord>,
+): Record<EmojiFeeling, number> {
+  const counts: Record<EmojiFeeling, number> = {
+    much_better: 0,
+    better: 0,
+    same: 0,
+    worse: 0,
+    much_worse: 0,
+  };
+  for (const o of outcomes) {
+    counts[o.feeling] += 1;
+  }
+  return counts;
+}
