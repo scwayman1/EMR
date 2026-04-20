@@ -29,7 +29,6 @@ const MISSION_CONTROL_TIMEOUT_MS = 8_000;
 // page with zeros/empty lists instead of stranding the user. Typed as
 // `any` intentionally — the destructured tuple has deep Prisma types
 // and we just need the shape.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const MISSION_CONTROL_FALLBACK: any = [
   [],  //  1 todaysEncounters
   0,   //  2 openNotes
@@ -452,7 +451,7 @@ export default async function ClinicHomePage() {
   const avgReadiness =
     allChartSummaries.length > 0
       ? Math.round(
-          allChartSummaries.reduce((s, c) => s + c.completenessScore, 0) /
+          allChartSummaries.reduce((s: number, c: { completenessScore: number }) => s + c.completenessScore, 0) /
             allChartSummaries.length
         )
       : 0;
@@ -774,7 +773,7 @@ export default async function ClinicHomePage() {
           </Card>
         ) : (
           <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
-            {todaysEncounters.map((enc) => {
+            {todaysEncounters.map((enc: any) => {
               const readiness = enc.patient.chartSummary?.completenessScore ?? null;
               const status = readinessStatus(readiness);
 
@@ -956,7 +955,7 @@ export default async function ClinicHomePage() {
                 </p>
               ) : (
                 <ul className="space-y-1 -mx-2">
-                  {needsReviewNotes.map((note) => (
+                  {needsReviewNotes.map((note: any) => (
                     <li key={note.id}>
                       <Link
                         href={`/clinic/patients/${note.encounter.patient.id}/notes/${note.id}`}

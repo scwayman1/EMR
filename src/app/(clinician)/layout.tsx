@@ -1,6 +1,12 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
+import {
+  IconHome,
+  IconClipboardCheck,
+  IconBookOpen,
+  IconSettings,
+} from "@/components/shell/nav-icons";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
@@ -12,6 +18,10 @@ import {
   computeLabsBadge,
   computeRefillsBadge,
 } from "@/lib/domain/nav-badges";
+import {
+  getActiveAgentActivity,
+  indexActivityByHref,
+} from "@/lib/domain/nav-agent-activity";
 
 export default async function ClinicianLayout({
   children,
@@ -25,11 +35,6 @@ export default async function ClinicianLayout({
     redirect(ROLE_HOME[primary] ?? "/");
   }
 
-  // Live counts so the nav can telegraph agent activity the moment you log in.
-  // Pending AI drafts = Nurse Nora (et al.) needs your sign-off.
-  // Emergency count promotes the pill to red + pulse.
-  // Each count is wrapped: a missing table (P2021) or any transient DB error
-  // must never block login. The nav falls back to 0 and the page still renders.
   const safeCount = async (fn: () => Promise<number>) => {
     try {
       return await fn();
@@ -38,6 +43,12 @@ export default async function ClinicianLayout({
       return 0;
     }
   };
+
+  const activityIndex = indexActivityByHref(
+    user.organizationId
+      ? await getActiveAgentActivity(user.organizationId)
+      : [],
+  );
 
   const [
     pendingCount,
@@ -72,19 +83,12 @@ export default async function ClinicianLayout({
       ),
       safeCount(() =>
         prisma.labResult.count({
-          where: {
-            organizationId: orgId,
-            signedAt: null,
-          },
+          where: { organizationId: orgId, signedAt: null },
         })
       ),
       safeCount(() =>
         prisma.labResult.count({
-          where: {
-            organizationId: orgId,
-            signedAt: null,
-            abnormalFlag: true,
-          },
+          where: { organizationId: orgId, signedAt: null, abnormalFlag: true },
         })
       ),
       safeCount(() =>
@@ -99,14 +103,11 @@ export default async function ClinicianLayout({
     ]);
   })();
 
-  // 3-tier IA:
-  //   Tier 1 (always visible) — the daily-use items.
-  //   Tier 2 (collapsible)    — Review / Reference / Admin, grouped by what
-  //                             the clinician is *doing*, not what they're
-  //                             looking at.
-  //   Tier 3 (⌘K palette)     — everything else, discoverable via search.
   const sections: NavSection[] = [
     {
+      label: "Today",
+      pillar: "today",
+      icon: IconHome,
       items: [
         { label: "Today", href: "/clinic" },
         { label: "Command Center", href: "/clinic/command" },
@@ -116,14 +117,12 @@ export default async function ClinicianLayout({
     },
     {
       label: "Review",
+      icon: IconClipboardCheck,
       items: [
         {
           label: "Approvals",
           href: "/clinic/approvals",
-          badge: computeApprovalsBadge({
-            pendingCount,
-            emergencyCount,
-          }),
+          badge: computeApprovalsBadge({ pendingCount, emergencyCount }),
         },
         {
           label: "Labs",
@@ -142,6 +141,7 @@ export default async function ClinicianLayout({
     },
     {
       label: "Reference",
+      icon: IconBookOpen,
       items: [
         { label: "Providers", href: "/clinic/providers" },
         { label: "Research", href: "/clinic/research" },
@@ -151,6 +151,7 @@ export default async function ClinicianLayout({
     },
     {
       label: "Admin",
+      icon: IconSettings,
       items: [
         { label: "Audit", href: "/clinic/audit-trail" },
         { label: "Brief", href: "/clinic/morning-brief" },
@@ -158,6 +159,13 @@ export default async function ClinicianLayout({
       defaultCollapsed: true,
     },
   ];
+
+  for (const section of sections) {
+    for (const item of section.items) {
+      const hit = activityIndex[item.href];
+      if (hit) item.activity = hit;
+    }
+  }
 
   return (
     <AppShell
