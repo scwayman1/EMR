@@ -16,6 +16,7 @@ import {
   type NavSection,
 } from "./nav-sections";
 import type { BadgeSeverity, NavBadge } from "@/lib/domain/nav-badges";
+import { NavActivityDot } from "./NavActivityDot";
 
 /**
  * Rail renderer for the 3-tier IA.
@@ -51,9 +52,9 @@ function CountBadge({ count, tone }: { count: number; tone: CountTone }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // Semantic badge presentation
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // `ok` severity renders nothing — the section is silent-green. The dot color
 // signals severity at a glance; the label gives the punchline; `context`
 // becomes a native title-attribute tooltip.
@@ -150,6 +151,7 @@ function ItemLink({
         )}
       />
       <span className="flex-1">{item.label}</span>
+      {item.activity && <NavActivityDot tone={item.activity.tone} />}
       <NavItemBadge item={item} />
     </Link>
   );
