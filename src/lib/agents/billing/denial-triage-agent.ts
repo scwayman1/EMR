@@ -9,6 +9,54 @@ import {
 } from "@/lib/billing/denials";
 
 // ---------------------------------------------------------------------------
+// Pure helpers (extracted for testing)
+// ---------------------------------------------------------------------------
+
+/** Map a denial urgency to the number of days a follow-up task is given
+ * before it's due. Pure so callers can reuse and tests can verify. */
+export function dueDaysForUrgency(urgency: "high" | "medium" | "low"): number {
+  if (urgency === "high") return 2;
+  if (urgency === "medium") return 5;
+  return 10;
+}
+
+/** Claim statuses that are eligible for denial triage. The agent is a no-op
+ * for anything else — tracking it here so the guard is testable. */
+export const TRIAGE_ELIGIBLE_STATUSES = ["denied", "appealed"] as const;
+
+export function isTriageEligible(claimStatus: string): boolean {
+  return (TRIAGE_ELIGIBLE_STATUSES as readonly string[]).includes(claimStatus);
+}
+
+/** Shape returned by classifyDenial + a derived due date, in one call —
+ * useful for callers that want the full triage packet. */
+export function buildDenialTriagePlan(
+  denialReason: string | null | undefined,
+  now: Date = new Date(),
+): {
+  category: DenialCategory;
+  label: string;
+  suggestedAction: string;
+  urgency: "high" | "medium" | "low";
+  description: string;
+  dueDays: number;
+  dueAt: Date;
+} {
+  const entry = classifyDenial(denialReason);
+  const dueDays = dueDaysForUrgency(entry.urgency);
+  const dueAt = new Date(now.getTime() + dueDays * 24 * 60 * 60 * 1000);
+  return {
+    category: entry.category,
+    label: entry.label,
+    suggestedAction: entry.suggestedAction,
+    urgency: entry.urgency,
+    description: entry.description,
+    dueDays,
+    dueAt,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Denial Triage Agent
 // ---------------------------------------------------------------------------
 // Per PRD §13.2 #7: "Turn denials into structured next actions."
@@ -83,7 +131,7 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
     }
     assertOrgMatch(claim.organizationId, ctx.organizationId, "claim", claim.id);
 
-    if (claim.status !== "denied" && claim.status !== "appealed") {
+    if (!isTriageEligible(claim.status)) {
       ctx.log("warn", "Claim is not in denied state — skipping triage", {
         status: claim.status,
       });
@@ -117,7 +165,7 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
     // Create a billing task with the suggested next action
     ctx.assertCan("write.task");
 
-    const dueDays = triage.urgency === "high" ? 2 : triage.urgency === "medium" ? 5 : 10;
+    const dueDays = dueDaysForUrgency(triage.urgency);
     const task = await prisma.task.create({
       data: {
         patientId: claim.patientId,
