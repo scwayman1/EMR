@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { NavItemBadge, navItemAriaLabel } from "./NavSections";
+import { NavActivityDot } from "./NavActivityDot";
 import { itemMatchesPath, type NavSection } from "./nav-sections";
 
 export interface ContextDrawerProps {
@@ -89,6 +90,7 @@ export function ContextDrawer({ section, pathname, onClose }: ContextDrawerProps
                         )}
                       />
                       <span className="flex-1">{item.label}</span>
+                      {item.activity && <NavActivityDot tone={item.activity.tone} />}
                       <NavItemBadge item={item} />
                     </Link>
                   </li>
