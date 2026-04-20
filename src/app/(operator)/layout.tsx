@@ -16,6 +16,10 @@ import {
   computeAgingBadge,
   computeDenialsBadge,
 } from "@/lib/domain/nav-badges";
+import {
+  getActiveAgentActivity,
+  indexActivityByHref,
+} from "@/lib/domain/nav-agent-activity";
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const MS_PER_HOUR = 1000 * 60 * 60;
@@ -135,6 +139,12 @@ export default async function OperatorLayout({
   const denialsBadge = computeDenialsBadge(denialsState);
   const agingBadge = computeAgingBadge(agingState);
 
+  // Ambient agent-activity index — "an AI is working on this row right now".
+  // Failures return [] so the rail silently degrades to no-dot.
+  const activityIndex = indexActivityByHref(
+    await getActiveAgentActivity(orgId),
+  );
+
   // 3-tier IA for the operator console.
   //
   //   Tier 1 (always visible) — 5 daily-use items plus the Command Center
@@ -225,6 +235,14 @@ export default async function OperatorLayout({
       defaultCollapsed: true,
     },
   ];
+
+  // Decorate nav items where an agent job is currently running for that href.
+  for (const section of sections) {
+    for (const item of section.items) {
+      const hit = activityIndex[item.href];
+      if (hit) item.activity = hit;
+    }
+  }
 
   return (
     <AppShell
