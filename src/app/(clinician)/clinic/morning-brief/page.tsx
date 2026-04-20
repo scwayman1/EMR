@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
@@ -12,8 +13,54 @@ import {
   calculateNoShowRisk,
   type NoShowRiskFactors,
 } from "@/lib/domain/clinical-intelligence";
+import { buildBriefContext } from "@/lib/domain/morning-brief";
+import { synthesizeMorningBrief } from "@/lib/agents/morning-brief-synthesizer";
+import {
+  BriefSynthesisCard,
+  BriefSynthesisUnavailableCard,
+} from "@/components/clinician/brief-synthesis-card";
 
 export const metadata = { title: "Morning Brief" };
+
+// ---------------------------------------------------------------------------
+// Streaming AI synthesis slot.
+// Rendered under <Suspense> so the static checklist paints first and the AI
+// card fades in on top when the model resolves. If synthesis throws we
+// render a graceful "unavailable" card and leave the rest of the page intact.
+// ---------------------------------------------------------------------------
+async function SynthesisSlot({
+  organizationId,
+  clinicianId,
+  date,
+}: {
+  organizationId: string;
+  clinicianId: string;
+  date: Date;
+}) {
+  try {
+    const context = await buildBriefContext(organizationId, clinicianId, date);
+    const synthesis = await synthesizeMorningBrief(context);
+    return <BriefSynthesisCard synthesis={synthesis} generatedAt={new Date()} />;
+  } catch {
+    return <BriefSynthesisUnavailableCard />;
+  }
+}
+
+function SynthesisSkeleton() {
+  return (
+    <div
+      aria-label="Generating AI synthesis"
+      className="mb-6 rounded-2xl border border-border/80 bg-surface shadow-sm px-5 py-5 animate-pulse"
+    >
+      <div className="h-4 w-24 bg-stone-200 rounded-full mb-3" />
+      <div className="h-3 w-full bg-stone-200 rounded-full mb-2" />
+      <div className="h-3 w-5/6 bg-stone-200 rounded-full mb-4" />
+      <div className="h-2 w-12 bg-stone-200 rounded-full mb-2" />
+      <div className="h-3 w-2/3 bg-stone-200 rounded-full mb-1" />
+      <div className="h-3 w-1/2 bg-stone-200 rounded-full" />
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // EMR-159: Morning Brief
@@ -305,6 +352,15 @@ export default async function MorningBriefPage() {
         </h1>
         <p className="text-sm text-text-muted mt-2">{dateStr}</p>
       </div>
+
+      {/* AI synthesis — streams in above the raw context */}
+      <Suspense fallback={<SynthesisSkeleton />}>
+        <SynthesisSlot
+          organizationId={orgId}
+          clinicianId={user.id}
+          date={now}
+        />
+      </Suspense>
 
       {/* Summary strip */}
       <div className="grid grid-cols-3 gap-3 mb-8">
