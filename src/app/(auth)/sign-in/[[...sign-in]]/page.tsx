@@ -1,10 +1,19 @@
-// Clerk Sign-In page — used when AUTH_PROVIDER=clerk
-// Falls back to a message when Clerk is not configured.
+// Clerk Sign-In page — gated behind AUTH_PROVIDER=clerk.
+//
+// EMR-205: the top-level `import { SignIn } from "@clerk/nextjs"` used to
+// run at module load and crashed the whole (auth) route group when Clerk
+// env vars weren't set — including /login, which shares this group.
+// Dynamic-importing inside the render path keeps @clerk/nextjs out of
+// the hot boot path until Clerk is actually wired.
 
-import { SignIn } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 
 export const metadata = { title: "Sign in — Leafjourney" };
+
+const ClerkSignInBox = dynamic(() => import("./clerk-signin-box"), {
+  ssr: false,
+});
 
 export default function SignInPage() {
   const clerkEnabled = process.env.AUTH_PROVIDER === "clerk";
@@ -33,29 +42,7 @@ export default function SignInPage() {
       <p className="text-sm text-text-muted mb-8 text-center">
         Sign in to your Leafjourney account
       </p>
-
-      <SignIn
-        signUpUrl="/sign-up"
-        appearance={{
-          elements: {
-            rootBox: "w-full",
-            card: "bg-transparent shadow-none border-0 p-0",
-            headerTitle: "hidden",
-            headerSubtitle: "hidden",
-            formButtonPrimary:
-              "bg-accent hover:bg-accent/90 text-white font-medium rounded-md shadow-sm",
-            socialButtonsBlockButton:
-              "border border-border hover:bg-surface-muted rounded-md",
-            formFieldInput:
-              "rounded-md border border-border-strong bg-surface focus:border-accent focus:ring-2 focus:ring-accent/20",
-            footerActionLink: "text-accent hover:text-accent/80",
-          },
-          layout: {
-            socialButtonsPlacement: "top",
-            socialButtonsVariant: "blockButton",
-          },
-        }}
-      />
+      <ClerkSignInBox />
     </div>
   );
 }
