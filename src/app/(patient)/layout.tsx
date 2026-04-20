@@ -44,7 +44,7 @@ export default async function PatientLayout({
       roleLabel="Patient portal"
     >
       <QuoteWelcomeModal userName={user.firstName} />
-      <CommandPalette role="patient" />
+      <CommandPalette roles={["patient"]} />
       {children}
     </AppShell>
   );

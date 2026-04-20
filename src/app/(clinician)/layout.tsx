@@ -146,7 +146,12 @@ export default async function ClinicianLayout({
       <QuoteWelcomeModal userName={user.firstName} />
       <BreathingBreak />
       <KeyboardShortcuts />
-      <CommandPalette role="clinician" />
+      <CommandPalette
+        roles={user.roles.filter(
+          (r): r is "clinician" | "practice_owner" =>
+            r === "clinician" || r === "practice_owner"
+        )}
+      />
       {children}
     </AppShell>
   );

@@ -118,7 +118,11 @@ export default async function OperatorLayout({
       sections={OPS_SECTIONS}
       roleLabel="Practice ops"
     >
-      <CommandPalette role="operator" />
+      <CommandPalette
+        roles={user.roles.filter(
+          (r): r is "practice_owner" => r === "practice_owner"
+        )}
+      />
       {children}
     </AppShell>
   );
