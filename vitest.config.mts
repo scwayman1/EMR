@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     // Don't load .env — the transcription module reads env vars, and
     // tests should run deterministically regardless of .env state.
     passWithNoTests: false,
