@@ -7,7 +7,7 @@ import {
   type Citation,
   type CannabisConditionPair,
 } from "@/lib/domain/chatcb";
-import { searchPubMed, type PubMedSearchResult } from "@/lib/domain/pubmed";
+import { searchPubMedWithMeta, type PubMedSearchResult } from "@/lib/domain/pubmed";
 
 export type { PubMedSearchResult };
 
@@ -25,7 +25,11 @@ export async function searchPubMedArticles(query: string): Promise<PubMedSearchR
   if (!q) {
     return { query: q, totalResults: 0, articles: [], searchTime: 0 };
   }
-  return searchPubMed(q, 10);
+  // Scope to cannabis-adjacent terms for the ChatCB knowledge-base tab. The
+  // standalone /education/research browser lets the user control scoping via
+  // its own filter toggle.
+  const scoped = `(${q}) AND (cannabis OR cannabinoid OR THC OR CBD OR marijuana OR hemp)`;
+  return searchPubMedWithMeta(scoped, 10);
 }
 
 /**

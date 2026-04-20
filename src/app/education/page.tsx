@@ -20,6 +20,14 @@ import {
 } from "@/lib/domain/chatcb";
 import { askChatCB, searchPubMedArticles, type ChatCBResponse, type PubMedSearchResult } from "./actions";
 
+/* ── Helpers ────────────────────────────────────────────── */
+
+function formatAuthors(authors: string[]): string {
+  if (!authors || authors.length === 0) return "Unknown authors";
+  if (authors.length <= 3) return authors.join(", ");
+  return `${authors.slice(0, 3).join(", ")} et al.`;
+}
+
 /* ── Tabs ────────────────────────────────────────────────── */
 
 type Tab = "chatcb" | "wheel" | "drugmix" | "research" | "learn";
@@ -541,8 +549,13 @@ function ResearchTab() {
                           {article.title}
                         </a>
                         <p className="text-xs text-text-muted mt-1.5">
-                          {article.authors}
+                          {formatAuthors(article.authors)}
                         </p>
+                        {article.abstractSnippet && (
+                          <p className="text-xs text-text-muted mt-2 leading-relaxed line-clamp-3">
+                            {article.abstractSnippet}
+                          </p>
+                        )}
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs text-text-subtle">{article.journal}</span>
                           {article.year > 0 && (
