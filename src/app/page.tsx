@@ -47,6 +47,12 @@ export default function HomePage() {
             Education
           </Link>
           <Link
+            href="/education/chatcb"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
+          >
+            ChatCB
+          </Link>
+          <Link
             href="/store"
             className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
@@ -528,6 +534,7 @@ export default function HomePage() {
                 <Link href="/about" className="hover:text-text transition-colors">About</Link>
                 <Link href="/security" className="hover:text-text transition-colors">Security</Link>
                 <Link href="/education" className="hover:text-text transition-colors">Education</Link>
+                <Link href="/education/chatcb" className="hover:text-text transition-colors">ChatCB</Link>
                 <Link href="/store" className="hover:text-text transition-colors">Store</Link>
               </div>
             </div>
