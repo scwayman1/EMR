@@ -232,8 +232,8 @@ export default async function PatientHome() {
   const latestEnergy = latestMetric.energy;
   const latestAdherence = latestMetric.adherence;
 
-  const nextVisit = patient.encounters.find((e) => e.status === "scheduled");
-  const recentVisit = patient.encounters.find((e) => e.status === "complete");
+  const nextVisit = patient.encounters.find((e: any) => e.status === "scheduled");
+  const recentVisit = patient.encounters.find((e: any) => e.status === "complete");
   const intakeComplete = patient.chartSummary?.completenessScore ?? 0;
 
   // Compute overall outcome average (for pain, anxiety — lower is better)
@@ -557,7 +557,7 @@ export default async function PatientHome() {
               <p className="text-sm text-text-muted py-2">You&apos;re all caught up.</p>
             ) : (
               <ul className="divide-y divide-border/70 -mx-4">
-                {patient.tasks.slice(0, 3).map((task) => (
+                {patient.tasks.slice(0, 3).map((task: any) => (
                   <li key={task.id} className="px-4 py-3 flex items-start justify-between gap-3">
                     <div className="flex gap-2 min-w-0">
                       <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
