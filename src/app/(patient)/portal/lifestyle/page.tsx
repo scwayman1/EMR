@@ -12,6 +12,8 @@ import {
   type LifestyleDomain,
   type LifestyleTip,
 } from "@/lib/domain/lifestyle";
+import { WeeklyOutcomesForm } from "@/components/patient/weekly-outcomes-form";
+import { submitWeeklyOutcome } from "./actions";
 
 /* ---------- Difficulty badge tone mapping ---------- */
 
@@ -247,6 +249,11 @@ export default function LifestylePage() {
           )}
         </div>
       </Card>
+
+      {/* ==================== Weekly outcomes pulse ==================== */}
+      <section className="mb-10">
+        <WeeklyOutcomesForm onSubmit={submitWeeklyOutcome} />
+      </section>
 
       {/* ==================== Quick stats ==================== */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
