@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useCallback, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
+import { Eyebrow } from "@/components/ui/ornament";
+import { AUDIT_ACTIONS } from "@/lib/domain/audit-trail-filters";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -28,9 +28,24 @@ interface AuditLogEntry {
   createdAt: string;
 }
 
+interface FilterState {
+  actor: string | null;
+  action: string | null;
+  entity: string | null;
+  from: string;
+  to: string;
+  q: string;
+}
+
 interface AuditTrailViewProps {
-  initialLogs: AuditLogEntry[];
+  logs: AuditLogEntry[];
   totalCount: number;
+  pageSize: number;
+  actorOptions: Array<{ id: string; label: string }>;
+  entityOptions: string[];
+  filters: FilterState;
+  loadMoreHref: string | null;
+  hasCursor: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────
@@ -94,71 +109,212 @@ function toCSV(logs: AuditLogEntry[]): string {
   return [headers, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
 }
 
+// ─── Filter bar ─────────────────────────────────────────
+
+/**
+ * URL-driven filter bar. Updates searchParams via `router.push` — the server
+ * component then re-renders with the new filter set. Local state is kept only
+ * for the freetext input so keystrokes don't spam the router; we commit on
+ * Enter / blur.
+ */
+function FilterBar({
+  filters,
+  actorOptions,
+  entityOptions,
+}: {
+  filters: FilterState;
+  actorOptions: Array<{ id: string; label: string }>;
+  entityOptions: string[];
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [qLocal, setQLocal] = useState(filters.q);
+
+  const applyPatch = useCallback(
+    (patch: Partial<FilterState>) => {
+      const next: FilterState = { ...filters, ...patch };
+      const params = new URLSearchParams();
+      if (next.actor) params.set("actor", next.actor);
+      if (next.action) params.set("action", next.action);
+      if (next.entity) params.set("entity", next.entity);
+      if (next.from) params.set("from", next.from);
+      if (next.to) params.set("to", next.to);
+      if (next.q) params.set("q", next.q);
+      // Any filter change resets the cursor — "Load more" restarts from page 1.
+      const qs = params.toString();
+      startTransition(() => {
+        router.push(`/clinic/audit-trail${qs ? `?${qs}` : ""}`);
+      });
+    },
+    [filters, router],
+  );
+
+  const clearAll = () => {
+    setQLocal("");
+    startTransition(() => {
+      router.push("/clinic/audit-trail");
+    });
+  };
+
+  const anyActive =
+    !!filters.actor ||
+    !!filters.action ||
+    !!filters.entity ||
+    !!filters.from ||
+    !!filters.to ||
+    !!filters.q;
+
+  return (
+    <Card tone="raised" className="mb-6">
+      <CardContent className="py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+          {/* Search */}
+          <div className="md:col-span-2">
+            <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
+              Search
+            </label>
+            <Input
+              placeholder="Action, subject, agent..."
+              value={qLocal}
+              onChange={(e) => setQLocal(e.target.value)}
+              onBlur={() => {
+                if ((qLocal || "") !== (filters.q || "")) {
+                  applyPatch({ q: qLocal });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  applyPatch({ q: qLocal });
+                }
+              }}
+            />
+          </div>
+
+          {/* Actor */}
+          <div>
+            <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
+              Actor
+            </label>
+            <select
+              value={filters.actor ?? ""}
+              onChange={(e) =>
+                applyPatch({ actor: e.target.value || null })
+              }
+              className="h-10 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            >
+              <option value="">All actors</option>
+              {actorOptions.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Action */}
+          <div>
+            <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
+              Action
+            </label>
+            <select
+              value={filters.action ?? ""}
+              onChange={(e) =>
+                applyPatch({ action: e.target.value || null })
+              }
+              className="h-10 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            >
+              <option value="">All actions</option>
+              {AUDIT_ACTIONS.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Entity */}
+          <div>
+            <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
+              Entity
+            </label>
+            <select
+              value={filters.entity ?? ""}
+              onChange={(e) =>
+                applyPatch({ entity: e.target.value || null })
+              }
+              className="h-10 w-full rounded-md border border-border-strong bg-surface px-3 text-sm text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            >
+              <option value="">All entities</option>
+              {entityOptions.map((e) => (
+                <option key={e} value={e}>
+                  {e}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* From */}
+          <div>
+            <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
+              From
+            </label>
+            <Input
+              type="date"
+              value={filters.from}
+              onChange={(e) => applyPatch({ from: e.target.value })}
+            />
+          </div>
+
+          {/* To */}
+          <div>
+            <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
+              To
+            </label>
+            <Input
+              type="date"
+              value={filters.to}
+              onChange={(e) => applyPatch({ to: e.target.value })}
+            />
+          </div>
+        </div>
+
+        {(anyActive || isPending) && (
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-xs text-text-muted">
+              {isPending
+                ? "Updating…"
+                : "Filters applied — showing matching entries only."}
+            </p>
+            {anyActive && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAll}
+                disabled={isPending}
+              >
+                Clear all
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────
 
 export function AuditTrailView({
-  initialLogs,
+  logs,
   totalCount,
+  pageSize,
+  actorOptions,
+  entityOptions,
+  filters,
+  loadMoreHref,
+  hasCursor,
 }: AuditTrailViewProps) {
-  const [logs] = useState(initialLogs);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [actionFilter, setActionFilter] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const perPage = 20;
-
-  // ─── Filtering ──────────────────────────────────
-
-  const filteredLogs = useMemo(() => {
-    let result = logs;
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (log) =>
-          log.actorName.toLowerCase().includes(q) ||
-          log.action.toLowerCase().includes(q) ||
-          (log.subjectType?.toLowerCase().includes(q) ?? false) ||
-          (log.subjectId?.toLowerCase().includes(q) ?? false),
-      );
-    }
-
-    if (actionFilter) {
-      const af = actionFilter.toLowerCase();
-      result = result.filter((log) => log.action.toLowerCase().includes(af));
-    }
-
-    if (subjectFilter) {
-      const sf = subjectFilter.toLowerCase();
-      result = result.filter(
-        (log) => log.subjectType?.toLowerCase().includes(sf) ?? false,
-      );
-    }
-
-    if (dateFrom) {
-      const from = new Date(dateFrom).getTime();
-      result = result.filter((log) => new Date(log.createdAt).getTime() >= from);
-    }
-
-    if (dateTo) {
-      const to = new Date(dateTo).getTime() + 86_400_000; // end of day
-      result = result.filter((log) => new Date(log.createdAt).getTime() <= to);
-    }
-
-    return result;
-  }, [logs, searchQuery, actionFilter, subjectFilter, dateFrom, dateTo]);
-
-  // ─── Pagination ─────────────────────────────────
-
-  const totalPages = Math.ceil(filteredLogs.length / perPage);
-  const paginatedLogs = filteredLogs.slice(
-    (currentPage - 1) * perPage,
-    currentPage * perPage,
-  );
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedRows((prev) => {
@@ -170,7 +326,7 @@ export function AuditTrailView({
   }, []);
 
   const handleExportCSV = useCallback(() => {
-    const csv = toCSV(filteredLogs);
+    const csv = toCSV(logs);
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -178,7 +334,7 @@ export function AuditTrailView({
     a.download = `audit-trail-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filteredLogs]);
+  }, [logs]);
 
   return (
     <div>
@@ -194,7 +350,7 @@ export function AuditTrailView({
             <span className="tabular-nums font-medium text-text">
               {totalCount.toLocaleString()}
             </span>{" "}
-            total entries.
+            matching {totalCount === 1 ? "entry" : "entries"}.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -219,78 +375,12 @@ export function AuditTrailView({
         </div>
       </div>
 
-      {/* Filters */}
-      <Card tone="raised" className="mb-6">
-        <CardContent className="py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-            <div>
-              <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
-                Search
-              </label>
-              <Input
-                placeholder="User, action, subject..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
-                Action
-              </label>
-              <Input
-                placeholder="e.g. note.finalized"
-                value={actionFilter}
-                onChange={(e) => {
-                  setActionFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
-                Subject type
-              </label>
-              <Input
-                placeholder="e.g. patient, note"
-                value={subjectFilter}
-                onChange={(e) => {
-                  setSubjectFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
-                From
-              </label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
-                To
-              </label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filter bar */}
+      <FilterBar
+        filters={filters}
+        actorOptions={actorOptions}
+        entityOptions={entityOptions}
+      />
 
       {/* Table */}
       <Card tone="raised">
@@ -318,7 +408,7 @@ export function AuditTrailView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {paginatedLogs.length === 0 ? (
+                {logs.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -328,7 +418,7 @@ export function AuditTrailView({
                     </td>
                   </tr>
                 ) : (
-                  paginatedLogs.map((log) => {
+                  logs.map((log) => {
                     const isExpanded = expandedRows.has(log.id);
                     const actionTone = getActionTone(log.action);
                     const isAgent = !!log.actorAgent;
@@ -444,51 +534,27 @@ export function AuditTrailView({
           </div>
         </CardContent>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
+        {/* Cursor pagination */}
+        {(loadMoreHref || hasCursor) && (
           <div className="px-6 py-4 border-t border-border/60 flex items-center justify-between">
             <p className="text-xs text-text-muted">
-              Showing {(currentPage - 1) * perPage + 1}
-              {" - "}
-              {Math.min(currentPage * perPage, filteredLogs.length)} of{" "}
-              {filteredLogs.length} entries
+              Showing up to {pageSize} entries per page.
             </p>
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </Button>
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const page = i + 1;
-                return (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={cn(
-                      "h-8 w-8 rounded-md text-sm transition-colors",
-                      currentPage === page
-                        ? "bg-accent text-white font-medium"
-                        : "text-text-muted hover:bg-surface-muted",
-                    )}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={currentPage === totalPages}
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(totalPages, p + 1))
-                }
-              >
-                Next
-              </Button>
+              {hasCursor && (
+                <Link href="/clinic/audit-trail">
+                  <Button variant="ghost" size="sm">
+                    Back to start
+                  </Button>
+                </Link>
+              )}
+              {loadMoreHref && (
+                <Link href={loadMoreHref}>
+                  <Button variant="secondary" size="sm">
+                    Load more
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         )}
