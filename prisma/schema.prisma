@@ -29,11 +29,15 @@ enum Role {
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  // Multi-step practice launch wizard state — stores per-step form
+  // submissions keyed by step id (e.g. "org_profile", "payer_config").
+  // Null until the first wizard step is saved.
+  launchStateJson  Json?
 
   memberships      Membership[]
   patients         Patient[]
