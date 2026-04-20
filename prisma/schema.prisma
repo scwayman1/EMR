@@ -55,6 +55,7 @@ model Organization {
   intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
+  emojiOutcomes    EmojiOutcome[]
 }
 
 model User {
@@ -179,6 +180,8 @@ model Patient {
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
+  // Post-dose emoji check-ins
+  emojiOutcomes        EmojiOutcome[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -1419,8 +1422,9 @@ model CannabisProduct {
   active            Boolean       @default(true)
   createdAt         DateTime      @default(now())
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  regimens     DosingRegimen[]
+  organization  Organization    @relation(fields: [organizationId], references: [id])
+  regimens      DosingRegimen[]
+  emojiOutcomes EmojiOutcome[]
 
   @@index([organizationId, active])
 }
@@ -2044,4 +2048,38 @@ model RefillRequest {
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
+}
+
+// --------------------------------------------------------------
+// Post-dose emoji check-in (Dr. Patel Directive)
+// Simple, fun, enjoyable per-dose outcome capture. Each row is one
+// emoji + 1-10 relief rating logged after a cannabis dose. Designed
+// for research, product development, and reimbursement queries.
+// --------------------------------------------------------------
+
+enum EmojiFeeling {
+  much_better
+  better
+  same
+  worse
+  much_worse
+}
+
+model EmojiOutcome {
+  id             String       @id @default(cuid())
+  patientId      String
+  organizationId String
+  productId      String?
+  feeling        EmojiFeeling
+  reliefLevel    Int // 1-10 scale
+  takenAt        DateTime
+  notedAt        DateTime     @default(now())
+
+  patient      Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      CannabisProduct? @relation(fields: [productId], references: [id])
+
+  @@index([patientId, takenAt(sort: Desc)])
+  @@index([organizationId, takenAt(sort: Desc)])
+  @@index([productId])
 }
