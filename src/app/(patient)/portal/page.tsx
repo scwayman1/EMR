@@ -20,9 +20,10 @@ import { QuickSymptomFab } from "@/components/ui/quick-symptom-fab";
 import { withTimeout } from "@/lib/utils/with-timeout";
 
 // EMR-205: guard the home-page queries so a hung downstream call can
-// never wedge the Suspense boundary again.
-const PATIENT_QUERY_TIMEOUT_MS = 8_000;
-const PLANT_HEALTH_TIMEOUT_MS = 3_000;
+// never wedge the Suspense boundary again. Tight timeouts give the user
+// fast feedback (retry UI) instead of an endless skeleton.
+const PATIENT_QUERY_TIMEOUT_MS = 5_000;
+const PLANT_HEALTH_TIMEOUT_MS = 2_000;
 
 const DEFAULT_PLANT_HEALTH: PlantHealth = {
   score: 40,
@@ -146,6 +147,11 @@ export default async function PatientHome() {
   // genuinely missing patient record, so we don't mis-route to intake.
   // `any` here because the TIMEOUT sentinel widens the resolved type and
   // the surrounding code already handles null vs. not-null.
+  // EMR-205: `encounters` uses a narrow `select` to avoid pulling
+  // Encounter.* (which references `chartingCompletedAt` — a column that
+  // may be missing from prod DBs where the migration hasn't run yet).
+  // Keeping the field list minimal also makes this query less likely
+  // to time out on slow connections.
   const patient: any = await withTimeout<any>(
     prisma.patient.findUnique({
       where: { userId: user.id },
@@ -155,6 +161,13 @@ export default async function PatientHome() {
         encounters: {
           orderBy: { scheduledFor: "desc" },
           take: 3,
+          select: {
+            id: true,
+            status: true,
+            scheduledFor: true,
+            modality: true,
+            completedAt: true,
+          },
         },
         tasks: {
           where: { status: "open" },
