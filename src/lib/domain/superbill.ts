@@ -41,7 +41,13 @@ export interface SuperbillData {
     modifier?: string;
     units: number;
     fee: number;
+    // Optional fields used by validateSuperbill (EMR-ticket: superbill validation)
+    serviceDate?: string;
+    diagnosisPointers?: number[];
   }[];
+
+  // Optional EIN (separate from practiceTaxId) — used by validateSuperbill
+  taxId?: string;
 
   // Totals
   totalCharges: number;
@@ -88,4 +94,94 @@ export function formatCurrency(cents: number): string {
  */
 export function calculateTotal(procedures: { fee: number; units: number }[]): number {
   return procedures.reduce((sum, p) => sum + p.fee * p.units, 0);
+}
+
+// ── Validation ──────────────────────────────────────────
+
+export interface SuperbillValidationError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+/**
+ * Validate a superbill for required fields and coherent line items.
+ * Returns an array of errors. Empty array means the bill is valid.
+ *
+ * Note: the exported interface in this module is `SuperbillData`. The parameter
+ * type is named `Superbill` in this helper to match the public API contract.
+ */
+export type Superbill = SuperbillData;
+
+export function validateSuperbill(bill: Superbill): SuperbillValidationError[] {
+  const errors: SuperbillValidationError[] = [];
+
+  // Provider NPI
+  if (!bill.providerNpi || bill.providerNpi.trim() === "") {
+    errors.push({
+      field: "providerNpi",
+      code: "missing_provider_npi",
+      message: "Provider NPI is required.",
+    });
+  }
+
+  // Tax ID (EIN) — check the optional `taxId` first, then fall back to `practiceTaxId`.
+  const taxId = bill.taxId ?? bill.practiceTaxId;
+  if (!taxId || taxId.trim() === "") {
+    errors.push({
+      field: "taxId",
+      code: "missing_tax_id",
+      message: "Tax ID (EIN) is required.",
+    });
+  }
+
+  // Line items (procedures)
+  if (!bill.procedures || bill.procedures.length === 0) {
+    errors.push({
+      field: "procedures",
+      code: "no_line_items",
+      message: "At least one line item is required.",
+    });
+  }
+
+  const diagnosisCount = bill.diagnoses?.length ?? 0;
+  const now = Date.now();
+
+  bill.procedures?.forEach((line, idx) => {
+    // Diagnosis pointer range check
+    if (line.diagnosisPointers && line.diagnosisPointers.length > 0) {
+      for (const pointer of line.diagnosisPointers) {
+        if (pointer < 0 || pointer >= diagnosisCount) {
+          errors.push({
+            field: `procedures[${idx}].diagnosisPointers`,
+            code: "diagnosis_pointer_out_of_range",
+            message: `Line item ${idx} references diagnosis index ${pointer}, which does not exist.`,
+          });
+        }
+      }
+    }
+
+    // Future service date
+    if (line.serviceDate) {
+      const ts = Date.parse(line.serviceDate);
+      if (!Number.isNaN(ts) && ts > now) {
+        errors.push({
+          field: `procedures[${idx}].serviceDate`,
+          code: "future_service_date",
+          message: `Line item ${idx} has a service date in the future.`,
+        });
+      }
+    }
+
+    // Negative charge
+    if (typeof line.fee === "number" && line.fee < 0) {
+      errors.push({
+        field: `procedures[${idx}].fee`,
+        code: "negative_amount",
+        message: `Line item ${idx} has a negative charge.`,
+      });
+    }
+  });
+
+  return errors;
 }
