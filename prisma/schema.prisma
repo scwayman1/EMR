@@ -179,6 +179,8 @@ model Patient {
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
+  // Gamified consistency (CLAUDE.md "Fun > friction")
+  streakRecords        StreakRecord[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -2044,4 +2046,36 @@ model RefillRequest {
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
+}
+
+// --------------------------------------------------------------
+// Streaks — gamified consistency (CLAUDE.md "Fun > friction")
+// --------------------------------------------------------------
+
+enum StreakActivityKind {
+  dose_log
+  emoji_checkin
+  weekly_outcome
+}
+
+/// One row per (patient, activityKind). Server code upserts on each
+/// qualifying activity via recordStreakActivity(); all streak math lives
+/// in src/lib/domain/streaks.ts (advanceStreak).
+model StreakRecord {
+  id                String             @id @default(cuid())
+  patientId         String
+  activityKind      StreakActivityKind
+  currentStreakDays Int                @default(0)
+  longestStreakDays Int                @default(0)
+  /// UTC midnight of the last day this streak was advanced. Null until
+  /// the first activity. We deliberately do NOT store wall-clock time —
+  /// same-day multiple activities must be idempotent.
+  lastActivityDate  DateTime?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, activityKind])
+  @@index([patientId])
 }
