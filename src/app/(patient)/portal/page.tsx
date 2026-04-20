@@ -12,11 +12,27 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import { AmbientOrb } from "@/components/ui/hero-art";
 import { HealthPlant } from "@/components/ui/health-plant";
-import { computePlantHealth, STAGE_LABELS } from "@/lib/domain/plant-health";
+import { computePlantHealth, STAGE_LABELS, type PlantHealth } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { OnboardingTour } from "@/components/ui/onboarding-tour";
 import { WellnessTipWidget } from "@/components/ui/wellness-tip-widget";
 import { QuickSymptomFab } from "@/components/ui/quick-symptom-fab";
+import { withTimeout } from "@/lib/utils/with-timeout";
+
+// EMR-205: guard the home-page queries so a hung downstream call can
+// never wedge the Suspense boundary again.
+const PATIENT_QUERY_TIMEOUT_MS = 8_000;
+const PLANT_HEALTH_TIMEOUT_MS = 3_000;
+
+const DEFAULT_PLANT_HEALTH: PlantHealth = {
+  score: 40,
+  stage: "growing",
+  leafColor: "light-green",
+  hasFlowers: false,
+  stemCount: 2,
+  leafCount: 4,
+  healthFactors: [],
+};
 
 export const metadata = { title: "Home" };
 
@@ -126,35 +142,77 @@ function generateHealthTips(data: {
 export default async function PatientHome() {
   const user = await requireRole("patient");
 
-  const patient = await prisma.patient.findUnique({
-    where: { userId: user.id },
-    include: {
-      chartSummary: true,
-      outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 100 },
-      encounters: {
-        orderBy: { scheduledFor: "desc" },
-        take: 3,
+  // Sentinel: the string "TIMEOUT" distinguishes a hung query from a
+  // genuinely missing patient record, so we don't mis-route to intake.
+  // `any` here because the TIMEOUT sentinel widens the resolved type and
+  // the surrounding code already handles null vs. not-null.
+  const patient: any = await withTimeout<any>(
+    prisma.patient.findUnique({
+      where: { userId: user.id },
+      include: {
+        chartSummary: true,
+        outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 100 },
+        encounters: {
+          orderBy: { scheduledFor: "desc" },
+          take: 3,
+        },
+        tasks: {
+          where: { status: "open" },
+          orderBy: { dueAt: "asc" },
+          take: 5,
+        },
+        messageThreads: {
+          orderBy: { lastMessageAt: "desc" },
+          take: 1,
+          include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+        },
+        dosingRegimens: {
+          where: { active: true },
+          include: { product: true },
+        },
       },
-      tasks: {
-        where: { status: "open" },
-        orderBy: { dueAt: "asc" },
-        take: 5,
-      },
-      messageThreads: {
-        orderBy: { lastMessageAt: "desc" },
-        take: 1,
-        include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
-      },
-      dosingRegimens: {
-        where: { active: true },
-        include: { product: true },
-      },
-    },
-  });
+    }).catch((err) => {
+      console.warn("[portal.home] patient.findUnique rejected:", err);
+      return "TIMEOUT";
+    }),
+    PATIENT_QUERY_TIMEOUT_MS,
+    "TIMEOUT",
+    "portal.home.patient.findUnique",
+  );
+
+  if (patient === "TIMEOUT") {
+    return (
+      <PageShell maxWidth="max-w-[1040px]">
+        <div className="py-16 text-center">
+          <Eyebrow className="mb-4 justify-center">Taking a moment</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl text-text tracking-tight mb-3">
+            Your dashboard is loading slowly.
+          </h1>
+          <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed mb-8">
+            We couldn&apos;t fetch your chart in time. This is almost always a
+            temporary network hiccup — please retry.
+          </p>
+          <div className="flex justify-center gap-3">
+            <Link href="/portal">
+              <Button size="lg">Retry</Button>
+            </Link>
+            <Link href="/portal/garden">
+              <Button size="lg" variant="secondary">Go to My Garden</Button>
+            </Link>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
 
   if (!patient) redirect("/portal/intake");
 
-  const plantHealth = await computePlantHealth(patient.id);
+  const plantHealth = await withTimeout(
+    computePlantHealth(patient.id),
+    PLANT_HEALTH_TIMEOUT_MS,
+    DEFAULT_PLANT_HEALTH,
+    "portal.home.computePlantHealth",
+  );
 
   // Build metric series
   const metricSeries: Record<string, number[]> = {};

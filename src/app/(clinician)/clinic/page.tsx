@@ -17,6 +17,40 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatRelative } from "@/lib/utils/format";
 import { RecentPatients } from "@/components/shell/recent-patients";
+import { withTimeout } from "@/lib/utils/with-timeout";
+
+// EMR-205: guard the mission-control fan-out so a single hung query
+// can never wedge the Suspense boundary and strand clinicians on the
+// loading skeleton.
+const MISSION_CONTROL_TIMEOUT_MS = 8_000;
+
+// Empty-shape fallback for the 19-way Promise.all below. If the DB
+// fan-out times out (or any individual query rejects), we render the
+// page with zeros/empty lists instead of stranding the user. Typed as
+// `any` intentionally — the destructured tuple has deep Prisma types
+// and we just need the shape.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const MISSION_CONTROL_FALLBACK: any = [
+  [],  //  1 todaysEncounters
+  0,   //  2 openNotes
+  [],  //  3 needsReviewNotes
+  0,   //  4 approvalJobs
+  0,   //  5 activeThreads
+  0,   //  6 activePatientCount
+  0,   //  7 weekVisits
+  0,   //  8 weekFinalizedNotes
+  [],  //  9 recentEncounters
+  [],  // 10 recentFinalizedNotes
+  [],  // 11 recentAssessments
+  [],  // 12 recentMessages
+  [],  // 13 recentDocuments
+  [],  // 14 allChartSummaries
+  [0, 0, 0, 0, 0, 0, 0], // 15 dailyEncounterCounts
+  0,   // 16 needsReviewCount
+  [],  // 17 recentAgentJobs
+  [],  // 18 pendingDrafts
+  [],  // 19 recentObservations
+];
 
 export const metadata = { title: "Mission Control" };
 
@@ -210,7 +244,8 @@ export default async function ClinicHomePage() {
     recentAgentJobs,
     pendingDrafts,
     recentObservations,
-  ] = await Promise.all([
+  ] = await withTimeout(
+    Promise.all([
     // 1. Today's encounters
     //    Exclude encounters whose patient has been soft-deleted — otherwise
     //    the card would render with a ghost patient and the Prepare button
@@ -402,7 +437,14 @@ export default async function ClinicHomePage() {
       orderBy: { createdAt: "desc" },
       take: 6,
     }),
-  ]);
+  ]).catch((err) => {
+    console.warn("[clinic.home] mission-control fan-out rejected:", err);
+    return MISSION_CONTROL_FALLBACK;
+  }),
+    MISSION_CONTROL_TIMEOUT_MS,
+    MISSION_CONTROL_FALLBACK,
+    "clinic.home",
+  );
 
   /* ---- Derived values ---- */
   const notesToSign = openNotes + needsReviewCount;
