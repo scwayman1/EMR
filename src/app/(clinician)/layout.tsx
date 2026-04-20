@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { AppShell, type NavItem } from "@/components/shell/AppShell";
+import { AppShell, type NavSection } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
@@ -79,47 +79,74 @@ export default async function ClinicianLayout({
     ]);
   })();
 
-  const nav: NavItem[] = [
-    { label: "Command Center", href: "/clinic/command" },
-    { label: "Today", href: "/clinic" },
-    { label: "Brief", href: "/clinic/morning-brief" },
-    { label: "Roster", href: "/clinic/patients" },
-    { label: "Inbox", href: "/clinic/messages" },
+  // 3-tier IA:
+  //   Tier 1 (always visible) — the daily-use items.
+  //   Tier 2 (collapsible)    — Review / Reference / Admin, grouped by what
+  //                             the clinician is *doing*, not what they're
+  //                             looking at.
+  //   Tier 3 (⌘K palette)     — everything else, discoverable via search.
+  const sections: NavSection[] = [
     {
-      label: "Approvals",
-      href: "/clinic/approvals",
-      count: pendingCount,
-      countTone: emergencyCount > 0 ? "danger" : "highlight",
+      items: [
+        { label: "Today", href: "/clinic" },
+        { label: "Command Center", href: "/clinic/command" },
+        { label: "Roster", href: "/clinic/patients" },
+        { label: "Inbox", href: "/clinic/messages" },
+      ],
     },
     {
-      label: "Labs",
-      href: "/clinic/labs-review",
-      count: labsPendingCount,
-      countTone: "highlight",
+      label: "Review",
+      items: [
+        {
+          label: "Approvals",
+          href: "/clinic/approvals",
+          count: pendingCount,
+          countTone: emergencyCount > 0 ? "danger" : "highlight",
+        },
+        {
+          label: "Labs",
+          href: "/clinic/labs-review",
+          count: labsPendingCount,
+          countTone: "highlight",
+        },
+        {
+          label: "Refills",
+          href: "/clinic/refills",
+          count: refillsPendingCount,
+          countTone: "highlight",
+        },
+      ],
     },
     {
-      label: "Refills",
-      href: "/clinic/refills",
-      count: refillsPendingCount,
-      countTone: "highlight",
+      label: "Reference",
+      items: [
+        { label: "Providers", href: "/clinic/providers" },
+        { label: "Research", href: "/clinic/research" },
+        { label: "Library", href: "/clinic/library" },
+      ],
+      defaultCollapsed: true,
     },
-    { label: "Providers", href: "/clinic/providers" },
-    { label: "Research", href: "/clinic/research" },
-    { label: "Library", href: "/clinic/library" },
-    { label: "Audit", href: "/clinic/audit-trail" },
+    {
+      label: "Admin",
+      items: [
+        { label: "Audit", href: "/clinic/audit-trail" },
+        { label: "Brief", href: "/clinic/morning-brief" },
+      ],
+      defaultCollapsed: true,
+    },
   ];
 
   return (
     <AppShell
       user={user}
       activeRole="clinician"
-      nav={nav}
+      sections={sections}
       roleLabel="Provider"
     >
       <QuoteWelcomeModal userName={user.firstName} />
       <BreathingBreak />
       <KeyboardShortcuts />
-      <CommandPalette />
+      <CommandPalette role="clinician" />
       {children}
     </AppShell>
   );

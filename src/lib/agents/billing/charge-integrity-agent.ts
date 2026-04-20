@@ -37,7 +37,11 @@ export const chargeIntegrityAgent: Agent<z.infer<typeof input>, z.infer<typeof o
   inputSchema: input,
   outputSchema: output,
   allowedActions: ["read.claim", "read.patient", "write.claim.scrub"],
-  requiresApproval: false,
+  // Writes Claim.scrubIssues and gates whether a claim is submittable.
+  // A wrong scrub verdict either blocks clean revenue or releases a bad claim
+  // to the clearinghouse — human review is required before those verdicts
+  // stick.
+  requiresApproval: true,
 
   async run({ claimId }, ctx) {
     ctx.assertCan("read.claim");

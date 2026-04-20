@@ -32,6 +32,99 @@ const output = z.object({
   submitted: z.boolean(),
 });
 
+// ---------------------------------------------------------------------------
+// Retry guard (pure) — extracted for testability
+// ---------------------------------------------------------------------------
+// Race condition background: two concurrent runs for the same claim could
+// both read submissions.length=2, both pass the `>= 3` check, and both
+// create a new submission, double-billing the clearinghouse. The fix is
+// two-layered:
+//   1. Wrap the check + create inside a prisma.$transaction so the read
+//      and the insert commit together (preventing the duplicate-read race).
+//   2. Add a small cooldown window so if another worker just created a
+//      submission a few seconds ago, we refuse instead of piling on.
+// This pure helper encodes layer (2) so it can be unit-tested without
+// Prisma.
+
+/** Minimum gap between two submissions for the same claim. */
+export const SUBMISSION_COOLDOWN_MS = 60_000;
+
+/** Hard cap on attempts per claim. */
+export const SUBMISSION_RETRY_LIMIT = 3;
+
+/** Shape the guard needs. Keeps the pure function Prisma-free. */
+export interface PriorSubmissionInput {
+  submittedAt: Date;
+}
+
+export type RetryGuardDecision =
+  | { outcome: "allow"; attemptNumber: number }
+  | { outcome: "retry_limit_exceeded"; priorCount: number }
+  | {
+      outcome: "cooldown";
+      priorCount: number;
+      msSinceLast: number;
+      lastSubmittedAt: Date;
+    };
+
+/**
+ * Evaluate whether a new clearinghouse submission may be created, given the
+ * prior submissions on the claim and the current time. Pure — no I/O.
+ *
+ * Callers MUST invoke this inside the same transaction that reads the prior
+ * submissions and creates the new one; the cooldown here is a best-effort
+ * second layer, the primary serialization is the transaction itself.
+ */
+export function evaluateRetryGuard(
+  priorSubmissions: PriorSubmissionInput[],
+  now: Date,
+): RetryGuardDecision {
+  const priorCount = priorSubmissions.length;
+
+  if (priorCount >= SUBMISSION_RETRY_LIMIT) {
+    return { outcome: "retry_limit_exceeded", priorCount };
+  }
+
+  // Find the most-recent prior submission (the caller may pass them in any
+  // order; we don't want to assume).
+  let lastSubmittedAt: Date | null = null;
+  for (const s of priorSubmissions) {
+    if (lastSubmittedAt == null || s.submittedAt > lastSubmittedAt) {
+      lastSubmittedAt = s.submittedAt;
+    }
+  }
+
+  if (lastSubmittedAt != null) {
+    const msSinceLast = now.getTime() - lastSubmittedAt.getTime();
+    if (msSinceLast < SUBMISSION_COOLDOWN_MS) {
+      return {
+        outcome: "cooldown",
+        priorCount,
+        msSinceLast,
+        lastSubmittedAt,
+      };
+    }
+  }
+
+  return { outcome: "allow", attemptNumber: priorCount };
+}
+
+/**
+ * Internal control-flow error used to bubble a retry-guard decision out of
+ * the `prisma.$transaction` callback so the transaction rolls back cleanly
+ * (no partial row insert) while the outer handler can respond with the
+ * appropriate audit + event emission.
+ */
+class RetryGuardError extends Error {
+  constructor(
+    public readonly kind: "retry_limit_exceeded" | "cooldown",
+    public readonly details: Record<string, unknown>,
+  ) {
+    super(`RetryGuard: ${kind}`);
+    this.name = "RetryGuardError";
+  }
+}
+
 export const clearinghouseSubmissionAgent: Agent<
   z.infer<typeof input>,
   z.infer<typeof output>
@@ -49,7 +142,10 @@ export const clearinghouseSubmissionAgent: Agent<
     "write.claim.status",
     "write.financialEvent",
   ],
-  requiresApproval: false,
+  // Financial submission to external clearinghouse — sends 837P EDI to a third
+  // party, transitions claim.status, and writes the submission ledger entry.
+  // A human must sign off before any batch so we never wire a bad claim out.
+  requiresApproval: true,
 
   async run({ claimId, organizationId, scrubResultId }, ctx) {
     const trace = startReasoning("clearinghouseSubmission", "1.0.0", ctx.jobId);
@@ -130,77 +226,174 @@ export const clearinghouseSubmissionAgent: Agent<
       scrubResultId,
     });
 
-    // ── Retry guard: block after 3 prior submissions ───────────────
-    const priorSubmissionCount = claim.submissions.length;
-    if (priorSubmissionCount >= 3) {
-      ctx.log("warn", "Claim has been submitted 3+ times — escalating", {
-        claimId,
-        retryCount: priorSubmissionCount,
-      });
-
-      await ctx.emit({
-        name: "human.review.required",
-        sourceAgent: "clearinghouseSubmission",
-        category: "submission_retry_limit",
-        claimId,
-        patientId: claim.patientId,
-        summary: `Claim ${claimId} has been submitted ${priorSubmissionCount} times and continues to fail. Manual review required.`,
-        suggestedAction:
-          "Review rejection reasons on prior submissions. Consider correcting the claim or contacting the clearinghouse directly.",
-        tier: 1,
-        organizationId,
-      });
-
-      await writeAgentAudit(
-        "clearinghouseSubmission",
-        "1.0.0",
-        organizationId,
-        "submission.retry_limit_reached",
-        { type: "Claim", id: claimId },
-        { retryCount: priorSubmissionCount },
-      );
-
-      trace.conclude({
-        confidence: 0.95,
-        summary: `Submission blocked: claim has ${priorSubmissionCount} prior submissions (limit is 3). Escalated to human review.`,
-      });
-      await trace.persist();
-
-      return {
-        claimId,
-        submissionId: null,
-        status: "retry_limit_exceeded",
-        submitted: false,
-      };
-    }
-
-    // ── Create ClearinghouseSubmission record (pending) ────────────
+    // ── Retry guard + submission create (atomic) ───────────────────
+    // We re-read `submissions` inside a transaction and then create the new
+    // ClearinghouseSubmission row in the SAME transaction. This serializes
+    // the check+create pair so two concurrent agent runs for the same claim
+    // cannot both pass the retry check and both insert a row. A 60s
+    // cooldown layered on top provides a second safety net against a
+    // straggler job that holds a stale view.
     ctx.assertCan("write.claim.status");
 
-    const submission = await prisma.clearinghouseSubmission.create({
-      data: {
-        claimId,
-        organizationId,
-        clearinghouseName: "SimulatedClearinghouse", // V1 placeholder
-        retryCount: priorSubmissionCount,
-        responseStatus: "pending",
-        ediPayload: buildEdi837Stub(claim),
-      },
-    });
+    let priorSubmissionCount = 0;
+    let submission:
+      | Awaited<ReturnType<typeof prisma.clearinghouseSubmission.create>>
+      | null = null;
 
-    trace.step("created submission record", {
-      submissionId: submission.id,
-      retryCount: priorSubmissionCount,
-    });
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const priorSubmissions = await tx.clearinghouseSubmission.findMany({
+          where: { claimId },
+          orderBy: { submittedAt: "desc" },
+          select: { id: true, submittedAt: true },
+        });
+
+        const decision = evaluateRetryGuard(priorSubmissions, new Date());
+
+        if (decision.outcome === "retry_limit_exceeded") {
+          throw new RetryGuardError("retry_limit_exceeded", {
+            priorCount: decision.priorCount,
+          });
+        }
+        if (decision.outcome === "cooldown") {
+          throw new RetryGuardError("cooldown", {
+            priorCount: decision.priorCount,
+            msSinceLast: decision.msSinceLast,
+            lastSubmittedAt: decision.lastSubmittedAt,
+          });
+        }
+
+        const created = await tx.clearinghouseSubmission.create({
+          data: {
+            claimId,
+            organizationId,
+            clearinghouseName: "SimulatedClearinghouse", // V1 placeholder
+            retryCount: decision.attemptNumber,
+            responseStatus: "pending",
+            ediPayload: buildEdi837Stub(claim),
+          },
+        });
+
+        return { created, attemptNumber: decision.attemptNumber };
+      });
+
+      priorSubmissionCount = result.attemptNumber;
+      submission = result.created;
+
+      ctx.log("info", "clearinghouse submission created", {
+        claimId,
+        submissionId: submission.id,
+        attemptNumber: priorSubmissionCount + 1,
+        retryCount: priorSubmissionCount,
+      });
+
+      trace.step("created submission record", {
+        submissionId: submission.id,
+        retryCount: priorSubmissionCount,
+      });
+    } catch (err) {
+      if (err instanceof RetryGuardError && err.kind === "retry_limit_exceeded") {
+        const { priorCount } = err.details as { priorCount: number };
+        ctx.log("warn", "Claim has been submitted 3+ times — escalating", {
+          claimId,
+          retryCount: priorCount,
+        });
+
+        await ctx.emit({
+          name: "human.review.required",
+          sourceAgent: "clearinghouseSubmission",
+          category: "submission_retry_limit",
+          claimId,
+          patientId: claim.patientId,
+          summary: `Claim ${claimId} has been submitted ${priorCount} times and continues to fail. Manual review required.`,
+          suggestedAction:
+            "Review rejection reasons on prior submissions. Consider correcting the claim or contacting the clearinghouse directly.",
+          tier: 1,
+          organizationId,
+        });
+
+        await writeAgentAudit(
+          "clearinghouseSubmission",
+          "1.0.0",
+          organizationId,
+          "submission.retry_limit_reached",
+          { type: "Claim", id: claimId },
+          { retryCount: priorCount },
+        );
+
+        trace.conclude({
+          confidence: 0.95,
+          summary: `Submission blocked: claim has ${priorCount} prior submissions (limit is 3). Escalated to human review.`,
+        });
+        await trace.persist();
+
+        return {
+          claimId,
+          submissionId: null,
+          status: "retry_limit_exceeded",
+          submitted: false,
+        };
+      }
+
+      if (err instanceof RetryGuardError && err.kind === "cooldown") {
+        const { priorCount, msSinceLast } = err.details as {
+          priorCount: number;
+          msSinceLast: number;
+          lastSubmittedAt: Date;
+        };
+        ctx.log("warn", "Cooldown: prior submission too recent — deferring", {
+          claimId,
+          priorCount,
+          msSinceLast,
+          cooldownMs: SUBMISSION_COOLDOWN_MS,
+        });
+
+        trace.conclude({
+          confidence: 0.9,
+          summary: `Submission deferred: previous submission was ${Math.round(
+            msSinceLast / 1000,
+          )}s ago (cooldown is ${SUBMISSION_COOLDOWN_MS / 1000}s). Likely concurrent job — backing off.`,
+        });
+        await trace.persist();
+
+        return {
+          claimId,
+          submissionId: null,
+          status: "cooldown_active",
+          submitted: false,
+        };
+      }
+
+      throw err;
+    }
+
+    if (submission == null) {
+      // Should be unreachable — retained for exhaustiveness.
+      throw new Error("Submission was not created and no guard error was thrown.");
+    }
 
     // ── Simulate clearinghouse submission ───────────────────────────
     // In production, this block would call the clearinghouse API with the
     // EDI payload and parse the synchronous or async response. For V1 we
     // perform basic validation and accept the claim.
 
+    ctx.log("info", "sending submission to clearinghouse", {
+      claimId,
+      submissionId: submission.id,
+      clearinghouseName: "SimulatedClearinghouse",
+      attemptNumber: priorSubmissionCount + 1,
+    });
+
     const validationErrors = validateForSubmission(claim);
 
     if (validationErrors.length > 0) {
+      ctx.log("warn", "clearinghouse rejected submission", {
+        claimId,
+        submissionId: submission.id,
+        rejectionCode: "VALIDATION_FAIL",
+        errors: validationErrors,
+      });
+
       // Simulate a rejection
       await prisma.clearinghouseSubmission.update({
         where: { id: submission.id },
@@ -223,7 +416,7 @@ export const clearinghouseSubmissionAgent: Agent<
         submissionId: submission.id,
         rejectionCode: "VALIDATION_FAIL",
         rejectionMessage: validationErrors.join("; "),
-        retryEligible: priorSubmissionCount < 2,
+        retryEligible: isRejectionRetryEligible(priorSubmissionCount),
         organizationId,
       });
 
@@ -269,6 +462,13 @@ export const clearinghouseSubmissionAgent: Agent<
         status: "submitted",
         submittedAt: now,
       },
+    });
+
+    ctx.log("info", "clearinghouse accepted submission", {
+      claimId,
+      submissionId: submission.id,
+      responseCode: "A1",
+      attemptNumber: priorSubmissionCount + 1,
     });
 
     trace.step("clearinghouse accepted", {
@@ -350,6 +550,87 @@ export const clearinghouseSubmissionAgent: Agent<
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Claim statuses that indicate the claim has already been handed to the
+ * clearinghouse (or beyond) and should NOT be resubmitted. */
+export const ALREADY_SUBMITTED_STATUSES = [
+  "submitted",
+  "accepted",
+  "adjudicated",
+  "paid",
+  "partial",
+] as const;
+
+/**
+ * Pure retry-guard check. Returns whether a new submission attempt is allowed
+ * given the number of prior submissions already on file. Kept as a standalone
+ * helper so the threshold can be covered by unit tests without touching
+ * Prisma.
+ */
+export function isRetryAllowed(
+  priorSubmissionCount: number,
+  maxAttempts = 3,
+): { allowed: true } | { allowed: false; reason: "retry_limit_exceeded" } {
+  if (priorSubmissionCount >= maxAttempts) {
+    return { allowed: false, reason: "retry_limit_exceeded" };
+  }
+  return { allowed: true };
+}
+
+/** Decide whether a rejected claim is still eligible for automatic retry.
+ * Public so downstream callers (and tests) can reuse the same invariant. */
+export function isRejectionRetryEligible(
+  priorSubmissionCount: number,
+  maxAttempts = 3,
+): boolean {
+  // After this rejection the claim has one more attempt recorded, so the
+  // total attempt count at retry time is priorSubmissionCount + 1. We only
+  // want to auto-retry if THAT count is still strictly below maxAttempts.
+  return priorSubmissionCount + 1 < maxAttempts;
+}
+
+export type SubmissionEligibility =
+  | { submittable: true }
+  | {
+      submittable: false;
+      reason:
+        | "already_submitted"
+        | "blocked_by_scrub"
+        | "retry_limit_exceeded";
+      detail?: string;
+    };
+
+/** Single decision point for "should we attempt a clearinghouse submission
+ * right now?". Encapsulates idempotency, scrub gating, and retry guard so
+ * the rules are testable in isolation. */
+export function evaluateSubmissionEligibility(params: {
+  claimStatus: string;
+  scrubStatus: string | null;
+  priorSubmissionCount: number;
+  maxAttempts?: number;
+}): SubmissionEligibility {
+  const max = params.maxAttempts ?? 3;
+
+  if (
+    (ALREADY_SUBMITTED_STATUSES as readonly string[]).includes(params.claimStatus)
+  ) {
+    return {
+      submittable: false,
+      reason: "already_submitted",
+      detail: params.claimStatus,
+    };
+  }
+
+  if (params.scrubStatus === "blocked") {
+    return { submittable: false, reason: "blocked_by_scrub" };
+  }
+
+  if (params.priorSubmissionCount >= max) {
+    return { submittable: false, reason: "retry_limit_exceeded" };
+  }
+
+  return { submittable: true };
+}
+
 /**
  * Build a minimal 837P EDI stub for audit storage. In production this would
  * be a full ANSI X12 837P transaction set built from claim + patient + payer
@@ -385,7 +666,7 @@ function formatDate(d: Date): string {
  * Pre-submission validation checks. Returns an array of error strings.
  * Empty array means the claim passes basic validation.
  */
-function validateForSubmission(claim: {
+export function validateForSubmission(claim: {
   billingNpi: string | null;
   payerId: string | null;
   billedAmountCents: number;
