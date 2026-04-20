@@ -49,6 +49,7 @@ model Organization {
   launchStatus     PracticeLaunchStatus?
   cannabisProducts CannabisProduct[]
   claims           Claim[]
+  payments         Payment[]
   feeSchedule      FeeScheduleEntry[]
   referrals        Referral[]
   complianceForms  StateComplianceForm[]
@@ -439,16 +440,19 @@ enum PaymentSource {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  claimId     String
-  source      PaymentSource
-  amountCents Int
-  paymentDate DateTime      @default(now())
-  reference   String? // check #, EFT trace, last4 of card
-  notes       String?
+  id             String        @id @default(cuid())
+  claimId        String
+  organizationId String?
+  source         PaymentSource
+  amountCents    Int
+  paymentDate    DateTime      @default(now())
+  reference      String? // check #, EFT trace, last4 of card — idempotency key when posting from billing-ingest
+  notes          String?
 
-  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim        Claim         @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, reference])
   @@index([claimId, paymentDate])
 }
 
