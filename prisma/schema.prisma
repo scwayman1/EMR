@@ -55,6 +55,7 @@ model Organization {
   intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
+  sideEffectReports SideEffectReport[]
 }
 
 model User {
@@ -176,6 +177,7 @@ model Patient {
   complianceForms      StateComplianceForm[]
   caregiverInvites     CaregiverInvite[]
   surveySubmissions    SurveySubmission[]
+  sideEffectReports    SideEffectReport[]
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
@@ -1006,6 +1008,43 @@ model OutcomeLog {
 }
 
 // --------------------------------------------------------------
+// Side Effect Reporting
+// --------------------------------------------------------------
+
+enum SideEffectCode {
+  dry_mouth
+  drowsiness
+  dizziness
+  anxiety
+  headache
+  nausea
+  red_eyes
+  memory_fog
+  increased_appetite
+  other
+}
+
+model SideEffectReport {
+  id             String         @id @default(cuid())
+  patientId      String
+  organizationId String
+  effect         SideEffectCode
+  customEffect   String? // populated when effect=other
+  severity       Int // 1-10
+  note           String?
+  productId      String? // optional link to a CannabisProduct
+  occurredAt     DateTime       @default(now())
+  reportedAt     DateTime       @default(now())
+
+  patient      Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      CannabisProduct? @relation(fields: [productId], references: [id])
+
+  @@index([patientId, occurredAt(sort: Desc)])
+  @@index([organizationId, occurredAt(sort: Desc)])
+}
+
+// --------------------------------------------------------------
 // Messaging
 // --------------------------------------------------------------
 
@@ -1419,8 +1458,9 @@ model CannabisProduct {
   active            Boolean       @default(true)
   createdAt         DateTime      @default(now())
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  regimens     DosingRegimen[]
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  regimens          DosingRegimen[]
+  sideEffectReports SideEffectReport[]
 
   @@index([organizationId, active])
 }
