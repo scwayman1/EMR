@@ -8,6 +8,9 @@ import type { Role } from "@prisma/client";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { MobileNav } from "./MobileNav";
 import { NavSections } from "./NavSections";
+import { NavPrefsProvider } from "./NavPrefsContext";
+import { NavPrefsSections } from "./NavPrefsSections";
+import { NavVisitTracker } from "./NavVisitTracker";
 import type { NavItem, NavSection } from "./nav-sections";
 
 // Re-export so existing consumers (each layout) can keep importing the
@@ -55,6 +58,8 @@ export function AppShell({
   const resolved = normalizeSections(sections, nav);
 
   return (
+    <NavPrefsProvider>
+    <NavVisitTracker sections={resolved} />
     <div className="min-h-screen bg-bg flex">
       {/* Side nav */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface relative">
@@ -78,6 +83,7 @@ export function AppShell({
         </div>
 
         <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2 overflow-y-auto">
+          <NavPrefsSections />
           <NavSections sections={resolved} />
         </nav>
 
@@ -120,5 +126,6 @@ export function AppShell({
         <main id="main-content" className="flex-1 min-w-0">{children}</main>
       </div>
     </div>
+    </NavPrefsProvider>
   );
 }
