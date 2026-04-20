@@ -6,37 +6,52 @@ import { logoutAction } from "@/lib/auth/actions";
 import type { AuthedUser } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
 import { ROLE_HOME } from "@/lib/rbac/roles";
-import { cn } from "@/lib/utils/cn";
 import { MobileNav } from "./MobileNav";
+import { NavSections } from "./NavSections";
+import type { NavItem, NavSection } from "./nav-sections";
 
-export interface NavItem {
-  label: string;
-  href: string;
-  icon?: React.ReactNode;
-  /**
-   * Optional live count shown as a pill next to the nav label. Use for
-   * "needs your attention" counters like pending approvals. Hidden when 0.
-   */
-  count?: number;
-  /**
-   * Optional tone hint for the count pill. Defaults to "highlight" (warm
-   * call-to-action). Use "danger" for emergencies in the queue.
-   */
-  countTone?: "highlight" | "danger" | "accent";
-}
+// Re-export so existing consumers (each layout) can keep importing the
+// NavItem / NavSection types from this module.
+export type { NavItem, NavSection } from "./nav-sections";
 
 export interface AppShellProps {
   user: AuthedUser;
   activeRole: Role;
-  nav: NavItem[];
+  /**
+   * Preferred: grouped section structure for the Tier-1 + Tier-2 IA.
+   * When both `sections` and the legacy `nav` are provided, `sections` wins.
+   */
+  sections?: NavSection[];
+  /**
+   * Legacy flat nav prop. Still honored — wrapped in a single unlabeled
+   * section so older callers don't have to migrate atomically.
+   */
+  nav?: NavItem[];
   roleLabel: string;
   children: React.ReactNode;
 }
 
-export function AppShell({ user, activeRole, nav, roleLabel, children }: AppShellProps) {
+function normalizeSections(
+  sections: NavSection[] | undefined,
+  nav: NavItem[] | undefined,
+): NavSection[] {
+  if (sections && sections.length > 0) return sections;
+  if (nav && nav.length > 0) return [{ items: nav }];
+  return [];
+}
+
+export function AppShell({
+  user,
+  activeRole,
+  sections,
+  nav,
+  roleLabel,
+  children,
+}: AppShellProps) {
   // Logo links to the user's role home, not the public landing page.
   // This prevents the "logo click = logged out" UX bug.
   const homeHref = ROLE_HOME[activeRole] ?? "/";
+  const resolved = normalizeSections(sections, nav);
 
   return (
     <div className="min-h-screen bg-bg flex">
@@ -61,51 +76,8 @@ export function AppShell({ user, activeRole, nav, roleLabel, children }: AppShel
           </p>
         </div>
 
-        <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2">
-          <ul className="space-y-0.5">
-            {nav.map((item) => {
-              const count = item.count ?? 0;
-              const tone = item.countTone ?? "highlight";
-              const toneClass =
-                tone === "danger"
-                  ? "bg-danger/10 text-danger border-danger/30 animate-pulse"
-                  : tone === "accent"
-                    ? "bg-accent-soft text-accent border-accent/25"
-                    : "bg-highlight-soft text-[color:var(--highlight-hover)] border-highlight/30";
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-label={
-                      count > 0
-                        ? `${item.label} (${count} waiting)`
-                        : item.label
-                    }
-                    className={cn(
-                      "group flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-text-muted",
-                      "hover:bg-surface-muted hover:text-text transition-colors duration-200 ease-smooth"
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-1 w-1 rounded-full bg-border-strong group-hover:bg-accent transition-colors"
-                    />
-                    <span className="flex-1">{item.label}</span>
-                    {count > 0 && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold leading-none rounded-full border px-1.5 py-0.5 tabular-nums",
-                          toneClass
-                        )}
-                      >
-                        {count > 99 ? "99+" : count}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2 overflow-y-auto">
+          <NavSections sections={resolved} />
         </nav>
 
         <div className="relative p-3 border-t border-border/80">
@@ -140,7 +112,7 @@ export function AppShell({ user, activeRole, nav, roleLabel, children }: AppShel
             <Wordmark size="sm" />
           </Link>
           <div className="flex items-center gap-2">
-            <MobileNav nav={nav} />
+            <MobileNav sections={resolved} />
             <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
           </div>
         </header>
