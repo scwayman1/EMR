@@ -67,9 +67,17 @@ export default function LibraryPage() {
 
       {/* Dosing guidelines */}
       <Card tone="raised" className="mb-6">
-        <CardHeader>
-          <CardTitle>Dosing guidelines by condition</CardTitle>
-          <CardDescription>Evidence-based starting doses from the research corpus. Titrate based on response.</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>Dosing guidelines by condition</CardTitle>
+            <CardDescription>Evidence-based starting doses from the research corpus. Titrate based on response.</CardDescription>
+          </div>
+          <Link
+            href="/clinic/library/protocols"
+            className="text-xs font-medium text-accent hover:underline whitespace-nowrap shrink-0 mt-1"
+          >
+            Full titration protocols &rarr;
+          </Link>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
