@@ -55,6 +55,7 @@ model Organization {
   intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
+  treatmentGoalsList TreatmentGoal[]
 }
 
 model User {
@@ -79,6 +80,7 @@ model User {
   signedLabResults     LabResult[]     @relation("LabResultSigner")
   approvedLabOutreach  LabOutreach[]   @relation("LabOutreachApprover")
   signedRefills        RefillRequest[] @relation("RefillSigner")
+  createdTreatmentGoals TreatmentGoal[] @relation("TreatmentGoalCreator")
 }
 
 model Membership {
@@ -179,6 +181,9 @@ model Patient {
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
+  // Treatment goals (structured; separate from the legacy free-text
+  // `treatmentGoals` column above which captures the patient's intake prose)
+  treatmentGoalsList   TreatmentGoal[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -2044,4 +2049,45 @@ model RefillRequest {
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
+}
+
+// --------------------------------------------------------------
+// Treatment Goals — structured patient-outcome targets (per CLAUDE.md
+// Dr. Patel directive: visual progress bars for treatment-goal progress).
+// The legacy free-text `Patient.treatmentGoals` column still captures
+// intake prose; this model is the queryable, per-goal version used for
+// progress tracking, research cohorts, and reimbursement documentation.
+// --------------------------------------------------------------
+
+enum TreatmentGoalMetric {
+  pain_reduction
+  sleep_hours
+  anxiety_reduction
+  mood_improvement
+  custom
+}
+
+model TreatmentGoal {
+  id                    String              @id @default(cuid())
+  patientId             String
+  organizationId        String
+  title                 String
+  description           String // long-form; Postgres text
+  targetMetric          TreatmentGoalMetric
+  targetValue           Float
+  currentValue          Float               @default(0)
+  startedAt             DateTime            @default(now())
+  targetDate            DateTime?
+  completedAt           DateTime?
+  createdByClinicianId  String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("TreatmentGoalCreator", fields: [createdByClinicianId], references: [id])
+
+  @@index([patientId, startedAt])
+  @@index([organizationId])
+  @@index([targetMetric])
 }
