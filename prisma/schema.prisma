@@ -179,6 +179,7 @@ model Patient {
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
+  productOutcomes      ProductOutcome[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -1632,10 +1633,44 @@ model Product {
   reviews           ProductReview[]
   orderItems        OrderItem[]
   categoryMappings  ProductCategory[]
+  outcomes          ProductOutcome[]
 
   @@index([organizationId, status])
   @@index([clinicianPick])
   @@index([featured])
+}
+
+// --------------------------------------------------------------
+// Per-product outcome logging (Dr. Patel Directive)
+//
+// Every cannabis product a patient uses gets its own simple outcome log
+// (emoji + 1-10 effectiveness + side-effects) after each use. Optimized
+// for per-product efficacy ranking and cohort-level research export.
+// --------------------------------------------------------------
+
+enum ProductOutcomeFeeling {
+  great
+  good
+  ok
+  bad
+  awful
+}
+
+model ProductOutcome {
+  id                  String                @id @default(cuid())
+  patientId           String
+  organizationId      String
+  productId           String
+  feeling             ProductOutcomeFeeling
+  effectivenessScore  Int                   // 1-10 inclusive, validated at write time
+  sideEffects         String[]              @default([])
+  loggedAt            DateTime              @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, productId, loggedAt(sort: Desc)])
+  @@index([organizationId, loggedAt(sort: Desc)])
 }
 
 model ProductVariant {
