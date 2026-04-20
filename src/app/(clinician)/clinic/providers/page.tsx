@@ -1,30 +1,28 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
+import { ProviderCard } from "@/components/clinician/provider-card";
+import {
+  rankProviders,
+  type ProviderRecord,
+} from "@/lib/domain/provider-directory";
 
 export const metadata = { title: "Providers" };
 
-export default async function ProvidersPage() {
+// Server component — lists clinicians (providers) in the current user's
+// organization. Supports URL-driven search via ?q=.
+export default async function ProvidersPage({
+  searchParams,
+}: {
+  searchParams?: { q?: string };
+}) {
   const user = await requireUser();
+  const rawQuery = (searchParams?.q ?? "").trim();
 
-  const providers = await prisma.provider.findMany({
-    where: {
-      organizationId: user.organizationId!,
-      active: true,
-    },
-    include: {
-      user: {
-        select: { firstName: true, lastName: true, email: true },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  if (providers.length === 0) {
+  if (!user.organizationId) {
     return (
       <PageShell>
         <PageHeader
@@ -33,74 +31,154 @@ export default async function ProvidersPage() {
           description="View and contact providers in your organization."
         />
         <EmptyState
-          title="No providers found"
-          description="There are no active providers in your organization yet."
+          title="No organization"
+          description="Your account isn't attached to an organization yet."
         />
       </PageShell>
     );
   }
+
+  // Coarse server-side filter. We build an OR across name/specialty/NPI to
+  // keep the DB query tight before handing off to rankProviders() for
+  // final ranking and tie-breaking.
+  const providers = await prisma.provider.findMany({
+    where: {
+      organizationId: user.organizationId,
+      active: true,
+      ...(rawQuery
+        ? {
+            OR: [
+              { user: { firstName: { contains: rawQuery, mode: "insensitive" } } },
+              { user: { lastName: { contains: rawQuery, mode: "insensitive" } } },
+              { title: { contains: rawQuery, mode: "insensitive" } },
+              { specialties: { has: rawQuery } },
+              { claims: { some: { renderingNpi: { contains: rawQuery } } } },
+              { claims: { some: { billingNpi: { contains: rawQuery } } } },
+            ],
+          }
+        : {}),
+    },
+    include: {
+      user: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      // Pull the most recent claim with a rendering NPI to surface the
+      // provider's NPI in the directory. renderingNpi is what identifies
+      // the clinician to payers and is the relevant field here.
+      claims: {
+        where: { renderingNpi: { not: null } },
+        orderBy: { serviceDate: "desc" },
+        take: 1,
+        select: { renderingNpi: true },
+      },
+    },
+  });
+
+  // Per-provider distinct-patient count (via encounters). One aggregate
+  // query — providerId -> count of distinct patientIds.
+  const providerIds = providers.map((p) => p.id);
+  const encounterGroups =
+    providerIds.length > 0
+      ? await prisma.encounter.groupBy({
+          by: ["providerId", "patientId"],
+          where: {
+            providerId: { in: providerIds },
+            organizationId: user.organizationId,
+          },
+        })
+      : [];
+  const assignedCounts = new Map<string, number>();
+  for (const group of encounterGroups) {
+    if (!group.providerId) continue;
+    assignedCounts.set(
+      group.providerId,
+      (assignedCounts.get(group.providerId) ?? 0) + 1,
+    );
+  }
+
+  const records: Array<{ record: ProviderRecord; userId: string }> = providers.map(
+    (p) => ({
+      record: {
+        id: p.id,
+        firstName: p.user.firstName,
+        lastName: p.user.lastName,
+        title: p.title,
+        specialties: p.specialties,
+        npi: p.claims[0]?.renderingNpi ?? null,
+        assignedPatientCount: assignedCounts.get(p.id) ?? 0,
+      },
+      userId: p.user.id,
+    }),
+  );
+
+  const userIdByProviderId = new Map(
+    records.map(({ record, userId }) => [record.id, userId]),
+  );
+
+  const ranked = rankProviders(
+    records.map(({ record }) => record),
+    rawQuery || undefined,
+  );
 
   return (
     <PageShell>
       <PageHeader
         eyebrow="Providers"
         title="Provider directory"
-        description="View and contact providers in your organization."
+        description="Search clinicians in your organization for patient routing and cross-clinician collaboration."
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {providers.map((provider) => (
-          <Card key={provider.id} className="card-hover">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <Avatar
-                  firstName={provider.user.firstName}
-                  lastName={provider.user.lastName}
-                  size="lg"
-                  className="shrink-0"
-                />
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-display text-lg font-medium text-text tracking-tight truncate">
-                    {provider.user.firstName} {provider.user.lastName}
-                  </h3>
-                  {provider.title && (
-                    <p className="text-sm text-text-muted mt-0.5 truncate">
-                      {provider.title}
-                    </p>
-                  )}
-                </div>
-              </div>
 
-              {provider.specialties.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-4">
-                  {provider.specialties.map((specialty) => (
-                    <Badge key={specialty} tone="accent">
-                      {specialty}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+      <form
+        method="GET"
+        className="mb-8 flex items-center gap-3 max-w-xl"
+        role="search"
+      >
+        <Input
+          type="search"
+          name="q"
+          defaultValue={rawQuery}
+          placeholder="Search by name, specialty, or NPI"
+          aria-label="Search providers"
+          className="flex-1"
+        />
+        <button
+          type="submit"
+          className="h-10 px-4 text-sm font-medium text-accent rounded-md border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-colors"
+        >
+          Search
+        </button>
+        {rawQuery && (
+          <Link
+            href="/clinic/providers"
+            className="h-10 px-4 inline-flex items-center text-sm text-text-muted hover:text-text transition-colors"
+          >
+            Clear
+          </Link>
+        )}
+      </form>
 
-              {provider.bio && (
-                <p className="text-xs text-text-subtle mt-3 line-clamp-2 leading-relaxed">
-                  {provider.bio}
-                </p>
-              )}
-
-              <div className="mt-4 pt-3 border-t border-border/60">
-                <a
-                  href="/clinic/providers/messages"
-                  className="flex items-center justify-center gap-2 w-full text-sm font-medium text-accent py-2 rounded-md border border-accent/30 bg-accent/5 hover:bg-accent/10 transition-colors"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-accent">
-                    <path d="M12 1H2C1.45 1 1 1.45 1 2V9.5C1 10.05 1.45 10.5 2 10.5H4L7 13L10 10.5H12C12.55 10.5 13 10.05 13 9.5V2C13 1.45 12.55 1 12 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
-                  </svg>
-                  Secure message
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {ranked.length === 0 ? (
+        <EmptyState
+          title={rawQuery ? "No providers match your search" : "No providers found"}
+          description={
+            rawQuery
+              ? `Nothing matched "${rawQuery}". Try a different name, specialty, or NPI.`
+              : "There are no active providers in your organization yet."
+          }
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {ranked.map((record) => (
+            <ProviderCard
+              key={record.id}
+              provider={record}
+              messageRecipientUserId={
+                userIdByProviderId.get(record.id) ?? ""
+              }
+            />
+          ))}
+        </div>
+      )}
     </PageShell>
   );
 }
