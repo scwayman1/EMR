@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { dispatch } from "@/lib/orchestration/dispatch";
@@ -11,6 +12,7 @@ import {
   MAX_FILE_SIZE_BYTES,
   inferKind,
 } from "@/lib/storage/document-types";
+import { SIDE_EFFECT_CODES } from "@/lib/domain/side-effects";
 
 export type UploadResult =
   | { ok: true; documentId: string }
@@ -116,4 +118,83 @@ export async function deleteDocumentAction(
 
   revalidatePath("/portal/records");
   return { ok: true };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Side Effect Logging
+// ─────────────────────────────────────────────────────────────────────────
+
+const sideEffectSchema = z
+  .object({
+    effect: z.enum(
+      SIDE_EFFECT_CODES as unknown as [string, ...string[]]
+    ),
+    customEffect: z.string().max(120).optional().nullable(),
+    severity: z.coerce.number().int().min(1).max(10),
+    note: z.string().max(500).optional().nullable(),
+    productId: z.string().optional().nullable(),
+    occurredAt: z.coerce.date().optional(),
+  })
+  .refine(
+    (v) => v.effect !== "other" || (v.customEffect && v.customEffect.trim().length > 0),
+    { message: "customEffect is required when effect='other'", path: ["customEffect"] }
+  );
+
+export type LogSideEffectResult =
+  | { ok: true; reportId: string }
+  | { ok: false; error: string };
+
+export async function logSideEffect(input: {
+  effect: string;
+  customEffect?: string | null;
+  severity: number;
+  note?: string | null;
+  productId?: string | null;
+  occurredAt?: Date | string;
+}): Promise<LogSideEffectResult> {
+  const user = await requireRole("patient");
+
+  const patient = await prisma.patient.findUnique({
+    where: { userId: user.id },
+    select: { id: true, organizationId: true },
+  });
+  if (!patient) return { ok: false, error: "No patient profile found." };
+
+  const parsed = sideEffectSchema.safeParse(input);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0];
+    return { ok: false, error: first?.message ?? "Invalid side effect input." };
+  }
+  const { effect, customEffect, severity, note, productId, occurredAt } = parsed.data;
+
+  // Org-scope the product link: only accept a productId that belongs to the
+  // patient's organization. Silently drop otherwise to prevent cross-org leaks.
+  let safeProductId: string | null = null;
+  if (productId) {
+    const product = await prisma.cannabisProduct.findFirst({
+      where: { id: productId, organizationId: patient.organizationId },
+      select: { id: true },
+    });
+    safeProductId = product?.id ?? null;
+  }
+
+  const report = await prisma.sideEffectReport.create({
+    data: {
+      patientId: patient.id,
+      organizationId: patient.organizationId,
+      effect: effect as never, // Zod validated against SIDE_EFFECT_CODES
+      customEffect:
+        effect === "other" ? (customEffect?.trim() || null) : null,
+      severity,
+      note: note?.trim() || null,
+      productId: safeProductId,
+      occurredAt: occurredAt ?? new Date(),
+    },
+    select: { id: true },
+  });
+
+  revalidatePath("/portal");
+  revalidatePath("/portal/records");
+
+  return { ok: true, reportId: report.id };
 }
