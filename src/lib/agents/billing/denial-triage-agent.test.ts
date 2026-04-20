@@ -278,3 +278,146 @@ describe("denialTriageAgent — org-scope guard", () => {
     expect((result as { category: string }).category).not.toBe("skipped");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Classification + routing: integration with prisma mock
+// ---------------------------------------------------------------------------
+// These tests wire real classifyDenial through the full run() path and assert
+// that the persisted Task reflects the classified category + suggested
+// action. They augment the org-scope suite above with routing fidelity.
+
+describe("denialTriageAgent — classification + routing", () => {
+  beforeEach(() => {
+    findUnique.mockReset();
+    claimUpdate.mockReset();
+    taskCreate.mockReset();
+    financialEventCreate.mockReset();
+
+    claimUpdate.mockResolvedValue({});
+    taskCreate.mockResolvedValue({ id: "task-routed" });
+    financialEventCreate.mockResolvedValue({});
+  });
+
+  it("routes an auth denial to obtain_authorization with a 2-day due date", async () => {
+    findUnique.mockResolvedValue(
+      makeClaim({ denialReason: "Prior auth not on file for this service" }),
+    );
+
+    const before = Date.now();
+    const result = await denialTriageAgent.run(
+      { claimId: "claim-1" },
+      makeCtx("org-a"),
+    );
+    const after = Date.now();
+
+    expect(result).toMatchObject({
+      claimId: "claim-1",
+      category: "authorization",
+      suggestedAction: "obtain_authorization",
+      urgency: "high",
+      taskId: "task-routed",
+    });
+
+    const taskArgs = taskCreate.mock.calls[0][0] as {
+      data: { title: string; description: string; dueAt: Date };
+    };
+    // Title includes the taxonomy label + patient name
+    expect(taskArgs.data.title).toContain("Missing prior authorization");
+    expect(taskArgs.data.title).toContain("Ada Lovelace");
+    // Description includes the label for the suggested NextAction
+    expect(taskArgs.data.description).toContain("Obtain auth");
+    // Due date is 2 days out (high urgency)
+    const dueMs = taskArgs.data.dueAt.getTime();
+    expect(dueMs - before).toBeGreaterThanOrEqual(2 * 86_400_000 - 50);
+    expect(dueMs - after).toBeLessThanOrEqual(2 * 86_400_000 + 50);
+  });
+
+  it("falls back to 'other' / contact_payer / 5-day window when denial reason is unrecognized", async () => {
+    findUnique.mockResolvedValue(
+      makeClaim({ denialReason: "payer reasoned in Klingon" }),
+    );
+
+    const before = Date.now();
+    const result = await denialTriageAgent.run(
+      { claimId: "claim-1" },
+      makeCtx("org-a"),
+    );
+
+    expect(result).toMatchObject({
+      category: "other",
+      suggestedAction: "contact_payer",
+      urgency: "medium",
+    });
+
+    const taskArgs = taskCreate.mock.calls[0][0] as {
+      data: { dueAt: Date };
+    };
+    const deltaMs = taskArgs.data.dueAt.getTime() - before;
+    // medium urgency → 5 days
+    expect(deltaMs).toBeGreaterThanOrEqual(5 * 86_400_000 - 50);
+    expect(deltaMs).toBeLessThanOrEqual(5 * 86_400_000 + 50);
+  });
+
+  it("skips (no task, no audit event) when claim is not in a triage-eligible status", async () => {
+    findUnique.mockResolvedValue(
+      makeClaim({ status: "submitted" /* not denied / appealed */ }),
+    );
+
+    const result = await denialTriageAgent.run(
+      { claimId: "claim-1" },
+      makeCtx("org-a"),
+    );
+
+    expect(result).toEqual({
+      claimId: "claim-1",
+      category: "skipped",
+      suggestedAction: "none",
+      urgency: "low",
+      taskId: null,
+    });
+
+    expect(taskCreate).not.toHaveBeenCalled();
+    expect(claimUpdate).not.toHaveBeenCalled();
+    expect(financialEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("stamps FinancialEvent metadata with category + suggestedAction + taskId", async () => {
+    findUnique.mockResolvedValue(
+      makeClaim({ denialReason: "Past timely filing window" }),
+    );
+
+    await denialTriageAgent.run({ claimId: "claim-1" }, makeCtx("org-a"));
+
+    expect(financialEventCreate).toHaveBeenCalledTimes(1);
+    const feArgs = financialEventCreate.mock.calls[0][0] as {
+      data: { metadata: Record<string, unknown>; type: string };
+    };
+    expect(feArgs.data.type).toBe("claim_denied");
+    expect(feArgs.data.metadata).toMatchObject({
+      category: "timely_filing",
+      suggestedAction: "submit_appeal",
+      taskId: "task-routed",
+    });
+  });
+
+  it("updates the claim with the triage payload (category, label, urgency)", async () => {
+    findUnique.mockResolvedValue(
+      makeClaim({ denialReason: "Duplicate claim — already processed" }),
+    );
+
+    await denialTriageAgent.run({ claimId: "claim-1" }, makeCtx("org-a"));
+
+    expect(claimUpdate).toHaveBeenCalledTimes(1);
+    const updateArgs = claimUpdate.mock.calls[0][0] as {
+      where: { id: string };
+      data: { denialTriage: Record<string, unknown>; triagedAt: Date };
+    };
+    expect(updateArgs.where.id).toBe("claim-1");
+    expect(updateArgs.data.denialTriage).toMatchObject({
+      category: "duplicate",
+      suggestedAction: "contact_payer",
+      urgency: "low",
+    });
+    expect(updateArgs.data.triagedAt).toBeInstanceOf(Date);
+  });
+});

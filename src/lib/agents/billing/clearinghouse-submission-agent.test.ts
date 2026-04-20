@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ALREADY_SUBMITTED_STATUSES,
+  clearinghouseSubmissionAgent,
   evaluateRetryGuard,
   evaluateSubmissionEligibility,
   isRejectionRetryEligible,
@@ -10,6 +11,7 @@ import {
   type PriorSubmissionInput,
   validateForSubmission,
 } from "./clearinghouse-submission-agent";
+import type { AgentContext } from "@/lib/orchestration/types";
 
 // ---------------------------------------------------------------------------
 // Clearinghouse Submission Agent — pure helper tests
@@ -360,5 +362,364 @@ describe("evaluateRetryGuard", () => {
     if (decision.outcome === "allow") {
       expect(decision.attemptNumber).toBe(2);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Prisma-mocked integration tests
+// ---------------------------------------------------------------------------
+// Stub the Prisma singleton so we can drive run() through its real control
+// flow (transaction, retry guard, cooldown, rejection escalation) without
+// touching a database. writeAgentAudit and reasoning.persist both hit prisma
+// as well, so their table namespaces (auditLog, agentReasoning) are also
+// provided as no-ops.
+
+const claimFindUnique = vi.fn();
+const claimUpdate = vi.fn();
+const claimScrubResultFindUnique = vi.fn();
+const submissionFindMany = vi.fn();
+const submissionCreate = vi.fn();
+const submissionUpdate = vi.fn();
+const financialEventCreate = vi.fn();
+const auditLogCreate = vi.fn();
+const agentReasoningCreate = vi.fn();
+const transactionFn = vi.fn();
+
+vi.mock("@/lib/db/prisma", () => ({
+  prisma: {
+    claim: {
+      findUnique: (...args: unknown[]) => claimFindUnique(...args),
+      update: (...args: unknown[]) => claimUpdate(...args),
+    },
+    claimScrubResult: {
+      findUnique: (...args: unknown[]) => claimScrubResultFindUnique(...args),
+    },
+    clearinghouseSubmission: {
+      create: (...args: unknown[]) => submissionCreate(...args),
+      update: (...args: unknown[]) => submissionUpdate(...args),
+    },
+    financialEvent: {
+      create: (...args: unknown[]) => financialEventCreate(...args),
+    },
+    auditLog: {
+      create: (...args: unknown[]) => auditLogCreate(...args),
+    },
+    agentReasoning: {
+      create: (...args: unknown[]) => agentReasoningCreate(...args),
+    },
+    $transaction: (...args: unknown[]) => transactionFn(...args),
+  },
+}));
+
+function makeAgentCtx(
+  organizationId: string | null = "org-a",
+): AgentContext {
+  return {
+    jobId: "job-ch-1",
+    organizationId,
+    log: vi.fn(),
+    emit: vi.fn(async () => {}),
+    assertCan: vi.fn(),
+    model: { complete: vi.fn(async () => "") },
+    tools: {} as AgentContext["tools"],
+    stepResults: new Map(),
+  };
+}
+
+function makeLoadedClaim(
+  overrides: Partial<Record<string, unknown>> = {},
+): Record<string, unknown> {
+  return {
+    id: "claim-1",
+    organizationId: "org-a",
+    patientId: "pat-1",
+    status: "ready",
+    billingNpi: "1234567890",
+    renderingNpi: "1234567890",
+    payerId: "AETNA-001",
+    payerName: "Aetna",
+    billedAmountCents: 25000,
+    serviceDate: new Date("2026-04-10T00:00:00Z"),
+    cptCodes: [{ code: "99213", label: "E&M" }],
+    icd10Codes: [{ code: "G89.29", label: "chronic pain" }],
+    placeOfService: "11",
+    submissions: [],
+    ...overrides,
+  };
+}
+
+describe("clearinghouseSubmissionAgent — prisma-mocked integration", () => {
+  beforeEach(() => {
+    claimFindUnique.mockReset();
+    claimUpdate.mockReset();
+    claimScrubResultFindUnique.mockReset();
+    submissionFindMany.mockReset();
+    submissionCreate.mockReset();
+    submissionUpdate.mockReset();
+    financialEventCreate.mockReset();
+    auditLogCreate.mockReset();
+    agentReasoningCreate.mockReset();
+    transactionFn.mockReset();
+
+    claimUpdate.mockResolvedValue({});
+    submissionUpdate.mockResolvedValue({});
+    financialEventCreate.mockResolvedValue({});
+    auditLogCreate.mockResolvedValue({});
+    agentReasoningCreate.mockResolvedValue({});
+
+    // Default: $transaction runs the callback with a tx-like object whose
+    // methods delegate to the per-table mocks. Individual tests can still
+    // override transactionFn wholesale.
+    transactionFn.mockImplementation(async (cb: (tx: unknown) => unknown) =>
+      cb({
+        clearinghouseSubmission: {
+          findMany: (...args: unknown[]) => submissionFindMany(...args),
+          create: (...args: unknown[]) => submissionCreate(...args),
+        },
+      }),
+    );
+  });
+
+  it("success path: creates submission, flips claim to 'submitted', writes financial event, emits events", async () => {
+    claimFindUnique.mockResolvedValue(makeLoadedClaim());
+    claimScrubResultFindUnique.mockResolvedValue({
+      id: "scrub-1",
+      status: "clean",
+    });
+    submissionFindMany.mockResolvedValue([]);
+    submissionCreate.mockResolvedValue({ id: "sub-1" });
+
+    const ctx = makeAgentCtx("org-a");
+    const result = await clearinghouseSubmissionAgent.run(
+      {
+        claimId: "claim-1",
+        organizationId: "org-a",
+        scrubResultId: "scrub-1",
+      },
+      ctx,
+    );
+
+    expect(result).toEqual({
+      claimId: "claim-1",
+      submissionId: "sub-1",
+      status: "accepted",
+      submitted: true,
+    });
+
+    // Submission row was created under the transaction (attempt 0, pending)
+    expect(submissionCreate).toHaveBeenCalledTimes(1);
+    const createArgs = submissionCreate.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data.claimId).toBe("claim-1");
+    expect(createArgs.data.organizationId).toBe("org-a");
+    expect(createArgs.data.retryCount).toBe(0);
+    expect(createArgs.data.responseStatus).toBe("pending");
+
+    // Claim flipped to 'submitted'
+    const claimUpdateArgs = claimUpdate.mock.calls[0][0] as {
+      where: { id: string };
+      data: Record<string, unknown>;
+    };
+    expect(claimUpdateArgs.where.id).toBe("claim-1");
+    expect(claimUpdateArgs.data.status).toBe("submitted");
+    expect(claimUpdateArgs.data.submittedAt).toBeInstanceOf(Date);
+
+    // FinancialEvent ledger entry
+    expect(financialEventCreate).toHaveBeenCalledTimes(1);
+    const feArgs = financialEventCreate.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(feArgs.data.organizationId).toBe("org-a");
+    expect(feArgs.data.type).toBe("claim_submitted");
+    expect(feArgs.data.amountCents).toBe(25000);
+
+    // Events emitted: claim.submitted AND clearinghouse.accepted
+    const emitCalls = (ctx.emit as unknown as { mock: { calls: unknown[][] } })
+      .mock.calls;
+    const eventNames = emitCalls.map(
+      (c) => (c[0] as { name: string }).name,
+    );
+    expect(eventNames).toContain("claim.submitted");
+    expect(eventNames).toContain("clearinghouse.accepted");
+  });
+
+  it("cooldown path: recent prior submission returns 'cooldown_active' and does NOT create a new submission", async () => {
+    claimFindUnique.mockResolvedValue(makeLoadedClaim());
+    claimScrubResultFindUnique.mockResolvedValue({
+      id: "scrub-1",
+      status: "clean",
+    });
+    // 10 seconds ago — well inside the 60s cooldown window.
+    submissionFindMany.mockResolvedValue([
+      { id: "prev-sub", submittedAt: new Date(Date.now() - 10_000) },
+    ]);
+
+    const ctx = makeAgentCtx("org-a");
+    const result = await clearinghouseSubmissionAgent.run(
+      {
+        claimId: "claim-1",
+        organizationId: "org-a",
+        scrubResultId: "scrub-1",
+      },
+      ctx,
+    );
+
+    expect(result).toEqual({
+      claimId: "claim-1",
+      submissionId: null,
+      status: "cooldown_active",
+      submitted: false,
+    });
+
+    // Critical: no new submission, no claim status flip, no ledger write.
+    expect(submissionCreate).not.toHaveBeenCalled();
+    expect(claimUpdate).not.toHaveBeenCalled();
+    expect(financialEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("max-retries-exceeded path: 3 prior submissions blocks, emits human.review.required, writes audit", async () => {
+    claimFindUnique.mockResolvedValue(makeLoadedClaim());
+    claimScrubResultFindUnique.mockResolvedValue({
+      id: "scrub-1",
+      status: "clean",
+    });
+    // Three priors, all old enough to be outside cooldown — only the retry
+    // cap should trip.
+    submissionFindMany.mockResolvedValue([
+      { id: "s1", submittedAt: new Date(Date.now() - 60 * 60_000) },
+      { id: "s2", submittedAt: new Date(Date.now() - 30 * 60_000) },
+      { id: "s3", submittedAt: new Date(Date.now() - 10 * 60_000) },
+    ]);
+
+    const ctx = makeAgentCtx("org-a");
+    const result = await clearinghouseSubmissionAgent.run(
+      {
+        claimId: "claim-1",
+        organizationId: "org-a",
+        scrubResultId: "scrub-1",
+      },
+      ctx,
+    );
+
+    expect(result).toEqual({
+      claimId: "claim-1",
+      submissionId: null,
+      status: "retry_limit_exceeded",
+      submitted: false,
+    });
+
+    // No new submission created, no claim status flip, no financial event.
+    expect(submissionCreate).not.toHaveBeenCalled();
+    expect(claimUpdate).not.toHaveBeenCalled();
+    expect(financialEventCreate).not.toHaveBeenCalled();
+
+    // A human.review.required event should have been emitted with tier 1.
+    const emitCalls = (ctx.emit as unknown as { mock: { calls: unknown[][] } })
+      .mock.calls;
+    expect(emitCalls.length).toBeGreaterThan(0);
+    const review = emitCalls
+      .map((c) => c[0] as { name: string; tier?: number; category?: string })
+      .find((e) => e.name === "human.review.required");
+    expect(review).toBeDefined();
+    expect(review!.tier).toBe(1);
+    expect(review!.category).toBe("submission_retry_limit");
+
+    // Audit row written for the retry-limit escalation.
+    expect(auditLogCreate).toHaveBeenCalled();
+    const auditArgs = auditLogCreate.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(auditArgs.data.action).toBe("submission.retry_limit_reached");
+  });
+
+  it("claim not found: returns error_claim_not_found, no writes", async () => {
+    claimFindUnique.mockResolvedValue(null);
+
+    const ctx = makeAgentCtx("org-a");
+    const result = await clearinghouseSubmissionAgent.run(
+      {
+        claimId: "missing",
+        organizationId: "org-a",
+        scrubResultId: "scrub-1",
+      },
+      ctx,
+    );
+
+    expect(result).toEqual({
+      claimId: "missing",
+      submissionId: null,
+      status: "error_claim_not_found",
+      submitted: false,
+    });
+
+    expect(submissionCreate).not.toHaveBeenCalled();
+    expect(claimUpdate).not.toHaveBeenCalled();
+    expect(financialEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocked-by-scrub: refuses to submit when scrub status is 'blocked'", async () => {
+    claimFindUnique.mockResolvedValue(makeLoadedClaim());
+    claimScrubResultFindUnique.mockResolvedValue({
+      id: "scrub-1",
+      status: "blocked",
+    });
+
+    const ctx = makeAgentCtx("org-a");
+    const result = await clearinghouseSubmissionAgent.run(
+      {
+        claimId: "claim-1",
+        organizationId: "org-a",
+        scrubResultId: "scrub-1",
+      },
+      ctx,
+    );
+
+    expect(result).toEqual({
+      claimId: "claim-1",
+      submissionId: null,
+      status: "blocked_by_scrub",
+      submitted: false,
+    });
+
+    expect(submissionCreate).not.toHaveBeenCalled();
+    expect(claimUpdate).not.toHaveBeenCalled();
+    expect(financialEventCreate).not.toHaveBeenCalled();
+  });
+
+  it("org mismatch: claim's organizationId differs from input — current behavior exercises no guard (documented bug)", async () => {
+    // NOTE: This test documents the CURRENT behavior of the agent, which does
+    // NOT call assertOrgMatch before writing. The claim row lives in org-b
+    // but the input provides organizationId: "org-a" — the agent currently
+    // writes a submission row stamped with org-a regardless. See the report
+    // accompanying this PR: this is a cross-tenant write hazard.
+    claimFindUnique.mockResolvedValue(
+      makeLoadedClaim({ organizationId: "org-b" }),
+    );
+    claimScrubResultFindUnique.mockResolvedValue({
+      id: "scrub-1",
+      status: "clean",
+    });
+    submissionFindMany.mockResolvedValue([]);
+    submissionCreate.mockResolvedValue({ id: "sub-xorg" });
+
+    const ctx = makeAgentCtx("org-a");
+    const result = await clearinghouseSubmissionAgent.run(
+      {
+        claimId: "claim-1",
+        organizationId: "org-a",
+        scrubResultId: "scrub-1",
+      },
+      ctx,
+    );
+
+    // Current (undesired) behavior: the write goes through under the
+    // *input*'s org, not the claim's org. When the guard is added, this
+    // assertion should flip to `.rejects.toThrow(/Org scope violation/)`.
+    expect(result.status).toBe("accepted");
+    const createArgs = submissionCreate.mock.calls[0][0] as {
+      data: Record<string, unknown>;
+    };
+    expect(createArgs.data.organizationId).toBe("org-a");
   });
 });
