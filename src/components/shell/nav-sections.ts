@@ -12,10 +12,18 @@
  */
 
 import { aggregateBadge, type NavBadge } from "@/lib/domain/nav-badges";
+import type * as React from "react";
 
 export type { NavBadge } from "@/lib/domain/nav-badges";
 
 export type CountTone = "highlight" | "danger" | "accent";
+
+/**
+ * Lucide-compatible icon component. Lives as a plain function component over
+ * `SVGProps` so it accepts any lucide-react icon without adding a new dep.
+ * If/when lucide-react is installed, `LucideIcon` satisfies this shape.
+ */
+export type NavIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>;
 
 export interface NavItem {
   label: string;
@@ -46,6 +54,33 @@ export interface NavSection {
    * aggregate of the child items' `badge` fields is used.
    */
   badge?: NavBadge | null;
+  /**
+   * Icon for the pillar rail. When set on any section in an array, the shell
+   * switches from the stacked nav to the icon-rail + context-drawer layout.
+   * When unset, the section renders in the legacy stacked mode.
+   */
+  icon?: NavIcon;
+  /**
+   * Stable identifier used to key the active pillar (localStorage, URL state,
+   * etc.). Defaults to `label` when omitted but icon is set; only needed
+   * explicitly for unlabeled icon sections.
+   */
+  pillar?: string;
+}
+
+/**
+ * Stable id for a pillar section — prefers explicit `pillar`, then `label`,
+ * falling back to a deterministic index-based key for anonymous sections.
+ */
+export function pillarId(section: NavSection, idx: number): string {
+  return section.pillar ?? section.label ?? `pillar-${idx}`;
+}
+
+/**
+ * True when any section in the array has an icon — triggers the rail layout.
+ */
+export function hasPillarIcons(sections: NavSection[]): boolean {
+  return sections.some((s) => s.icon !== undefined);
 }
 
 /**
