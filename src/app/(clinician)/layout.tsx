@@ -1,12 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
-import {
-  IconHome,
-  IconClipboardCheck,
-  IconBookOpen,
-  IconSettings,
-} from "@/components/shell/nav-icons";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
@@ -107,7 +101,7 @@ export default async function ClinicianLayout({
     {
       label: "Today",
       pillar: "today",
-      icon: IconHome,
+      icon: "home",
       items: [
         { label: "Today", href: "/clinic" },
         { label: "Command Center", href: "/clinic/command" },
@@ -117,7 +111,7 @@ export default async function ClinicianLayout({
     },
     {
       label: "Review",
-      icon: IconClipboardCheck,
+      icon: "clipboard-check",
       items: [
         {
           label: "Approvals",
@@ -141,7 +135,7 @@ export default async function ClinicianLayout({
     },
     {
       label: "Reference",
-      icon: IconBookOpen,
+      icon: "book-open",
       items: [
         { label: "Providers", href: "/clinic/providers" },
         { label: "Research", href: "/clinic/research" },
@@ -151,7 +145,7 @@ export default async function ClinicianLayout({
     },
     {
       label: "Admin",
-      icon: IconSettings,
+      icon: "settings",
       items: [
         { label: "Audit", href: "/clinic/audit-trail" },
         { label: "Brief", href: "/clinic/morning-brief" },

@@ -1,14 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
-import {
-  IconLayoutGrid,
-  IconDollar,
-  IconUsers,
-  IconBuilding,
-  IconChart,
-  IconServer,
-} from "@/components/shell/nav-icons";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { prisma } from "@/lib/db/prisma";
@@ -133,7 +125,7 @@ export default async function OperatorLayout({
     {
       label: "Overview",
       pillar: "overview",
-      icon: IconLayoutGrid,
+      icon: "layout-grid",
       items: [
         { label: "Overview", href: "/ops" },
         { label: "Mission Control", href: "/ops/mission-control" },
@@ -144,7 +136,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Billing",
-      icon: IconDollar,
+      icon: "dollar",
       items: [
         { label: "Billing", href: "/ops/billing" },
         { label: "Scrub", href: "/ops/scrub" },
@@ -157,7 +149,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Operations",
-      icon: IconUsers,
+      icon: "users",
       items: [
         { label: "Staff schedule", href: "/ops/staff-schedule" },
         { label: "Time clock", href: "/ops/time-clock" },
@@ -174,7 +166,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Practice Setup",
-      icon: IconBuilding,
+      icon: "building",
       items: [
         { label: "Onboarding", href: "/ops/onboarding" },
         { label: "Practice launch", href: "/ops/launch" },
@@ -185,7 +177,7 @@ export default async function OperatorLayout({
     },
     {
       label: "Intelligence",
-      icon: IconChart,
+      icon: "chart",
       items: [
         { label: "Analytics", href: "/ops/analytics" },
         { label: "Analytics Lab", href: "/ops/analytics-lab" },
@@ -195,7 +187,7 @@ export default async function OperatorLayout({
     },
     {
       label: "System",
-      icon: IconServer,
+      icon: "server",
       items: [
         { label: "AI Config", href: "/ops/settings/ai-config" },
         { label: "Webhooks", href: "/ops/webhooks" },

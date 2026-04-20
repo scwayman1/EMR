@@ -8,6 +8,7 @@ import {
   sectionContainsPath,
   type NavSection,
 } from "./nav-sections";
+import { resolveNavIcon } from "./icon-registry";
 
 export interface IconRailProps {
   sections: NavSection[];
@@ -27,7 +28,7 @@ export function IconRail({
   return (
     <ul className="flex flex-col gap-1 px-2 py-3">
       {sections.map((section, idx) => {
-        const Icon = section.icon;
+        const Icon = resolveNavIcon(section.icon);
         if (!Icon) return null;
         const id = pillarId(section, idx);
         const badge = getSectionBadge(section);
