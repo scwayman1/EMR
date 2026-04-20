@@ -2113,6 +2113,186 @@ We are trying to build something no one has built before. The people who use thi
 
 ---
 
+## Wave — Patient Portal Cleanup + Reference Guide (Dr. Patel whiteboard + pamphlet prompt)
+
+### EMR-193: Patient Portal Home → "Log Check-in" + Keep Symptom Graphs
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Rename the patient portal Home primary action to "Log Check-in." Keep the pain, sleep, anxiety, and mood graphs visible so patients see trend lines the moment they open the portal.
+
+**Acceptance criteria:**
+- Home CTA reads "Log Check-in"
+- Pain / sleep / anxiety / mood sparklines render above the fold
+- Tapping a graph opens detailed per-symptom history
+
+---
+
+### EMR-194: Log Dose Tab — Remove Ribbon, Show All Cannabis Products (Active/Inactive Filter)
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Remove all secondary ribbon tabs on Log Dose (My Results, Meds, Dosing Plan, Care Plan, Labs, Assessments, Outcomes, Care Guide, Learn). Replace with a single product list showing EVERY cannabis product tied to the patient — bought, scanned, or prescribed — with an All / Active / Inactive filter.
+
+**Acceptance criteria:**
+- Ribbon tabs removed from /patient/log-dose
+- Product list includes bought + scanned + prescribed sources
+- Filter chip: All / Active / Inactive
+- Tap product → one-tap emoji + dose + time log flow
+
+---
+
+### EMR-195: Rename "My Health Records" → "My Records" + Two-Row Collapsible Ribbon
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Rename "My Health Records" to "My Records." Add TWO collapsible ribbons at the top:
+- Row 1: All, Notes, Labs, Imaging, Letters, Other
+- Row 2: Medications, Dosing Plan, Assessments, Outcomes, Care Plan, Care Guide, Learn
+
+**Acceptance criteria:**
+- Tab, nav, and breadcrumb renamed everywhere
+- Two ribbon rows render at the top, each collapsible via chevron
+- Each entry filters or deep-links to the correct sub-view
+
+---
+
+### EMR-196: Rename "My Journey" → "My Garden" + Top Ribbon
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Rename "My Journey" to "My Garden." Keep a top ribbon: Lifestyle • My Garden • Storybook • Roadmap. (Cannabis Wheel moves to Chat & Learn per EMR-200.)
+
+**Acceptance criteria:**
+- Tab, nav, breadcrumbs renamed to "My Garden"
+- Top ribbon order: Lifestyle • My Garden • Storybook • Roadmap
+- Cannabis Wheel reference removed from this page
+
+---
+
+### EMR-197: Messages — Highlight + Inline Expand with Video/Phone + Text Box
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+When a patient clicks a message, highlight the row and expand inline to show full thread, reply text box, and video/phone call buttons.
+
+**Acceptance criteria:**
+- Click row → highlight + inline expand
+- Expanded panel: message history, text box, attach, video icon, phone icon
+- Collapses cleanly when another message is opened
+
+---
+
+### EMR-198: Q/A Tab — Remove All Ribbon Tabs
+**Priority:** 3 — Normal
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Strip all secondary ribbon tabs from the Q/A page. One clean feed.
+
+**Acceptance criteria:**
+- Q/A page renders without any secondary ribbon
+- Any filters collapse into a single dropdown / chip row
+
+---
+
+### EMR-199: Account Ribbon — Fit One Row, Remove Community
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Fit the Account ribbon on ONE row: Profile • Billing • Intake • Settings. Remove "Community" (moves to Chat & Learn per EMR-200).
+
+**Acceptance criteria:**
+- Ribbon on a single row without horizontal scroll at 375px width
+- "Community" removed from Account
+- Order: Profile • Billing • Intake • Settings
+
+---
+
+### EMR-200: Chat & Learn — Consolidate Ribbon + Reddit-Style Community Threads
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Description:**
+Chat & Learn becomes the social + education hub. Top ribbon: Community • Cannabis Wheel • ChatCB • Research.
+
+Clicking a Community post opens a Reddit-style thread: message/question at top, nested replies below, bottom text box with cannabis emoji picker. Indent replies, collapse threads, search posts.
+
+**Acceptance criteria:**
+- Top ribbon: Community • Cannabis Wheel • ChatCB • Research
+- Community post view: header, nested replies, text box with cannabis emojis
+- Reddit-like indentation + collapse
+- Search bar indexes all posts
+
+---
+
+### EMR-201: Cannabis Combo Wheel — Colors POP + Larger Wheel & Letters
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard)
+**Description:**
+Visual tune: saturate baseline colors so they pop (vs. current muted tones), and increase wheel diameter + label type size for mobile + tablet readability.
+
+**Acceptance criteria:**
+- Baseline palette has stronger chroma / saturation
+- Wheel fills viewport in mobile portrait
+- Labels readable without pinch-zoom at iPhone 12 portrait width
+
+---
+
+### EMR-202: Education Page — Justin Kander Research PDF Under "Research" Tab
+**Priority:** 3 — Normal
+**Source:** Dr. Patel (whiteboard)
+**Description:**
+On the public Education page, add Justin Kander's research PDF as a downloadable resource under the "Research" tab, positioned below the "Search PubMed" text box.
+
+**Acceptance criteria:**
+- PDF hosted under /public/guides (or S3) and linked from Education → Research
+- Appears directly below Search PubMed input
+- Download tracked in analytics
+
+---
+
+### EMR-203: LeafJourney Trifold Reference Guide (Cannabinoids + Terpenes + Bioavailability + Family Tree)
+**Priority:** 2 — High
+**Source:** Dr. Patel (pamphlet prompt, derived from TheAmazingFlower 2024 Pocket Guide)
+**Description:**
+Three-fold reference pamphlet in the LeafJourney aesthetic — cream background, LeafJourney green accent, Apple-grade type hierarchy — usable by both providers and patients. Copy must be readable at a 3rd-grade level while remaining clinically useful. Emoji-first, color-banded, no dense tables.
+
+**Content (three panels front, three panels back):**
+- **Panel 1 — Major Cannabinoids:** CBDA, CBGA, THCA, THCVA, CBC, CBD, CBDV, CBG, CBN, Δ8-THC, Δ9-THC, THCV — each with a one-line "may help with" list in plain language.
+- **Panel 2 — Terpene Spectrum:** Uplifting → Calming rainbow (Terpinolene, Ocimene, Limonene, Pinene, Caryophyllene, Linalool, Myrcene, etc.) with aroma cues and boiling points.
+- **Panel 3 — Bioavailability:** Emulsion, Vapor, Smoke, Tincture, Edible — onset time, duration, absorption level.
+- **Panel 4 — Cannabinoid Family Tree:** CBGA / CBGVA → heat/light/oxygen/time → daughter cannabinoids → further conversion products.
+- **Panel 5 — How to Start:** "Start Low, Go Slow" message with a simple emoji-first step-by-step.
+- **Panel 6 — Safety & QR:** Bi-phasic effect note, safety reminders, QR code to ChatCB.
+
+**Output formats:**
+- Print-ready PDF (US Letter, trifold, 0.25" bleed) under /public/guides/
+- Web-flip version linkable from Education tab
+- Screen-reader-accessible alt-text version
+
+**Design constraints:**
+- Cream background (#F5F1E8 range), LeafJourney green accent
+- Apple-grade type hierarchy, no numeric codes user-facing
+- 3rd-grade reading level across all copy
+- Emoji-first iconography
+- Dual-audience framing: the same copy serves patient and provider
+
+---
+
+### EMR-204: Landing Page — Fix "POTENCY 710" Label + Remove Unconfirmed Partner Brands
+**Priority:** 3 — Normal
+**Source:** Dr. Patel (leafjourney.com screenshot annotation)
+**Description:**
+Two marketing polish items on the public landing page:
+1. The category label "POTENCY 710 · SKINCARE" above Gold Skin Serum reads like an internal SKU — replace with a human-readable category label such as "CBD SKINCARE."
+2. Partner Brands section currently lists "PhytoRx" and "Flower Powered." Both flagged for removal until real, confirmed partners are in place.
+
+**Acceptance criteria:**
+- No numeric / internal codes rendered as user-facing category labels
+- "PhytoRx" and "Flower Powered" removed from Partner Brands
+- Partner Brands section hides gracefully (or shows "Coming soon" placeholder) if no confirmed partners remain
+
+---
+
 ## Updated Summary (after Wave 16+ backlog expansion)
 
 | # | Title | Priority | Status |
@@ -2217,5 +2397,17 @@ We are trying to build something no one has built before. The people who use thi
 | 190 | Set Up Linear for Project Management | Urgent | **done** |
 | 191 | Wellness Toolkit Redesign — remove ribbon, checkbox dropdowns, health score integration | High | backlog |
 | 192 | Store Overhaul — remove old products, update to real partner URLs | High | **done** |
+| 193 | Patient Portal Home → "Log Check-in" + keep symptom graphs | High | backlog |
+| 194 | Log Dose — remove ribbon, all cannabis products + active/inactive filter | High | backlog |
+| 195 | "My Health Records" → "My Records" + two-row collapsible ribbon | High | backlog |
+| 196 | "My Journey" → "My Garden" + top ribbon | High | backlog |
+| 197 | Messages — highlight + inline expand with video/phone + text box | High | backlog |
+| 198 | Q/A — remove all ribbon tabs | Normal | backlog |
+| 199 | Account ribbon — one row, remove Community | High | backlog |
+| 200 | Chat & Learn — consolidate ribbon + Reddit-style community threads | High | backlog |
+| 201 | Cannabis Combo Wheel — colors POP + larger wheel & letters | High | backlog |
+| 202 | Education page — Justin Kander research PDF under Research tab | Normal | backlog |
+| 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
+| 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
 
-**Grand total: 192 tickets.** Product Drop #9.
+**Grand total: 204 tickets.** Product Drop #9.
