@@ -2,12 +2,13 @@
  * Race a promise against a wall-clock timeout.
  *
  * If `promise` has not settled within `ms`, resolve with `fallback` instead.
- * The original promise is allowed to finish in the background — any late
- * rejection is swallowed (logged) so it doesn't crash the Node process.
+ * If `promise` rejects before the timeout, resolve with `fallback` too — the
+ * rejection is swallowed (logged). Any late rejection after a timeout is also
+ * swallowed so it doesn't crash the Node process.
  *
- * Intended for Server Components where a hung downstream call (DB, cache,
- * upstream API) would otherwise wedge the Suspense boundary forever,
- * blocking hydration and making the whole route feel broken.
+ * Intended for Server Components where a hung or failing downstream call
+ * (DB, cache, upstream API) would otherwise wedge the Suspense boundary
+ * forever, blocking hydration and making the whole route feel broken.
  */
 export async function withTimeout<T>(
   promise: Promise<T>,
@@ -25,7 +26,14 @@ export async function withTimeout<T>(
     }, ms);
   });
 
-  const result = await Promise.race([promise, timeoutPromise]);
+  // Swallow rejections on the wrapped promise so Promise.race never rejects —
+  // a slow-or-broken downstream should never surface as an unhandled error.
+  const safePromise = Promise.resolve(promise).catch((err) => {
+    console.warn(`[${label}] rejected — serving fallback:`, err);
+    return fallback;
+  });
+
+  const result = await Promise.race([safePromise, timeoutPromise]);
   if (timer) clearTimeout(timer);
 
   if (timedOut) {
