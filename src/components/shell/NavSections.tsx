@@ -16,6 +16,7 @@ import {
   type NavSection,
 } from "./nav-sections";
 import type { BadgeSeverity, NavBadge } from "@/lib/domain/nav-badges";
+import { NavActivityDot } from "./NavActivityDot";
 
 /**
  * Rail renderer for the 3-tier IA.
@@ -150,6 +151,7 @@ function ItemLink({
         )}
       />
       <span className="flex-1">{item.label}</span>
+      {item.activity && <NavActivityDot tone={item.activity.tone} />}
       <NavItemBadge item={item} />
     </Link>
   );
