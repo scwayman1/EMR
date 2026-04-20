@@ -4,13 +4,34 @@
 
 import { aggregateBadge, type NavBadge } from "@/lib/domain/nav-badges";
 import type { NavAgentActivity } from "@/lib/domain/nav-agent-activity";
-import type * as React from "react";
 
 export type { NavBadge } from "@/lib/domain/nav-badges";
 
 export type CountTone = "highlight" | "danger" | "accent";
 
-export type NavIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>;
+// Icon references on NavSection cross the server→client RSC boundary, so they
+// MUST be serializable. We pass a string key here and resolve to a component
+// inside the client icon registry (./icon-registry). Passing a function/
+// component reference directly triggers "Functions cannot be passed directly
+// to Client Components" at render time.
+export type NavIconKey =
+  | "home"
+  | "pill"
+  | "calendar"
+  | "message"
+  | "user"
+  | "stethoscope"
+  | "clipboard-check"
+  | "book-open"
+  | "settings"
+  | "layout-grid"
+  | "dollar"
+  | "users"
+  | "building"
+  | "chart"
+  | "server"
+  | "heart"
+  | "inbox";
 
 export interface NavItem {
   label: string;
@@ -27,7 +48,7 @@ export interface NavSection {
   items: NavItem[];
   defaultCollapsed?: boolean;
   badge?: NavBadge | null;
-  icon?: NavIcon;
+  icon?: NavIconKey;
   pillar?: string;
 }
 
