@@ -44,6 +44,54 @@ const APPEAL_STRATEGIES: Record<string, string> = {
   "29": "Provide proof of timely filing — original submission date, clearinghouse acceptance receipt, and any prior correspondence.",
 };
 
+// Cannabis-specific appeal templates. Triggered when the claim has F12.x or
+// Z71.89 ICD-10 codes. Generic "medical necessity" language fails on cannabis
+// denials; payers want disease-specific documentation + coverage-policy
+// citation + prior-treatment-failure history.
+const CANNABIS_APPEAL_STRATEGIES: Record<string, string> = {
+  "50": "F12.x medical-necessity denial. Include: (1) full DSM-5 cannabis use disorder severity documentation (2+ criteria with functional impact), (2) detailed prior-treatment-failure history (SSRI trials, behavioral therapy attempts, etc.), (3) specific citation to the payer's published cannabis / substance-use coverage policy by name + date, (4) clinical justification tying the chosen treatment to guideline-concordant care (APA / SAMHSA), (5) provider's credentials as relevant to substance-use care. Generic 'medically necessary' language is not sufficient for cannabis-related appeals.",
+  "96": "F12.x / Z71.89 benefit denial. Before appealing, pull the payer's Summary of Benefits & Coverage and verify substance-use services are in-benefit. If excluded, DO NOT appeal — convert to self-pay. If included but denied, cite the specific benefit language, attach the service-authorization letter if one exists, and include a letter of medical necessity from the rendering provider's credentials.",
+  "197": "F12.x PA denial. Attach: the PA request packet with all original clinical documentation, the date stamp showing PA was requested before service, and any PA approval number if issued. If PA was not required for F12 services under this plan, cite the specific policy section. Time-sensitive: 90-day appeal window starts ticking.",
+  "16": "F12.x / Z71.89 missing-info denial. Include: complete RARC response (exact field the payer is asking for), the clinical evaluation note, DSM-5 severity documentation, and the patient's treatment goals. Cannabis-related missing-info denials often need psychiatric consult notes even when CARC 16 isn't specific.",
+  "4": "Z71.89 cannabis counseling + modifier 25 denial. Two plays: (1) if the E/M documentation separately supports the counseling time (not just brief mention), cite CCI rule + attach timed documentation; (2) if documentation is thin, do NOT appeal — this payer doesn't honor mod 25 for cannabis counseling and the appeal will fail.",
+};
+
+function resolveAppealStrategy(
+  carcCode: string,
+  icd10List: string[],
+): { strategy: string; isCannabisSpecific: boolean } {
+  const isCannabisCoded = icd10List.some(
+    (c) => c.startsWith("F12") || c.startsWith("Z71"),
+  );
+  if (isCannabisCoded && CANNABIS_APPEAL_STRATEGIES[carcCode]) {
+    return {
+      strategy: CANNABIS_APPEAL_STRATEGIES[carcCode],
+      isCannabisSpecific: true,
+    };
+  }
+  return {
+    strategy:
+      APPEAL_STRATEGIES[carcCode] ??
+      "Provide clinical documentation supporting the medical necessity of the service.",
+    isCannabisSpecific: false,
+  };
+}
+
+// Supporting-doc weight — payers fast-scan appeals. Lead with the strongest
+// evidence (finalized clinical note, psychiatric eval, validated assessment)
+// and bury the weak stuff (routine emails, portal messages) at the back.
+const DOC_WEIGHT: Record<string, number> = {
+  note_finalized: 1.0,
+  psychiatric_eval: 0.95,
+  validated_assessment: 0.9,
+  lab: 0.8,
+  imaging: 0.7,
+  prior_auth_packet: 0.85,
+  document: 0.6,
+  email: 0.2,
+  portal_message: 0.2,
+};
+
 export const appealsGenerationAgent: Agent<
   z.infer<typeof input>,
   z.infer<typeof output>
@@ -159,25 +207,67 @@ export const appealsGenerationAgent: Agent<
 
     trace.step("appeal level determined", { nextLevel, existingAppeals: existingAppeals.length });
 
-    // ── Build supporting documentation references ───────────────
-    const supportingDocIds: string[] = [];
+    // ── Build ranked supporting documentation references ───────
+    // Rank by evidence strength — payers fast-scan appeals, so the
+    // strongest document needs to be first. Finalized notes + psychiatric
+    // evaluations + validated assessments beat portal messages.
+    const rankedDocs: Array<{ id: string; kind: string; weight: number }> = [];
     if (claim.encounter) {
-      // Attach finalized clinical notes
       for (const note of claim.encounter.notes) {
-        supportingDocIds.push(note.id);
+        rankedDocs.push({
+          id: note.id,
+          kind: "note_finalized",
+          weight: DOC_WEIGHT.note_finalized,
+        });
       }
-      // Attach any documents linked to the encounter
       const docs = await prisma.document.findMany({
         where: { encounterId: claim.encounterId!, deletedAt: null },
-        select: { id: true },
+        select: { id: true, kind: true },
       });
-      supportingDocIds.push(...docs.map((d) => d.id));
+      for (const d of docs) {
+        // Best-effort kind mapping. "lab_result", "imaging_report",
+        // "prior_authorization" get their proper weight; everything else
+        // falls to the generic document weight.
+        const kind = String(d.kind ?? "document").toLowerCase();
+        const weight =
+          DOC_WEIGHT[kind] ??
+          (kind.includes("lab")
+            ? DOC_WEIGHT.lab
+            : kind.includes("imag")
+              ? DOC_WEIGHT.imaging
+              : kind.includes("prior")
+                ? DOC_WEIGHT.prior_auth_packet
+                : kind.includes("psych") || kind.includes("mental")
+                  ? DOC_WEIGHT.psychiatric_eval
+                  : DOC_WEIGHT.document);
+        rankedDocs.push({ id: d.id, kind, weight });
+      }
     }
+    rankedDocs.sort((a, b) => b.weight - a.weight);
+    const supportingDocIds: string[] = rankedDocs.map((d) => d.id);
 
-    trace.step("gathered supporting documents", { count: supportingDocIds.length });
+    trace.step("ranked supporting documents", {
+      count: supportingDocIds.length,
+      topKind: rankedDocs[0]?.kind,
+    });
 
     // ── Generate appeal letter via LLM ──────────────────────────
-    const strategy = APPEAL_STRATEGIES[denial.carcCode] ?? "Provide clinical documentation supporting the medical necessity of the service.";
+    // Resolve strategy with cannabis-specific override when the claim has
+    // F12.x or Z71 codes — generic appeal language fails on cannabis denials.
+    const icd10List = Array.isArray(claim.icd10Codes)
+      ? (claim.icd10Codes as any[])
+          .map((c) => (typeof c === "string" ? c : c?.code))
+          .filter((c): c is string => typeof c === "string")
+      : [];
+    const { strategy, isCannabisSpecific } = resolveAppealStrategy(
+      denial.carcCode,
+      icd10List,
+    );
+    if (isCannabisSpecific) {
+      trace.step("using cannabis-specific appeal strategy", {
+        carcCode: denial.carcCode,
+      });
+    }
     const noteText = claim.encounter?.notes[0]
       ? (Array.isArray((claim.encounter.notes[0] as any).blocks)
           ? (claim.encounter.notes[0] as any).blocks.map((b: any) => `${b.heading}: ${b.body}`).join("\n")
