@@ -14,6 +14,7 @@ import {
 } from "./memory/clinical-observation";
 import { startReasoning } from "./memory/agent-reasoning";
 import { formatPersonaForPrompt, resolvePersona } from "./persona";
+import { scanForSafetyFlags, tierToUrgency } from "./safety/cannabis-red-flags";
 
 // ---------------------------------------------------------------------------
 // Correspondence Nurse Agent
@@ -115,70 +116,14 @@ const output = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Safety keywords — hard-coded list that ALWAYS flags regardless of LLM
+// Safety detection — delegates to the shared cannabis-red-flags library so
+// every clinical agent uses the same keyword set (English + Spanish +
+// cannabis-specific flags like CHS, acute psychosis, pediatric ingestion).
 // ---------------------------------------------------------------------------
 
-const EMERGENCY_KEYWORDS = [
-  "chest pain",
-  "difficulty breathing",
-  "trouble breathing",
-  "can't breathe",
-  "suicidal",
-  "suicide",
-  "kill myself",
-  "hurting myself",
-  "hurt myself",
-  "end it all",
-  "bleeding",
-  "fainted",
-  "passed out",
-  "severe allergic",
-  "anaphylax",
-  "stroke",
-  "numbness on one side",
-  "slurred speech",
-  "worst headache",
-  "poisoning",
-  "overdose",
-];
-
-const HIGH_URGENCY_KEYWORDS = [
-  "worse",
-  "worsening",
-  "much worse",
-  "can't sleep",
-  "not working",
-  "side effect",
-  "rash",
-  "swelling",
-  "confused",
-  "fever",
-  "vomiting",
-  "severe",
-];
-
 function detectSafetyFlags(text: string): { flags: string[]; forceUrgency: string | null } {
-  const lowered = text.toLowerCase();
-  const flags: string[] = [];
-  let forceUrgency: string | null = null;
-
-  for (const kw of EMERGENCY_KEYWORDS) {
-    if (lowered.includes(kw)) {
-      flags.push(`🚨 Emergency keyword: "${kw}"`);
-      forceUrgency = "emergency";
-    }
-  }
-
-  if (!forceUrgency) {
-    for (const kw of HIGH_URGENCY_KEYWORDS) {
-      if (lowered.includes(kw)) {
-        flags.push(`⚠ High-urgency keyword: "${kw}"`);
-        forceUrgency = forceUrgency === "emergency" ? "emergency" : "high";
-      }
-    }
-  }
-
-  return { flags, forceUrgency };
+  const scan = scanForSafetyFlags(text);
+  return { flags: scan.flags, forceUrgency: tierToUrgency(scan.topTier) };
 }
 
 // ---------------------------------------------------------------------------
@@ -600,22 +545,60 @@ The newMemory field is optional but important. If this message reveals something
     }
 
     // ── Step 6: Deterministic fallback if LLM unavailable or malformed ──
+    // The fallback body is safety-aware: if deterministic scan caught an
+    // emergency keyword we tell the patient to call 911 in the draft itself
+    // so the physician doesn't have to add it before sending. A good nurse
+    // never drops to a generic "we'll get back to you" in an emergency.
     if (!triage) {
       const fallbackUrgency =
         forceUrgency ?? (patientMessageText.length > 0 ? "routine" : "low");
+
+      let draftBody: string;
+      let category: z.infer<typeof triageSchema>["category"] = "unknown";
+      let suggestedNextActions: string[] = [
+        "Review the patient's message and craft a personalized response",
+      ];
+
+      if (fallbackUrgency === "emergency") {
+        category = "symptom_report";
+        draftBody =
+          `Hi ${patient.firstName} — I'm concerned about what you just wrote. If this is happening right now, ` +
+          `please call 911 or go to the nearest emergency room immediately. If you're having thoughts of harming yourself, ` +
+          `you can also call or text 988 any time. I'm flagging this to the clinical team right now so we can follow up ` +
+          `with you as soon as you're safe. — Nora`;
+        suggestedNextActions = [
+          "Review the emergency keywords detected and the patient's message",
+          "Call the patient immediately if you can safely reach them",
+          "Document the clinical decision + disposition in the chart",
+        ];
+      } else if (fallbackUrgency === "high") {
+        category = "symptom_report";
+        draftBody =
+          `Hi ${patient.firstName}, thank you for writing in — what you're describing sounds like something ` +
+          `we want to look at today, not tomorrow. I'm going to flag this for the care team right now so we can ` +
+          `get you on the schedule or on a call. In the meantime, if anything gets worse (trouble breathing, ` +
+          `chest pain, can't keep fluids down, confusion), please go straight to the ER. — Nora`;
+        suggestedNextActions = [
+          "Offer a same-day or next-day visit",
+          "Confirm patient hasn't missed a dose or had a med change",
+          "Review recent outcome check-ins for trend context",
+        ];
+      } else {
+        draftBody =
+          `Hi ${patient.firstName}, thanks for reaching out — I've got your message and I'm bringing it into ` +
+          `our care team's queue so we can get you a thoughtful reply (not an auto-response). ` +
+          `If anything changes or gets worse before you hear back, please write in again or call us. — Nora`;
+      }
+
       triage = {
         urgency: fallbackUrgency as any,
-        category: "unknown",
+        category,
         safetyFlags: [],
         summary: patientMessageText
-          ? `${patient.firstName} sent a message about their care. Needs human review.`
+          ? `${patient.firstName} sent a message (fallback triage — LLM unavailable). Urgency: ${fallbackUrgency}.`
           : `Thread with ${patient.firstName} — awaiting message.`,
-        suggestedNextActions: [
-          "Review the patient's message and craft a personalized response",
-        ],
-        draftBody:
-          `Hi ${patient.firstName}, thanks for reaching out. I want to make sure I give you a thoughtful response — ` +
-          `one of our care team members will review your message and get back to you shortly.`,
+        suggestedNextActions,
+        draftBody,
         newMemory: null,
       };
       trace.step("used deterministic fallback triage", {

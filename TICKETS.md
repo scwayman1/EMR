@@ -2330,6 +2330,224 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 
 ---
 
+### EMR-206: Self-Serve Online Patient Scheduling
+**Priority:** 1 — Urgent
+**Source:** Scott, overnight mission 2026-04-21 ("20 out of 10 scheduling")
+**Description:**
+Let patients book, reschedule, or cancel an appointment from the public site
+(no login required for the first leg — just phone/email verification). The
+flow must be under 3 taps to a confirmed slot on mobile.
+
+**Acceptance criteria:**
+- Public URL `/schedule/[practiceSlug]` renders available slot grid
+- Visit-reason dropdown drives which provider pool the slot comes from
+  (initial consult, follow-up, urgent, refill, etc.)
+- SMS + email confirmation with ICS attachment (reuse existing iCal module
+  from EMR-085)
+- Reschedule / cancel flow via magic-link (no password)
+- Insurance pre-check inline (EMR-046 hook) before confirming
+- Self-pay path falls through when insurance absent
+- Time-zone safe (patient's device tz + practice tz)
+- ADA-compliant (keyboard + screen reader tested)
+- Audit log entry on every state change
+- Rate-limit to prevent slot flooding
+
+---
+
+### EMR-207: No-Show Prediction Model + Pre-Visit De-risking
+**Priority:** 1 — Urgent
+**Source:** Scott, overnight mission
+**Description:**
+Every scheduled visit gets a no-show risk score (0-100) computed at book
+time and refreshed 24h and 2h before the visit. Model inputs: prior
+no-show history, days-since-last-visit, confirmation engagement, travel
+distance, insurance type, day-of-week, weather (if we have it), intake
+completion, message engagement.
+
+**Acceptance criteria:**
+- Deterministic baseline model (logistic blend of features) that runs
+  inline without external ML infra
+- `Appointment.noShowRiskScore Int?` + `noShowRiskRefreshedAt DateTime?`
+- High-risk (≥65) appointments auto-enroll in enhanced reminder cadence
+  (extra SMS at 48h/6h, warm confirmation call task for staff, magic-link
+  early-reschedule offer)
+- Medium-risk (30-65) gets standard cadence + confirmation button
+- Low-risk (<30) gets single reminder
+- Model outputs logged as a `PredictionLog` entry so future ML can backfill
+- Overnight job recomputes scores + escalates stalled confirmations
+- Dashboard widget: today's visits ordered by no-show risk + intervention
+  buttons
+
+---
+
+### EMR-208: Algorithmic Follow-Up Cadence
+**Priority:** 1 — Urgent
+**Source:** Scott, overnight mission
+**Description:**
+Replace the one-size-fits-all "2-week follow-up" with a per-condition,
+per-regimen, per-outcome cadence engine. Examples: new THC-dominant
+regimen → 2-week check-in then monthly × 3; uncontrolled anxiety PHQ-9
+worsening → 1-week; stable patient on maintenance → 90-day. Each rule is
+documented, editable, and auditable.
+
+**Acceptance criteria:**
+- `FollowupRule` table with conditions → cadence spec
+- Seeded rule library (~25 rules) covering the top conditions + regimen
+  classes: new regimen, titration, uncontrolled depression/anxiety, chronic
+  pain, insomnia on CBN, PTSD on CBD, cancer-adjunct, pediatric (if eligible),
+  elderly, polypharmacy, high-THC, high-CBD ratio, CUD screen positive, ER
+  bounceback, lab-order pending, post-op
+- Engine evaluates rules after every encounter finalization + emits
+  `followup.due` events at the right moment
+- Physician can override or add a custom cadence from the chart
+- Dashboard: "follow-ups due this week" surfaced to scheduling team
+- Every scheduled follow-up carries the rule name + rationale so staff
+  knows WHY it exists
+
+---
+
+### EMR-209: Smart Slot Recommender
+**Priority:** 2 — High
+**Source:** Scott, overnight mission
+**Description:**
+When a patient requests a slot, the system proposes the three best options
+based on: provider-patient fit (continuity > match > any), slot utilization
+across the practice (fill gaps first), no-show risk distribution across the
+day (spread high-risk patients), and provider preferences (lunch blocks,
+same-day admin time).
+
+**Acceptance criteria:**
+- Recommender returns top 3 slots ranked with reasoning
+- Continuity rule: returning patient defaults to their last provider unless
+  a stronger match exists
+- Utilization rule: prefer slots that close a gap in the provider's day
+- Risk-distribution rule: don't stack 3+ high-risk no-show appointments
+  back-to-back
+- Provider preference table respected
+- All recommendations logged with reasoning for QA
+
+---
+
+### EMR-210: Intelligent Waitlist + Cancellation Fill
+**Priority:** 2 — High
+**Source:** Scott, overnight mission
+**Description:**
+When a slot opens (cancellation, late no-show threshold crossed), auto-fill
+from a prioritized waitlist. Priorities: urgent clinical need, visit-goal
+alignment, proximity to same provider, patient notification preferences.
+
+**Acceptance criteria:**
+- Waitlist entry: patient + reason + preferred provider + earliest/latest
+  window + notification channel
+- Slot-open event dispatches to the waitlist agent, which picks the best
+  fit, sends a time-boxed offer (SMS/email), and falls through to the next
+  patient on timeout
+- Caps: no more than 2 offers per patient per week
+- Dashboard: waitlist size, fill rate, average time-to-fill
+
+---
+
+### EMR-211: Multi-Channel Reminder Orchestration
+**Priority:** 2 — High
+**Source:** Scott, overnight mission
+**Description:**
+One reminder engine, multiple channels. Patient picks preferred channel(s)
+(SMS / email / push / voice). Each channel has tiered cadence (book, 7d,
+2d, 1d, 6h, 2h). Replies route back to the right workflow (CONFIRM, CANCEL,
+RESCHEDULE, HELP keywords).
+
+**Acceptance criteria:**
+- `ReminderPreference` per patient (channels + quiet hours + language)
+- Channel adapters: SMS (Twilio), email, push, voice (eleven-labs or
+  provider webhook) — gated by env, deterministic fallbacks in dev
+- Inbound SMS webhook routes STOP / HELP / CONFIRM / CANCEL / RESCHEDULE
+- Analytics: delivery rate, response rate, channel effectiveness per patient
+- Language handled via EMR-122 (translation layer)
+- Quiet hours respected per patient + practice timezone
+
+---
+
+### EMR-212: New-Patient Intake-to-Visit Pipeline
+**Priority:** 2 — High
+**Source:** Scott, overnight mission
+**Description:**
+No new patient shows up for their first visit without completing intake,
+verifying insurance, uploading required documents, and having the
+qualification agent say "yes." If any gate is unmet 48h before the visit,
+the system offers a reschedule to the next available slot after the gate
+clears.
+
+**Acceptance criteria:**
+- Per-practice configurable gate set: intake complete, insurance verified,
+  photo ID uploaded, qualifying condition documented, consent signed
+- Scheduled job runs at 48h + 24h + 6h pre-visit, checks gates, nudges the
+  patient via EMR-211 reminders
+- If any gate still open at the final check, auto-offer reschedule with a
+  link to the correct self-serve flow (EMR-206)
+- Practice dashboard: "new patients on hold" with the specific gate to chase
+- Override path for the physician (emergency intake, first-visit amnesty)
+
+---
+
+### EMR-213: Group Visit + Block Scheduling + Recurring
+**Priority:** 3 — Normal
+**Source:** Scott, overnight mission
+**Description:**
+Support group visits (shared medical appointments — common for cannabis
+practices doing education cohorts), block scheduling (hold a chunk of time
+for a specific visit type), and recurring series (titration protocols that
+run weekly × 4).
+
+**Acceptance criteria:**
+- Group visit: one `Appointment` with N `AppointmentParticipant` rows;
+  single provider, multiple patients, shared note kernel
+- Block scheduling: admin creates a block, system backfills patients from
+  waitlist (EMR-210)
+- Recurring series: one template creates N appointments with cadence;
+  editing cascades with confirmation
+- Cancellation of a recurring instance does not break the series
+
+---
+
+### EMR-214: Provider Preference Engine + Burnout Guardrails
+**Priority:** 2 — High
+**Source:** Scott, overnight mission
+**Description:**
+Every provider has a preference profile: max complex visits per half-day,
+lunch block length, admin time, back-to-back limit, same-day urgent cap,
+specialty keyword rules. The scheduling engine respects those preferences
+AND enforces practice-level fairness (no provider disproportionately gets
+no-show patients, etc.).
+
+**Acceptance criteria:**
+- `ProviderSchedulingPreference` table per provider
+- Hard limits enforced at book time (can't violate back-to-back cap)
+- Soft preferences weighted in the recommender (EMR-209)
+- Weekly fairness report: distribution of visit types, no-show patients,
+  after-hours messages
+- Provider UI to edit own preferences
+
+---
+
+### EMR-215: Scheduling Analytics Cockpit
+**Priority:** 2 — High
+**Source:** Scott, overnight mission
+**Description:**
+One dashboard for the schedulers: throughput, fill rate, no-show rate,
+same-day fill, time-to-fill, average lead time, patient wait time for next
+available, follow-up adherence rate, reminder response rate, gate-pass rate
+(EMR-212), waitlist conversion (EMR-210).
+
+**Acceptance criteria:**
+- Cockpit at `/ops/scheduling-analytics`
+- Every metric drillable to the underlying appointment list
+- 7d / 30d / 90d / YTD views
+- Per-provider breakdown
+- CSV export
+- Anomaly callouts ("no-show rate up 8% this week vs. prior 8 weeks")
+
+---
+
 ## Updated Summary (after Wave 16+ backlog expansion)
 
 | # | Title | Priority | Status |
@@ -2447,5 +2665,15 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
 | 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
 | 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **open** |
+| 206 | Self-serve online patient scheduling (book / reschedule / cancel, no login step) | **Urgent** | backlog |
+| 207 | No-show prediction model + pre-visit de-risking | **Urgent** | backlog |
+| 208 | Algorithmic follow-up cadence (per-condition, per-regimen, per-outcome) | **Urgent** | backlog |
+| 209 | Smart slot recommender (utilization-optimized, provider-preference-aware) | High | backlog |
+| 210 | Intelligent waitlist + cancellation-fill automation | High | backlog |
+| 211 | Multi-channel reminder orchestration (SMS / email / push / voice) with response-routing | High | backlog |
+| 212 | New-patient intake-to-visit pipeline (qualified + documented before the slot) | High | backlog |
+| 213 | Group visit + block scheduling + recurring appointments | Normal | backlog |
+| 214 | Provider preference engine + fairness + burnout guardrails | High | backlog |
+| 215 | Scheduling analytics cockpit (throughput, no-show rate, slot yield, follow-up adherence) | High | backlog |
 
-**Grand total: 205 tickets.** Product Drop #9.
+**Grand total: 215 tickets.** Product Drop #10.
