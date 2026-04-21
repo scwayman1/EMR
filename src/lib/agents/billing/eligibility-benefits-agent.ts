@@ -35,7 +35,70 @@ const output = z.object({
   usedCache: z.boolean(),
   blocked: z.boolean(),
   blockReason: z.string().nullable(),
+  cannabisCoverageWarnings: z.array(z.string()),
 });
+
+// Cache TTL — commercial plans can flip (term, age-off, enrollment change)
+// within a shift, so the old 24h was too loose. We keep Medicare/Medicaid
+// a bit longer because those rosters move slower.
+const CACHE_TTL_MS_COMMERCIAL = 4 * 60 * 60 * 1000; // 4h
+const CACHE_TTL_MS_GOVT = 12 * 60 * 60 * 1000; // 12h
+const CACHE_TTL_MS_DEFAULT = 6 * 60 * 60 * 1000;
+
+function cacheTtlMsForPayer(payerName: string | null | undefined): number {
+  if (!payerName) return CACHE_TTL_MS_DEFAULT;
+  const n = payerName.toLowerCase();
+  if (n.includes("medicare") || n.includes("medicaid") || n.includes("tricare"))
+    return CACHE_TTL_MS_GOVT;
+  if (
+    n.includes("aetna") ||
+    n.includes("united") ||
+    n.includes("cigna") ||
+    n.includes("blue") ||
+    n.includes("humana") ||
+    n.includes("anthem") ||
+    n.includes("kaiser")
+  )
+    return CACHE_TTL_MS_COMMERCIAL;
+  return CACHE_TTL_MS_DEFAULT;
+}
+
+// Cannabis-specific CPT/ICD codes that commonly trigger denials from
+// commercial payers. If the encounter is already coded with any of these
+// we surface a preemptive warning so the biller / clinician can either
+// re-code, pre-auth, or counsel the patient on self-pay upfront.
+const CANNABIS_RISK_ICD10_PREFIXES = [
+  "F12", // cannabis use disorder family
+  "Z71.41", // alcohol counseling — often bundled with cannabis counseling
+  "Z71.51", // drug counseling (cannabis-adjacent in some payer rules)
+  "Z71.89", // other specified counseling (cannabis counseling frequently lands here)
+  "Z03.89", // observation for other suspected diseases
+];
+
+const CANNABIS_RISK_CPT = [
+  "99406", // smoking cessation brief — some payers reuse for cannabis
+  "99407", // smoking cessation intensive
+  "96160", // risk assessment instrument
+  "96161", // risk assessment caregiver
+];
+
+function detectCannabisRiskCodes(
+  icd10Codes: string[] | null | undefined,
+  cptCodes: string[] | null | undefined,
+): string[] {
+  const hits: string[] = [];
+  for (const code of icd10Codes ?? []) {
+    if (CANNABIS_RISK_ICD10_PREFIXES.some((p) => code.startsWith(p))) {
+      hits.push(`ICD-10 ${code}`);
+    }
+  }
+  for (const code of cptCodes ?? []) {
+    if (CANNABIS_RISK_CPT.includes(code)) {
+      hits.push(`CPT ${code}`);
+    }
+  }
+  return hits;
+}
 
 export const eligibilityBenefitsAgent: Agent<
   z.infer<typeof input>,
@@ -67,6 +130,21 @@ export const eligibilityBenefitsAgent: Agent<
       where: { patientId, active: true, type: "primary" },
     });
 
+    // Peek at the encounter's already-attached Charges to see which codes
+    // are in play. This lets us emit cannabis-coverage warnings AT
+    // eligibility time — weeks earlier than waiting for a payer denial.
+    const charges = await prisma.charge.findMany({
+      where: { encounterId },
+      select: { cptCode: true, icd10Codes: true },
+    });
+    const allIcd10: string[] = [];
+    const allCpt: string[] = [];
+    for (const c of charges) {
+      if (c.cptCode) allCpt.push(c.cptCode);
+      for (const i of c.icd10Codes ?? []) allIcd10.push(i);
+    }
+    const cannabisRiskHits = detectCannabisRiskCodes(allIcd10, allCpt);
+
     if (!coverage) {
       ctx.log("warn", "No active primary coverage found");
       trace.conclude({ confidence: 0.95, summary: "No active coverage — patient may be self-pay." });
@@ -89,6 +167,9 @@ export const eligibilityBenefitsAgent: Agent<
         usedCache: false,
         blocked: true,
         blockReason: "No active primary coverage",
+        cannabisCoverageWarnings: cannabisRiskHits.length > 0
+          ? [`Cannabis-risk codes on encounter (${cannabisRiskHits.join(", ")}) — self-pay recommended, no coverage to route to.`]
+          : [],
       };
     }
 
@@ -108,7 +189,14 @@ export const eligibilityBenefitsAgent: Agent<
       orderBy: { checkedAt: "desc" },
     });
 
-    if (cachedSnapshot) {
+    // Enforce the per-payer TTL at read time too: even if the DB row is
+    // still "active", reject it if it's older than the TTL for this payer.
+    const ttl = cacheTtlMsForPayer(coverage.payerName);
+    const cacheStillFresh =
+      cachedSnapshot &&
+      Date.now() - cachedSnapshot.checkedAt.getTime() < ttl;
+
+    if (cachedSnapshot && cacheStillFresh) {
       ctx.log("info", "Using cached eligibility snapshot", {
         snapshotId: cachedSnapshot.id,
         checkedAt: cachedSnapshot.checkedAt,
@@ -117,6 +205,7 @@ export const eligibilityBenefitsAgent: Agent<
         snapshotId: cachedSnapshot.id,
         eligible: cachedSnapshot.eligible,
         age: `${Math.round((Date.now() - cachedSnapshot.checkedAt.getTime()) / 3600000)}h`,
+        ttlHours: ttl / 3600000,
       });
 
       // Even with cache, emit the event so downstream agents can proceed
@@ -155,6 +244,9 @@ export const eligibilityBenefitsAgent: Agent<
         usedCache: true,
         blocked: !cachedSnapshot.eligible,
         blockReason: cachedSnapshot.eligible ? null : "Patient not eligible per cached snapshot",
+        cannabisCoverageWarnings: cannabisRiskHits.length > 0
+          ? [`Encounter has cannabis-risk codes (${cannabisRiskHits.join(", ")}) — commercial payers commonly deny. Consider pre-auth or self-pay counseling.`]
+          : [],
       };
     }
 
@@ -201,7 +293,7 @@ export const eligibilityBenefitsAgent: Agent<
         priorAuthRequired,
         referralRequired: false,
         networkStatus,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h TTL
+        expiresAt: new Date(Date.now() + ttl), // per-payer TTL (4h commercial / 12h govt / 6h default)
       },
     });
 
@@ -277,6 +369,9 @@ export const eligibilityBenefitsAgent: Agent<
       usedCache: false,
       blocked: !eligible,
       blockReason: eligible ? null : `Coverage not active: ${coverage.eligibilityStatus}`,
+      cannabisCoverageWarnings: cannabisRiskHits.length > 0
+        ? [`Encounter has cannabis-risk codes (${cannabisRiskHits.join(", ")}) — commercial payers commonly deny. Consider pre-auth or self-pay counseling.`]
+        : [],
     };
   },
 };
