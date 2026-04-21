@@ -94,6 +94,46 @@ function resolveSalt(organizationId: string): string {
     .digest("hex");
 }
 
+// Shape of a single entry inside `Claim.icd10Codes` JSON. The column holds
+// `[{ code, label }, ...]` with diagnosis position 1 (primary) at index 0 —
+// the same convention used by the claim-scrub and 837 submission agents.
+type ClaimIcd10Entry = {
+  code?: unknown;
+  label?: unknown;
+};
+
+/**
+ * Extract the primary (position-1) ICD-10 code + label from the most recent
+ * claim whose `icd10Codes` JSON is a non-empty array. Returns both as `null`
+ * if none of the patient's claims carry a coded diagnosis.
+ *
+ * Claims are the authoritative source for research cohorts because they
+ * represent what was billed — i.e. what a provider signed off as the
+ * clinical reason for care. `CodingSuggestion` (AI-drafted) is a weaker
+ * signal and is intentionally NOT used here: research rows should reflect
+ * reviewed coding, not agent guesses.
+ */
+function pickPrimaryDiagnosis(
+  claims: ReadonlyArray<{ icd10Codes: unknown }>,
+): { code: string | null; label: string | null } {
+  for (const claim of claims) {
+    const raw = claim.icd10Codes;
+    if (!Array.isArray(raw) || raw.length === 0) continue;
+    const first = raw[0] as ClaimIcd10Entry | null;
+    if (!first || typeof first !== "object") continue;
+    const code =
+      typeof first.code === "string" && first.code.trim().length > 0
+        ? first.code.trim()
+        : null;
+    const label =
+      typeof first.label === "string" && first.label.trim().length > 0
+        ? first.label.trim()
+        : null;
+    if (code || label) return { code, label };
+  }
+  return { code: null, label: null };
+}
+
 /**
  * Prisma-backed data source. Extracts exactly the fields the domain
  * module consumes and nothing more — PII comes through only because
@@ -135,6 +175,15 @@ function prismaDataSource(): CohortDataSource {
             },
           },
         },
+        // Most recent few claims (newest first) — we walk them looking for
+        // the first non-empty icd10Codes array. Cap small: a patient rarely
+        // has more than a couple of recent claims and we only need the
+        // primary diagnosis, not the full history.
+        claims: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          select: { icd10Codes: true },
+        },
       },
     });
 
@@ -155,6 +204,13 @@ function prismaDataSource(): CohortDataSource {
         }
       }
 
+      // Hydrate primary condition + ICD-10 from the most recent billable
+      // claim. Null-safe: patients with no claims stay null, which the
+      // domain layer already handles correctly.
+      const { code: icd10Code, label: primaryCondition } = pickPrimaryDiagnosis(
+        p.claims,
+      );
+
       return {
         id: p.id,
         organizationId: p.organizationId,
@@ -168,11 +224,8 @@ function prismaDataSource(): CohortDataSource {
         postalCode: p.postalCode,
         state: p.state,
         dateOfBirth: p.dateOfBirth,
-        // Primary condition + icd10 aren't first-class columns on Patient —
-        // leave them null for now; downstream queries will hydrate from
-        // Encounter/CodingSuggestion in a follow-up.
-        primaryCondition: null,
-        icd10Code: null,
+        primaryCondition,
+        icd10Code,
         treatmentSummary: treatmentParts.join(" + ") || null,
         cannabinoids: Array.from(cannabinoidsSet),
         outcomes: p.outcomeLogs.map((o) => ({
