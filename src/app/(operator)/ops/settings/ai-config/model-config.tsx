@@ -4,6 +4,10 @@ import { useState, useMemo } from "react";
 import {
   PROVIDERS,
   getDefaultConfig,
+  leafjourneyMonthlyPrice,
+  leafjourneyPriceBasis,
+  LEAFJOURNEY_PRICE_FLOOR_USD,
+  TIER_LABELS,
   type ModelConfig,
   type ProviderOption,
 } from "@/lib/domain/byok";
@@ -32,12 +36,16 @@ export function ModelConfigPanel() {
     [selectedProvider, config.modelId],
   );
 
-  const estimatedMonthlyCost = useMemo(() => {
+  const estimatedMonthlyCostRaw = useMemo(() => {
     // Rough estimate: ~2M tokens/month for a small practice
     const tokensPerMonth = 2_000_000;
     const costPer1k = selectedModel.costPer1kTokens;
-    return ((tokensPerMonth / 1000) * costPer1k).toFixed(2);
+    return (tokensPerMonth / 1000) * costPer1k;
   }, [selectedModel]);
+
+  const estimatedMonthlyCost = estimatedMonthlyCostRaw.toFixed(2);
+  const leafjourneyPrice = leafjourneyMonthlyPrice(estimatedMonthlyCostRaw);
+  const priceBasis = leafjourneyPriceBasis(estimatedMonthlyCostRaw);
 
   const handleProviderSelect = (provider: ProviderOption) => {
     const firstModel = provider.models[0];
@@ -103,12 +111,13 @@ export function ModelConfigPanel() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
                 Model
               </p>
               <p className="text-sm font-medium text-text">{selectedModel.name}</p>
+              <p className="text-[10px] text-text-subtle mt-0.5">{TIER_LABELS[selectedModel.tier]}</p>
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
@@ -118,10 +127,23 @@ export function ModelConfigPanel() {
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-                Cost estimate
+                Raw cost
               </p>
               <p className="text-sm font-medium text-text">
                 ~${estimatedMonthlyCost}/mo
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
+                Leafjourney price
+              </p>
+              <p className="text-sm font-medium text-accent">
+                ${leafjourneyPrice.toFixed(2)}/mo
+              </p>
+              <p className="text-[10px] text-text-subtle mt-0.5">
+                {priceBasis === "floor"
+                  ? `$${LEAFJOURNEY_PRICE_FLOOR_USD} platform minimum`
+                  : "Keystone (2x pass-through)"}
               </p>
             </div>
           </div>
@@ -169,52 +191,69 @@ export function ModelConfigPanel() {
         <CardHeader>
           <CardTitle>Select model</CardTitle>
           <CardDescription>
-            Available models from {selectedProvider.label}.
+            Available models from {selectedProvider.label}. Grouped by tier — mix budget, balanced,
+            premium, and open-source models per agent in the Agent Fleet tab.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {selectedProvider.models.map((model) => (
-              <label
-                key={model.id}
-                className={cn(
-                  "flex items-center justify-between px-4 py-3 rounded-lg border cursor-pointer transition-all",
-                  config.modelId === model.id
-                    ? "border-accent bg-accent/5 ring-1 ring-accent"
-                    : "border-border hover:border-border-strong hover:bg-surface-muted",
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={cn(
-                      "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                      config.modelId === model.id ? "border-accent" : "border-border-strong",
-                    )}
-                  >
-                    {config.modelId === model.id && (
-                      <span className="h-2 w-2 rounded-full bg-accent" />
-                    )}
-                  </span>
-                  <div>
-                    <span className="text-sm font-medium text-text">{model.name}</span>
-                    {model.recommended && (
-                      <Badge tone="accent" className="ml-2">Recommended</Badge>
-                    )}
-                  </div>
+          {(["budget", "balanced", "premium", "open-source"] as const).map((tier) => {
+            const tierModels = selectedProvider.models.filter((m) => m.tier === tier);
+            if (tierModels.length === 0) return null;
+            return (
+              <div key={tier} className="mb-5 last:mb-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle mb-2">
+                  {TIER_LABELS[tier]}
+                </p>
+                <div className="space-y-2">
+                  {tierModels.map((model) => (
+                    <label
+                      key={model.id}
+                      className={cn(
+                        "flex items-center justify-between px-4 py-3 rounded-lg border cursor-pointer transition-all",
+                        config.modelId === model.id
+                          ? "border-accent bg-accent/5 ring-1 ring-accent"
+                          : "border-border hover:border-border-strong hover:bg-surface-muted",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={cn(
+                            "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                            config.modelId === model.id ? "border-accent" : "border-border-strong",
+                          )}
+                        >
+                          {config.modelId === model.id && (
+                            <span className="h-2 w-2 rounded-full bg-accent" />
+                          )}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-text">{model.name}</span>
+                            {model.recommended && (
+                              <Badge tone="accent">Recommended</Badge>
+                            )}
+                          </div>
+                          {model.blurb && (
+                            <p className="text-xs text-text-muted mt-0.5 truncate">{model.blurb}</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs text-text-muted tabular-nums shrink-0 ml-3">
+                        ${model.costPer1kTokens}/1k tok
+                      </span>
+                      <input
+                        type="radio"
+                        name="model"
+                        className="sr-only"
+                        checked={config.modelId === model.id}
+                        onChange={() => handleModelSelect(model.id)}
+                      />
+                    </label>
+                  ))}
                 </div>
-                <span className="text-xs text-text-muted tabular-nums">
-                  ${model.costPer1kTokens}/1k tokens
-                </span>
-                <input
-                  type="radio"
-                  name="model"
-                  className="sr-only"
-                  checked={config.modelId === model.id}
-                  onChange={() => handleModelSelect(model.id)}
-                />
-              </label>
-            ))}
-          </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -338,17 +377,33 @@ export function ModelConfigPanel() {
       {/* Cost estimate + Save */}
       <Card tone="raised">
         <CardContent className="py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-              Estimated cost
-            </p>
-            <p className="text-lg font-display text-text tabular-nums">
-              ~${estimatedMonthlyCost}
-              <span className="text-sm text-text-muted font-sans">/month</span>
-            </p>
-            <p className="text-xs text-text-subtle mt-0.5">
-              Based on ~2M tokens/month current usage
-            </p>
+          <div className="grid grid-cols-2 gap-8">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
+                Raw model cost
+              </p>
+              <p className="text-lg font-display text-text tabular-nums">
+                ~${estimatedMonthlyCost}
+                <span className="text-sm text-text-muted font-sans">/mo</span>
+              </p>
+              <p className="text-xs text-text-subtle mt-0.5">
+                ~2M tokens/month
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
+                Leafjourney price
+              </p>
+              <p className="text-lg font-display text-accent tabular-nums">
+                ${leafjourneyPrice.toFixed(2)}
+                <span className="text-sm text-text-muted font-sans">/mo</span>
+              </p>
+              <p className="text-xs text-text-subtle mt-0.5">
+                {priceBasis === "floor"
+                  ? `$${LEAFJOURNEY_PRICE_FLOOR_USD} floor`
+                  : "2x pass-through"}
+              </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {saved && (

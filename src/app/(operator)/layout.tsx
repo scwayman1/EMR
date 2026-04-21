@@ -190,7 +190,6 @@ export default async function OperatorLayout({
         { label: "Feature flags", href: "/ops/feature-flags" },
         { label: "Backups", href: "/ops/backups" },
       ],
-      defaultCollapsed: true,
     },
   ];
 
