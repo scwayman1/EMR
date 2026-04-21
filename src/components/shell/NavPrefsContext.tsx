@@ -9,8 +9,10 @@ import {
   parseRecents,
   recordVisit,
   removePin,
+  reorderPin,
   type PinnedEntry,
   type RecentEntry,
+  type ReorderDirection,
 } from "@/lib/domain/nav-prefs";
 
 /**
@@ -18,12 +20,13 @@ import {
  * no server round-trip, no cookies. SSR-safe: initial render is always
  * empty, then the first client effect hydrates from storage.
  *
- *   pins      — pinned routes, newest first, cap 8.
- *   recents   — last 5 distinct visited routes, newest first.
- *   pin/unpin — mutate pins by href.
- *   isPinned  — cheap lookup for star-toggle state.
- *   visit     — record a route visit (used by NavVisitTracker).
- *   clearAll  — nuke both lists + their storage keys (Manage action).
+ *   pins        — pinned routes, user-ordered (new pins land at top), cap 8.
+ *   recents     — last 5 distinct visited routes, newest first.
+ *   pin/unpin   — mutate pins by href.
+ *   movePin     — shift a pin one slot up or down.
+ *   isPinned    — cheap lookup for star-toggle state.
+ *   visit       — record a route visit (used by NavVisitTracker).
+ *   clearAll    — nuke both lists + their storage keys (Manage action).
  *
  * Writes are debounced 250ms so rapid toggles don't hammer localStorage.
  */
@@ -33,6 +36,7 @@ export interface NavPrefsValue {
   recents: RecentEntry[];
   pin: (entry: { href: string; label: string }) => void;
   unpin: (href: string) => void;
+  movePin: (href: string, direction: ReorderDirection) => void;
   isPinned: (href: string) => boolean;
   visit: (entry: { href: string; label: string }) => void;
   clearAll: () => void;
@@ -119,6 +123,13 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
     setPins((prev) => removePin(prev, href));
   }, []);
 
+  const movePin = React.useCallback(
+    (href: string, direction: ReorderDirection) => {
+      setPins((prev) => reorderPin(prev, href, direction));
+    },
+    [],
+  );
+
   const visit = React.useCallback((entry: { href: string; label: string }) => {
     setRecents((prev) => recordVisit(prev, entry));
   }, []);
@@ -141,8 +152,18 @@ export function NavPrefsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = React.useMemo<NavPrefsValue>(
-    () => ({ pins, recents, pin, unpin, isPinned, visit, clearAll, hydrated }),
-    [pins, recents, pin, unpin, isPinned, visit, clearAll, hydrated],
+    () => ({
+      pins,
+      recents,
+      pin,
+      unpin,
+      movePin,
+      isPinned,
+      visit,
+      clearAll,
+      hydrated,
+    }),
+    [pins, recents, pin, unpin, movePin, isPinned, visit, clearAll, hydrated],
   );
 
   return <NavPrefsCtx.Provider value={value}>{children}</NavPrefsCtx.Provider>;
