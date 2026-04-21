@@ -73,7 +73,7 @@ export function OwnerDashboard({ snapshot }: OwnerDashboardProps) {
     eyebrow: "Agent fleet",
     headline: snapshot.agents.running.toString(),
     subtext: `${snapshot.agents.running} processing, ${snapshot.agents.completedToday} completed today`,
-    href: "/ops/agents",
+    href: "/ops/settings/ai-config",
     pulse: snapshot.agents.running > 0,
   };
 
