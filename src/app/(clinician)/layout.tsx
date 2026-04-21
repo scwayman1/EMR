@@ -101,7 +101,6 @@ export default async function ClinicianLayout({
     {
       label: "Today",
       pillar: "today",
-      icon: "home",
       items: [
         { label: "Today", href: "/clinic" },
         { label: "Command Center", href: "/clinic/command" },
@@ -111,7 +110,6 @@ export default async function ClinicianLayout({
     },
     {
       label: "Review",
-      icon: "clipboard-check",
       items: [
         {
           label: "Approvals",
@@ -135,7 +133,6 @@ export default async function ClinicianLayout({
     },
     {
       label: "Reference",
-      icon: "book-open",
       items: [
         { label: "Providers", href: "/clinic/providers" },
         { label: "Research", href: "/clinic/research" },
@@ -145,7 +142,6 @@ export default async function ClinicianLayout({
     },
     {
       label: "Admin",
-      icon: "settings",
       items: [
         { label: "Audit", href: "/clinic/audit-trail" },
         { label: "Brief", href: "/clinic/morning-brief" },
