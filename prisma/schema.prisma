@@ -12,8 +12,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime query URL — points at Supabase's PgBouncer pooler (port 6543).
+  url       = env("DATABASE_URL")
+  // Schema-change URL — direct connection (port 5432). Prisma uses this
+  // for `migrate deploy` / `db push` / `introspect` because those need
+  // advisory locks that PgBouncer drops. Falls back to `url` if unset
+  // locally; prod MUST have this set.
+  directUrl = env("DIRECT_URL")
 }
 
 // --------------------------------------------------------------

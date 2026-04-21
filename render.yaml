@@ -4,9 +4,11 @@
 # Rules of the road:
 #   1. `main` is the only branch that deploys. Open PRs into main; never
 #      point a Render service at a feature branch.
-#   2. Schema sync happens in `startCommand`, right before the app starts
-#      serving traffic. No reliance on preDeployCommand (it's a no-op on
-#      Starter and failed silently for weeks).
+#   2. Schema sync happens in `startCommand` via `prisma migrate deploy`
+#      — versioned migrations applied through Supabase's DIRECT (5432)
+#      connection. The pooler (6543) can't hold the advisory locks
+#      migrations need, which is how schema drift silently bit us before.
+#      Runtime queries still go through the pooler via DATABASE_URL.
 #   3. Seeding is a one-off, not part of every deploy. Run `npm run db:seed`
 #      manually from a Render shell when spinning up a fresh database.
 
@@ -18,7 +20,7 @@ services:
     plan: starter
     branch: main
     buildCommand: npm ci && npx prisma generate && npm run build
-    startCommand: npx prisma db push --accept-data-loss --skip-generate && npm run start
+    startCommand: npx prisma migrate deploy && npm run start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -27,6 +29,12 @@ services:
         fromDatabase:
           name: emr-postgres
           property: connectionString
+      # Direct (non-pooled) Supabase URL for schema migrations. Must be
+      # set manually in the Render dashboard — it's the port-5432
+      # connection string from Supabase → Project Settings → Database →
+      # Connection string → "Direct connection".
+      - key: DIRECT_URL
+        sync: false
       - key: SESSION_SECRET
         generateValue: true
       - key: AGENT_MODEL_CLIENT
