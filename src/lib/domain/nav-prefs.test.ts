@@ -9,6 +9,7 @@ import {
   parseRecents,
   recordVisit,
   removePin,
+  reorderPin,
   type PinnedEntry,
   type RecentEntry,
 } from "./nav-prefs";
@@ -74,6 +75,60 @@ describe("removePin", () => {
     const pins: PinnedEntry[] = [];
     const next = removePin(pins, "/nope");
     expect(next).toBe(pins);
+  });
+});
+
+describe("reorderPin", () => {
+  const start: PinnedEntry[] = [
+    { href: "/a", label: "A", pinnedAt: 1 },
+    { href: "/b", label: "B", pinnedAt: 2 },
+    { href: "/c", label: "C", pinnedAt: 3 },
+  ];
+
+  it("moves a middle pin up by one position", () => {
+    const next = reorderPin(start, "/b", "up");
+    expect(next.map((p) => p.href)).toEqual(["/b", "/a", "/c"]);
+  });
+
+  it("moves a middle pin down by one position", () => {
+    const next = reorderPin(start, "/b", "down");
+    expect(next.map((p) => p.href)).toEqual(["/a", "/c", "/b"]);
+  });
+
+  it("is a no-op (same reference) when moving the first pin up", () => {
+    const next = reorderPin(start, "/a", "up");
+    expect(next).toBe(start);
+  });
+
+  it("is a no-op (same reference) when moving the last pin down", () => {
+    const next = reorderPin(start, "/c", "down");
+    expect(next).toBe(start);
+  });
+
+  it("is a no-op when the href is not in the list", () => {
+    const next = reorderPin(start, "/missing", "up");
+    expect(next).toBe(start);
+  });
+
+  it("preserves pinnedAt timestamps on both swapped entries", () => {
+    const next = reorderPin(start, "/c", "up");
+    expect(next).toEqual([
+      { href: "/a", label: "A", pinnedAt: 1 },
+      { href: "/c", label: "C", pinnedAt: 3 },
+      { href: "/b", label: "B", pinnedAt: 2 },
+    ]);
+  });
+
+  it("is pure — the input array is not mutated", () => {
+    const snapshot = start.map((p) => ({ ...p }));
+    reorderPin(start, "/b", "up");
+    expect(start).toEqual(snapshot);
+  });
+
+  it("handles a single-element list as a no-op in either direction", () => {
+    const one: PinnedEntry[] = [{ href: "/a", label: "A", pinnedAt: 1 }];
+    expect(reorderPin(one, "/a", "up")).toBe(one);
+    expect(reorderPin(one, "/a", "down")).toBe(one);
   });
 });
 

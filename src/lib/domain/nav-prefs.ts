@@ -7,7 +7,9 @@
  * SSR-safe hydration + debounced writes.
  *
  *   PinnedEntry    — route the user explicitly starred. Dedup by href, bump
- *                    to top on re-pin, cap at 8.
+ *                    to top on re-pin, cap at 8. Order is user-controlled:
+ *                    new pins land at the top; the user can reorder via
+ *                    `reorderPin`.
  *   RecentEntry    — last N visited distinct routes, newest first, cap at 5.
  *
  * Caps are low intentionally: the Pinned + Recent surfaces sit above the
@@ -60,6 +62,29 @@ export function removePin(current: PinnedEntry[], href: string): PinnedEntry[] {
   const hit = current.some((p) => p.href === href);
   if (!hit) return current;
   return current.filter((p) => p.href !== href);
+}
+
+export type ReorderDirection = "up" | "down";
+
+/**
+ * Swap a pinned entry one position up or down. No-op (same reference) when:
+ *   • href is not present in the list
+ *   • direction would push past an edge (up-at-top, down-at-bottom)
+ * Preserves `pinnedAt` timestamps — reordering is an explicit user action,
+ * not a re-pin, so history stays intact.
+ */
+export function reorderPin(
+  current: PinnedEntry[],
+  href: string,
+  direction: ReorderDirection,
+): PinnedEntry[] {
+  const idx = current.findIndex((p) => p.href === href);
+  if (idx === -1) return current;
+  const swapWith = direction === "up" ? idx - 1 : idx + 1;
+  if (swapWith < 0 || swapWith >= current.length) return current;
+  const next = current.slice();
+  [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+  return next;
 }
 
 /**
