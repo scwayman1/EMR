@@ -29,7 +29,7 @@ const PRODUCTS = [
   },
   {
     name: "Gold Skin Serum",
-    brand: "Potency 710",
+    brand: "CBD",
     category: "Skincare",
     description:
       "Luxurious CBD-infused skin serum with 24K gold flakes. Designed for anti-aging, hydration, and radiance. Lab-tested, clean ingredients.",
@@ -174,11 +174,9 @@ export default function StorePage() {
               Trusted by leading cannabis wellness brands
             </h2>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-8 text-text-muted">
-              <span className="font-display text-xl tracking-tight">PhytoRx</span>
-              <span className="text-border-strong">|</span>
-              <span className="font-display text-xl tracking-tight">Flower Powered</span>
-              <span className="text-border-strong">|</span>
               <span className="font-display text-xl tracking-tight">AULV</span>
+              <span className="text-border-strong">|</span>
+              <span className="text-sm text-text-subtle italic">More partners coming soon</span>
             </div>
           </div>
         </div>
