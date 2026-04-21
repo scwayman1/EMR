@@ -205,8 +205,19 @@ export const scribeAgent: Agent<
     const summaryMd =
       patient.chartSummary?.summaryMd ?? "No chart summary yet.";
 
+    // Allergies are a non-negotiable part of the chart — if they're not in
+    // the prompt, the LLM can recommend a product that interacts with a
+    // documented allergy and we only catch it at sign-off. Put them in
+    // bright lights at the top.
+    const allergiesText =
+      patient.allergies && patient.allergies.length > 0
+        ? patient.allergies.join(", ")
+        : "NKDA (no known drug allergies on file)";
+
     const patientContext = `
 PATIENT: ${patient.firstName} ${patient.lastName}, ${agePart}${locationPart ? `, ${locationPart}` : ""}
+
+ALLERGIES: ${allergiesText}
 
 PRESENTING CONCERNS: ${patient.presentingConcerns ?? "Not documented"}
 
@@ -292,7 +303,13 @@ Important guidelines:
 - Base cannabis recommendations on the patient's reported history and outcomes
 - Include relevant ICD-10 codes in suggestedCodes
 - Set confidence between 0.0 and 1.0 based on how much context was available
-- If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.`;
+- If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.
+
+NON-NEGOTIABLE SAFETY RULES:
+- Do NOT recommend any product the patient is allergic to. The ALLERGIES field above is the source of truth. If allergies list is empty (NKDA), you still note "no known drug allergies" in the Findings block so the clinician knows the field was checked, not forgotten.
+- If the Findings cannot be supported with concrete chart data (outcomes, prior notes, presenting concerns), write "-- to be confirmed by clinician --" rather than invent detail. Hallucination is worse than a gap.
+- Structure the Findings block around OLDCARTS when a symptom is the presenting concern: Onset, Location, Duration, Character, Aggravating/Alleviating factors, Radiation, Timing, Severity. Use "-- to be confirmed --" for any OLDCARTS element that is not in the chart data.
+- If any cannabis contraindication appears (see presenting concerns, chart summary, or briefing risk flags for bipolar I, schizophrenia, pregnancy, active psychosis, severe cardiac disease, pediatric), flag it in the Assessment block with a leading ⚠ and do NOT include a cannabis product recommendation in the Plan without explicit clinician override.`;
 
     // Prepend the shared scribe persona voice profile so the documentation
     // tone comes from one central place (persona.ts).
@@ -331,12 +348,39 @@ Important guidelines:
     let suggestedCodes: { code: string; label: string }[] = [];
     let blocks: z.infer<typeof blockSchema>[];
 
+    // Data-density cap: we do NOT let the LLM claim high confidence on a
+    // thin chart. Count the concrete evidence we fed it and cap confidence
+    // at a ceiling proportional to the evidence density. A note with 3
+    // lines of chart summary and no prior notes should never return 0.85.
+    const evidenceCount =
+      (priorNotes.length) +
+      (outcomeLogs.length) +
+      (patient.presentingConcerns ? 1 : 0) +
+      (patient.chartSummary?.summaryMd ? 1 : 0) +
+      (briefing ? 2 : 0);
+    // Ceiling curve: 0 evidence → 0.4; 3 → 0.65; 6 → 0.8; 10+ → 0.9
+    const densityCeiling =
+      evidenceCount >= 10
+        ? 0.9
+        : evidenceCount >= 6
+          ? 0.8
+          : evidenceCount >= 3
+            ? 0.65
+            : 0.4;
+
     if (parsed && typeof parsed === "object" && parsed.assessment) {
       // Successful structured parse
-      confidence =
+      const llmConfidence =
         typeof parsed.confidence === "number"
           ? Math.max(0, Math.min(1, parsed.confidence))
           : 0.7;
+      confidence = Math.min(llmConfidence, densityCeiling);
+      trace.step("applied density ceiling", {
+        llmConfidence,
+        densityCeiling,
+        evidenceCount,
+        final: confidence,
+      });
 
       suggestedCodes = Array.isArray(parsed.suggestedCodes)
         ? parsed.suggestedCodes
@@ -390,8 +434,10 @@ Important guidelines:
         codeCount: suggestedCodes.length,
       });
     } else {
-      // Fallback: model returned plain text (e.g. StubModelClient)
-      confidence = 0.7;
+      // Fallback: model returned plain text (e.g. StubModelClient).
+      // Fallback confidence is always below the density ceiling AND hard-
+      // capped at 0.5 — a clinician should know the structure failed.
+      confidence = Math.min(0.5, densityCeiling);
 
       blocks = [
         {

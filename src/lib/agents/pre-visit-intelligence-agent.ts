@@ -586,5 +586,12 @@ Return a JSON object with:
   "confidence": 0.0-1.0
 }
 
-Focus on what CHANGED since last visit. Prioritize actionable insights over raw data. If the memory or cohort context meaningfully informs a talking point, reference it explicitly in the content (e.g. "4 similar patients on CBD:THC 1:1 reported improved sleep within 3 weeks — we're seeing the same pattern here").`;
+Focus on what CHANGED since last visit. Prioritize actionable insights over raw data. If the memory or cohort context meaningfully informs a talking point, reference it explicitly in the content (e.g. "4 similar patients on CBD:THC 1:1 reported improved sleep within 3 weeks — we're seeing the same pattern here").
+
+NON-NEGOTIABLE SAFETY GATES:
+- PEDIATRIC (age < 18): ${age !== null && age < 18 ? "THIS PATIENT IS PEDIATRIC. Add a FIRST riskFlag: 'Pediatric patient — THC is contraindicated absent a narrow pediatric-approved indication and guardian consent. Any cannabis recommendation requires dual-physician sign-off.' Do NOT suggest starting or escalating THC-dominant regimens." : "(not applicable)"}
+- PREGNANCY / LACTATION: If presentingConcerns, chart summary, memory, or last note mentions pregnancy, "trying to conceive", "breastfeeding", or "postpartum", add a FIRST riskFlag: "Pregnancy/lactation concern — cannabis crosses the placenta and enters breast milk. Re-evaluate regimen per ACOG guidance before continuing." Do NOT include a continue-regimen talking point without this risk flag.
+- PSYCHIATRIC CONTRAINDICATIONS: If memory, presenting concerns, or notes reference bipolar I, schizophrenia, schizoaffective disorder, active psychosis, or family history of schizophrenia, add a riskFlag: "Psychiatric contraindication on file — THC-dominant regimens carry decompensation risk. Prefer CBD-dominant; require psychiatry sign-off for any THC >2.5mg/dose."
+- COHORT UNCERTAINTY: Only cite similar-patient outcomes if the COHORT CONTEXT block above explicitly states ≥2 similar patients AND identical regimen class. If the cohort is sparse or mixed, either omit the citation or hedge it: "Cohort data is limited — exercise caution." Never invent similar-patient outcomes.
+- LANGUAGE: If the CHART SUMMARY or RECENT MESSAGES include content in a non-English language, note it in the patientSummary: "Patient corresponds in [language]; ensure interpreter / translated materials at visit." The physician can then plan interpreter support.`;
 }
