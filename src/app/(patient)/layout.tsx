@@ -9,13 +9,11 @@ const PATIENT_SECTIONS: NavSection[] = [
   {
     label: "Home",
     pillar: "home",
-    icon: "home",
     items: [{ label: "Home", href: "/portal" }],
   },
   {
     label: "Health",
     pillar: "health",
-    icon: "pill",
     items: [
       { label: "Log Dose", href: "/portal/log-dose" },
       { label: "My Health", href: "/portal/records" },
@@ -25,13 +23,11 @@ const PATIENT_SECTIONS: NavSection[] = [
   {
     label: "Schedule",
     pillar: "schedule",
-    icon: "calendar",
     items: [{ label: "Schedule", href: "/portal/schedule" }],
   },
   {
     label: "Messages",
     pillar: "messages",
-    icon: "message",
     items: [
       { label: "Messages", href: "/portal/messages" },
       { label: "Q&A", href: "/portal/qa" },
@@ -40,7 +36,6 @@ const PATIENT_SECTIONS: NavSection[] = [
   {
     label: "Account",
     pillar: "account",
-    icon: "user",
     items: [{ label: "Account", href: "/portal/profile" }],
   },
 ];
