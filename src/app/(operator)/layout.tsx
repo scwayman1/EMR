@@ -125,7 +125,6 @@ export default async function OperatorLayout({
     {
       label: "Overview",
       pillar: "overview",
-      icon: "layout-grid",
       items: [
         { label: "Overview", href: "/ops" },
         { label: "Mission Control", href: "/ops/mission-control" },
@@ -136,7 +135,6 @@ export default async function OperatorLayout({
     },
     {
       label: "Billing",
-      icon: "dollar",
       items: [
         { label: "Billing", href: "/ops/billing" },
         { label: "Scrub", href: "/ops/scrub" },
@@ -149,7 +147,6 @@ export default async function OperatorLayout({
     },
     {
       label: "Operations",
-      icon: "users",
       items: [
         { label: "Staff schedule", href: "/ops/staff-schedule" },
         { label: "Time clock", href: "/ops/time-clock" },
@@ -166,7 +163,6 @@ export default async function OperatorLayout({
     },
     {
       label: "Practice Setup",
-      icon: "building",
       items: [
         { label: "Onboarding", href: "/ops/onboarding" },
         { label: "Practice launch", href: "/ops/launch" },
@@ -177,7 +173,6 @@ export default async function OperatorLayout({
     },
     {
       label: "Intelligence",
-      icon: "chart",
       items: [
         { label: "Analytics", href: "/ops/analytics" },
         { label: "Analytics Lab", href: "/ops/analytics-lab" },
@@ -187,7 +182,6 @@ export default async function OperatorLayout({
     },
     {
       label: "System",
-      icon: "server",
       items: [
         { label: "AI Config", href: "/ops/settings/ai-config" },
         { label: "Webhooks", href: "/ops/webhooks" },
