@@ -63,6 +63,29 @@ export function matchPaymentToEvent(
   return { matched: true };
 }
 
+/**
+ * Batch balancing: given a payer's check/EFT number and the claim-level
+ * payments posted against it, does the sum match the remittance total?
+ * Producers MUST feed in the payer's posted check total so a missing
+ * line shows up as a variance. Pure function — unit-testable.
+ */
+export function balanceBatchAgainstCheck(args: {
+  checkNumber: string;
+  postedPaymentsCents: number[];
+  payerReportedTotalCents: number;
+  toleranceCents?: number;
+}): { balanced: true } | { balanced: false; varianceCents: number; message: string } {
+  const tolerance = args.toleranceCents ?? 2;
+  const posted = args.postedPaymentsCents.reduce((a, b) => a + b, 0);
+  const variance = args.payerReportedTotalCents - posted;
+  if (Math.abs(variance) <= tolerance) return { balanced: true };
+  return {
+    balanced: false,
+    varianceCents: variance,
+    message: `Batch ${args.checkNumber} is unbalanced: payer reported ${(args.payerReportedTotalCents / 100).toFixed(2)} total, ledger has ${(posted / 100).toFixed(2)} posted (variance ${(variance / 100).toFixed(2)}).`,
+  };
+}
+
 /** Fold a list of payments + their matched events into a reconciliation
  * summary. Tests can feed fixture inputs rather than spinning up Prisma. */
 export function reconcilePayments(

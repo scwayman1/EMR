@@ -2,6 +2,35 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { formatMoney } from "@/lib/domain/billing";
+import { resolvePayerRule, isCommercialPayer } from "@/lib/billing/payer-rules";
+
+/**
+ * Per-CPT expected allowed fraction by payer class. Until we model per-
+ * contract allowable tables (EMR-223), this is the rough benchmark the
+ * agent uses: "a commercial payer's allowed amount should be about X% of
+ * fee schedule; a government payer, Y%."
+ *
+ * Values are conservative — intentionally tighter than actual Medicare
+ * conversion factors so the agent catches obvious underpayments without
+ * firehose'ing ops with "expected" variance.
+ */
+export function expectedAllowedFraction(payerName: string | null | undefined): number {
+  const rule = resolvePayerRule({ payerName });
+  switch (rule.class) {
+    case "commercial":
+      return 0.85; // commercial typically allows 85–110% of fee schedule
+    case "medicare_advantage":
+      return 0.55;
+    case "government":
+      return 0.45; // Medicare fee schedule ~40–50% of private fee
+    case "medicaid_managed":
+      return 0.5;
+    case "workers_comp":
+      return 0.7;
+    default:
+      return 0.75;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Underpayment Detection Agent
@@ -92,13 +121,20 @@ export const underpaymentDetectionAgent: Agent<
       const allowed = claim.allowedAmountCents ?? 0;
 
       // Sum of expected charges across all CPT codes on this claim
-      const expected = cptCodes.reduce((acc, c) => {
+      const feeScheduleTotal = cptCodes.reduce((acc, c) => {
         const fromFeeSchedule = feeMap[c.code] ?? 0;
         const fromClaim = c.chargeAmount ?? 0;
         return acc + Math.max(fromFeeSchedule, fromClaim);
       }, 0);
 
-      if (expected === 0) continue;
+      if (feeScheduleTotal === 0) continue;
+
+      // A commercial payer's allowed amount should be near fee-schedule.
+      // A Medicare payer's allowed is typically 40–50% of fee — comparing
+      // those directly generated false positives. Scale the expectation
+      // by payer class via expectedAllowedFraction().
+      const fraction = expectedAllowedFraction(claim.payerName);
+      const expected = Math.round(feeScheduleTotal * fraction);
 
       const ratio = allowed / expected;
       if (ratio < UNDERPAYMENT_THRESHOLD) {

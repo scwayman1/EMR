@@ -109,6 +109,67 @@ export function shouldSendCollectionsOutreach(params: {
   return { send: true, intent: params.intent };
 }
 
+/**
+ * Auto-resolve the right dunning intent from the patient's actual state.
+ * The callers used to hardcode intent at the call site; this helper
+ * promotes escalation into data so the same ladder runs everywhere.
+ *
+ * Ladder (first match wins):
+ *   1. Active payment plan with no defaults   → "pause" (no outreach)
+ *   2. Oldest statement ≥ 90 days + ≥ 3 prior → "payment_plan_offer"
+ *   3. Oldest statement ≥ 90 days             → "final_notice"
+ *   4. Oldest statement ≥ 60 days             → "second_notice"
+ *   5. Oldest statement ≥ 30 days             → "gentle_reminder"
+ *   6. Anything younger                       → "pause"
+ */
+export function resolveDunningIntent(params: {
+  oldestStatementAgeDays: number;
+  priorNoticeCount: number;
+  hasActivePaymentPlan: boolean;
+  /** true if the payment plan is behind on its last installment */
+  paymentPlanInDefault: boolean;
+  /** Total the patient currently owes — no outreach for $0 */
+  totalOwedCents: number;
+}): { intent: CollectionsIntent | "pause"; reason: string } {
+  if (params.totalOwedCents <= 0) {
+    return { intent: "pause", reason: "Patient owes $0.00 — no outreach." };
+  }
+  if (params.hasActivePaymentPlan && !params.paymentPlanInDefault) {
+    return {
+      intent: "pause",
+      reason: "Patient is on an active payment plan and current — do not re-engage the dunning ladder.",
+    };
+  }
+  if (params.oldestStatementAgeDays >= 90 && params.priorNoticeCount >= 3) {
+    return {
+      intent: "payment_plan_offer",
+      reason: "Three prior notices sent and balance > 90 days — offer a payment plan as a relief path before external collections.",
+    };
+  }
+  if (params.oldestStatementAgeDays >= 90) {
+    return {
+      intent: "final_notice",
+      reason: "Balance is > 90 days old. Send final-notice language with account-handling consequences noted.",
+    };
+  }
+  if (params.oldestStatementAgeDays >= 60) {
+    return {
+      intent: "second_notice",
+      reason: "Balance is > 60 days old — escalate from gentle reminder to a second notice.",
+    };
+  }
+  if (params.oldestStatementAgeDays >= 30) {
+    return {
+      intent: "gentle_reminder",
+      reason: "Balance is > 30 days old — friendly nudge.",
+    };
+  }
+  return {
+    intent: "pause",
+    reason: "Balance is under 30 days old — too early for dunning outreach.",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Patient Collections Agent
 // ---------------------------------------------------------------------------
