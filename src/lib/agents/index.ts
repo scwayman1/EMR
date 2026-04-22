@@ -46,6 +46,7 @@ import { eligibilityBenefitsAgent } from "./billing/eligibility-benefits-agent";
 import { complianceAuditAgent } from "./billing/compliance-audit-agent";
 import { priorAuthAgent } from "./billing/prior-auth-agent";
 import { clearinghouseSubmissionAgent } from "./billing/clearinghouse-submission-agent";
+import { staleClaimMonitorAgent } from "./billing/stale-claim-monitor-agent";
 // Operations & patient experience agents
 import { wellnessCoachAgent } from "./wellness-coach-agent";
 import { refillReminderAgent } from "./refill-reminder-agent";
@@ -115,6 +116,7 @@ export const agentRegistry = {
   complianceAudit: complianceAuditAgent,
   priorAuthVerification: priorAuthAgent,
   clearinghouseSubmission: clearinghouseSubmissionAgent,
+  staleClaimMonitor: staleClaimMonitorAgent,
   // Operations & patient experience agents
   wellnessCoach: wellnessCoachAgent,
   refillReminder: refillReminderAgent,

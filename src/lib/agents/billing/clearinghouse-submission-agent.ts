@@ -3,6 +3,14 @@ import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
 import { startReasoning } from "../memory/agent-reasoning";
+import {
+  parse999,
+  parse277CA,
+  decide277Actions,
+  type Parsed999,
+  type Parsed277Ca,
+} from "@/lib/billing/clearinghouse-ack";
+import { resolvePayerRule } from "@/lib/billing/payer-rules";
 
 // ---------------------------------------------------------------------------
 // Clearinghouse Submission Agent
@@ -51,6 +59,106 @@ export const SUBMISSION_COOLDOWN_MS = 60_000;
 
 /** Hard cap on attempts per claim. */
 export const SUBMISSION_RETRY_LIMIT = 3;
+
+/**
+ * Exponential backoff for retries: attempt 1 = 60s, attempt 2 = 15min,
+ * attempt 3 = 1h. This keeps us under clearinghouse rate limits while
+ * giving transient issues time to resolve. Pure function — unit testable.
+ */
+export function backoffForAttempt(attemptNumber: number): number {
+  if (attemptNumber <= 0) return SUBMISSION_COOLDOWN_MS;
+  if (attemptNumber === 1) return 60 * 1000;
+  if (attemptNumber === 2) return 15 * 60 * 1000;
+  return 60 * 60 * 1000;
+}
+
+/**
+ * Decide whether a rejection is transient (worth auto-retry after backoff)
+ * vs. permanent (don't retry until the underlying error is fixed). The
+ * fleet must never retry a "missing member id" rejection — that just
+ * generates a second identical rejection.
+ */
+export type RejectionRetryPolicy =
+  | { kind: "permanent"; reason: string }
+  | { kind: "transient"; reason: string; retryAfterMs: number };
+
+export function classifyRejection(args: {
+  rejectionCode: string | null;
+  rejectionMessage: string | null;
+  attemptNumber: number;
+}): RejectionRetryPolicy {
+  const code = (args.rejectionCode ?? "").toUpperCase();
+  const msg = (args.rejectionMessage ?? "").toLowerCase();
+
+  // Permanent-fail codes — don't retry; route to operator
+  const permanent = [
+    "VALIDATION_FAIL",
+    "INVALID_PAYER",
+    "INVALID_MEMBER",
+    "INVALID_NPI",
+    "DUPLICATE_CLAIM",
+    "INVALID_DOS",
+  ];
+  if (permanent.some((p) => code === p || code.includes(p))) {
+    return { kind: "permanent", reason: `Permanent rejection (${code}).` };
+  }
+  if (
+    msg.includes("invalid member") ||
+    msg.includes("member not found") ||
+    msg.includes("invalid npi") ||
+    msg.includes("duplicate") ||
+    msg.includes("subscriber") ||
+    msg.includes("invalid date of service")
+  ) {
+    return {
+      kind: "permanent",
+      reason: "Rejection message indicates a data error; retry is pointless until the data is corrected.",
+    };
+  }
+
+  // Everything else — treat as transient (network blip, gateway hiccup)
+  // up to SUBMISSION_RETRY_LIMIT.
+  if (args.attemptNumber >= SUBMISSION_RETRY_LIMIT) {
+    return {
+      kind: "permanent",
+      reason: "Retry limit exhausted — escalate to operator even though the rejection looked transient.",
+    };
+  }
+  return {
+    kind: "transient",
+    reason: "Transient rejection — will retry with backoff.",
+    retryAfterMs: backoffForAttempt(args.attemptNumber),
+  };
+}
+
+/**
+ * Interpret a clearinghouse response payload. Accepts either a 999
+ * functional ack OR a 277CA claim-level ack OR a mixed payload. Returns
+ * a normalized decision envelope the agent acts on.
+ */
+export function interpretAckPayload(
+  payload: string | object | null | undefined,
+): {
+  have999: boolean;
+  have277: boolean;
+  ack999: Parsed999 | null;
+  ack277: Parsed277Ca | null;
+} {
+  if (payload == null) return { have999: false, have277: false, ack999: null, ack277: null };
+  const raw = typeof payload === "string" ? payload : JSON.stringify(payload);
+  const has999 =
+    /AK9[*|]/i.test(raw) ||
+    (typeof payload === "object" && payload !== null && ("ack999Status" in (payload as any)));
+  const has277 =
+    /(STC[*|])|(TRN[*|]2[*|])/i.test(raw) ||
+    (typeof payload === "object" && payload !== null && Array.isArray((payload as any).claims));
+  return {
+    have999: has999,
+    have277: has277,
+    ack999: has999 ? parse999(payload as any) : null,
+    ack277: has277 ? parse277CA(payload as any) : null,
+  };
+}
 
 /** Shape the guard needs. Keeps the pure function Prisma-free. */
 export interface PriorSubmissionInput {
@@ -410,15 +518,42 @@ export const clearinghouseSubmissionAgent: Agent<
         data: { status: "ch_rejected" },
       });
 
+      // Classify with the shared rejection policy so both synchronous
+      // rejections here and async 277CA rejections later route through
+      // one decision table.
+      const rejectionPolicy = classifyRejection({
+        rejectionCode: "VALIDATION_FAIL",
+        rejectionMessage: validationErrors.join("; "),
+        attemptNumber: priorSubmissionCount + 1,
+      });
+
       await ctx.emit({
         name: "clearinghouse.rejected",
         claimId,
         submissionId: submission.id,
         rejectionCode: "VALIDATION_FAIL",
         rejectionMessage: validationErrors.join("; "),
-        retryEligible: isRejectionRetryEligible(priorSubmissionCount),
+        retryEligible:
+          rejectionPolicy.kind === "transient" &&
+          isRejectionRetryEligible(priorSubmissionCount),
         organizationId,
       });
+
+      if (rejectionPolicy.kind === "permanent") {
+        // Permanent — escalate immediately rather than wait for the retry
+        // cooldown, which will just produce an identical rejection.
+        await ctx.emit({
+          name: "human.review.required",
+          sourceAgent: "clearinghouseSubmission",
+          category: "novel_situation",
+          claimId,
+          patientId: claim.patientId,
+          summary: `Clearinghouse rejected claim ${claim.claimNumber ?? claimId} — permanent failure: ${validationErrors.join("; ")}`,
+          suggestedAction: rejectionPolicy.reason,
+          tier: 1,
+          organizationId,
+        });
+      }
 
       await writeAgentAudit(
         "clearinghouseSubmission",

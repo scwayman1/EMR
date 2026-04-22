@@ -3,6 +3,56 @@ import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { formatMoney } from "@/lib/domain/billing";
 
+/**
+ * Decide how to handle a patient credit balance. Pure so the policy is
+ * testable without spinning Prisma. Thresholds:
+ *   - >= $200 and no open balance → refund (approval required)
+ *   - $50..$200 and no open balance, ≥180d old → refund (approval required)
+ *   - > $0 with any open balance → transfer
+ *   - < $5 and ≥365d old → write_off (small-balance cleanup)
+ *   - default → hold
+ */
+export function resolveCreditAction(args: {
+  creditCents: number;
+  hasOpenBalance: boolean;
+  oldestCreditAgeDays: number;
+}): {
+  action: "transfer" | "refund" | "hold" | "write_off";
+  reason: string;
+} {
+  if (args.creditCents <= 0) {
+    return { action: "hold", reason: "No credit present." };
+  }
+  if (args.hasOpenBalance) {
+    return {
+      action: "transfer",
+      reason: `Patient has ${formatMoney(args.creditCents)} credit and an open balance — apply credit to the open balance before considering a refund.`,
+    };
+  }
+  if (args.creditCents >= 20000) {
+    return {
+      action: "refund",
+      reason: `Patient has ${formatMoney(args.creditCents)} credit (≥ $200) with no open balance. Issue a refund (approval required).`,
+    };
+  }
+  if (args.creditCents >= 5000 && args.oldestCreditAgeDays >= 180) {
+    return {
+      action: "refund",
+      reason: `Patient has ${formatMoney(args.creditCents)} credit that has been on file ≥180 days. Compliance requires a refund (approval required).`,
+    };
+  }
+  if (args.creditCents < 500 && args.oldestCreditAgeDays >= 365) {
+    return {
+      action: "write_off",
+      reason: `Tiny residual credit (${formatMoney(args.creditCents)}) aged ≥1 year. Small-balance cleanup.`,
+    };
+  }
+  return {
+    action: "hold",
+    reason: `Credit of ${formatMoney(args.creditCents)} — hold pending the next visit's charges.`,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Refund / Credit Agent
 // ---------------------------------------------------------------------------
@@ -32,7 +82,7 @@ const output = z.object({
     z.object({
       patientId: z.string(),
       creditCents: z.number(),
-      action: z.enum(["transfer", "refund", "hold"]),
+      action: z.enum(["transfer", "refund", "hold", "write_off"]),
       reason: z.string(),
       taskId: z.string().nullable(),
     }),
@@ -74,7 +124,7 @@ export const refundCreditAgent: Agent<
     const recommendations: {
       patientId: string;
       creditCents: number;
-      action: "transfer" | "refund" | "hold";
+      action: "transfer" | "refund" | "hold" | "write_off";
       reason: string;
       taskId: string | null;
     }[] = [];
@@ -112,19 +162,26 @@ export const refundCreditAgent: Agent<
             .reduce((sum, p) => sum + p.amountCents, 0) < c.patientRespCents,
       );
 
-      let action: "transfer" | "refund" | "hold";
-      let reason: string;
+      // Age the oldest patient payment that contributed to the credit so
+      // stale credits auto-escalate to refund per compliance timelines.
+      const patientPaymentDates = patient.claims.flatMap((c) =>
+        c.payments
+          .filter((p) => p.source === "patient")
+          .map((p) => p.paymentDate),
+      );
+      const oldest = patientPaymentDates.reduce<Date | null>(
+        (acc, d) => (acc == null || d < acc ? d : acc),
+        null,
+      );
+      const oldestCreditAgeDays = oldest
+        ? Math.floor((Date.now() - oldest.getTime()) / 86_400_000)
+        : 0;
 
-      if (openOtherBalance) {
-        action = "transfer";
-        reason = `Patient has ${formatMoney(creditCents)} credit and an open balance on another claim. Recommend applying the credit to the open balance.`;
-      } else if (creditCents >= 5000) {
-        action = "refund";
-        reason = `Patient has ${formatMoney(creditCents)} credit with no other open balances. Recommend issuing a refund (approval required).`;
-      } else {
-        action = "hold";
-        reason = `Patient has a small ${formatMoney(creditCents)} credit. Hold pending the next visit's charges.`;
-      }
+      const { action, reason } = resolveCreditAction({
+        creditCents,
+        hasOpenBalance: openOtherBalance,
+        oldestCreditAgeDays,
+      });
 
       // Avoid duplicate task creation within 7 days
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);

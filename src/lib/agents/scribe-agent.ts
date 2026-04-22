@@ -132,6 +132,67 @@ export const scribeAgent: Agent<
     const patient = encounter.patient;
     ctx.assertCan("read.patient");
 
+    // Vulnerability detection — drives the safety-rules block below and the
+    // confidence ceiling. A note for a vulnerable patient (pediatric,
+    // pregnant, psych-contraindicated, severe cardiac) must carry explicit
+    // ⚠ flags and cannabis should NOT appear in Plan without human review.
+    const ageNow = patient.dateOfBirth
+      ? ageFromDob(patient.dateOfBirth)
+      : null;
+    const isPediatric = ageNow !== null && ageNow < 18;
+
+    const vulnHaystack = [
+      patient.presentingConcerns ?? "",
+      patient.treatmentGoals ?? "",
+      (patient.contraindications ?? []).join(" "),
+      patient.chartSummary?.summaryMd ?? "",
+      typeof patient.cannabisHistory === "string"
+        ? patient.cannabisHistory
+        : JSON.stringify(patient.cannabisHistory ?? {}),
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    const vulnerabilityFlags: string[] = [];
+    if (isPediatric) vulnerabilityFlags.push("pediatric (<18)");
+    if (
+      vulnHaystack.includes("bipolar i") ||
+      vulnHaystack.includes("bipolar 1") ||
+      vulnHaystack.includes("mania")
+    )
+      vulnerabilityFlags.push("bipolar I / mania");
+    if (
+      vulnHaystack.includes("schizophren") ||
+      vulnHaystack.includes("psychosis") ||
+      vulnHaystack.includes("psychotic")
+    )
+      vulnerabilityFlags.push("schizophrenia / active psychosis");
+    if (vulnHaystack.includes("pregnan") || vulnHaystack.includes("gravid"))
+      vulnerabilityFlags.push("pregnancy");
+    if (vulnHaystack.includes("breastfeed") || vulnHaystack.includes("lactation"))
+      vulnerabilityFlags.push("lactation");
+    if (
+      vulnHaystack.includes("unstable angina") ||
+      vulnHaystack.includes("recent mi") ||
+      vulnHaystack.includes("myocardial infarction") ||
+      vulnHaystack.includes("heart failure") ||
+      vulnHaystack.includes("cardiomyopathy")
+    )
+      vulnerabilityFlags.push("severe cardiac disease");
+
+    // Allergies block — normalized with NKDA default. This rides at the
+    // TOP of the scribe prompt so the LLM can never miss it.
+    const allergiesList = (patient.allergies ?? []).filter((a) => a && a.trim().length > 0);
+    const allergiesBlock =
+      allergiesList.length > 0
+        ? `ALLERGIES (⚠ DO NOT recommend products containing these or cross-reactants):\n  - ${allergiesList.join("\n  - ")}`
+        : "ALLERGIES: NKDA (no known drug allergies on file)";
+
+    trace.step("allergy + vulnerability scan", {
+      allergyCount: allergiesList.length,
+      vulnerabilityFlags,
+    });
+
     // ------------------------------------------------------------------
     // 2. Fetch recent outcome trends (last 5 per metric)
     // ------------------------------------------------------------------
@@ -206,6 +267,8 @@ export const scribeAgent: Agent<
       patient.chartSummary?.summaryMd ?? "No chart summary yet.";
 
     const patientContext = `
+${allergiesBlock}
+
 PATIENT: ${patient.firstName} ${patient.lastName}, ${agePart}${locationPart ? `, ${locationPart}` : ""}
 
 PRESENTING CONCERNS: ${patient.presentingConcerns ?? "Not documented"}
@@ -292,7 +355,15 @@ Important guidelines:
 - Base cannabis recommendations on the patient's reported history and outcomes
 - Include relevant ICD-10 codes in suggestedCodes
 - Set confidence between 0.0 and 1.0 based on how much context was available
-- If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.`;
+- If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.
+
+Non-negotiable safety rules (these OVERRIDE every other guideline):
+1. Allergies are absolute. Never recommend a product that contains a listed allergen or a known cross-reactant. If a proposed product might contain an allergen, write "-- to be confirmed with the physician --" instead of the product name.
+2. When the chart does not clearly support a specific clinical fact (dose, trend, diagnosis, response), write "-- to be confirmed --" rather than inventing one. Invention is a worse outcome than a gap.
+3. All symptom findings must use the OLDCARTS scaffolding (Onset, Location, Duration, Character, Aggravating, Relieving, Timing, Severity). If a dimension is missing, call it out as "-- to be confirmed --" instead of omitting it silently.
+4. If ANY of the following are present in the chart, start the Assessment block with "⚠" and do NOT recommend cannabis in Plan without an explicit physician review gate: bipolar I, schizophrenia, pregnancy, active psychosis, severe cardiac disease, pediatric (under 18).
+   ${vulnerabilityFlags.length > 0 ? `CURRENT PATIENT VULNERABILITIES (flag them explicitly): ${vulnerabilityFlags.join(", ")}.` : "No vulnerability flags in the chart at this time."}
+5. Never upcode or inflate severity. The note must match what the chart supports — no more.`;
 
     // Prepend the shared scribe persona voice profile so the documentation
     // tone comes from one central place (persona.ts).
@@ -331,12 +402,39 @@ Important guidelines:
     let suggestedCodes: { code: string; label: string }[] = [];
     let blocks: z.infer<typeof blockSchema>[];
 
+    // Evidence density: how much actual chart context did we feed the model?
+    // A 0.95-confidence assessment drafted from nothing is the worst failure
+    // mode — the ceiling guarantees it can't happen.
+    const briefingSectionCount = briefing?.sections?.length ?? 0;
+    const evidenceUnits =
+      priorNotes.length +
+      outcomeLogs.length +
+      (patient.chartSummary ? 1 : 0) +
+      briefingSectionCount +
+      (patient.presentingConcerns ? 1 : 0);
+    const densityCeiling =
+      evidenceUnits >= 10 ? 0.9
+        : evidenceUnits >= 6 ? 0.8
+          : evidenceUnits >= 3 ? 0.65
+            : 0.4;
+    trace.step("computed evidence density ceiling", {
+      evidenceUnits,
+      densityCeiling,
+    });
+
     if (parsed && typeof parsed === "object" && parsed.assessment) {
       // Successful structured parse
       confidence =
         typeof parsed.confidence === "number"
           ? Math.max(0, Math.min(1, parsed.confidence))
           : 0.7;
+      if (confidence > densityCeiling) {
+        trace.alternative(
+          "trust LLM's self-reported confidence",
+          `model reported ${confidence.toFixed(2)} but only ${evidenceUnits} evidence units were available; capping at ${densityCeiling.toFixed(2)}.`,
+        );
+        confidence = densityCeiling;
+      }
 
       suggestedCodes = Array.isArray(parsed.suggestedCodes)
         ? parsed.suggestedCodes
@@ -390,8 +488,11 @@ Important guidelines:
         codeCount: suggestedCodes.length,
       });
     } else {
-      // Fallback: model returned plain text (e.g. StubModelClient)
-      confidence = 0.7;
+      // Fallback: model returned plain text (e.g. StubModelClient). A
+      // fallback-path draft is by definition under-grounded — cap at 0.5
+      // so it can never auto-finalize without physician review, then let
+      // the density ceiling drop it further when evidence is also sparse.
+      confidence = Math.min(0.5, densityCeiling);
 
       blocks = [
         {

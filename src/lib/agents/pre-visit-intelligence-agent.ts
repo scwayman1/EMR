@@ -162,6 +162,92 @@ export const preVisitIntelligenceAgent: Agent<
 
     const age = patient.dateOfBirth ? ageFromDob(patient.dateOfBirth) : null;
 
+    // ── Vulnerability gates ─────────────────────────────────────────
+    // Pediatric, pregnancy/lactation, and psychiatric contraindications
+    // materially change the briefing. We compute them up-front so the
+    // deterministic fallback, the prompt, and the risk flags all see the
+    // same signals and cannot contradict each other.
+    const isPediatric = age !== null && age < 18;
+
+    // Language awareness — if chart content is non-English, the briefing
+    // should mark itself as mixed-language so downstream summaries don't
+    // silently drop phrases that weren't understood.
+    const chartTextSample = [
+      patient.presentingConcerns ?? "",
+      patient.treatmentGoals ?? "",
+      patient.chartSummary?.summaryMd ?? "",
+    ]
+      .join(" ")
+      .slice(0, 4000);
+    // Count occurrences of Spanish-distinctive glyphs or high-signal words
+    // to detect bilingual charts. Intentionally heuristic — good enough to
+    // flag "translate before trusting" to the physician.
+    const spanishGlyphs = (chartTextSample.match(/[ñáéíóúü¿¡]/gi) ?? []).length;
+    const spanishWords = [
+      "paciente",
+      "dolor",
+      "sueño",
+      "ansiedad",
+      "embarazada",
+      "niño",
+      "hijo",
+      "madre",
+      "padre",
+    ].filter((w) => chartTextSample.toLowerCase().includes(w)).length;
+    const likelyNonEnglish = spanishGlyphs >= 3 || spanishWords >= 2;
+
+    const vulnerabilityFlags: string[] = [];
+    if (isPediatric) {
+      vulnerabilityFlags.push(
+        `PEDIATRIC (age ${age}) — dual-physician sign-off required before any THC-dominant recommendation. Prefer specialist referral (pediatric neurology for seizure disorders, etc.). No THC-dominant recs from primary care alone.`,
+      );
+    }
+
+    const vulnHaystack = [
+      patient.presentingConcerns ?? "",
+      patient.treatmentGoals ?? "",
+      patient.chartSummary?.summaryMd ?? "",
+      (patient as any).cannabisHistory
+        ? typeof (patient as any).cannabisHistory === "string"
+          ? (patient as any).cannabisHistory
+          : JSON.stringify((patient as any).cannabisHistory)
+        : "",
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    if (
+      vulnHaystack.includes("pregnan") ||
+      vulnHaystack.includes("gravid") ||
+      vulnHaystack.includes("embarazada")
+    ) {
+      vulnerabilityFlags.push(
+        "PREGNANCY suspected/documented — ACOG recommends no cannabis use. Counsel on alternatives and document decision.",
+      );
+    }
+    if (
+      vulnHaystack.includes("breastfeed") ||
+      vulnHaystack.includes("lactation") ||
+      vulnHaystack.includes("amamantando")
+    ) {
+      vulnerabilityFlags.push(
+        "LACTATION — AAP recommends against cannabis; THC excreted in breast milk. Counsel.",
+      );
+    }
+    const hasPsychContra =
+      vulnHaystack.includes("bipolar i") ||
+      vulnHaystack.includes("bipolar 1") ||
+      vulnHaystack.includes("mania") ||
+      vulnHaystack.includes("schizophren") ||
+      vulnHaystack.includes("psychosis") ||
+      vulnHaystack.includes("psychotic") ||
+      vulnHaystack.includes("family history of schizophren");
+    if (hasPsychContra) {
+      vulnerabilityFlags.push(
+        "PSYCH CONTRAINDICATION (bipolar I / schizophrenia spectrum / active psychosis / family hx) — prefer CBD-dominant; any THC > 2.5 mg/dose requires psych sign-off.",
+      );
+    }
+
     // ── Step 2: Recent encounters + notes ──────────────────────────
 
     ctx.log("info", "Step 2/6: Reviewing recent encounters and notes");
@@ -304,23 +390,38 @@ export const preVisitIntelligenceAgent: Agent<
     // This is the single biggest clinical superpower the harness gives
     // the physician — evidence from within their own practice, not just
     // the journal literature.
+    // Rule: don't cite similar-patient outcomes unless at least 2 of them
+    // are on essentially the same regimen. Mixed-regimen cohorts produce
+    // spurious trend claims ("4 similar patients improved on CBN" when two
+    // were actually on CBD:THC 1:1). We proxy "identical regimen" as a
+    // full regimenProductTypes score — the cohort helper maxes it out
+    // when the product-type sets overlap.
     let cohortSummary: string | null = null;
     try {
       const similar = await findSimilarPatients(input.patientId, {
         limit: 5,
       });
       trace.step("found similar patients", { count: similar.length });
-      if (similar.length >= 2) {
+      const identicalRegimen = similar.filter(
+        (s) => s.breakdown.regimenProductTypes >= 0.28,
+      );
+      if (identicalRegimen.length >= 2) {
         const cohortOutcomes = await summarizeCohortOutcomes(
-          similar.map((s) => s.patientId),
+          identicalRegimen.map((s) => s.patientId),
         );
         cohortSummary = formatCohortInsightForPrompt({
-          similar,
+          similar: identicalRegimen,
           outcomes: cohortOutcomes,
+          headline: `${identicalRegimen.length} patients in this practice on the same regimen type`,
         });
         trace.source(
           "cohort",
-          similar.map((s) => s.patientId),
+          identicalRegimen.map((s) => s.patientId),
+        );
+      } else {
+        trace.alternative(
+          "cite cohort outcomes",
+          `only ${identicalRegimen.length} of ${similar.length} similar patients share this regimen; need ≥2 to avoid spurious trends.`,
         );
       }
     } catch (err) {
@@ -345,6 +446,8 @@ export const preVisitIntelligenceAgent: Agent<
       memoryBlock: formatMemoriesForPrompt(memories),
       observationsBlock: formatObservationsForPrompt(observations),
       cohortSummary,
+      vulnerabilityFlags,
+      likelyNonEnglish,
     });
 
     let raw: string;
@@ -386,12 +489,23 @@ export const preVisitIntelligenceAgent: Agent<
       });
       await trace.persist();
 
+      // Vulnerability flags are non-negotiable — merge them on top of
+      // whatever the LLM returned. A pediatric/pregnant/psych-contra
+      // patient MUST carry those risk flags regardless of how the model
+      // phrased the output.
+      const riskFlags = [...vulnerabilityFlags, ...(parsed.riskFlags ?? [])];
+      if (likelyNonEnglish) {
+        riskFlags.push(
+          "Mixed-language chart content detected — verify translation accuracy before acting on any summarized phrase.",
+        );
+      }
+
       const briefing = {
         patientSummary: parsed.patientSummary ?? buildFallbackSummary(patient, age),
         lastVisitSummary: parsed.lastVisitSummary ?? lastNoteSummary,
         talkingPoints: parsed.talkingPoints ?? [],
         sections: parsed.sections ?? [],
-        riskFlags: parsed.riskFlags ?? [],
+        riskFlags,
         confidence: parsed.confidence ?? 0.8,
       };
 
@@ -404,7 +518,12 @@ export const preVisitIntelligenceAgent: Agent<
     ctx.log("info", "LLM returned non-structured response; using deterministic briefing");
 
     const sections: z.infer<typeof briefingSection>[] = [];
-    const riskFlags: string[] = [];
+    const riskFlags: string[] = [...vulnerabilityFlags];
+    if (likelyNonEnglish) {
+      riskFlags.push(
+        "Mixed-language chart content detected — verify translation accuracy before acting on any summarized phrase.",
+      );
+    }
     const talkingPoints: string[] = [];
 
     // Outcome trends
@@ -543,10 +662,20 @@ function buildBriefingPrompt(data: {
   memoryBlock: string;
   observationsBlock: string;
   cohortSummary: string | null;
+  vulnerabilityFlags: string[];
+  likelyNonEnglish: boolean;
 }): string {
-  const { patient, age, lastEncounter, lastNoteSummary, trends, dosingRegimens, adherenceRate, recentDoses, recentMessages, recentAssessments, openTasks, memoryBlock, observationsBlock, cohortSummary } = data;
+  const { patient, age, lastEncounter, lastNoteSummary, trends, dosingRegimens, adherenceRate, recentDoses, recentMessages, recentAssessments, openTasks, memoryBlock, observationsBlock, cohortSummary, vulnerabilityFlags, likelyNonEnglish } = data;
+
+  const vulnBlock = vulnerabilityFlags.length > 0
+    ? `\nNON-NEGOTIABLE VULNERABILITY GATES (must appear verbatim in riskFlags):\n${vulnerabilityFlags.map((f) => `  - ${f}`).join("\n")}\n`
+    : "";
+  const languageBlock = likelyNonEnglish
+    ? "\nLANGUAGE: Chart contains non-English content (likely Spanish). Flag any summarized phrase that required translation so the physician can verify meaning before acting on it.\n"
+    : "";
 
   return `You are an AI clinical assistant preparing a pre-visit intelligence briefing for a physician. You've known this patient for a while — the WHAT WE ALREADY KNOW block below is the accumulated understanding of who this person is and what matters to their care.
+${vulnBlock}${languageBlock}
 
 PATIENT: ${patient.firstName} ${patient.lastName}${age ? `, ${age}yo` : ""}
 STATUS: ${patient.status}
@@ -586,5 +715,7 @@ Return a JSON object with:
   "confidence": 0.0-1.0
 }
 
-Focus on what CHANGED since last visit. Prioritize actionable insights over raw data. If the memory or cohort context meaningfully informs a talking point, reference it explicitly in the content (e.g. "4 similar patients on CBD:THC 1:1 reported improved sleep within 3 weeks — we're seeing the same pattern here").`;
+Focus on what CHANGED since last visit. Prioritize actionable insights over raw data. If the memory or cohort context meaningfully informs a talking point, reference it explicitly in the content (e.g. "4 similar patients on CBD:THC 1:1 reported improved sleep within 3 weeks — we're seeing the same pattern here").
+
+Cohort rule: the COHORT CONTEXT block is already pre-filtered — it only appears when ≥2 similar patients share this regimen. If the block is absent, do NOT invent similar-patient claims or extrapolate from general literature into "in our practice" language. Stick to this patient's own data when cohort is absent.${vulnerabilityFlags.length > 0 ? "\n\nVulnerability rule: every NON-NEGOTIABLE VULNERABILITY GATE listed above must appear in the riskFlags array exactly as written — they are the physician's safety net." : ""}`;
 }

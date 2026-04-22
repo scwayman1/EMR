@@ -9,6 +9,169 @@ import {
 } from "@/lib/billing/denials";
 
 // ---------------------------------------------------------------------------
+// Cannabis-specific denial patterns
+// ---------------------------------------------------------------------------
+// Layered on top of the generic classifyDenial taxonomy. Real cannabis
+// denials have distinct resolution paths vs. the generic ones — e.g. an
+// F12.x "medical necessity" denial needs psych eval + prior-treatment
+// failure docs, not the generic "attach clinical notes" response.
+//
+// detectCannabisDenialPattern is exported so tests can exercise the matrix
+// without a DB. Pattern ids follow the convention
+//   <primary-icd10>-<denial-flavor>
+// and surface in task titles with a 🌿 marker.
+
+export type CannabisDenialPatternId =
+  | "f12-medical-necessity"
+  | "z7189-bundling"
+  | "cannabis-not-covered-policy"
+  | "prior-auth-cannabis";
+
+export interface CannabisDenialPattern {
+  id: CannabisDenialPatternId;
+  label: string;
+  /** What to put in the task title after the 🌿 marker */
+  titleTag: string;
+  urgency: "high" | "medium" | "low";
+  suggestedAction:
+    | "submit_appeal"
+    | "update_coding"
+    | "transfer_to_patient"
+    | "obtain_authorization"
+    | "write_off";
+  /** Plain-language description shown to billers */
+  description: string;
+  /** What docs/steps are needed to resolve */
+  resolutionPlaybook: string[];
+}
+
+const CANNABIS_DENIAL_PATTERNS: Record<CannabisDenialPatternId, CannabisDenialPattern> = {
+  "f12-medical-necessity": {
+    id: "f12-medical-necessity",
+    label: "F12.x medical-necessity denial",
+    titleTag: "F12 medical necessity",
+    urgency: "high",
+    suggestedAction: "submit_appeal",
+    description:
+      "Cannabis use disorder diagnosis (F12.x) was denied for medical necessity (CO-50). Generic 'attach notes' won't work — the payer needs DSM-5 severity, documented prior-treatment failures, and payer-specific coverage language.",
+    resolutionPlaybook: [
+      "Pull payer-specific cannabis / SUD coverage policy and cite it by number",
+      "Attach psychiatric eval confirming DSM-5 criteria count + severity",
+      "Document prior treatment failures (CBT, MI, pharmacotherapy) with dates",
+      "Route to psychiatry for co-signature if available",
+    ],
+  },
+  "z7189-bundling": {
+    id: "z7189-bundling",
+    label: "Z71.89 counseling bundling",
+    titleTag: "Z71.89 bundling",
+    urgency: "medium",
+    suggestedAction: "update_coding",
+    description:
+      "Counseling code (Z71.89) denied as bundled (CO-97). Two sub-cases: (a) modifier 25 was missing and is fixable, or (b) this payer does not honor modifier 25 on Z71.89 and the line must be written off.",
+    resolutionPlaybook: [
+      "Check EOB language — does it say 'incidental' (no fix) or 'bundled without modifier' (fixable)",
+      "If fixable: add modifier 25 to the E/M + re-verify MDM justifies the separate service, then resubmit",
+      "If payer-wide policy: escalate for write-off decision, do not re-bill",
+    ],
+  },
+  "cannabis-not-covered-policy": {
+    id: "cannabis-not-covered-policy",
+    label: "Cannabis exclusion policy",
+    titleTag: "Cannabis non-covered",
+    urgency: "low",
+    suggestedAction: "transfer_to_patient",
+    description:
+      "F12/Z71 line item hit a benefit exclusion. An appeal will burn timely-filing without a meaningful chance of overturn — the payer's policy excludes cannabis-related services.",
+    resolutionPlaybook: [
+      "DO NOT APPEAL — appeal burns the timely-filing window with near-zero chance of success.",
+      "Convert line to self-pay using the practice's published rate",
+      "Offer payment plan if amount >$150",
+      "Issue written ABN for the next visit if this payer is likely to deny again",
+    ],
+  },
+  "prior-auth-cannabis": {
+    id: "prior-auth-cannabis",
+    label: "Cannabis PA required",
+    titleTag: "Cannabis PA",
+    urgency: "high",
+    suggestedAction: "obtain_authorization",
+    description:
+      "F12/Z71 line denied because prior authorization is required for cannabis services. Either retrieve an existing PA number or submit a new PA packet.",
+    resolutionPlaybook: [
+      "Search PA tracker for an existing number on this plan",
+      "If none: assemble PA packet (DSM-5 dx, prior failures, treatment plan) and submit via payer portal",
+      "Flag clinician: future cannabis visits for this plan require PA before service",
+    ],
+  },
+};
+
+function extractCarcCodes(denialReason: string | null | undefined): string[] {
+  if (!denialReason) return [];
+  const codes = new Set<string>();
+  // Match both "CO-50", "PR 50", "CARC 50" etc.
+  const regex = /(?:carc\s*|co-|co\s+|pr-|pr\s+|oa-|oa\s+|pi-|pi\s+)(\d{1,3})/gi;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(denialReason)) !== null) {
+    codes.add(m[1]);
+  }
+  return Array.from(codes);
+}
+
+export function detectCannabisDenialPattern(args: {
+  icd10Codes: string[];
+  cptCodes: string[];
+  denialReason: string | null | undefined;
+}): CannabisDenialPattern | null {
+  const text = (args.denialReason ?? "").toLowerCase();
+  const carcCodes = extractCarcCodes(args.denialReason);
+  const hasF12 = args.icd10Codes.some((c) => c.startsWith("F12"));
+  const hasZ71 = args.icd10Codes.some((c) => c.startsWith("Z71"));
+  const hasCannabisDx = hasF12 || hasZ71;
+  if (!hasCannabisDx) return null;
+
+  // Pattern 3: benefit-exclusion — check before appeal-path patterns so we
+  // don't accidentally burn timely filing.
+  const isExclusion =
+    text.includes("not covered") ||
+    text.includes("non-covered") ||
+    text.includes("exclusion") ||
+    text.includes("benefit exclusion");
+  if (isExclusion) return CANNABIS_DENIAL_PATTERNS["cannabis-not-covered-policy"];
+
+  // Pattern 4: PA required
+  const paRequired =
+    text.includes("prior auth") ||
+    text.includes("no authorization") ||
+    text.includes("authorization required") ||
+    carcCodes.includes("197");
+  if (paRequired) return CANNABIS_DENIAL_PATTERNS["prior-auth-cannabis"];
+
+  // Pattern 1: F12 medical necessity (CO-50)
+  if (
+    hasF12 &&
+    (carcCodes.includes("50") ||
+      text.includes("medical necessity") ||
+      text.includes("not medically necessary"))
+  ) {
+    return CANNABIS_DENIAL_PATTERNS["f12-medical-necessity"];
+  }
+
+  // Pattern 2: Z71.89 bundling (CO-97)
+  if (
+    args.icd10Codes.some((c) => c.startsWith("Z71.89")) &&
+    (carcCodes.includes("97") ||
+      text.includes("bundled") ||
+      text.includes("incidental") ||
+      text.includes("included in another"))
+  ) {
+    return CANNABIS_DENIAL_PATTERNS["z7189-bundling"];
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Pure helpers (extracted for testing)
 // ---------------------------------------------------------------------------
 
@@ -144,7 +307,34 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
       };
     }
 
-    const triage = classifyDenial(claim.denialReason);
+    const baseTriage = classifyDenial(claim.denialReason);
+
+    // Cannabis-specific pattern overlay. Uses the claim's actual ICD-10 +
+    // CPT codes to decide whether a more targeted resolution path applies.
+    const rawIcd = Array.isArray(claim.icd10Codes) ? claim.icd10Codes : [];
+    const icd10Codes = rawIcd
+      .map((c: any) => (typeof c === "string" ? c : c?.code))
+      .filter((c): c is string => typeof c === "string");
+    const rawCpt = Array.isArray(claim.cptCodes) ? claim.cptCodes : [];
+    const cptCodes = rawCpt
+      .map((c: any) => (typeof c === "string" ? c : c?.code))
+      .filter((c): c is string => typeof c === "string");
+
+    const cannabisPattern = detectCannabisDenialPattern({
+      icd10Codes,
+      cptCodes,
+      denialReason: claim.denialReason,
+    });
+
+    const triage = cannabisPattern
+      ? {
+          ...baseTriage,
+          urgency: cannabisPattern.urgency,
+          suggestedAction: cannabisPattern.suggestedAction,
+          label: `${baseTriage.label} — ${cannabisPattern.label}`,
+          description: `${cannabisPattern.description}\n\nResolution playbook:\n  - ${cannabisPattern.resolutionPlaybook.join("\n  - ")}`,
+        }
+      : baseTriage;
 
     ctx.assertCan("write.denial.triage");
 
@@ -157,6 +347,7 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
           suggestedAction: triage.suggestedAction,
           urgency: triage.urgency,
           description: triage.description,
+          cannabisPatternId: cannabisPattern?.id ?? null,
         } as any,
         triagedAt: new Date(),
       },
@@ -166,12 +357,15 @@ export const denialTriageAgent: Agent<z.infer<typeof input>, z.infer<typeof outp
     ctx.assertCan("write.task");
 
     const dueDays = dueDaysForUrgency(triage.urgency);
+    const titlePrefix = cannabisPattern
+      ? `\u{1F33F} ${cannabisPattern.titleTag} [${cannabisPattern.id}]: `
+      : `${triage.label}: `;
     const task = await prisma.task.create({
       data: {
         patientId: claim.patientId,
         organizationId: claim.organizationId,
-        title: `${triage.label}: ${claim.patient.firstName} ${claim.patient.lastName}`,
-        description: `${triage.description}\n\nSuggested action: ${NEXT_ACTION_LABEL[triage.suggestedAction]}\n\nClaim: ${claim.claimNumber} — ${claim.payerName ?? "Unknown payer"}\n\nPayer message: "${claim.denialReason ?? "no reason given"}"\n\n[Created by denialTriage agent]`,
+        title: `${titlePrefix}${claim.patient.firstName} ${claim.patient.lastName}`,
+        description: `${triage.description}\n\nSuggested action: ${NEXT_ACTION_LABEL[triage.suggestedAction]}\n\nClaim: ${claim.claimNumber} — ${claim.payerName ?? "Unknown payer"}\n\nPayer message: "${claim.denialReason ?? "no reason given"}"\n\n[Created by denialTriage agent${cannabisPattern ? ` — cannabis pattern: ${cannabisPattern.id}` : ""}]`,
         status: "open",
         assigneeRole: "operator",
         dueAt: new Date(Date.now() + dueDays * 24 * 60 * 60 * 1000),

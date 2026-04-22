@@ -122,20 +122,23 @@ describe("scrubClaim", () => {
     expect(issues.some((i) => i.ruleCode === "MISSING_CHARGE_AMOUNT")).toBe(true);
   });
 
-  it("emits STALE_SERVICE_DATE as warning when 90-180 days old", () => {
-    const serviceDate = new Date(Date.now() - 120 * 86_400_000);
+  it("emits APPROACHING_TIMELY_FILING as warning when within the last 20% of the payer window", () => {
+    // BCBS has a 180-day TF window; 160 days is inside the last 20%.
+    const serviceDate = new Date(Date.now() - 160 * 86_400_000);
     const issues = scrubClaim(baseClaim({ serviceDate }));
-    const issue = issues.find((i) => i.ruleCode === "STALE_SERVICE_DATE");
+    const issue = issues.find((i) => i.ruleCode === "APPROACHING_TIMELY_FILING");
     expect(issue).toBeDefined();
     expect(issue!.severity).toBe("warning");
   });
 
-  it("emits STALE_SERVICE_DATE as error when >180 days old", () => {
+  it("emits PAST_TIMELY_FILING as blocking error when past the payer window", () => {
+    // BCBS: 200 days > 180-day TF window.
     const serviceDate = new Date(Date.now() - 200 * 86_400_000);
     const issues = scrubClaim(baseClaim({ serviceDate }));
-    const issue = issues.find((i) => i.ruleCode === "STALE_SERVICE_DATE");
+    const issue = issues.find((i) => i.ruleCode === "PAST_TIMELY_FILING");
     expect(issue).toBeDefined();
     expect(issue!.severity).toBe("error");
+    expect(issue!.blocksSubmission).toBe(true);
   });
 });
 

@@ -2447,5 +2447,450 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
 | 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
 | 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **open** |
+| 206 | Self-Serve Online Scheduling | **Urgent** | backlog |
+| 207 | No-Show Prediction Model + De-Risking | **Urgent** | backlog |
+| 208 | Algorithmic Follow-Up Cadence per Condition | **Urgent** | backlog |
+| 209 | Smart Slot Recommender | High | backlog |
+| 210 | Intelligent Waitlist + Cancellation Fill | High | backlog |
+| 211 | Multi-Channel Reminder Orchestration | High | backlog |
+| 212 | New-Patient Intake-to-Visit Gate Pipeline | High | backlog |
+| 213 | Group Visit + Block + Recurring Scheduling | Normal | backlog |
+| 214 | Provider Preference Engine + Burnout Guardrails | High | backlog |
+| 215 | Scheduling Analytics Cockpit | High | backlog |
 
-**Grand total: 205 tickets.** Product Drop #9.
+---
+
+## Wave 17 — Scheduling Command Center (EMR-206..EMR-215)
+
+These 10 tickets turn scheduling from a stub into the practice's
+competitive weapon. Tied to the v2 cadence engine (src/lib/agents/
+scheduling-agent.ts) and the practice-manager hardening pass.
+
+### EMR-206: Self-Serve Online Scheduling
+**Priority:** Urgent
+**Why now:** Patients expect OpenTable for their doctor. Phone-only
+booking costs us new-patient conversions and burns operator time.
+
+**Acceptance criteria:**
+- Public booking URL (per-provider + per-practice) with no login wall
+- Visit-type picker (new patient 60min, follow-up 30min, urgent 15min)
+  drives duration + prep requirements
+- Real-time slot availability respecting provider calendar, block
+  rules, and intake-gate status (EMR-212)
+- Insurance pre-screen step — capture member id + payer for
+  eligibility check before confirmation
+- Email + SMS confirmation with ICS attachment and one-tap cancel
+- HIPAA-compliant form; all PII encrypted at rest
+- Analytics event on every step so we can measure conversion funnel
+
+### EMR-207: No-Show Prediction Model + De-Risking
+**Priority:** Urgent
+**Why now:** No-shows cost ~$200/visit in lost revenue + scheduler
+reschedule burden. A probabilistic model + auto-mitigations pays for
+itself in week one.
+
+**Acceptance criteria:**
+- Feature set: prior no-show rate, lead-time, visit type, weather,
+  distance, insurance friction, reminder-opens
+- Model trained on Appointment + Encounter history, served per-slot
+- Risk tiers (low / medium / high) surfaced on the Schedule tile
+- High-risk slots auto-trigger: human call nudge, deposit hold
+  (if enabled), and waitlist backfill preparation
+- Weekly no-show report for the practice owner
+- Model retrains nightly; feature drift alerts if accuracy < baseline
+
+### EMR-208: Algorithmic Follow-Up Cadence per Condition
+**Priority:** Urgent
+**Why now:** The v2 cadence engine (this sprint) resolves 7 primary
+rules. EMR-208 expands it from "condition class" to "condition-level
+evidence-based cadence" so cancer patients on CBD:THC 1:1 aren't on
+the same cycle as a general anxiety follow-up.
+
+**Acceptance criteria:**
+- Per-condition cadence table (migraine, neuropathic pain, PTSD, CUD,
+  insomnia, oncologic) with literature citations
+- Cadence respects active regimen phase (titration vs. maintenance)
+- Physician can override with a reason; overrides feed the model
+- Outcome-driven adjustment — worsening trend shortens the cycle; a
+  stable cohort lengthens it
+- Export: cadence audit log per patient per quarter
+
+### EMR-209: Smart Slot Recommender
+**Priority:** High
+**Why now:** Operators waste minutes per booking hunting the "right"
+slot. A recommender collapses that to seconds.
+
+**Acceptance criteria:**
+- Given a patient + visit type, returns ranked slots by:
+  no-show risk, travel distance, provider continuity, time-of-day
+  preference (from prior bookings), and insurance-in-network status
+- Explain each recommendation in one sentence ("9:30 is your usual
+  slot with Dr. Patel; in-network; low no-show risk")
+- Integrates with EMR-206 flow and operator booking UI
+- A/B test framework to compare recommender vs. manual booking
+  outcomes over 4 weeks
+
+### EMR-210: Intelligent Waitlist + Cancellation Fill
+**Priority:** High
+**Why now:** A cancelled slot is revenue on the floor. Auto-fill beats
+the operator scrambling to text patients manually.
+
+**Acceptance criteria:**
+- Patients can opt-in to waitlist with acceptable-window + visit-type
+  preferences
+- On cancellation, the engine ranks waitlisted patients by: urgency
+  (cadence engine), no-show risk, flexibility score, patient VIP flag
+- Sends staggered offers (top-3 parallel, then top-5, then blast)
+- Operator sees status in real time; can override ordering
+- Record fill-rate + fill-time metrics for weekly report
+
+### EMR-211: Multi-Channel Reminder Orchestration
+**Priority:** High
+**Why now:** One-size reminders don't work. Different patients respond
+to different channels; reminder fatigue drops open rates over time.
+
+**Acceptance criteria:**
+- Channels: SMS, email, voice-call (IVR), push notification, portal
+  inbox
+- Per-patient channel preference (with defaults by demographic)
+- Cadence: T-7d, T-48h, T-24h, T-2h, plus same-day confirmation
+- Content personalization: visit type, provider, prep instructions,
+  copay estimate, directions
+- Stops gracefully after confirmed-or-cancelled; never spams
+- Delivery receipts feed the no-show model (EMR-207)
+
+### EMR-212: New-Patient Intake-to-Visit Gate Pipeline
+**Priority:** High
+**Why now:** New patients who book before completing intake show up
+unprepared and burn the clinician's visit time on paperwork.
+
+**Acceptance criteria:**
+- New-patient booking requires intake completion (intake agent run
+  finishes) before the slot is confirmed
+- Auto-generated "finish your intake" nudges at 24h, 48h, 72h
+- If intake not complete 24h before slot, auto-downgrade to "pending"
+  and offer a new slot after completion
+- Intake captures insurance + ID + consent + state compliance form —
+  all stored in the patient record before the clinician walks in
+- Chart completeness score ≥ 70 required for slot to go "confirmed"
+
+### EMR-213: Group Visit + Block + Recurring Scheduling
+**Priority:** Normal
+**Why now:** Group visits (education, cohort check-ins) and recurring
+weekly/monthly follow-ups are standard in cannabis care. The MVP
+scheduler doesn't support them.
+
+**Acceptance criteria:**
+- Block scheduling: provider can reserve a recurring block (Wed 1–3pm
+  = group visit; Fri 8–10am = administrative)
+- Group-visit model: multi-patient appointment with shared prep notes
+  and per-patient post-visit follow-up
+- Recurring series: "weekly × 8" with automatic backfill of missed
+  weeks
+- ICS export for the patient; portal shows the full series
+
+### EMR-214: Provider Preference Engine + Burnout Guardrails
+**Priority:** High
+**Why now:** Our best asset is the provider. Over-booking clinicians
+is the fastest way to lose them — and retention matters in cannabis
+where specialists are scarce.
+
+**Acceptance criteria:**
+- Per-provider preference record: max patients/day, max hours/day,
+  lunch block, no-urgent-after, specific visit-type caps
+- Burnout index computed daily from: patient count, documentation
+  backlog, message-queue depth, after-hours time
+- Hard guardrails — scheduler will NOT book past max even if a slot
+  appears free
+- Soft nudges — when index trends high, suggest a lighter day, auto-
+  decline non-essential externals
+- Provider can override guardrails with a reason (logged for audit)
+
+### EMR-215: Scheduling Analytics Cockpit
+**Priority:** High
+**Why now:** We can't improve what we don't measure. An analytics
+cockpit turns scheduling from intuition-based to data-driven.
+
+**Acceptance criteria:**
+- Metrics: fill rate, no-show rate, cancellation rate, lead time
+  distribution, new-patient conversion, revenue per slot, provider
+  utilization, waitlist fill time
+- Slice by: provider, visit type, payer, day-of-week, time-of-day,
+  patient cohort (new / recurring / urgent)
+- Forecasts: 30/60/90-day demand, bottleneck detection
+- Export to CSV + weekly email digest to practice owner
+- Action triggers — "fill rate < 70% for 2 weeks" opens a ticket
+
+---
+
+**Grand total: 215 tickets.** Product Drop #9 + Wave 17 scheduling expansion.
+
+---
+
+## Wave 18 — Production Billing Automation (EMR-216..EMR-230)
+
+The night-sprint billing hardening pass shipped the foundations (payer
+rules registry, remittance taxonomy, 999/277CA parsers, stale-claim
+monitor). These tickets close the remaining gaps so the platform can
+run an end-to-end billed patient from claim construction to ERA
+posting without a biller babysitting every transition.
+
+| # | Title | Priority | Status |
+|---|---|---|---|
+| 216 | Real EDI 837P generator (ANSI X12 v5010) | **Urgent** | backlog |
+| 217 | Availity/Waystar/Change Healthcare gateway client | **Urgent** | backlog |
+| 218 | Payer rules → DB model + admin editor | High | backlog |
+| 219 | Secondary claim filing (Loop 2320 CAS) | **Urgent** | backlog |
+| 220 | Provider + Organization NPI + Tax ID schema | **Urgent** | backlog |
+| 221 | ERA / 835 raw-file ingestion pipeline | **Urgent** | backlog |
+| 222 | Full NCCI / MUE reference table (CMS quarterly) | High | backlog |
+| 223 | Per-payer contract allowable tables | High | backlog |
+| 224 | Lockbox / bank deposit matching | High | backlog |
+| 225 | Patient statement auto-generator + e-delivery | **Urgent** | backlog |
+| 226 | Payment plan engine + card-on-file autopay | High | backlog |
+| 227 | NSF / chargeback handler | Normal | backlog |
+| 228 | Appeal tracker + outcome learning loop | High | backlog |
+| 229 | Prior-auth workflow + payer portal adapters | High | backlog |
+| 230 | RCM daily-close report + exception dashboard | **Urgent** | backlog |
+
+### EMR-216: Real EDI 837P generator (ANSI X12 v5010)
+**Priority:** Urgent
+**Why now:** The current `buildEdi837Stub()` is placeholder text. Real
+clearinghouses will reject it. Production billing requires a valid
+X12 837P transaction set with every required loop.
+
+**Acceptance criteria:**
+- Full loop coverage: ISA/GS/ST envelope, 2000A billing provider,
+  2000B subscriber/payer, 2000C patient (when subscriber ≠ patient),
+  2300 claim, 2310 rendering provider, 2320 other payer (for
+  secondary), 2400 service lines, 2430 line adjudication
+- Segment generator handles the full data element set (BHT, HL, NM1,
+  N3, N4, DMG, SBR, PAT, CLM, HI, REF, NTE, CR1, CRC, SV1, DTP, CAS)
+- Delimiter / separator config (default `*` / `:` / `~`)
+- Line-length + character-set enforcement (printable ASCII, 80-char
+  max in strict mode)
+- Generator output validated against SNIP Types 1-5 before send
+- Unit tests with golden fixtures from CMS examples
+- Feature-flagged alongside the existing stub until the gateway path
+  (EMR-217) lands
+
+### EMR-217: Clearinghouse gateway client (Availity / Waystar / Change Healthcare)
+**Priority:** Urgent
+**Why now:** The submission agent simulates success today. Production
+means a real HTTP+SFTP client with auth, rate limits, retries, and
+response polling.
+
+**Acceptance criteria:**
+- Adapter interface so Availity / Waystar / Change / Office Ally can
+  plug in; one adapter wired as the default
+- Auth: OAuth2 client-credentials or API-key; token refresh on 401
+- SFTP and HTTPS ingestion paths (claims go out one way, ERAs /
+  277CAs come back another)
+- Rate limiting per gateway (bucket tokens, retry-after respect)
+- Exponential backoff on 5xx with jitter; max 5 retries
+- Response polling job polls for 277CA + 835 when async
+- Complete audit trail — every request + response written to
+  `ClearinghouseSubmission.ediPayload` + a new `ediResponse` field
+- Error handling: network, timeouts, malformed responses → dead-letter
+  queue
+- Secrets in env / vault — never in code
+
+### EMR-218: Payer rules → DB model + admin editor
+**Priority:** High
+**Why now:** The registry in `src/lib/billing/payer-rules.ts` is
+code-resident. Operations needs to edit rules without a deploy.
+
+**Acceptance criteria:**
+- `PayerRule` Prisma model mirrors the current TypeScript shape
+- Seed migration loads existing in-code rules
+- `resolvePayerRule()` prefers DB then falls back to in-code defaults
+- Admin UI for tier-2+ users to edit rules (timely filing, ack SLA,
+  cannabis exclusions, modifier rules)
+- Audit log on every edit with before/after snapshot
+- "Rule is out of date" banner when a payer's last edit is > 6 months
+
+### EMR-219: Secondary claim filing (Loop 2320 CAS)
+**Priority:** Urgent
+**Why now:** Primary adjudication produces the Loop 2320 CAS data the
+secondary claim needs. Today the fleet only flags the situation.
+
+**Acceptance criteria:**
+- Agent `secondaryClaimAgent` wakes on primary `claim.paid` /
+  `claim.partial`
+- Constructs a secondary 837P with primary payer's allowed / paid /
+  adjustment amounts in Loop 2320 CAS
+- References the primary ERA's payer control number
+- Uses secondary payer's rules (timely filing starts from primary
+  ERA date, not original DOS — payer-dependent)
+- Tests with golden fixtures for Medicare-secondary + commercial-
+  secondary flows
+
+### EMR-220: Provider + Organization NPI + Tax ID schema
+**Priority:** Urgent
+**Why now:** Claim construction escalates today because there's no
+place to store NPIs. Production billing can't proceed without them.
+
+**Acceptance criteria:**
+- `Provider.npi` (10-digit validated), `Provider.taxonomyCode`
+- `Organization.billingNpi`, `Organization.taxId` (EIN, encrypted),
+  `Organization.billingAddress`
+- `Organization.payToAddress` (if different from billing)
+- Admin UI on Settings → Practice + Settings → Providers
+- Validation: NPI Luhn check, EIN format
+- `resolveBillingIdentifiers()` reads from DB first, env second, bio
+  string last
+- Seed script populates a test org / test provider with known-good
+  NPIs for CI fixtures
+
+### EMR-221: ERA / 835 raw-file ingestion pipeline
+**Priority:** Urgent
+**Why now:** Today `AdjudicationResult` is populated manually. Real
+production ingests 835s from the clearinghouse, parses them, creates
+`AdjudicationResult` rows, and kicks off the adjudication agent.
+
+**Acceptance criteria:**
+- `ErrIngest` / `EraFile` model storing raw payload + checksum
+- Dedupe on (payer + checkNumber) so a retried delivery doesn't
+  double-post
+- ANSI X12 835 parser covering CLP / SVC / CAS / REF / DTM / PLB
+  segments
+- Creates `AdjudicationResult` rows + fires `adjudication.received`
+  events
+- Handles multi-claim payments (one check → many claims)
+- PLB provider-level adjustments (refunds / forward-balance /
+  takebacks) posted to the ledger
+- Parser works on JSON envelopes too (commercial gateway pre-parsed
+  format)
+- Integration test with a real CMS-published 835 sample
+
+### EMR-222: Full NCCI / MUE reference table
+**Priority:** High
+**Why now:** The scrub engine currently has a hand-written starter
+set of ~10 NCCI pairs and a dozen MUE limits. CMS publishes thousands
+quarterly; production billing needs the full table.
+
+**Acceptance criteria:**
+- `NcciEdit` + `MueLimit` Prisma models
+- Quarterly-refresh job pulls current-quarter CSVs from CMS PTP /
+  MUE public-use files
+- Scrub engine reads from DB (with in-memory cache) instead of the
+  code-resident starter set
+- Version tag on each load so "which quarter's rules" is auditable
+- Admin UI shows loaded quarter + manual refresh trigger
+
+### EMR-223: Per-payer contract allowable tables
+**Priority:** High
+**Why now:** The hardened underpayment detector now scales fee
+schedule by payer class (commercial/medicare). Real production
+compares against each payer's CONTRACT, which the practice has
+negotiated separately.
+
+**Acceptance criteria:**
+- `PayerContract` model with effective-date ranges
+- `PayerContractRate` per-CPT + per-modifier allowable
+- Underpayment agent flags when `allowed < contractRate * 0.95`
+- Admin UI for loading contract CSVs / PDFs (OCR optional)
+- Version history on contract changes
+
+### EMR-224: Lockbox / bank deposit matching
+**Priority:** High
+**Why now:** The reconciliation agent matches payments to ledger
+events but doesn't match bank deposits. Closing the day's books
+means matching every payment to an actual deposit.
+
+**Acceptance criteria:**
+- `BankDeposit` model (date, amount, bank reference, source)
+- Ingestion from the practice's bank statement CSV / OFX / BAI2
+- `balanceBatchAgainstCheck()` driven by bank deposit amounts
+- Variance report for unmatched deposits + unmatched payments
+- Daily close report (EMR-230) shows reconciliation status
+
+### EMR-225: Patient statement auto-generator + e-delivery
+**Priority:** Urgent
+**Why now:** The fleet records patient responsibility but doesn't
+produce statements. No statements = no patient collections.
+
+**Acceptance criteria:**
+- `Statement` model is already in schema — build the generator
+- Cadence: 30-day after first patient-responsibility posting, then
+  30-day cycle until paid
+- Plain-language summary (LLM-drafted, approval-gated)
+- Multi-channel delivery: portal + email + SMS + paper (fallback)
+- Delivery receipt tracking + open/viewed events
+- Integrates with EMR-211 reminder orchestration for escalation
+- Statement number format: STMT-YYYYMMDD-SEQ; unique constraint
+
+### EMR-226: Payment plan engine + card-on-file autopay
+**Priority:** High
+**Why now:** Patients with >$200 balances need a path besides lump-
+sum. Payment plans are referenced by the dunning ladder but the
+engine doesn't exist.
+
+**Acceptance criteria:**
+- Create plan: $50-$500/mo over 3–24 months, interest-free
+- Autopay: charge Payabli card on installment dates
+- Default handling: 2 missed installments → escalate to final_notice
+- Patient can modify / pause / cancel via portal
+- PaymentPlan.paymentPlanInDefault flag feeds resolveDunningIntent()
+- Notifications on each installment + default
+
+### EMR-227: NSF / chargeback handler
+**Priority:** Normal
+**Why now:** A patient's card payment can bounce (NSF) or be charged
+back. The ledger must handle negative payments without breaking
+reconciliation.
+
+**Acceptance criteria:**
+- `Payment` can be reversed via a negative adjustment (type=takeback)
+- Reverses the original FinancialEvent
+- Re-opens the patient balance on affected claims
+- Re-queues dunning with NSF-specific tone
+- Bank fee recorded as a practice expense
+
+### EMR-228: Appeal tracker + outcome learning loop
+**Priority:** High
+**Why now:** The appeals agent drafts letters but never measures
+which arguments win. Missed learning opportunity.
+
+**Acceptance criteria:**
+- `AppealOutcome` records (overturned / upheld / partial)
+- Learning signal: which CARC + payer + argument combination wins
+- Feedback writes to `BillingMemory` so future appeals use the
+  winning argument
+- Dashboard shows win-rate by payer + by CARC
+
+### EMR-229: Prior-auth workflow + payer portal adapters
+**Priority:** High
+**Why now:** Cannabis services require PA with most commercial payers.
+The flag exists in the payer-rules registry but no PA workflow.
+
+**Acceptance criteria:**
+- `PriorAuthorization` model: patient, payer, CPT, ICD-10, status,
+  submitted-at, approval-reference, expires-at
+- Portal adapters for top-5 commercial payers (headless submission)
+- PA packet generator (DSM-5 severity, treatment plan, prior
+  failures) shared with appeals
+- Claim construction checks for valid PA before submission
+- Expiration alerts (14-day, 7-day, 1-day)
+
+### EMR-230: RCM daily-close report + exception dashboard
+**Priority:** Urgent
+**Why now:** Operations needs a single daily view: how much was
+billed, collected, outstanding, aged, appealed, written off, credited.
+Today data is spread across 15 agents with no dashboard.
+
+**Acceptance criteria:**
+- Daily-close job runs at 23:59 local
+- Metrics: claims created, submitted, accepted, rejected, paid,
+  denied, appealed, written-off
+- Dollar metrics: billed, allowed, paid, adjustments, patient resp,
+  outstanding AR (by aging bucket)
+- Exceptions list: stale claims, unbalanced batches, pending
+  takebacks, unmatched deposits, overdue appeals
+- Trend view: 7-day, 30-day, 90-day
+- Export: CSV + PDF (for the practice owner)
+- Email digest to practice owner the next morning
+
+---
+
+**Grand total: 230 tickets.** Product Drop #10 — production-billing hardening.

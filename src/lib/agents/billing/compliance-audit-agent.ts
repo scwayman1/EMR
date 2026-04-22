@@ -284,6 +284,67 @@ export const complianceAuditAgent: Agent<
       });
     }
 
+    // Check 5: HIPAA retention — claim must have a finalized note and
+    // documentation attached. HHS retention minimum is 6 years from the
+    // service date (some states require 7–10). Flag if the claim is
+    // closed but no finalized note is attached to the underlying
+    // encounter.
+    if (
+      claim.encounterId &&
+      (claim.status === "paid" || claim.status === "partial" || claim.status === "closed")
+    ) {
+      const finalizedNoteCount = await prisma.note.count({
+        where: { encounterId: claim.encounterId, status: "finalized" },
+      });
+      if (finalizedNoteCount === 0) {
+        flags.push({
+          flagType: "documentation_gap",
+          severity: "block",
+          detail:
+            "Claim closed without a finalized note on the underlying encounter. HIPAA + state retention rules require the documentation to be attached before financial closure.",
+        });
+      }
+    }
+
+    // Check 6: 837P / 835 / 277CA retention — when a claim is closed,
+    // the agent verifies that at least one ClearinghouseSubmission
+    // record with a non-null ediPayload has been retained. Audit
+    // trails with missing EDI payloads fail a payer audit instantly.
+    if (claim.status === "paid" || claim.status === "denied" || claim.status === "closed") {
+      const retainedSubs = await prisma.clearinghouseSubmission.count({
+        where: { claimId, ediPayload: { not: null } },
+      });
+      if (retainedSubs === 0) {
+        flags.push({
+          flagType: "documentation_gap",
+          severity: "warning",
+          detail:
+            "No retained 837P ediPayload on file for a closed claim. Payer audit rules require the original submission be retained for 6 years minimum.",
+        });
+      }
+    }
+
+    // Check 7: PCI scope — no claim or charge should reference full PAN
+    // or CVV in its notes / metadata. A random sample of the claim's
+    // notes and financial events is inspected for 15–16 digit runs.
+    const pciScanTargets = [
+      claim.notes ?? "",
+      JSON.stringify(claim.scrubIssues ?? {}),
+      JSON.stringify(claim.denialTriage ?? {}),
+    ];
+    const pciPattern = /\b(?:\d[ -]?){15,16}\b/;
+    for (const text of pciScanTargets) {
+      if (pciPattern.test(text)) {
+        flags.push({
+          flagType: "compliance_risk",
+          severity: "block",
+          detail:
+            "Claim or its derived metadata contains what looks like a full credit-card PAN. PCI scope must be stripped — tokenize via the processor (Payabli) and keep only the last 4.",
+        });
+        break;
+      }
+    }
+
     trace.step("compliance checks complete", {
       flagCount: flags.length,
       flagTypes: flags.map((f) => f.flagType),
