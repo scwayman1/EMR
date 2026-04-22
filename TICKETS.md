@@ -2447,5 +2447,180 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
 | 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
 | 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **open** |
+| 206 | Self-Serve Online Scheduling | **Urgent** | backlog |
+| 207 | No-Show Prediction Model + De-Risking | **Urgent** | backlog |
+| 208 | Algorithmic Follow-Up Cadence per Condition | **Urgent** | backlog |
+| 209 | Smart Slot Recommender | High | backlog |
+| 210 | Intelligent Waitlist + Cancellation Fill | High | backlog |
+| 211 | Multi-Channel Reminder Orchestration | High | backlog |
+| 212 | New-Patient Intake-to-Visit Gate Pipeline | High | backlog |
+| 213 | Group Visit + Block + Recurring Scheduling | Normal | backlog |
+| 214 | Provider Preference Engine + Burnout Guardrails | High | backlog |
+| 215 | Scheduling Analytics Cockpit | High | backlog |
 
-**Grand total: 205 tickets.** Product Drop #9.
+---
+
+## Wave 17 — Scheduling Command Center (EMR-206..EMR-215)
+
+These 10 tickets turn scheduling from a stub into the practice's
+competitive weapon. Tied to the v2 cadence engine (src/lib/agents/
+scheduling-agent.ts) and the practice-manager hardening pass.
+
+### EMR-206: Self-Serve Online Scheduling
+**Priority:** Urgent
+**Why now:** Patients expect OpenTable for their doctor. Phone-only
+booking costs us new-patient conversions and burns operator time.
+
+**Acceptance criteria:**
+- Public booking URL (per-provider + per-practice) with no login wall
+- Visit-type picker (new patient 60min, follow-up 30min, urgent 15min)
+  drives duration + prep requirements
+- Real-time slot availability respecting provider calendar, block
+  rules, and intake-gate status (EMR-212)
+- Insurance pre-screen step — capture member id + payer for
+  eligibility check before confirmation
+- Email + SMS confirmation with ICS attachment and one-tap cancel
+- HIPAA-compliant form; all PII encrypted at rest
+- Analytics event on every step so we can measure conversion funnel
+
+### EMR-207: No-Show Prediction Model + De-Risking
+**Priority:** Urgent
+**Why now:** No-shows cost ~$200/visit in lost revenue + scheduler
+reschedule burden. A probabilistic model + auto-mitigations pays for
+itself in week one.
+
+**Acceptance criteria:**
+- Feature set: prior no-show rate, lead-time, visit type, weather,
+  distance, insurance friction, reminder-opens
+- Model trained on Appointment + Encounter history, served per-slot
+- Risk tiers (low / medium / high) surfaced on the Schedule tile
+- High-risk slots auto-trigger: human call nudge, deposit hold
+  (if enabled), and waitlist backfill preparation
+- Weekly no-show report for the practice owner
+- Model retrains nightly; feature drift alerts if accuracy < baseline
+
+### EMR-208: Algorithmic Follow-Up Cadence per Condition
+**Priority:** Urgent
+**Why now:** The v2 cadence engine (this sprint) resolves 7 primary
+rules. EMR-208 expands it from "condition class" to "condition-level
+evidence-based cadence" so cancer patients on CBD:THC 1:1 aren't on
+the same cycle as a general anxiety follow-up.
+
+**Acceptance criteria:**
+- Per-condition cadence table (migraine, neuropathic pain, PTSD, CUD,
+  insomnia, oncologic) with literature citations
+- Cadence respects active regimen phase (titration vs. maintenance)
+- Physician can override with a reason; overrides feed the model
+- Outcome-driven adjustment — worsening trend shortens the cycle; a
+  stable cohort lengthens it
+- Export: cadence audit log per patient per quarter
+
+### EMR-209: Smart Slot Recommender
+**Priority:** High
+**Why now:** Operators waste minutes per booking hunting the "right"
+slot. A recommender collapses that to seconds.
+
+**Acceptance criteria:**
+- Given a patient + visit type, returns ranked slots by:
+  no-show risk, travel distance, provider continuity, time-of-day
+  preference (from prior bookings), and insurance-in-network status
+- Explain each recommendation in one sentence ("9:30 is your usual
+  slot with Dr. Patel; in-network; low no-show risk")
+- Integrates with EMR-206 flow and operator booking UI
+- A/B test framework to compare recommender vs. manual booking
+  outcomes over 4 weeks
+
+### EMR-210: Intelligent Waitlist + Cancellation Fill
+**Priority:** High
+**Why now:** A cancelled slot is revenue on the floor. Auto-fill beats
+the operator scrambling to text patients manually.
+
+**Acceptance criteria:**
+- Patients can opt-in to waitlist with acceptable-window + visit-type
+  preferences
+- On cancellation, the engine ranks waitlisted patients by: urgency
+  (cadence engine), no-show risk, flexibility score, patient VIP flag
+- Sends staggered offers (top-3 parallel, then top-5, then blast)
+- Operator sees status in real time; can override ordering
+- Record fill-rate + fill-time metrics for weekly report
+
+### EMR-211: Multi-Channel Reminder Orchestration
+**Priority:** High
+**Why now:** One-size reminders don't work. Different patients respond
+to different channels; reminder fatigue drops open rates over time.
+
+**Acceptance criteria:**
+- Channels: SMS, email, voice-call (IVR), push notification, portal
+  inbox
+- Per-patient channel preference (with defaults by demographic)
+- Cadence: T-7d, T-48h, T-24h, T-2h, plus same-day confirmation
+- Content personalization: visit type, provider, prep instructions,
+  copay estimate, directions
+- Stops gracefully after confirmed-or-cancelled; never spams
+- Delivery receipts feed the no-show model (EMR-207)
+
+### EMR-212: New-Patient Intake-to-Visit Gate Pipeline
+**Priority:** High
+**Why now:** New patients who book before completing intake show up
+unprepared and burn the clinician's visit time on paperwork.
+
+**Acceptance criteria:**
+- New-patient booking requires intake completion (intake agent run
+  finishes) before the slot is confirmed
+- Auto-generated "finish your intake" nudges at 24h, 48h, 72h
+- If intake not complete 24h before slot, auto-downgrade to "pending"
+  and offer a new slot after completion
+- Intake captures insurance + ID + consent + state compliance form —
+  all stored in the patient record before the clinician walks in
+- Chart completeness score ≥ 70 required for slot to go "confirmed"
+
+### EMR-213: Group Visit + Block + Recurring Scheduling
+**Priority:** Normal
+**Why now:** Group visits (education, cohort check-ins) and recurring
+weekly/monthly follow-ups are standard in cannabis care. The MVP
+scheduler doesn't support them.
+
+**Acceptance criteria:**
+- Block scheduling: provider can reserve a recurring block (Wed 1–3pm
+  = group visit; Fri 8–10am = administrative)
+- Group-visit model: multi-patient appointment with shared prep notes
+  and per-patient post-visit follow-up
+- Recurring series: "weekly × 8" with automatic backfill of missed
+  weeks
+- ICS export for the patient; portal shows the full series
+
+### EMR-214: Provider Preference Engine + Burnout Guardrails
+**Priority:** High
+**Why now:** Our best asset is the provider. Over-booking clinicians
+is the fastest way to lose them — and retention matters in cannabis
+where specialists are scarce.
+
+**Acceptance criteria:**
+- Per-provider preference record: max patients/day, max hours/day,
+  lunch block, no-urgent-after, specific visit-type caps
+- Burnout index computed daily from: patient count, documentation
+  backlog, message-queue depth, after-hours time
+- Hard guardrails — scheduler will NOT book past max even if a slot
+  appears free
+- Soft nudges — when index trends high, suggest a lighter day, auto-
+  decline non-essential externals
+- Provider can override guardrails with a reason (logged for audit)
+
+### EMR-215: Scheduling Analytics Cockpit
+**Priority:** High
+**Why now:** We can't improve what we don't measure. An analytics
+cockpit turns scheduling from intuition-based to data-driven.
+
+**Acceptance criteria:**
+- Metrics: fill rate, no-show rate, cancellation rate, lead time
+  distribution, new-patient conversion, revenue per slot, provider
+  utilization, waitlist fill time
+- Slice by: provider, visit type, payer, day-of-week, time-of-day,
+  patient cohort (new / recurring / urgent)
+- Forecasts: 30/60/90-day demand, bottleneck detection
+- Export to CSV + weekly email digest to practice owner
+- Action triggers — "fill rate < 70% for 2 weeks" opens a ticket
+
+---
+
+**Grand total: 215 tickets.** Product Drop #9 + Wave 17 scheduling expansion.
