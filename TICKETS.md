@@ -2624,3 +2624,273 @@ cockpit turns scheduling from intuition-based to data-driven.
 ---
 
 **Grand total: 215 tickets.** Product Drop #9 + Wave 17 scheduling expansion.
+
+---
+
+## Wave 18 — Production Billing Automation (EMR-216..EMR-230)
+
+The night-sprint billing hardening pass shipped the foundations (payer
+rules registry, remittance taxonomy, 999/277CA parsers, stale-claim
+monitor). These tickets close the remaining gaps so the platform can
+run an end-to-end billed patient from claim construction to ERA
+posting without a biller babysitting every transition.
+
+| # | Title | Priority | Status |
+|---|---|---|---|
+| 216 | Real EDI 837P generator (ANSI X12 v5010) | **Urgent** | backlog |
+| 217 | Availity/Waystar/Change Healthcare gateway client | **Urgent** | backlog |
+| 218 | Payer rules → DB model + admin editor | High | backlog |
+| 219 | Secondary claim filing (Loop 2320 CAS) | **Urgent** | backlog |
+| 220 | Provider + Organization NPI + Tax ID schema | **Urgent** | backlog |
+| 221 | ERA / 835 raw-file ingestion pipeline | **Urgent** | backlog |
+| 222 | Full NCCI / MUE reference table (CMS quarterly) | High | backlog |
+| 223 | Per-payer contract allowable tables | High | backlog |
+| 224 | Lockbox / bank deposit matching | High | backlog |
+| 225 | Patient statement auto-generator + e-delivery | **Urgent** | backlog |
+| 226 | Payment plan engine + card-on-file autopay | High | backlog |
+| 227 | NSF / chargeback handler | Normal | backlog |
+| 228 | Appeal tracker + outcome learning loop | High | backlog |
+| 229 | Prior-auth workflow + payer portal adapters | High | backlog |
+| 230 | RCM daily-close report + exception dashboard | **Urgent** | backlog |
+
+### EMR-216: Real EDI 837P generator (ANSI X12 v5010)
+**Priority:** Urgent
+**Why now:** The current `buildEdi837Stub()` is placeholder text. Real
+clearinghouses will reject it. Production billing requires a valid
+X12 837P transaction set with every required loop.
+
+**Acceptance criteria:**
+- Full loop coverage: ISA/GS/ST envelope, 2000A billing provider,
+  2000B subscriber/payer, 2000C patient (when subscriber ≠ patient),
+  2300 claim, 2310 rendering provider, 2320 other payer (for
+  secondary), 2400 service lines, 2430 line adjudication
+- Segment generator handles the full data element set (BHT, HL, NM1,
+  N3, N4, DMG, SBR, PAT, CLM, HI, REF, NTE, CR1, CRC, SV1, DTP, CAS)
+- Delimiter / separator config (default `*` / `:` / `~`)
+- Line-length + character-set enforcement (printable ASCII, 80-char
+  max in strict mode)
+- Generator output validated against SNIP Types 1-5 before send
+- Unit tests with golden fixtures from CMS examples
+- Feature-flagged alongside the existing stub until the gateway path
+  (EMR-217) lands
+
+### EMR-217: Clearinghouse gateway client (Availity / Waystar / Change Healthcare)
+**Priority:** Urgent
+**Why now:** The submission agent simulates success today. Production
+means a real HTTP+SFTP client with auth, rate limits, retries, and
+response polling.
+
+**Acceptance criteria:**
+- Adapter interface so Availity / Waystar / Change / Office Ally can
+  plug in; one adapter wired as the default
+- Auth: OAuth2 client-credentials or API-key; token refresh on 401
+- SFTP and HTTPS ingestion paths (claims go out one way, ERAs /
+  277CAs come back another)
+- Rate limiting per gateway (bucket tokens, retry-after respect)
+- Exponential backoff on 5xx with jitter; max 5 retries
+- Response polling job polls for 277CA + 835 when async
+- Complete audit trail — every request + response written to
+  `ClearinghouseSubmission.ediPayload` + a new `ediResponse` field
+- Error handling: network, timeouts, malformed responses → dead-letter
+  queue
+- Secrets in env / vault — never in code
+
+### EMR-218: Payer rules → DB model + admin editor
+**Priority:** High
+**Why now:** The registry in `src/lib/billing/payer-rules.ts` is
+code-resident. Operations needs to edit rules without a deploy.
+
+**Acceptance criteria:**
+- `PayerRule` Prisma model mirrors the current TypeScript shape
+- Seed migration loads existing in-code rules
+- `resolvePayerRule()` prefers DB then falls back to in-code defaults
+- Admin UI for tier-2+ users to edit rules (timely filing, ack SLA,
+  cannabis exclusions, modifier rules)
+- Audit log on every edit with before/after snapshot
+- "Rule is out of date" banner when a payer's last edit is > 6 months
+
+### EMR-219: Secondary claim filing (Loop 2320 CAS)
+**Priority:** Urgent
+**Why now:** Primary adjudication produces the Loop 2320 CAS data the
+secondary claim needs. Today the fleet only flags the situation.
+
+**Acceptance criteria:**
+- Agent `secondaryClaimAgent` wakes on primary `claim.paid` /
+  `claim.partial`
+- Constructs a secondary 837P with primary payer's allowed / paid /
+  adjustment amounts in Loop 2320 CAS
+- References the primary ERA's payer control number
+- Uses secondary payer's rules (timely filing starts from primary
+  ERA date, not original DOS — payer-dependent)
+- Tests with golden fixtures for Medicare-secondary + commercial-
+  secondary flows
+
+### EMR-220: Provider + Organization NPI + Tax ID schema
+**Priority:** Urgent
+**Why now:** Claim construction escalates today because there's no
+place to store NPIs. Production billing can't proceed without them.
+
+**Acceptance criteria:**
+- `Provider.npi` (10-digit validated), `Provider.taxonomyCode`
+- `Organization.billingNpi`, `Organization.taxId` (EIN, encrypted),
+  `Organization.billingAddress`
+- `Organization.payToAddress` (if different from billing)
+- Admin UI on Settings → Practice + Settings → Providers
+- Validation: NPI Luhn check, EIN format
+- `resolveBillingIdentifiers()` reads from DB first, env second, bio
+  string last
+- Seed script populates a test org / test provider with known-good
+  NPIs for CI fixtures
+
+### EMR-221: ERA / 835 raw-file ingestion pipeline
+**Priority:** Urgent
+**Why now:** Today `AdjudicationResult` is populated manually. Real
+production ingests 835s from the clearinghouse, parses them, creates
+`AdjudicationResult` rows, and kicks off the adjudication agent.
+
+**Acceptance criteria:**
+- `ErrIngest` / `EraFile` model storing raw payload + checksum
+- Dedupe on (payer + checkNumber) so a retried delivery doesn't
+  double-post
+- ANSI X12 835 parser covering CLP / SVC / CAS / REF / DTM / PLB
+  segments
+- Creates `AdjudicationResult` rows + fires `adjudication.received`
+  events
+- Handles multi-claim payments (one check → many claims)
+- PLB provider-level adjustments (refunds / forward-balance /
+  takebacks) posted to the ledger
+- Parser works on JSON envelopes too (commercial gateway pre-parsed
+  format)
+- Integration test with a real CMS-published 835 sample
+
+### EMR-222: Full NCCI / MUE reference table
+**Priority:** High
+**Why now:** The scrub engine currently has a hand-written starter
+set of ~10 NCCI pairs and a dozen MUE limits. CMS publishes thousands
+quarterly; production billing needs the full table.
+
+**Acceptance criteria:**
+- `NcciEdit` + `MueLimit` Prisma models
+- Quarterly-refresh job pulls current-quarter CSVs from CMS PTP /
+  MUE public-use files
+- Scrub engine reads from DB (with in-memory cache) instead of the
+  code-resident starter set
+- Version tag on each load so "which quarter's rules" is auditable
+- Admin UI shows loaded quarter + manual refresh trigger
+
+### EMR-223: Per-payer contract allowable tables
+**Priority:** High
+**Why now:** The hardened underpayment detector now scales fee
+schedule by payer class (commercial/medicare). Real production
+compares against each payer's CONTRACT, which the practice has
+negotiated separately.
+
+**Acceptance criteria:**
+- `PayerContract` model with effective-date ranges
+- `PayerContractRate` per-CPT + per-modifier allowable
+- Underpayment agent flags when `allowed < contractRate * 0.95`
+- Admin UI for loading contract CSVs / PDFs (OCR optional)
+- Version history on contract changes
+
+### EMR-224: Lockbox / bank deposit matching
+**Priority:** High
+**Why now:** The reconciliation agent matches payments to ledger
+events but doesn't match bank deposits. Closing the day's books
+means matching every payment to an actual deposit.
+
+**Acceptance criteria:**
+- `BankDeposit` model (date, amount, bank reference, source)
+- Ingestion from the practice's bank statement CSV / OFX / BAI2
+- `balanceBatchAgainstCheck()` driven by bank deposit amounts
+- Variance report for unmatched deposits + unmatched payments
+- Daily close report (EMR-230) shows reconciliation status
+
+### EMR-225: Patient statement auto-generator + e-delivery
+**Priority:** Urgent
+**Why now:** The fleet records patient responsibility but doesn't
+produce statements. No statements = no patient collections.
+
+**Acceptance criteria:**
+- `Statement` model is already in schema — build the generator
+- Cadence: 30-day after first patient-responsibility posting, then
+  30-day cycle until paid
+- Plain-language summary (LLM-drafted, approval-gated)
+- Multi-channel delivery: portal + email + SMS + paper (fallback)
+- Delivery receipt tracking + open/viewed events
+- Integrates with EMR-211 reminder orchestration for escalation
+- Statement number format: STMT-YYYYMMDD-SEQ; unique constraint
+
+### EMR-226: Payment plan engine + card-on-file autopay
+**Priority:** High
+**Why now:** Patients with >$200 balances need a path besides lump-
+sum. Payment plans are referenced by the dunning ladder but the
+engine doesn't exist.
+
+**Acceptance criteria:**
+- Create plan: $50-$500/mo over 3–24 months, interest-free
+- Autopay: charge Payabli card on installment dates
+- Default handling: 2 missed installments → escalate to final_notice
+- Patient can modify / pause / cancel via portal
+- PaymentPlan.paymentPlanInDefault flag feeds resolveDunningIntent()
+- Notifications on each installment + default
+
+### EMR-227: NSF / chargeback handler
+**Priority:** Normal
+**Why now:** A patient's card payment can bounce (NSF) or be charged
+back. The ledger must handle negative payments without breaking
+reconciliation.
+
+**Acceptance criteria:**
+- `Payment` can be reversed via a negative adjustment (type=takeback)
+- Reverses the original FinancialEvent
+- Re-opens the patient balance on affected claims
+- Re-queues dunning with NSF-specific tone
+- Bank fee recorded as a practice expense
+
+### EMR-228: Appeal tracker + outcome learning loop
+**Priority:** High
+**Why now:** The appeals agent drafts letters but never measures
+which arguments win. Missed learning opportunity.
+
+**Acceptance criteria:**
+- `AppealOutcome` records (overturned / upheld / partial)
+- Learning signal: which CARC + payer + argument combination wins
+- Feedback writes to `BillingMemory` so future appeals use the
+  winning argument
+- Dashboard shows win-rate by payer + by CARC
+
+### EMR-229: Prior-auth workflow + payer portal adapters
+**Priority:** High
+**Why now:** Cannabis services require PA with most commercial payers.
+The flag exists in the payer-rules registry but no PA workflow.
+
+**Acceptance criteria:**
+- `PriorAuthorization` model: patient, payer, CPT, ICD-10, status,
+  submitted-at, approval-reference, expires-at
+- Portal adapters for top-5 commercial payers (headless submission)
+- PA packet generator (DSM-5 severity, treatment plan, prior
+  failures) shared with appeals
+- Claim construction checks for valid PA before submission
+- Expiration alerts (14-day, 7-day, 1-day)
+
+### EMR-230: RCM daily-close report + exception dashboard
+**Priority:** Urgent
+**Why now:** Operations needs a single daily view: how much was
+billed, collected, outstanding, aged, appealed, written off, credited.
+Today data is spread across 15 agents with no dashboard.
+
+**Acceptance criteria:**
+- Daily-close job runs at 23:59 local
+- Metrics: claims created, submitted, accepted, rejected, paid,
+  denied, appealed, written-off
+- Dollar metrics: billed, allowed, paid, adjustments, patient resp,
+  outstanding AR (by aging bucket)
+- Exceptions list: stale claims, unbalanced batches, pending
+  takebacks, unmatched deposits, overdue appeals
+- Trend view: 7-day, 30-day, 90-day
+- Export: CSV + PDF (for the practice owner)
+- Email digest to practice owner the next morning
+
+---
+
+**Grand total: 230 tickets.** Product Drop #10 — production-billing hardening.
