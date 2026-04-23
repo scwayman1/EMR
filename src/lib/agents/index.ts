@@ -82,6 +82,17 @@ import { cannabisComplianceGateAgent } from "./commerce/cannabis-compliance-gate
 import { cannabisTaxCalculatorAgent } from "./commerce/cannabis-tax-calculator-agent";
 import { shippingRouterAgent } from "./commerce/shipping-router-agent";
 import { vendorPerformanceScorerAgent } from "./commerce/vendor-performance-scorer-agent";
+// Research & Insights Fleet — EMR-269 (10 agents, 2026-04-23)
+import { cohortBuilderAgent } from "./research/cohort-builder-agent";
+import { efficacyComparatorAgent } from "./research/efficacy-comparator-agent";
+import { outcomeDigesterAgent } from "./research/outcome-digester-agent";
+import { rweBundlerAgent } from "./research/rwe-bundler-agent";
+import { deidentifierAgent } from "./research/deidentifier-agent";
+import { adverseEventScannerAgent } from "./research/adverse-event-scanner-agent";
+import { protocolRecommenderAgent } from "./research/protocol-recommender-agent";
+import { insuranceEvidenceBundlerAgent } from "./research/insurance-evidence-bundler-agent";
+import { publicationReadinessScorerAgent } from "./research/publication-readiness-scorer-agent";
+import { researchPartnerMatcherAgent } from "./research/research-partner-matcher-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -173,6 +184,17 @@ export const agentRegistry = {
   cannabisTaxCalculator: cannabisTaxCalculatorAgent,
   shippingRouter: shippingRouterAgent,
   vendorPerformanceScorer: vendorPerformanceScorerAgent,
+  // Research & Insights Fleet — EMR-269 (10 agents, 2026-04-23)
+  cohortBuilder: cohortBuilderAgent,
+  efficacyComparator: efficacyComparatorAgent,
+  outcomeDigester: outcomeDigesterAgent,
+  rweBundler: rweBundlerAgent,
+  deidentifier: deidentifierAgent,
+  adverseEventScanner: adverseEventScannerAgent,
+  protocolRecommender: protocolRecommenderAgent,
+  insuranceEvidenceBundler: insuranceEvidenceBundlerAgent,
+  publicationReadinessScorer: publicationReadinessScorerAgent,
+  researchPartnerMatcher: researchPartnerMatcherAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 /** Agents tagged as "commerce" — used by the marketplace ops console. */
@@ -197,6 +219,20 @@ export const COMMERCE_AGENT_NAMES: AgentName[] = [
   "cannabisTaxCalculator",
   "shippingRouter",
   "vendorPerformanceScorer",
+];
+
+/** Agents tagged as "research" — used by the research portal + insights console. */
+export const RESEARCH_AGENT_NAMES: AgentName[] = [
+  "cohortBuilder",
+  "efficacyComparator",
+  "outcomeDigester",
+  "rweBundler",
+  "deidentifier",
+  "adverseEventScanner",
+  "protocolRecommender",
+  "insuranceEvidenceBundler",
+  "publicationReadinessScorer",
+  "researchPartnerMatcher",
 ];
 
 export type AgentName = keyof typeof agentRegistry;
