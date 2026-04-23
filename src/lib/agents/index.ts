@@ -61,6 +61,27 @@ import { qualityImprovementAgent } from "./quality-improvement-agent";
 // Mission Control — Phase 1 (MALLIK-006 + MALLIK-007)
 import { labSummarizerAgent } from "./lab-summarizer-agent";
 import { refillCopilotAgent } from "./refill-copilot-agent";
+// Commerce Fleet — EMR-17 (20 agents, stub-shipped 2026-04-23)
+import { productRecommenderAgent } from "./commerce/product-recommender-agent";
+import { bundleSuggesterAgent } from "./commerce/bundle-suggester-agent";
+import { crossSellRankerAgent } from "./commerce/cross-sell-ranker-agent";
+import { searchPersonalizerAgent } from "./commerce/search-personalizer-agent";
+import { reviewModeratorAgent } from "./commerce/review-moderator-agent";
+import { productQCAgent } from "./commerce/product-qc-agent";
+import { seoMetadataAgent } from "./commerce/seo-metadata-agent";
+import { categoryCuratorAgent } from "./commerce/category-curator-agent";
+import { pricingAnomalyAgent } from "./commerce/pricing-anomaly-agent";
+import { restockPredictorAgent } from "./commerce/restock-predictor-agent";
+import { waitlistNotifierAgent } from "./commerce/waitlist-notifier-agent";
+import { abandonedCartRescuerAgent } from "./commerce/abandoned-cart-rescuer-agent";
+import { orderFraudDetectorAgent } from "./commerce/order-fraud-detector-agent";
+import { returnRiskScorerAgent } from "./commerce/return-risk-scorer-agent";
+import { pricingOptimizerAgent } from "./commerce/pricing-optimizer-agent";
+import { promoGeneratorAgent } from "./commerce/promo-generator-agent";
+import { cannabisComplianceGateAgent } from "./commerce/cannabis-compliance-gate-agent";
+import { cannabisTaxCalculatorAgent } from "./commerce/cannabis-tax-calculator-agent";
+import { shippingRouterAgent } from "./commerce/shipping-router-agent";
+import { vendorPerformanceScorerAgent } from "./commerce/vendor-performance-scorer-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -131,7 +152,52 @@ export const agentRegistry = {
   // Mission Control — Phase 1 (MALLIK-006 + MALLIK-007)
   labSummarizer: labSummarizerAgent,
   refillCopilot: refillCopilotAgent,
+  // Commerce Fleet — EMR-17 (20 agents stub-shipped 2026-04-23)
+  productRecommender: productRecommenderAgent,
+  bundleSuggester: bundleSuggesterAgent,
+  crossSellRanker: crossSellRankerAgent,
+  searchPersonalizer: searchPersonalizerAgent,
+  reviewModerator: reviewModeratorAgent,
+  productQC: productQCAgent,
+  seoMetadata: seoMetadataAgent,
+  categoryCurator: categoryCuratorAgent,
+  pricingAnomaly: pricingAnomalyAgent,
+  restockPredictor: restockPredictorAgent,
+  waitlistNotifier: waitlistNotifierAgent,
+  abandonedCartRescuer: abandonedCartRescuerAgent,
+  orderFraudDetector: orderFraudDetectorAgent,
+  returnRiskScorer: returnRiskScorerAgent,
+  pricingOptimizer: pricingOptimizerAgent,
+  promoGenerator: promoGeneratorAgent,
+  cannabisComplianceGate: cannabisComplianceGateAgent,
+  cannabisTaxCalculator: cannabisTaxCalculatorAgent,
+  shippingRouter: shippingRouterAgent,
+  vendorPerformanceScorer: vendorPerformanceScorerAgent,
 } satisfies Record<string, Agent<any, any>>;
+
+/** Agents tagged as "commerce" — used by the marketplace ops console. */
+export const COMMERCE_AGENT_NAMES: AgentName[] = [
+  "productRecommender",
+  "bundleSuggester",
+  "crossSellRanker",
+  "searchPersonalizer",
+  "reviewModerator",
+  "productQC",
+  "seoMetadata",
+  "categoryCurator",
+  "pricingAnomaly",
+  "restockPredictor",
+  "waitlistNotifier",
+  "abandonedCartRescuer",
+  "orderFraudDetector",
+  "returnRiskScorer",
+  "pricingOptimizer",
+  "promoGenerator",
+  "cannabisComplianceGate",
+  "cannabisTaxCalculator",
+  "shippingRouter",
+  "vendorPerformanceScorer",
+];
 
 export type AgentName = keyof typeof agentRegistry;
 

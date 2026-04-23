@@ -17,6 +17,7 @@ import {
   TaskStatus,
   AgentJobStatus,
   ProductType,
+  ProductStatus,
   DeliveryRoute,
   MedicationType,
   AppointmentStatus,
@@ -29,6 +30,7 @@ import {
   EligibilityStatus,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { CATEGORIES, PRODUCTS } from "../src/lib/marketplace/data";
 
 const prisma = new PrismaClient();
 
@@ -139,6 +141,129 @@ async function cleanIdempotent() {
   await prisma.feeScheduleEntry.deleteMany({
     where: { organizationId: org.id },
   });
+
+  // ── Marketplace ────────────────────────────────────────────────
+  // Cart cascades to CartItem; Order cascades to OrderItem; Product
+  // cascades to ProductVariant, ProductReview, ProductCategory,
+  // CartItem. Delete Orders before Products because OrderItem.product
+  // is restrict-on-delete.
+  await prisma.cart.deleteMany({
+    where: { patient: { organizationId: org.id } },
+  });
+  await prisma.order.deleteMany({ where: { organizationId: org.id } });
+  await prisma.product.deleteMany({ where: { organizationId: org.id } });
+  // MarketplaceCategory is global (not org-scoped); only delete seed slugs.
+  await prisma.marketplaceCategory.deleteMany({
+    where: { slug: { in: CATEGORIES.map((c) => c.slug) } },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace seed
+// ---------------------------------------------------------------------------
+
+const PRODUCT_STATUS_MAP: Record<string, ProductStatus> = {
+  draft: ProductStatus.draft,
+  active: ProductStatus.active,
+  archived: ProductStatus.archived,
+  out_of_stock: ProductStatus.out_of_stock,
+};
+
+async function seedMarketplace(organizationId: string) {
+  // Categories first — products reference them via ProductCategory joins.
+  const categoryIdBySlug = new Map<string, string>();
+  for (const cat of CATEGORIES) {
+    const row = await prisma.marketplaceCategory.create({
+      data: {
+        name: cat.name,
+        slug: cat.slug,
+        description: cat.description ?? null,
+        type: cat.type,
+        icon: cat.icon ?? null,
+      },
+    });
+    categoryIdBySlug.set(cat.slug, row.id);
+  }
+
+  // Static CATEGORIES use synthetic ids like "cat-sleep"; map those to
+  // the real cuids we just created so the product join rows resolve.
+  const seedCategoryIdToRealId = new Map<string, string>();
+  for (const cat of CATEGORIES) {
+    const realId = categoryIdBySlug.get(cat.slug);
+    if (realId) seedCategoryIdToRealId.set(cat.id, realId);
+  }
+
+  for (const p of PRODUCTS) {
+    const product = await prisma.product.create({
+      data: {
+        organizationId,
+        name: p.name,
+        slug: p.slug,
+        brand: p.brand,
+        description: p.description,
+        shortDescription: p.shortDescription ?? null,
+        price: p.price,
+        compareAtPrice: p.compareAtPrice ?? null,
+        status: PRODUCT_STATUS_MAP[p.status] ?? ProductStatus.active,
+        format: p.format,
+        imageUrl: p.imageUrl ?? null,
+        images: p.images,
+        thcContent: p.thcContent ?? null,
+        cbdContent: p.cbdContent ?? null,
+        cbnContent: p.cbnContent ?? null,
+        terpeneProfile: (p.terpeneProfile ?? {}) as Prisma.InputJsonValue,
+        strainType: p.strainType ?? null,
+        symptoms: p.symptoms,
+        goals: p.goals,
+        useCases: p.useCases,
+        onsetTime: p.onsetTime ?? null,
+        duration: p.duration ?? null,
+        dosageGuidance: p.dosageGuidance ?? null,
+        beginnerFriendly: p.beginnerFriendly,
+        labVerified: p.labVerified,
+        coaUrl: p.coaUrl ?? null,
+        clinicianPick: p.clinicianPick,
+        clinicianNote: p.clinicianNote ?? null,
+        inStock: p.inStock,
+        averageRating: p.averageRating,
+        reviewCount: p.reviewCount,
+        featured: p.featured,
+        variants: {
+          create: p.variants.map((v, i) => ({
+            name: v.name,
+            upc: v.upc ?? null,
+            price: v.price,
+            compareAtPrice: v.compareAtPrice ?? null,
+            inStock: v.inStock,
+            sortOrder: i,
+          })),
+        },
+        reviews: {
+          create: p.reviews.map((r) => ({
+            authorName: r.authorName,
+            rating: r.rating,
+            title: r.title ?? null,
+            body: r.body ?? null,
+            verified: r.verified,
+            createdAt: new Date(r.createdAt),
+          })),
+        },
+      },
+    });
+
+    // Join-table rows for product ↔ category
+    for (const seedCatId of p.categoryIds) {
+      const realCatId = seedCategoryIdToRealId.get(seedCatId);
+      if (!realCatId) continue;
+      await prisma.productCategory.create({
+        data: { productId: product.id, categoryId: realCatId },
+      });
+    }
+  }
+
+  console.log(
+    `  Marketplace: ${CATEGORIES.length} categories, ${PRODUCTS.length} products seeded.`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -3122,6 +3247,12 @@ async function main() {
   console.log(
     "  Command Center: allergies + meds + regimens + pain logs + observations + finalized notes for Maya/James/Sarah."
   );
+
+  // ------------------------------------------------------------------
+  // Marketplace catalog
+  // ------------------------------------------------------------------
+  console.log("Seeding marketplace catalog...");
+  await seedMarketplace(org.id);
 
   // ------------------------------------------------------------------
   // Done
