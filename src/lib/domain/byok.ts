@@ -160,7 +160,13 @@ export function leafjourneyPriceBasis(rawMonthlyCostUsd: number): "floor" | "key
 // tier drives the sensible starting assignment when a practice hasn't set
 // an override. Token estimates are calibrated from observed traffic.
 
-export type AgentCategory = "clinical" | "patient" | "billing" | "operations" | "safety";
+export type AgentCategory =
+  | "clinical"
+  | "patient"
+  | "billing"
+  | "operations"
+  | "safety"
+  | "commerce";
 
 export interface AgentCatalogEntry {
   /** Must match a key in agentRegistry (src/lib/agents/index.ts). */
@@ -242,6 +248,29 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   { id: "contentCreation", displayName: "Content Creation", description: "Marketing + education content drafts.", category: "operations", defaultTier: "balanced", estimatedTokensPerMonth: 80_000 },
   { id: "inventoryAlert", displayName: "Inventory Alert", description: "Supplies + consumables low-stock.", category: "operations", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
   { id: "qualityImprovement", displayName: "Quality Improvement", description: "QI projects + MIPS readiness.", category: "operations", defaultTier: "balanced", estimatedTokensPerMonth: 80_000 },
+
+  // Commerce (EMR-17 marketplace fleet — 20 agents shipped as stubs on
+  // 2026-04-23; full logic rolls out ticket-by-ticket)
+  { id: "productRecommender", displayName: "Product Recommender", description: "Per-patient marketplace recommendations, outcome-weighted (EMR-230).", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 180_000, qualitySensitive: true },
+  { id: "bundleSuggester", displayName: "Bundle Suggester", description: "Suggests themed product bundles from co-consumption.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 60_000 },
+  { id: "crossSellRanker", displayName: "Cross-Sell Ranker", description: "Frequently-bought-with ranking from OrderItem co-occurrence.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
+  { id: "searchPersonalizer", displayName: "Search Personalizer", description: "Reranks search results against patient context.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 90_000 },
+  { id: "reviewModerator", displayName: "Review Moderator", description: "Flags product reviews for spam, fake content, or harmful claims.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 60_000, qualitySensitive: true },
+  { id: "productQC", displayName: "Product QC", description: "Audits product catalog rows for missing or stale metadata.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "seoMetadata", displayName: "SEO Metadata", description: "Generates meta-title, meta-description, and alt text per product.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 80_000 },
+  { id: "categoryCurator", displayName: "Category Curator", description: "Suggests marketplace category additions and removals.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "pricingAnomaly", displayName: "Pricing Anomaly", description: "Flags inverted compareAt, zero price, deep-markdown outliers.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 30_000 },
+  { id: "restockPredictor", displayName: "Restock Predictor", description: "Forecasts per-variant stock-out dates from velocity.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "waitlistNotifier", displayName: "Waitlist Notifier", description: "Notifies patients waitlisted on a variant when it returns to stock.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 30_000 },
+  { id: "abandonedCartRescuer", displayName: "Abandoned Cart Rescuer", description: "Surfaces idle carts for follow-up outreach.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
+  { id: "orderFraudDetector", displayName: "Order Fraud Detector", description: "Scores new orders for fraud risk before fulfillment.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 70_000, qualitySensitive: true },
+  { id: "returnRiskScorer", displayName: "Return Risk Scorer", description: "Predicts return probability for an order before fulfillment.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "pricingOptimizer", displayName: "Pricing Optimizer", description: "Suggests price adjustments from demand + inventory signals.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 80_000 },
+  { id: "promoGenerator", displayName: "Promo Generator", description: "Generates targeted marketplace promos per patient intent.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 70_000 },
+  { id: "cannabisComplianceGate", displayName: "Cannabis Compliance Gate", description: "Verifies medical auth, state caps, and age before fulfillment.", category: "commerce", defaultTier: "premium", estimatedTokensPerMonth: 100_000, qualitySensitive: true },
+  { id: "cannabisTaxCalculator", displayName: "Cannabis Tax Calculator", description: "Computes cannabis excise + retail tax per order destination.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
+  { id: "shippingRouter", displayName: "Shipping Router", description: "Picks a fulfillment carrier per order destination + product profile.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "vendorPerformanceScorer", displayName: "Vendor Performance Scorer", description: "Scores marketplace brands on fulfillment + review performance.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
 ];
 
 /** Per-agent override. Undefined modelId → use the practice default. */
@@ -281,4 +310,5 @@ export const CATEGORY_LABELS: Record<AgentCategory, string> = {
   safety: "Safety & guardrails",
   billing: "Revenue cycle",
   operations: "Operations",
+  commerce: "Marketplace",
 };
