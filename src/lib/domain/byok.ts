@@ -166,7 +166,8 @@ export type AgentCategory =
   | "billing"
   | "operations"
   | "safety"
-  | "commerce";
+  | "commerce"
+  | "research";
 
 export interface AgentCatalogEntry {
   /** Must match a key in agentRegistry (src/lib/agents/index.ts). */
@@ -271,6 +272,19 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   { id: "cannabisTaxCalculator", displayName: "Cannabis Tax Calculator", description: "Computes cannabis excise + retail tax per order destination.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
   { id: "shippingRouter", displayName: "Shipping Router", description: "Picks a fulfillment carrier per order destination + product profile.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
   { id: "vendorPerformanceScorer", displayName: "Vendor Performance Scorer", description: "Scores marketplace brands on fulfillment + review performance.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+
+  // Research & Insights (EMR-269 — 10-agent fleet mining outcome + regimen
+  // data for cohort analytics, RWE, reimbursement, and publication)
+  { id: "cohortBuilder", displayName: "Cohort Builder", description: "Filters patients into research cohorts with baseline metric summaries.", category: "research", defaultTier: "budget", estimatedTokensPerMonth: 30_000 },
+  { id: "efficacyComparator", displayName: "Efficacy Comparator", description: "Head-to-head outcome comparison across two cohorts.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 40_000, qualitySensitive: true },
+  { id: "outcomeDigester", displayName: "Outcome Digester", description: "Narrative cohort rollup for partner + investor updates.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 90_000, qualitySensitive: true },
+  { id: "rweBundler", displayName: "RWE Bundler", description: "Real-world-evidence dossier for pharma partnerships.", category: "research", defaultTier: "premium", estimatedTokensPerMonth: 80_000, qualitySensitive: true },
+  { id: "deidentifier", displayName: "De-identifier", description: "HIPAA Safe-Harbor de-identified dataset reference.", category: "research", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
+  { id: "adverseEventScanner", displayName: "Adverse Event Scanner", description: "Flags unusual AE clusters across a cohort or product.", category: "research", defaultTier: "premium", estimatedTokensPerMonth: 60_000, qualitySensitive: true },
+  { id: "protocolRecommender", displayName: "Protocol Recommender", description: "Suggests regimen protocols per condition from outcome clusters.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 70_000, qualitySensitive: true },
+  { id: "insuranceEvidenceBundler", displayName: "Insurance Evidence Bundler", description: "Assembles patient evidence for insurance submissions.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 50_000 },
+  { id: "publicationReadinessScorer", displayName: "Publication Readiness", description: "Scores a cohort for academic publication readiness.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 40_000 },
+  { id: "researchPartnerMatcher", displayName: "Research Partner Matcher", description: "Matches cohorts to academic, pharma, and regulator RFPs.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 30_000 },
 ];
 
 /** Per-agent override. Undefined modelId → use the practice default. */
@@ -311,4 +325,5 @@ export const CATEGORY_LABELS: Record<AgentCategory, string> = {
   billing: "Revenue cycle",
   operations: "Operations",
   commerce: "Marketplace",
+  research: "Research & insights",
 };
