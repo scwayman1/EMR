@@ -228,7 +228,11 @@ describe("rankProductsForPatient", () => {
       {
         startDate: new Date("2026-03-01T00:00:00Z"),
         endDate: new Date("2026-03-25T00:00:00Z"),
-        product: { name: "Relief Oil", brand: "Demo Brand" },
+        product: {
+          name: "Relief Oil",
+          brand: "Demo Brand",
+          marketplaceProductId: null, // forces fallback to name-match
+        },
       },
     ]);
     hoisted.mockPrisma.orderItem.findMany.mockResolvedValue([]);
@@ -264,6 +268,62 @@ describe("rankProductsForPatient", () => {
     expect(r.score).toBe(expected);
     expect(r.reasons.some((s) => s.includes("pain 8→3"))).toBe(true);
     expect(r.reasons.some((s) => s.includes("clinician pick"))).toBe(true);
+  });
+
+  it("bridges efficacy via marketplaceProductId FK even when names differ (EMR-268)", async () => {
+    hoisted.mockPrisma.patient.findUnique.mockResolvedValue({
+      id: "pat_1",
+      organizationId: "org_1",
+    });
+    hoisted.mockPrisma.outcomeLog.findMany.mockImplementation(
+      async (args: { where?: { loggedAt?: unknown } }) => {
+        if (args?.where?.loggedAt) {
+          return []; // no recent outcomes → no condition match
+        }
+        return [
+          {
+            metric: "pain",
+            value: 8,
+            loggedAt: new Date("2026-03-01T00:00:00Z"),
+          },
+          {
+            metric: "pain",
+            value: 3,
+            loggedAt: new Date("2026-03-20T00:00:00Z"),
+          },
+        ];
+      },
+    );
+    hoisted.mockPrisma.patientMemory.findMany.mockResolvedValue([]);
+    hoisted.mockPrisma.orderItem.findMany.mockResolvedValue([]);
+    // Clinical product has a totally different name from the marketplace
+    // product, but the FK ties them together — the ranking engine should
+    // still award the efficacy boost.
+    hoisted.mockPrisma.dosingRegimen.findMany.mockResolvedValue([
+      {
+        startDate: new Date("2026-03-01T00:00:00Z"),
+        endDate: new Date("2026-03-25T00:00:00Z"),
+        product: {
+          name: "Clinical THC Oil 10mg/mL", // doesn't match marketplace name
+          brand: null,
+          marketplaceProductId: "mkt-a", // but the FK does
+        },
+      },
+    ]);
+    hoisted.mockPrisma.product.findMany.mockResolvedValue([
+      productRow({
+        id: "mkt-a",
+        slug: "calm-drops",
+        name: "Calm & Clarity Drops",
+        brand: "Solace Botanicals",
+      }),
+    ]);
+
+    const result = await rankProductsForPatient("pat_1");
+    expect(result).toHaveLength(1);
+    expect(result[0].product.id).toBe("mkt-a");
+    expect(result[0].score).toBe(WEIGHT_PRODUCT_EFFICACY);
+    expect(result[0].reasons.some((s) => s.includes("pain 8→3"))).toBe(true);
   });
 
   it("awards beginner safety only when patient has no prior regimens", async () => {

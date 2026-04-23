@@ -5,11 +5,11 @@
 // an ML black box. Each returned ranking carries a `reasons[]` explaining why
 // the product was boosted, so clinicians and patients can trust it.
 //
-// The Prisma schema currently does NOT FK the marketplace `Product` to the
-// clinical `CannabisProduct` — regimens reference `CannabisProduct` only.
-// Until that bridge exists, we best-effort match by lowercased+trimmed name
-// (and brand when available). If no bridge, product-specific outcome signal
-// is skipped and we fall back to condition-match only.
+// Clinical ↔ marketplace bridge: `CannabisProduct.marketplaceProductId`
+// (EMR-268) is the authoritative link when set. When null, we fall back to a
+// normalized name (+ brand) match. The fallback exists only until the seed +
+// vendor onboarding backfills every CannabisProduct with its marketplace
+// twin; remove once null-rate on that column is effectively zero.
 
 import { prisma } from "@/lib/db/prisma";
 import { ProductStatus, type OutcomeMetric } from "@prisma/client";
@@ -118,7 +118,8 @@ function collectConditionSignals(
 // return the product identifier (normalized name[+brand]) if the patient
 // improved by ≥REGIMEN_IMPROVEMENT_POINTS on any tracked metric.
 interface EfficacySignal {
-  key: string; // normalized name
+  marketplaceProductId: string | null; // authoritative link when non-null
+  key: string; // normalized name (fallback bridge)
   brand: string; // normalized brand ("" if none)
   metric: OutcomeMetric;
   before: number;
@@ -129,7 +130,11 @@ function computeEfficacySignals(
   regimens: {
     startDate: Date;
     endDate: Date | null;
-    product: { name: string; brand: string | null };
+    product: {
+      name: string;
+      brand: string | null;
+      marketplaceProductId: string | null;
+    };
   }[],
   allLogs: { metric: OutcomeMetric; value: number; loggedAt: Date }[],
 ): EfficacySignal[] {
@@ -161,6 +166,7 @@ function computeEfficacySignals(
         spec.direction === "high-bad" ? first - last : last - first;
       if (improvement >= REGIMEN_IMPROVEMENT_POINTS) {
         out.push({
+          marketplaceProductId: r.product.marketplaceProductId,
           key: normalizeName(r.product.name),
           brand: normalizeName(r.product.brand),
           metric,
@@ -233,7 +239,13 @@ export async function rankProductsForPatient(
       select: {
         startDate: true,
         endDate: true,
-        product: { select: { name: true, brand: true } },
+        product: {
+          select: {
+            name: true,
+            brand: true,
+            marketplaceProductId: true,
+          },
+        },
       },
     }),
     prisma.orderItem.findMany({
@@ -269,15 +281,22 @@ export async function rankProductsForPatient(
     }
     score += conditionScore;
 
-    // 2. Product efficacy — exact bridge match by normalized name (brand too
-    // when both sides expose it).
+    // 2. Product efficacy — prefer the authoritative FK; fall back to
+    // normalized name+brand match while the backfill is rolling out.
     const rowKey = normalizeName(row.name);
     const rowBrand = normalizeName(row.brand);
     for (const eff of efficacy) {
-      const nameMatch = eff.key && eff.key === rowKey;
-      // Brand match is required only when both sides have a brand.
-      const brandMatch = !eff.brand || !rowBrand || eff.brand === rowBrand;
-      if (nameMatch && brandMatch) {
+      const fkMatch =
+        eff.marketplaceProductId != null &&
+        eff.marketplaceProductId === row.id;
+      let nameMatch = false;
+      if (!fkMatch && eff.marketplaceProductId == null) {
+        const nameEq = eff.key && eff.key === rowKey;
+        // Brand match is required only when both sides have a brand.
+        const brandEq = !eff.brand || !rowBrand || eff.brand === rowBrand;
+        nameMatch = Boolean(nameEq && brandEq);
+      }
+      if (fkMatch || nameMatch) {
         score += WEIGHT_PRODUCT_EFFICACY;
         reasons.push(
           `similar to regimen that improved ${eff.metric} ${eff.before}→${eff.after}`,

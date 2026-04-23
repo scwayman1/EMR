@@ -1404,32 +1404,37 @@ enum DeliveryRoute {
 }
 
 model CannabisProduct {
-  id                String        @id @default(cuid())
-  organizationId    String
-  name              String // e.g. "THC Infused Oil 10mg/mL"
-  brand             String? // e.g. "Green Path Organics"
-  productType       ProductType
-  route             DeliveryRoute
+  id                   String        @id @default(cuid())
+  organizationId       String
+  name                 String // e.g. "THC Infused Oil 10mg/mL"
+  brand                String? // e.g. "Green Path Organics"
+  productType          ProductType
+  route                DeliveryRoute
   // Cannabinoid concentrations (mg per mL, mg per unit, or % for flower)
-  thcConcentration  Float? // mg/mL for liquids, mg/unit for capsules, % for flower
-  cbdConcentration  Float?
-  cbnConcentration  Float?
-  cbgConcentration  Float?
-  thcCbdRatio       String? // e.g. "1:1", "20:1", "1:20"
+  thcConcentration     Float? // mg/mL for liquids, mg/unit for capsules, % for flower
+  cbdConcentration     Float?
+  cbnConcentration     Float?
+  cbgConcentration     Float?
+  thcCbdRatio          String? // e.g. "1:1", "20:1", "1:20"
   // Terpene profile (optional, structured)
-  terpeneProfile    Json? // { myrcene: 0.5, limonene: 0.3, ... } in %
+  terpeneProfile       Json? // { myrcene: 0.5, limonene: 0.3, ... } in %
   // Units
-  concentrationUnit String        @default("mg/mL") // "mg/mL", "mg/unit", "%", "mg/g"
-  unitSize          Float? // mL per bottle, units per pack, grams per container
+  concentrationUnit    String        @default("mg/mL") // "mg/mL", "mg/unit", "%", "mg/g"
+  unitSize             Float? // mL per bottle, units per pack, grams per container
+  // Link to the marketplace listing. Null when no storefront product exists yet;
+  // authoritative when set (supersedes the name-match bridge in ranking.ts).
+  marketplaceProductId String?
   // Metadata
-  description       String?
-  active            Boolean       @default(true)
-  createdAt         DateTime      @default(now())
+  description          String?
+  active               Boolean       @default(true)
+  createdAt            DateTime      @default(now())
 
-  organization Organization    @relation(fields: [organizationId], references: [id])
-  regimens     DosingRegimen[]
+  organization       Organization    @relation(fields: [organizationId], references: [id])
+  regimens           DosingRegimen[]
+  marketplaceProduct Product?        @relation("CannabisProductMarketplace", fields: [marketplaceProductId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, active])
+  @@index([marketplaceProductId])
 }
 
 model DosingRegimen {
@@ -1640,6 +1645,7 @@ model Product {
   orderItems       OrderItem[]
   cartItems        CartItem[]
   categoryMappings ProductCategory[]
+  cannabisProducts CannabisProduct[] @relation("CannabisProductMarketplace")
 
   @@index([organizationId, status])
   @@index([clinicianPick])
