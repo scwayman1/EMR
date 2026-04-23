@@ -27,6 +27,9 @@ import {
   PaymentPlanStatus,
   CoverageType,
   EligibilityStatus,
+  VendorType,
+  VendorStatus,
+  VendorDocumentType,
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -164,6 +167,126 @@ async function main() {
   });
 
   const passwordHash = await bcrypt.hash("Longbeach2026!", 12);
+
+  // ------------------------------------------------------------------
+  // Marketplace vendors (EMR-237)
+  // ------------------------------------------------------------------
+  const vendorSeeds: Array<{
+    slug: string;
+    name: string;
+    vendorType: VendorType;
+    categories: string[];
+    productLines?: string[];
+    takeRatePct: number;
+    foundingPartnerFlag: boolean;
+    foundingPartnerExpiresAt?: Date;
+    payoutSchedule?: string;
+    reservePct?: number;
+    reserveDays?: number;
+    status: VendorStatus;
+  }> = [
+    {
+      slug: "phytorx",
+      name: "PhytoRx",
+      vendorType: VendorType.hemp_brand,
+      categories: ["beverage", "cbd", "cbg"],
+      takeRatePct: 0.10,
+      foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
+      status: VendorStatus.pending,
+    },
+    {
+      slug: "flower-powered",
+      name: "Flower Powered",
+      vendorType: VendorType.hemp_brand,
+      categories: ["cbd", "topical", "tincture"],
+      takeRatePct: 0.10,
+      foundingPartnerFlag: true,
+      status: VendorStatus.pending,
+    },
+    {
+      slug: "aulv",
+      name: "AULV (PLNT PWRD)",
+      vendorType: VendorType.hemp_brand,
+      categories: ["plant_powered_wellness"],
+      takeRatePct: 0.10,
+      foundingPartnerFlag: true,
+      status: VendorStatus.pending,
+    },
+    {
+      slug: "potency-710",
+      name: "Potency 710",
+      vendorType: VendorType.hemp_brand,
+      categories: ["topical", "skincare"],
+      productLines: ["Gold Skin Serum"],
+      takeRatePct: 0.10,
+      foundingPartnerFlag: true,
+      status: VendorStatus.pending,
+    },
+  ];
+
+  for (const vendorSeed of vendorSeeds) {
+    const vendor = await prisma.vendor.upsert({
+      where: { slug: vendorSeed.slug },
+      update: {
+        name: vendorSeed.name,
+        vendorType: vendorSeed.vendorType,
+        categories: vendorSeed.categories,
+        productLines: vendorSeed.productLines ?? [],
+        takeRatePct: vendorSeed.takeRatePct,
+        foundingPartnerFlag: vendorSeed.foundingPartnerFlag,
+        foundingPartnerExpiresAt: vendorSeed.foundingPartnerExpiresAt ?? null,
+        payoutSchedule: vendorSeed.payoutSchedule ?? "weekly",
+        reservePct: vendorSeed.reservePct ?? 0.10,
+        reserveDays: vendorSeed.reserveDays ?? 14,
+        status: vendorSeed.status,
+      },
+      create: {
+        organizationId: org.id,
+        slug: vendorSeed.slug,
+        name: vendorSeed.name,
+        vendorType: vendorSeed.vendorType,
+        categories: vendorSeed.categories,
+        productLines: vendorSeed.productLines ?? [],
+        takeRatePct: vendorSeed.takeRatePct,
+        foundingPartnerFlag: vendorSeed.foundingPartnerFlag,
+        foundingPartnerExpiresAt: vendorSeed.foundingPartnerExpiresAt ?? null,
+        payoutSchedule: vendorSeed.payoutSchedule ?? "weekly",
+        reservePct: vendorSeed.reservePct ?? 0.10,
+        reserveDays: vendorSeed.reserveDays ?? 14,
+        status: vendorSeed.status,
+      },
+    });
+
+    const requiredDocuments: VendorDocumentType[] = [
+      VendorDocumentType.insurance,
+      VendorDocumentType.w9,
+      VendorDocumentType.coa,
+    ];
+
+    for (const documentType of requiredDocuments) {
+      await prisma.vendorDocument.upsert({
+        where: {
+          vendorId_documentType: {
+            vendorId: vendor.id,
+            documentType,
+          },
+        },
+        update: {
+          fileUrl: null,
+        },
+        create: {
+          organizationId: org.id,
+          vendorId: vendor.id,
+          documentType,
+          fileUrl: null,
+        },
+      });
+    }
+  }
 
   // ------------------------------------------------------------------
   // Users

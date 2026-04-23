@@ -38,6 +38,7 @@ export interface MarketplaceProduct {
   coaUrl?: string;
   clinicianPick: boolean;
   clinicianNote?: string;
+  requires21Plus?: boolean;
 
   // Inventory
   inStock: boolean;
