@@ -1,7 +1,8 @@
 import type { AgentJob } from "@prisma/client";
 import { createAgentContext } from "./context";
 import { agentRegistry } from "@/lib/agents";
-import type { Agent, ApprovalPolicy, StepResult } from "./types";
+import type { Agent, ApprovalPolicy } from "./types";
+import { StepExecutionGraph } from "./step-graph";
 import {
   claimNextJob,
   markFailed,
@@ -89,19 +90,15 @@ export async function runJob(job: AgentJob, workerId: string): Promise<void> {
       ctx.tools.step("plan-complete", { stepCount: plan.steps.length });
 
       // Phase 2: Execute steps in dependency order
-      const allSteps = [...plan.steps];
-      const completed = new Set<string>();
-      let maxIterations = allSteps.length + 10; // safety cap for dynamic steps
+      const stepGraph = new StepExecutionGraph(plan.steps);
+      let maxIterations = Math.max(20, plan.steps.length * 4); // safety cap for dynamic expansion
 
-      while (completed.size < allSteps.length && maxIterations-- > 0) {
-        // Find steps whose dependencies are all complete
-        const ready = allSteps.filter(
-          (s) => !completed.has(s.id) && (s.dependsOn ?? []).every((d) => completed.has(d)),
-        );
+      while (stepGraph.completedCount < stepGraph.totalSteps && maxIterations-- > 0) {
+        const ready = stepGraph.takeReadyBatch();
 
-        if (ready.length === 0 && completed.size < allSteps.length) {
-          ctx.log("error", "Deadlock: no ready steps but not all complete");
-          break;
+        if (ready.length === 0) {
+          const blocked = stepGraph.findBlockedStepIds();
+          throw new Error(`Step deadlock: no runnable steps; blocked=${blocked.join(",")}`);
         }
 
         // Execute ready steps (could be parallelized in future)
@@ -111,7 +108,7 @@ export async function runJob(job: AgentJob, workerId: string): Promise<void> {
 
           const stepResult = await agent.runStep(step, input, ctx);
           ctx.stepResults.set(step.id, stepResult);
-          completed.add(step.id);
+          stepGraph.markCompleted(step.id);
 
           ctx.tools.step(`step-${step.id}-complete`, {
             confidence: stepResult.confidence,
@@ -120,9 +117,16 @@ export async function runJob(job: AgentJob, workerId: string): Promise<void> {
           // Dynamic step addition
           if (stepResult.nextSteps?.length) {
             ctx.log("info", `Step ${step.name} added ${stepResult.nextSteps.length} new steps`);
-            allSteps.push(...stepResult.nextSteps);
+            stepGraph.addSteps(stepResult.nextSteps);
+            maxIterations += stepResult.nextSteps.length * 2;
           }
         }
+      }
+
+      if (maxIterations <= 0 && stepGraph.completedCount < stepGraph.totalSteps) {
+        throw new Error(
+          `Step iteration limit exceeded: completed=${stepGraph.completedCount} total=${stepGraph.totalSteps}`,
+        );
       }
 
       // Phase 3: Final assembly — call run() with all step results available
