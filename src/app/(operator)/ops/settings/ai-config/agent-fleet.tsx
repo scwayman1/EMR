@@ -29,7 +29,7 @@ const DEFAULT_MODEL_ID = getDefaultConfig().modelId;
 type FleetState = Record<string, { enabled: boolean; modelId: string | null }>;
 
 const TIER_ORDER: ModelTier[] = ["budget", "balanced", "premium", "open-source"];
-const CATEGORY_ORDER: AgentCategory[] = ["clinical", "safety", "patient", "billing", "operations"];
+const CATEGORY_ORDER: AgentCategory[] = ["clinical", "safety", "patient", "billing", "operations", "commerce"];
 
 const TIER_SWATCH: Record<ModelTier, string> = {
   "budget": "bg-emerald-500",
@@ -44,6 +44,7 @@ const CATEGORY_EMOJI: Record<AgentCategory, string> = {
   patient: "🌱",
   billing: "💳",
   operations: "⚙️",
+  commerce: "🛒",
 };
 
 export function AgentFleetPanel() {
@@ -222,6 +223,8 @@ export function AgentFleetPanel() {
                   ? "Voice-sensitive agents. Nurse Nora and Wellness Coach meaningfully improve on balanced+ models."
                   : category === "operations"
                   ? "Supporting staff — budget models are usually enough."
+                  : category === "commerce"
+                  ? "Marketplace fleet. Compliance + fraud benefit from premium models; catalog hygiene is fine on budget."
                   : "Core clinical agents that shape the physician's daily workflow."}
               </CardDescription>
             </CardHeader>
