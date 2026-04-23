@@ -5,11 +5,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
 import { TrustStrip } from "@/components/marketplace/TrustStrip";
 import { SearchBar } from "@/components/marketplace/SearchBar";
+import { RecommendedForYou } from "@/components/marketplace/RecommendedForYou";
 import {
   getFeaturedProducts,
   getClinicianPicks,
   getCategories,
 } from "@/lib/marketplace/queries";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Shop" };
@@ -23,8 +25,9 @@ const QUICK_BROWSE = [
 ] as const;
 
 export default async function ShopPage() {
-  const [featured, clinicianPicks, symptomCategories, goalCategories] =
+  const [user, featured, clinicianPicks, symptomCategories, goalCategories] =
     await Promise.all([
+      getCurrentUser(),
       getFeaturedProducts(),
       getClinicianPicks(),
       getCategories("symptom"),
@@ -61,6 +64,14 @@ export default async function ShopPage() {
 
       {/* ── Trust strip ───────────────────────────────────────────────── */}
       <TrustStrip className="rounded-lg mb-12" />
+
+      {/* ── Recommended for You (EMR-230 moat) ────────────────────────── */}
+      {user?.organizationId && (
+        <RecommendedForYou
+          userId={user.id}
+          organizationId={user.organizationId}
+        />
+      )}
 
       {/* ── Featured ──────────────────────────────────────────────────── */}
       <section className="mb-14">

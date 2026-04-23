@@ -261,8 +261,73 @@ async function seedMarketplace(organizationId: string) {
     }
   }
 
+  // ── Bridge: CannabisProduct → marketplace Product (EMR-268) ───────
+  // Authoritative FK when set; ranking engine prefers it over the
+  // name-match fallback. Two-phase backfill:
+  //   1. Generic: normalized-name + optional-brand match. Production
+  //      vendor onboarding is what actually populates this in real use.
+  //   2. Demo overrides: hardcoded pairs for the 3 clinical products the
+  //      seed creates for Maya / James / Sarah. Names don't overlap with
+  //      branded marketplace listings, so the generic pass matches 0
+  //      rows — without these overrides the demo "Recommended for You"
+  //      section can't show product-efficacy boosts.
+  const marketplaceByKey = new Map<string, string>(); // normalized "name|brand" → productId
+  const marketplaceByName = new Map<string, string>(); // normalized "name" → productId (ambiguity last-write-wins)
+  {
+    const rows = await prisma.product.findMany({
+      where: { organizationId, deletedAt: null },
+      select: { id: true, name: true, brand: true },
+    });
+    for (const r of rows) {
+      const k = `${r.name.trim().toLowerCase()}|${r.brand.trim().toLowerCase()}`;
+      marketplaceByKey.set(k, r.id);
+      marketplaceByName.set(r.name.trim().toLowerCase(), r.id);
+    }
+  }
+
+  const clinicalRows = await prisma.cannabisProduct.findMany({
+    where: { organizationId, marketplaceProductId: null },
+    select: { id: true, name: true, brand: true },
+  });
+
+  let bridged = 0;
+  for (const c of clinicalRows) {
+    const keyed = marketplaceByKey.get(
+      `${c.name.trim().toLowerCase()}|${(c.brand ?? "").trim().toLowerCase()}`,
+    );
+    const named = keyed ?? marketplaceByName.get(c.name.trim().toLowerCase());
+    if (!named) continue;
+    await prisma.cannabisProduct.update({
+      where: { id: c.id },
+      data: { marketplaceProductId: named },
+    });
+    bridged++;
+  }
+
+  // Demo overrides — map clinical seed products to their closest marketplace
+  // twin by clinical intent. Matched on CannabisProduct.name (seeded by this
+  // repo's seed.ts) and product slug (seeded by seedMarketplace above).
+  const DEMO_BRIDGES: Record<string, string> = {
+    "Balanced THC:CBD Tincture": "solace-calm-drops",
+    "CBD Isolate Capsules 25mg": "canopy-clinical-balance-capsules",
+    "High-CBD Sleep Tincture": "solace-nightfall-tincture",
+    "Night Capsule 10:5 THC:CBN": "botanica-rest-gummies",
+  };
+  for (const [cannabisName, marketplaceSlug] of Object.entries(DEMO_BRIDGES)) {
+    const target = await prisma.product.findUnique({
+      where: { slug: marketplaceSlug },
+      select: { id: true },
+    });
+    if (!target) continue;
+    const updated = await prisma.cannabisProduct.updateMany({
+      where: { organizationId, name: cannabisName, marketplaceProductId: null },
+      data: { marketplaceProductId: target.id },
+    });
+    bridged += updated.count;
+  }
+
   console.log(
-    `  Marketplace: ${CATEGORIES.length} categories, ${PRODUCTS.length} products seeded.`,
+    `  Marketplace: ${CATEGORIES.length} categories, ${PRODUCTS.length} products seeded. Bridged ${bridged} CannabisProduct → Product.`,
   );
 }
 
