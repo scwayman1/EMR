@@ -6,6 +6,7 @@ import { ProductGrid } from "@/components/marketplace/ProductGrid";
 import { TrustStrip } from "@/components/marketplace/TrustStrip";
 import { SearchBar } from "@/components/marketplace/SearchBar";
 import { RecommendedForYou } from "@/components/marketplace/RecommendedForYou";
+import { PatientsLikeYou } from "@/components/marketplace/PatientsLikeYou";
 import {
   getFeaturedProducts,
   getClinicianPicks,
@@ -68,6 +69,14 @@ export default async function ShopPage() {
       {/* ── Recommended for You (EMR-230 moat) ────────────────────────── */}
       {user?.organizationId && (
         <RecommendedForYou
+          userId={user.id}
+          organizationId={user.organizationId}
+        />
+      )}
+
+      {/* ── Patients Like You (EMR-270 cohort intelligence) ───────────── */}
+      {user?.organizationId && (
+        <PatientsLikeYou
           userId={user.id}
           organizationId={user.organizationId}
         />
