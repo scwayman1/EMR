@@ -116,7 +116,7 @@ export function AppShell({
             </div>
 
             <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2 overflow-y-auto">
-              <NavPrefsSections />
+              <NavPrefsSections sections={resolved} />
               <NavSections sections={resolved} />
             </nav>
 

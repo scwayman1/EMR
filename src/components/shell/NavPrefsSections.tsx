@@ -6,6 +6,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { useNavPrefs } from "./NavPrefsContext";
 import { PinButton } from "./PinButton";
+import {
+  flattenSectionItems,
+  itemMatchesPath,
+  type NavSection,
+} from "./nav-sections";
 
 /**
  * Renders the two personalization strips at the top of the sidebar:
@@ -18,7 +23,24 @@ import { PinButton } from "./PinButton";
  * Styling deliberately mirrors a labeled NavSection header so the rail
  * reads as one continuous IA. Items are NOT collapsible (these strips are
  * always short). A "Manage" action clears both lists.
+ *
+ * Pins and recents are persisted in a single global localStorage bucket,
+ * so a multi-role user (e.g. practice_owner) can otherwise see operator
+ * routes like /ops/revenue bleed into the patient sidebar. We filter the
+ * displayed entries to hrefs that belong to the current layout's sections;
+ * storage is untouched so each role still sees its own pins.
  */
+
+function belongsToSections(href: string, sections: NavSection[]): boolean {
+  for (const item of flattenSectionItems(sections)) {
+    if (item.href === href || itemMatchesPath(item.href, href)) return true;
+  }
+  return false;
+}
+
+// Stable empty refs so useMemo deps don't churn when prefs is null.
+const EMPTY_PINS: NonNullable<ReturnType<typeof useNavPrefs>>["pins"] = [];
+const EMPTY_RECENTS: NonNullable<ReturnType<typeof useNavPrefs>>["recents"] = [];
 
 function SectionHeader({
   label,
@@ -183,14 +205,27 @@ function RecentRow({
   );
 }
 
-export function NavPrefsSections() {
+export function NavPrefsSections({ sections }: { sections: NavSection[] }) {
   const prefs = useNavPrefs();
   const pathname = usePathname() ?? "";
+
+  const pins = prefs?.pins ?? EMPTY_PINS;
+  const recents = prefs?.recents ?? EMPTY_RECENTS;
+
+  const visiblePins = React.useMemo(
+    () => pins.filter((p) => belongsToSections(p.href, sections)),
+    [pins, sections],
+  );
+  const visibleRecents = React.useMemo(
+    () => recents.filter((r) => belongsToSections(r.href, sections)),
+    [recents, sections],
+  );
+
   if (!prefs) return null;
 
-  const { pins, recents, hydrated, clearAll, movePin } = prefs;
+  const { hydrated, clearAll, movePin } = prefs;
 
-  const hasAny = pins.length > 0 || recents.length > 0;
+  const hasAny = visiblePins.length > 0 || visibleRecents.length > 0;
 
   // Pre-hydration render must match the server (empty). The provider flips
   // `hydrated` in its mount effect; until then render a silent placeholder
@@ -216,13 +251,13 @@ export function NavPrefsSections() {
       {/* PINNED */}
       <div>
         <SectionHeader label="Pinned" action={manageAction} />
-        {pins.length === 0 ? (
+        {visiblePins.length === 0 ? (
           <p className="px-3 pb-1 text-[11px] leading-snug text-text-subtle italic">
             ⌘K + star any page to pin it
           </p>
         ) : (
           <ul className="space-y-0.5 pl-1">
-            {pins.map((p, idx) => (
+            {visiblePins.map((p, idx) => (
               <li key={p.href}>
                 <PinnedRow
                   href={p.href}
@@ -231,7 +266,7 @@ export function NavPrefsSections() {
                     pathname === p.href || pathname.startsWith(p.href + "/")
                   }
                   canMoveUp={idx > 0}
-                  canMoveDown={idx < pins.length - 1}
+                  canMoveDown={idx < visiblePins.length - 1}
                   onMoveUp={() => movePin(p.href, "up")}
                   onMoveDown={() => movePin(p.href, "down")}
                 />
@@ -242,11 +277,11 @@ export function NavPrefsSections() {
       </div>
 
       {/* RECENT — silent when empty. */}
-      {recents.length > 0 && (
+      {visibleRecents.length > 0 && (
         <div className="pt-3 border-t border-border/40">
           <SectionHeader label="Recent" />
           <ul className="space-y-0.5 pl-1">
-            {recents.map((r) => (
+            {visibleRecents.map((r) => (
               <li key={r.href}>
                 <RecentRow
                   href={r.href}
