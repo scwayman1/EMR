@@ -9,12 +9,86 @@ import { codingReadinessAgent } from "./coding-readiness-agent";
 import { practiceLaunchAgent } from "./practice-launch-agent";
 import { registryAgent } from "./registry-agent";
 import { schedulingAgent } from "./scheduling-agent";
+import { physicianNudgeAgent } from "./physician-nudge-agent";
+import { patientOutreachAgent } from "./patient-outreach-agent";
+import { preVisitIntelligenceAgent } from "./pre-visit-intelligence-agent";
+import { fairytaleSummaryAgent } from "./fairytale-summary-agent";
+import { correspondenceNurseAgent } from "./correspondence-nurse-agent";
+import { patientSimplifierAgent, patientEducationAgent } from "./patient-education-agent";
+import { dosingRecommendationAgent } from "./dosing-recommendation-agent";
+import { trendAlertAgent } from "./trend-alert-agent";
+import { titrationAgent } from "./titration-agent";
+import { prescriptionSafetyAgent } from "./prescription-safety-agent";
+import { diagnosisSafetyAgent } from "./diagnosis-safety-agent";
+import { adherenceDriftDetectorAgent } from "./adherence-drift-detector-agent";
+import { messageUrgencyObserverAgent } from "./message-urgency-observer-agent";
+import { visitDiscoveryWhispererAgent } from "./visit-discovery-whisperer-agent";
+// Billing agents — Phase 3 of the Revenue Cycle PRD
+import { chargeIntegrityAgent } from "./billing/charge-integrity-agent";
+import { denialTriageAgent } from "./billing/denial-triage-agent";
+import { patientExplanationAgent } from "./billing/patient-explanation-agent";
+import { patientCollectionsAgent } from "./billing/patient-collections-agent";
+import { reconciliationAgent } from "./billing/reconciliation-agent";
+import { agingAgent } from "./billing/aging-agent";
+import { underpaymentDetectionAgent } from "./billing/underpayment-detection-agent";
+// Phase 4
+import { refundCreditAgent } from "./billing/refund-credit-agent";
+import { revenueCommandAgent } from "./billing/revenue-command-agent";
+// RCM Fleet — Phase 5 (pre-submission pipeline)
+import { encounterIntelligenceAgent } from "./billing/encounter-intelligence-agent";
+import { codingOptimizationAgent } from "./billing/coding-optimization-agent";
+import { claimConstructionAgent } from "./billing/claim-construction-agent";
+// RCM Fleet — Phase 7 (post-adjudication loop)
+import { adjudicationInterpretationAgent } from "./billing/adjudication-interpretation-agent";
+import { appealsGenerationAgent } from "./billing/appeals-generation-agent";
+import { denialResolutionAgent } from "./billing/denial-resolution-agent";
+import { eligibilityBenefitsAgent } from "./billing/eligibility-benefits-agent";
+import { complianceAuditAgent } from "./billing/compliance-audit-agent";
+import { priorAuthAgent } from "./billing/prior-auth-agent";
+import { clearinghouseSubmissionAgent } from "./billing/clearinghouse-submission-agent";
+import { staleClaimMonitorAgent } from "./billing/stale-claim-monitor-agent";
+// Operations & patient experience agents
+import { wellnessCoachAgent } from "./wellness-coach-agent";
+import { refillReminderAgent } from "./refill-reminder-agent";
+import { appointmentReminderAgent } from "./appointment-reminder-agent";
+import { labFollowupAgent } from "./lab-followup-agent";
+import { retentionRiskAgent } from "./retention-risk-agent";
+import { contentCreationAgent } from "./content-creation-agent";
+import { satisfactionAnalysisAgent } from "./satisfaction-analysis-agent";
+import { inventoryAlertAgent } from "./inventory-alert-agent";
+import { billingReconEnhancementAgent } from "./billing-recon-enhancement-agent";
+import { qualityImprovementAgent } from "./quality-improvement-agent";
+// Mission Control — Phase 1 (MALLIK-006 + MALLIK-007)
+import { labSummarizerAgent } from "./lab-summarizer-agent";
+import { refillCopilotAgent } from "./refill-copilot-agent";
+// Commerce Fleet — EMR-17 (20 agents, stub-shipped 2026-04-23)
+import { productRecommenderAgent } from "./commerce/product-recommender-agent";
+import { bundleSuggesterAgent } from "./commerce/bundle-suggester-agent";
+import { crossSellRankerAgent } from "./commerce/cross-sell-ranker-agent";
+import { searchPersonalizerAgent } from "./commerce/search-personalizer-agent";
+import { reviewModeratorAgent } from "./commerce/review-moderator-agent";
+import { productQCAgent } from "./commerce/product-qc-agent";
+import { seoMetadataAgent } from "./commerce/seo-metadata-agent";
+import { categoryCuratorAgent } from "./commerce/category-curator-agent";
+import { pricingAnomalyAgent } from "./commerce/pricing-anomaly-agent";
+import { restockPredictorAgent } from "./commerce/restock-predictor-agent";
+import { waitlistNotifierAgent } from "./commerce/waitlist-notifier-agent";
+import { abandonedCartRescuerAgent } from "./commerce/abandoned-cart-rescuer-agent";
+import { orderFraudDetectorAgent } from "./commerce/order-fraud-detector-agent";
+import { returnRiskScorerAgent } from "./commerce/return-risk-scorer-agent";
+import { pricingOptimizerAgent } from "./commerce/pricing-optimizer-agent";
+import { promoGeneratorAgent } from "./commerce/promo-generator-agent";
+import { cannabisComplianceGateAgent } from "./commerce/cannabis-compliance-gate-agent";
+import { cannabisTaxCalculatorAgent } from "./commerce/cannabis-tax-calculator-agent";
+import { shippingRouterAgent } from "./commerce/shipping-router-agent";
+import { vendorPerformanceScorerAgent } from "./commerce/vendor-performance-scorer-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
  * a workflow definition in src/lib/orchestration/workflows.ts.
  */
 export const agentRegistry = {
+  // Clinical agents
   intake: intakeAgent,
   documentOrganizer: documentOrganizerAgent,
   outcomeTracker: outcomeTrackerAgent,
@@ -25,8 +99,129 @@ export const agentRegistry = {
   practiceLaunch: practiceLaunchAgent,
   registry: registryAgent,
   scheduling: schedulingAgent,
+  physicianNudge: physicianNudgeAgent,
+  patientOutreach: patientOutreachAgent,
+  preVisitIntelligence: preVisitIntelligenceAgent,
+  fairytaleSummary: fairytaleSummaryAgent,
+  correspondenceNurse: correspondenceNurseAgent,
+  patientSimplifier: patientSimplifierAgent,
+  patientEducation: patientEducationAgent,
+  dosingRecommendation: dosingRecommendationAgent,
+  trendAlert: trendAlertAgent,
+  titration: titrationAgent,
+  prescriptionSafety: prescriptionSafetyAgent,
+  diagnosisSafety: diagnosisSafetyAgent,
+  adherenceDriftDetector: adherenceDriftDetectorAgent,
+  messageUrgencyObserver: messageUrgencyObserverAgent,
+  visitDiscoveryWhisperer: visitDiscoveryWhispererAgent,
+  // Billing agents (Phase 3)
+  chargeIntegrity: chargeIntegrityAgent,
+  denialTriage: denialTriageAgent,
+  patientExplanation: patientExplanationAgent,
+  patientCollections: patientCollectionsAgent,
+  reconciliation: reconciliationAgent,
+  aging: agingAgent,
+  underpaymentDetection: underpaymentDetectionAgent,
+  // Billing agents (Phase 4)
+  refundCredit: refundCreditAgent,
+  revenueCommand: revenueCommandAgent,
+  // RCM Fleet — Phase 5 (pre-submission pipeline)
+  encounterIntelligence: encounterIntelligenceAgent,
+  codingOptimization: codingOptimizationAgent,
+  claimConstruction: claimConstructionAgent,
+  // RCM Fleet — Phase 7 (post-adjudication loop)
+  adjudicationInterpretation: adjudicationInterpretationAgent,
+  appealsGeneration: appealsGenerationAgent,
+  denialResolution: denialResolutionAgent,
+  eligibilityBenefits: eligibilityBenefitsAgent,
+  complianceAudit: complianceAuditAgent,
+  priorAuthVerification: priorAuthAgent,
+  clearinghouseSubmission: clearinghouseSubmissionAgent,
+  staleClaimMonitor: staleClaimMonitorAgent,
+  // Operations & patient experience agents
+  wellnessCoach: wellnessCoachAgent,
+  refillReminder: refillReminderAgent,
+  appointmentReminder: appointmentReminderAgent,
+  labFollowup: labFollowupAgent,
+  retentionRisk: retentionRiskAgent,
+  contentCreation: contentCreationAgent,
+  satisfactionAnalysis: satisfactionAnalysisAgent,
+  inventoryAlert: inventoryAlertAgent,
+  billingReconEnhancement: billingReconEnhancementAgent,
+  qualityImprovement: qualityImprovementAgent,
+  // Mission Control — Phase 1 (MALLIK-006 + MALLIK-007)
+  labSummarizer: labSummarizerAgent,
+  refillCopilot: refillCopilotAgent,
+  // Commerce Fleet — EMR-17 (20 agents stub-shipped 2026-04-23)
+  productRecommender: productRecommenderAgent,
+  bundleSuggester: bundleSuggesterAgent,
+  crossSellRanker: crossSellRankerAgent,
+  searchPersonalizer: searchPersonalizerAgent,
+  reviewModerator: reviewModeratorAgent,
+  productQC: productQCAgent,
+  seoMetadata: seoMetadataAgent,
+  categoryCurator: categoryCuratorAgent,
+  pricingAnomaly: pricingAnomalyAgent,
+  restockPredictor: restockPredictorAgent,
+  waitlistNotifier: waitlistNotifierAgent,
+  abandonedCartRescuer: abandonedCartRescuerAgent,
+  orderFraudDetector: orderFraudDetectorAgent,
+  returnRiskScorer: returnRiskScorerAgent,
+  pricingOptimizer: pricingOptimizerAgent,
+  promoGenerator: promoGeneratorAgent,
+  cannabisComplianceGate: cannabisComplianceGateAgent,
+  cannabisTaxCalculator: cannabisTaxCalculatorAgent,
+  shippingRouter: shippingRouterAgent,
+  vendorPerformanceScorer: vendorPerformanceScorerAgent,
 } satisfies Record<string, Agent<any, any>>;
+
+/** Agents tagged as "commerce" — used by the marketplace ops console. */
+export const COMMERCE_AGENT_NAMES: AgentName[] = [
+  "productRecommender",
+  "bundleSuggester",
+  "crossSellRanker",
+  "searchPersonalizer",
+  "reviewModerator",
+  "productQC",
+  "seoMetadata",
+  "categoryCurator",
+  "pricingAnomaly",
+  "restockPredictor",
+  "waitlistNotifier",
+  "abandonedCartRescuer",
+  "orderFraudDetector",
+  "returnRiskScorer",
+  "pricingOptimizer",
+  "promoGenerator",
+  "cannabisComplianceGate",
+  "cannabisTaxCalculator",
+  "shippingRouter",
+  "vendorPerformanceScorer",
+];
 
 export type AgentName = keyof typeof agentRegistry;
 
 export const agentList = Object.values(agentRegistry);
+
+/** Agents tagged as "billing" — used by the billing oversight console. */
+export const BILLING_AGENT_NAMES: AgentName[] = [
+  "encounterIntelligence",
+  "codingOptimization",
+  "claimConstruction",
+  "adjudicationInterpretation",
+  "appealsGeneration",
+  "denialResolution",
+  "eligibilityBenefits",
+  "complianceAudit",
+  "priorAuthVerification",
+  "clearinghouseSubmission",
+  "chargeIntegrity",
+  "denialTriage",
+  "patientExplanation",
+  "patientCollections",
+  "reconciliation",
+  "aging",
+  "underpaymentDetection",
+  "refundCredit",
+  "revenueCommand",
+];

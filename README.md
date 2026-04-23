@@ -83,11 +83,11 @@ The app is now at [http://localhost:3000](http://localhost:3000).
 
 ### Demo accounts (from seed)
 
-| Role       | Email                   | Password       |
-| ---------- | ----------------------- | -------------- |
-| Patient    | `patient@demo.health`   | `password123`  |
-| Clinician  | `clinician@demo.health` | `password123`  |
-| Owner/ops  | `owner@demo.health`     | `password123`  |
+| Role       | Email                   | Password          |
+| ---------- | ----------------------- | ----------------- |
+| Patient    | `patient@demo.health`   | *(ask team lead)* |
+| Clinician  | `clinician@demo.health` | *(ask team lead)* |
+| Owner/ops  | `owner@demo.health`     | *(ask team lead)* |
 
 ### Running the agent worker
 
@@ -133,7 +133,39 @@ See `ARCHITECTURE.md` for the full picture.
 - `emr-scheduler` — a 15-minute cron job that enqueues recurring work
 - `emr-postgres` — the managed Postgres instance
 
-Deploy by pointing Render at this repo and letting it pick up `render.yaml`. `SESSION_SECRET` is auto-generated; `ANTHROPIC_API_KEY` is opt-in (the platform defaults to a stub model client).
+Every service is pinned to `main`. `SESSION_SECRET` is auto-generated; `ANTHROPIC_API_KEY` is opt-in (the platform defaults to a stub model client).
+
+### Pipeline rules — read before changing `render.yaml`
+
+These rules exist because the pipeline drifted badly in the past (`main` was 170 commits behind production, schema migrations silently skipped, interactive `next lint` prompts failing CI). The current setup is deliberately small and reliable.
+
+1. **`main` is the only deploy branch.** Never point a Render service at a feature branch — that's how we ended up with prod and `main` out of sync.
+2. **Schema sync lives in `startCommand`, not `preDeployCommand`.** Render's `preDeployCommand` is not guaranteed to run on Starter plan; silent skips mean new Prisma models never reach the database. `npx prisma db push --accept-data-loss --skip-generate` runs in `startCommand` so the schema is synced immediately before traffic hits.
+3. **Seeding is a one-off.** Run `npm run db:seed` manually from a Render shell when bootstrapping a fresh database. Do not couple it to every deploy.
+
+### Development workflow
+
+Direct pushes to `main` are blocked by a branch-protection ruleset. All changes land via pull request:
+
+1. Branch off `main`, make your changes, push.
+2. Open a PR into `main`. GitHub Actions runs `typecheck · lint · build` (`.github/workflows/ci.yml`).
+3. PR cannot merge until: CI is green, the branch is up to date with `main`, and force-pushes are blocked.
+4. Merge → delete the branch → Render auto-deploys from the new `main`.
+
+If CI fails, fix it on the branch — don't bypass the check. The rules that protect `main` also protect future-you from debugging a silent production outage at 3 AM.
+
+
+## Linear integration (tickets + pinned brief retrieval)
+
+Set `LINEAR_API_KEY` in `.env` (Personal API key from Linear).
+
+Then query the internal API endpoint:
+
+```bash
+curl http://localhost:3000/api/integrations/linear/issues/EMR-17
+```
+
+Response includes the issue payload and a `codexAgentBrief` field when a comment body contains 'Codex Agent Brief'. The endpoint is restricted to authenticated internal roles (`operator`, `practice_owner`, `system`).
 
 ## Security posture
 

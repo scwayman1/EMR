@@ -6,8 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   getCategoryBySlug,
   getProductsByCategory,
-  PRODUCTS,
-} from "@/lib/marketplace/data";
+} from "@/lib/marketplace/queries";
 
 // ---------------------------------------------------------------------------
 // Metadata
@@ -21,22 +20,9 @@ export async function generateMetadata({
   params,
 }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = getCategoryBySlug(slug);
+  const category = await getCategoryBySlug(slug);
   return { title: category?.name ?? "Category" };
 }
-
-// ---------------------------------------------------------------------------
-// Collection slug helpers
-// ---------------------------------------------------------------------------
-
-const COLLECTION_FILTERS: Record<
-  string,
-  (p: (typeof PRODUCTS)[number]) => boolean
-> = {
-  "clinician-picks": (p) => p.clinicianPick,
-  "best-sellers": (p) => p.featured,
-  "beginner-friendly": (p) => p.beginnerFriendly,
-};
 
 // ---------------------------------------------------------------------------
 // Page
@@ -44,7 +30,7 @@ const COLLECTION_FILTERS: Record<
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const category = getCategoryBySlug(slug);
+  const category = await getCategoryBySlug(slug);
 
   if (!category) {
     return (
@@ -73,11 +59,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     );
   }
 
-  // Determine products — special handling for collection slugs
-  const collectionFilter = COLLECTION_FILTERS[slug];
-  const products = collectionFilter
-    ? PRODUCTS.filter(collectionFilter)
-    : getProductsByCategory(slug);
+  // Category rows (including collections) are seeded in the DB, so a single
+  // join-query by slug handles symptom, goal, format, and collection pages.
+  const products = await getProductsByCategory(slug);
 
   return (
     <PageShell maxWidth="max-w-[1100px]">

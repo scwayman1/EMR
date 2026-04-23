@@ -56,6 +56,7 @@ export interface MarketplaceProduct {
 export interface ProductVariant {
   id: string;
   name: string;
+  upc?: string;
   price: number;
   compareAtPrice?: number;
   inStock: boolean;

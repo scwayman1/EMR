@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "highlight";
 type Size = "sm" | "md" | "lg";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,27 +12,39 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors duration-200 ease-smooth disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent/40";
+  "inline-flex items-center justify-center gap-2 rounded-md font-medium " +
+  "transition-all duration-200 ease-smooth " +
+  "disabled:opacity-50 disabled:cursor-not-allowed " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 " +
+  "focus-visible:ring-accent/40 focus-visible:ring-offset-surface active:translate-y-[0.5px]";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-accent text-white hover:bg-accent/90 shadow-sm",
+    "bg-gradient-to-b from-accent to-accent-strong text-accent-ink shadow-seal " +
+    "hover:from-accent/90 hover:to-accent hover:shadow-lg hover:scale-[1.02]",
   secondary:
-    "bg-surface text-text border border-border hover:bg-surface-muted",
+    "bg-surface-raised text-text border border-border-strong/70 shadow-sm " +
+    "hover:bg-surface-muted hover:border-border-strong",
   ghost:
     "bg-transparent text-text-muted hover:bg-surface-muted hover:text-text",
   danger:
-    "bg-danger text-white hover:bg-danger/90",
+    "bg-danger text-white shadow-sm hover:brightness-110",
+  highlight:
+    "bg-gradient-to-b from-highlight to-highlight-hover text-white shadow-seal " +
+    "hover:from-highlight/90 hover:to-highlight hover:shadow-lg hover:scale-[1.02]",
 };
 
 const SIZES: Record<Size, string> = {
-  sm: "h-8 px-3 text-sm",
+  sm: "h-8 px-3.5 text-sm",
   md: "h-10 px-4 text-sm",
-  lg: "h-11 px-5 text-base",
+  lg: "h-12 px-6 text-base",
 };
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", size = "md", leadingIcon, trailingIcon, children, ...props }, ref) => {
+  (
+    { className, variant = "primary", size = "md", leadingIcon, trailingIcon, children, ...props },
+    ref
+  ) => {
     return (
       <button
         ref={ref}

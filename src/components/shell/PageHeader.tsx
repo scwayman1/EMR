@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
+import { Eyebrow } from "@/components/ui/ornament";
 
 export function PageHeader({
   eyebrow,
@@ -17,26 +18,22 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        "flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8",
+        "flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10",
         className
       )}
     >
-      <div>
-        {eyebrow && (
-          <p className="text-xs font-medium uppercase tracking-wide text-text-subtle mb-2">
-            {eyebrow}
-          </p>
-        )}
-        <h1 className="text-2xl font-semibold text-text tracking-tight">
+      <div className="max-w-2xl">
+        {eyebrow && <Eyebrow className="mb-3">{eyebrow}</Eyebrow>}
+        <h1 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-text-muted mt-1.5 max-w-2xl">
+          <p className="text-[15px] text-text-muted mt-3 leading-relaxed">
             {description}
           </p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
     </div>
   );
 }
@@ -51,7 +48,7 @@ export function PageShell({
   className?: string;
 }) {
   return (
-    <div className={cn("px-6 lg:px-10 py-8", className)}>
+    <div className={cn("px-6 lg:px-12 py-10", className)}>
       <div className={cn("mx-auto w-full", maxWidth)}>{children}</div>
     </div>
   );

@@ -9,7 +9,7 @@ import {
   getFeaturedProducts,
   getClinicianPicks,
   getCategories,
-} from "@/lib/marketplace/data";
+} from "@/lib/marketplace/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Shop" };
@@ -22,11 +22,14 @@ const QUICK_BROWSE = [
   { label: "Energy", slug: "energy" },
 ] as const;
 
-export default function ShopPage() {
-  const featured = getFeaturedProducts();
-  const clinicianPicks = getClinicianPicks();
-  const symptomCategories = getCategories("symptom");
-  const goalCategories = getCategories("goal");
+export default async function ShopPage() {
+  const [featured, clinicianPicks, symptomCategories, goalCategories] =
+    await Promise.all([
+      getFeaturedProducts(),
+      getClinicianPicks(),
+      getCategories("symptom"),
+      getCategories("goal"),
+    ]);
 
   return (
     <PageShell maxWidth="max-w-[1100px]">

@@ -87,7 +87,7 @@ export const workflows: WorkflowDefinition[] = [
   },
   {
     name: "message-draft",
-    on: ["message.draft.requested", "patient.intake.stalled"],
+    on: ["message.draft.requested"],
     steps: [
       {
         agent: "messagingAssistant",
@@ -95,6 +95,19 @@ export const workflows: WorkflowDefinition[] = [
           patientId: (e as any).patientId,
           intent: (e as any).intent ?? "follow_up",
         }),
+        requiresApproval: true,
+      },
+    ],
+  },
+  // Correspondence Nurse — triages every inbound patient message and
+  // drafts a clinically appropriate response. Approval-gated.
+  {
+    name: "correspondence-triage",
+    on: ["message.received"],
+    steps: [
+      {
+        agent: "correspondenceNurse",
+        input: (e) => ({ threadId: (e as any).threadId }),
         requiresApproval: true,
       },
     ],
@@ -116,6 +129,337 @@ export const workflows: WorkflowDefinition[] = [
       {
         agent: "registry",
         input: (e) => ({ patientId: (e as any).patientId }),
+      },
+    ],
+  },
+  {
+    name: "physician-nudge",
+    on: ["note.finalized"],
+    steps: [
+      {
+        agent: "physicianNudge",
+        input: (e) => ({
+          noteId: (e as any).noteId,
+          encounterId: (e as any).encounterId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "patient-outreach",
+    on: ["encounter.completed"],
+    steps: [
+      {
+        agent: "patientOutreach",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+          encounterId: (e as any).encounterId,
+        }),
+        requiresApproval: true,
+      },
+    ],
+  },
+  // ─────────────────────────────────────────────────────────────────
+  // Billing workflows — Phase 3 of the Revenue Cycle PRD
+  // ─────────────────────────────────────────────────────────────────
+  {
+    name: "claim-scrub",
+    on: ["claim.created"],
+    steps: [
+      {
+        agent: "chargeIntegrity",
+        input: (e) => ({ claimId: (e as any).claimId }),
+      },
+    ],
+  },
+  {
+    name: "denial-triage",
+    on: ["claim.denied"],
+    steps: [
+      {
+        agent: "denialTriage",
+        input: (e) => ({ claimId: (e as any).claimId }),
+      },
+    ],
+  },
+  {
+    name: "statement-explanation",
+    on: ["statement.generated"],
+    steps: [
+      {
+        agent: "patientExplanation",
+        input: (e) => ({ statementId: (e as any).statementId }),
+      },
+    ],
+  },
+  {
+    name: "aging-sweep",
+    on: ["billing.aging.sweep"],
+    steps: [
+      {
+        agent: "aging",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "reconciliation-run",
+    on: ["billing.reconciliation.run", "payment.received"],
+    steps: [
+      {
+        agent: "reconciliation",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "underpayment-scan",
+    on: ["billing.underpayment.scan", "claim.paid"],
+    steps: [
+      {
+        agent: "underpaymentDetection",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "credit-scan",
+    on: ["billing.credit.scan", "payment.received"],
+    steps: [
+      {
+        agent: "refundCredit",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  {
+    name: "revenue-command-brief",
+    on: ["billing.command.brief"],
+    steps: [
+      {
+        agent: "revenueCommand",
+        input: (e) => ({ organizationId: (e as any).organizationId }),
+      },
+    ],
+  },
+  // ─────────────────────────────────────────────────────────────────
+  // RCM Fleet — Phase 5 pre-submission pipeline (Layer 8, Flow 1)
+  // ─────────────────────────────────────────────────────────────────
+  // prior_auth.required → Prior Auth Verification
+  {
+    name: "prior-auth-check",
+    on: ["prior_auth.required"],
+    steps: [
+      {
+        agent: "priorAuthVerification",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+          coverageId: (e as any).coverageId,
+          cptCode: (e as any).cptCode,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // claim.scrubbed → Clearinghouse Submission (when clean)
+  {
+    name: "clearinghouse-submission",
+    on: ["claim.scrubbed"],
+    steps: [
+      {
+        agent: "clearinghouseSubmission",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          organizationId: (e as any).organizationId,
+          scrubResultId: (e as any).scrubResultId,
+        }),
+      },
+    ],
+  },
+  // encounter.completed → Eligibility & Benefits → eligibility.checked
+  {
+    name: "eligibility-check",
+    on: ["encounter.completed"],
+    steps: [
+      {
+        agent: "eligibilityBenefits",
+        input: (e) => ({
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  // claim.created → Compliance & Audit (runs alongside scrubbing)
+  {
+    name: "compliance-audit",
+    on: ["claim.created"],
+    steps: [
+      {
+        agent: "complianceAudit",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // encounter.completed → Encounter Intelligence → charge.created
+  {
+    name: "encounter-charge-extraction",
+    on: ["encounter.completed"],
+    steps: [
+      {
+        agent: "encounterIntelligence",
+        input: (e) => ({
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  // charge.created → Coding Optimization → coding.recommended
+  {
+    name: "coding-optimization",
+    on: ["charge.created"],
+    steps: [
+      {
+        agent: "codingOptimization",
+        input: (e) => ({
+          chargeId: (e as any).chargeId,
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // ─────────────────────────────────────────────────────────────────
+  // RCM Fleet — Phase 7 post-adjudication loop (Layer 8, Flows 3-4)
+  // ─────────────────────────────────────────────────────────────────
+  // denial.detected → Denial Resolution v2 (CARC-based decision tree)
+  {
+    name: "denial-resolution",
+    on: ["denial.detected"],
+    steps: [
+      {
+        agent: "denialResolution",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          denialEventId: (e as any).denialEventId,
+          carcCode: (e as any).carcCode,
+          groupCode: (e as any).groupCode,
+          amountDeniedCents: (e as any).amountDeniedCents,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // adjudication.received → Adjudication Interpretation → payment/denial routing
+  {
+    name: "adjudication-interpretation",
+    on: ["adjudication.received"],
+    steps: [
+      {
+        agent: "adjudicationInterpretation",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          adjudicationResultId: (e as any).adjudicationResultId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // denial.classified (resolution=appeal) → Appeals Generation
+  {
+    name: "appeals-generation",
+    on: ["denial.classified"],
+    steps: [
+      {
+        agent: "appealsGeneration",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          denialEventId: (e as any).denialEventId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // coding.recommended → Claim Construction → claim.created
+  // (Claim Construction also listens for coding.approved for human-reviewed cases)
+  {
+    name: "claim-construction",
+    on: ["coding.recommended", "coding.approved"],
+    steps: [
+      {
+        agent: "claimConstruction",
+        input: (e) => ({
+          encounterId: (e as any).encounterId,
+          patientId: (e as any).patientId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "prescription-safety-check",
+    on: ["dosing.regimen.created"],
+    steps: [
+      {
+        agent: "prescriptionSafety",
+        input: (e) => ({
+          regimenId: (e as any).regimenId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "diagnosis-safety-check",
+    on: ["patient.diagnosis.updated"],
+    steps: [
+      {
+        agent: "diagnosisSafety",
+        input: (e) => ({ patientId: (e as any).patientId }),
+      },
+    ],
+  },
+  {
+    name: "adherence-drift-check",
+    on: ["adherence.checkup.requested"],
+    steps: [
+      {
+        agent: "adherenceDriftDetector",
+        input: (e) => ({
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "message-urgency-observe",
+    on: ["message.received"],
+    steps: [
+      {
+        agent: "messageUrgencyObserver",
+        input: (e) => ({
+          messageId: (e as any).messageId,
+          threadId: (e as any).threadId,
+          patientId: (e as any).patientId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "visit-discovery-whisper",
+    on: ["note.finalized"],
+    steps: [
+      {
+        agent: "visitDiscoveryWhisperer",
+        input: (e) => ({
+          noteId: (e as any).noteId,
+          encounterId: (e as any).encounterId,
+        }),
       },
     ],
   },

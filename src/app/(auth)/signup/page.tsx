@@ -1,22 +1,25 @@
 import Link from "next/link";
-import { SignupForm } from "./signup-form";
+import { DemoRequestForm } from "./demo-request-form";
+import { Eyebrow } from "@/components/ui/ornament";
 
-export const metadata = { title: "Create your account" };
+export const metadata = { title: "Request a Demo" };
 
 export default function SignupPage() {
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-text tracking-tight">
-          Create your account
-        </h1>
-        <p className="text-sm text-text-muted mt-1.5">
-          Your care starts with a simple, private account.
-        </p>
+      <Eyebrow className="mb-4">Get started</Eyebrow>
+      <h1 className="font-display text-3xl text-text tracking-tight leading-[1.1]">
+        Request a demo.
+      </h1>
+      <p className="text-sm text-text-muted mt-2.5">
+        Tell us a little about yourself and we will get you set up with a
+        personalized demo of Leafjourney.
+      </p>
+      <div className="mt-8">
+        <DemoRequestForm />
       </div>
-      <SignupForm />
-      <p className="text-sm text-text-muted mt-6 text-center">
-        Already have an account?{" "}
+      <p className="text-sm text-text-muted mt-8 text-center">
+        Already have access?{" "}
         <Link href="/login" className="text-accent font-medium hover:underline">
           Sign in
         </Link>

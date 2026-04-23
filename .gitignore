@@ -29,6 +29,15 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Claude Code local state — ignore everything except shared project config
+.claude/*
+!.claude/settings.json
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
+.claude/settings.local.json
+
 # Prisma
 prisma/dev.db
 prisma/*.db-journal
@@ -39,3 +48,4 @@ prisma/*.db-journal
 coverage/
 *.tsbuildinfo
 next-env.d.ts
+tsconfig.tsbuildinfo
