@@ -3,7 +3,11 @@ import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
 import { SearchBar } from "@/components/marketplace/SearchBar";
-import { searchProducts, PRODUCTS, CATEGORIES } from "@/lib/marketplace/data";
+import {
+  searchProducts,
+  getAllProducts,
+  getCategories,
+} from "@/lib/marketplace/queries";
 import type { ProductFormat } from "@/lib/marketplace/types";
 import { FORMAT_LABELS } from "@/lib/marketplace/types";
 
@@ -25,14 +29,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const format = params.format as ProductFormat | undefined;
 
   // Build filtered product list
-  let products = PRODUCTS;
-
-  if (q) {
-    products = searchProducts(q);
-  }
+  const [baseProducts, categories] = await Promise.all([
+    q ? searchProducts(q) : getAllProducts(),
+    getCategories(),
+  ]);
+  let products = baseProducts;
 
   if (category) {
-    const cat = CATEGORIES.find(
+    const cat = categories.find(
       (c) => c.slug === category || c.id === category
     );
     if (cat) {
@@ -49,7 +53,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   // Active filter labels for display
   const activeCategory = category
-    ? CATEGORIES.find((c) => c.slug === category || c.id === category)
+    ? categories.find((c) => c.slug === category || c.id === category)
     : undefined;
   const activeFormatLabel = format ? FORMAT_LABELS[format] : undefined;
 

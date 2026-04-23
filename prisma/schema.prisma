@@ -74,17 +74,17 @@ model User {
   updatedAt    DateTime  @updatedAt
   lastLoginAt  DateTime?
 
-  memberships     Membership[]
-  patientProfile  Patient?     @relation("PatientUser")
-  providerProfile Provider?    @relation("ProviderUser")
-  sentMessages    Message[]    @relation("MessageSender")
-  auditLogs       AuditLog[]
-  approvedJobs    AgentJob[]   @relation("JobApprovedBy")
-  notifications   Notification[]
+  memberships             Membership[]
+  patientProfile          Patient?                 @relation("PatientUser")
+  providerProfile         Provider?                @relation("ProviderUser")
+  sentMessages            Message[]                @relation("MessageSender")
+  auditLogs               AuditLog[]
+  approvedJobs            AgentJob[]               @relation("JobApprovedBy")
+  notifications           Notification[]
   communicationPreference CommunicationPreference?
-  signedLabResults     LabResult[]     @relation("LabResultSigner")
-  approvedLabOutreach  LabOutreach[]   @relation("LabOutreachApprover")
-  signedRefills        RefillRequest[] @relation("RefillSigner")
+  signedLabResults        LabResult[]              @relation("LabResultSigner")
+  approvedLabOutreach     LabOutreach[]            @relation("LabOutreachApprover")
+  signedRefills           RefillRequest[]          @relation("RefillSigner")
 }
 
 model Membership {
@@ -142,8 +142,8 @@ model Patient {
   presentingConcerns     String?
   treatmentGoals         String?
   // Clinical safety fields (EMR-113)
-  allergies              String[] @default([]) // e.g. ["Penicillin", "Sulfa", "Latex"]
-  contraindications      String[] @default([]) // e.g. ["MAOIs", "Blood thinners"]
+  allergies              String[]            @default([]) // e.g. ["Penicillin", "Sulfa", "Latex"]
+  contraindications      String[]            @default([]) // e.g. ["MAOIs", "Blood thinners"]
   qualificationStatus    QualificationStatus @default(unknown)
   qualificationExpiresAt DateTime?
   // Soft delete
@@ -185,6 +185,7 @@ model Patient {
   // Marketplace
   orders               Order[]
   productReviews       ProductReview[]
+  cart                 Cart?
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -295,9 +296,9 @@ model Encounter {
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  provider     Provider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient           Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  provider          Provider?          @relation(fields: [providerId], references: [id], onDelete: SetNull)
   notes             Note[]
   documents         Document[]
   claims            Claim[]
@@ -1578,66 +1579,67 @@ enum ProductStatus {
 }
 
 model Product {
-  id                String        @id @default(cuid())
-  organizationId    String
-  name              String
-  slug              String        @unique
-  brand             String
-  description       String
-  shortDescription  String?
-  price             Float
-  compareAtPrice    Float?
-  status            ProductStatus @default(draft)
-  format            String        // tincture, flower, edible, topical, capsule, vape
-  imageUrl          String?
-  images            String[]      @default([])
+  id               String        @id @default(cuid())
+  organizationId   String
+  name             String
+  slug             String        @unique
+  brand            String
+  description      String
+  shortDescription String?
+  price            Float
+  compareAtPrice   Float?
+  status           ProductStatus @default(draft)
+  format           String // tincture, flower, edible, topical, capsule, vape
+  imageUrl         String?
+  images           String[]      @default([])
 
   // Cannabinoid profile
-  thcContent        Float?
-  cbdContent        Float?
-  cbnContent        Float?
-  thcvContent       Float?
-  terpeneProfile    Json?
-  strainType        String?       // indica, sativa, hybrid, n/a
+  thcContent     Float?
+  cbdContent     Float?
+  cbnContent     Float?
+  thcvContent    Float?
+  terpeneProfile Json?
+  strainType     String? // indica, sativa, hybrid, n/a
 
   // Use-case metadata
-  symptoms          String[]      @default([])
-  goals             String[]      @default([])
-  useCases          String[]      @default([])
-  onsetTime         String?
-  duration          String?
+  symptoms  String[] @default([])
+  goals     String[] @default([])
+  useCases  String[] @default([])
+  onsetTime String?
+  duration  String?
 
   // Dosage
-  dosageGuidance    String?
-  beginnerFriendly  Boolean       @default(false)
+  dosageGuidance   String?
+  beginnerFriendly Boolean @default(false)
 
   // Trust
-  labVerified       Boolean       @default(false)
-  coaUrl            String?
-  clinicianPick     Boolean       @default(false)
-  clinicianNote     String?
+  labVerified   Boolean @default(false)
+  coaUrl        String?
+  clinicianPick Boolean @default(false)
+  clinicianNote String?
 
   // Inventory
-  inStock           Boolean       @default(true)
-  inventoryCount    Int           @default(0)
+  inStock        Boolean @default(true)
+  inventoryCount Int     @default(0)
 
   // Ratings
-  averageRating     Float         @default(0)
-  reviewCount       Int           @default(0)
+  averageRating Float @default(0)
+  reviewCount   Int   @default(0)
 
   // Ordering + features
-  sortOrder         Int           @default(0)
-  featured          Boolean       @default(false)
+  sortOrder Int     @default(0)
+  featured  Boolean @default(false)
 
-  deletedAt         DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  variants          ProductVariant[]
-  reviews           ProductReview[]
-  orderItems        OrderItem[]
-  categoryMappings  ProductCategory[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  variants         ProductVariant[]
+  reviews          ProductReview[]
+  orderItems       OrderItem[]
+  cartItems        CartItem[]
+  categoryMappings ProductCategory[]
 
   @@index([organizationId, status])
   @@index([clinicianPick])
@@ -1645,67 +1647,68 @@ model Product {
 }
 
 model ProductVariant {
-  id              String    @id @default(cuid())
-  productId       String
-  name            String
-  upc             String?          // Universal Product Code for product itemization
-  price           Float
-  compareAtPrice  Float?
-  inStock         Boolean   @default(true)
-  inventoryCount  Int       @default(0)
-  sortOrder       Int       @default(0)
-  createdAt       DateTime  @default(now())
+  id             String   @id @default(cuid())
+  productId      String
+  name           String
+  upc            String? // Universal Product Code for product itemization
+  price          Float
+  compareAtPrice Float?
+  inStock        Boolean  @default(true)
+  inventoryCount Int      @default(0)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
 
-  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orderItems      OrderItem[]
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+  cartItems  CartItem[]
 
   @@index([productId])
 }
 
 model MarketplaceCategory {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
-  slug        String    @unique
+  slug        String   @unique
   description String?
-  type        String    @default("standard") // standard, symptom, goal, format
+  type        String   @default("standard") // standard, symptom, goal, format
   imageUrl    String?
   icon        String?
-  sortOrder   Int       @default(0)
+  sortOrder   Int      @default(0)
   parentId    String?
-  createdAt   DateTime  @default(now())
+  createdAt   DateTime @default(now())
 
-  parent      MarketplaceCategory?  @relation("CategoryChildren", fields: [parentId], references: [id])
-  children    MarketplaceCategory[] @relation("CategoryChildren")
-  products    ProductCategory[]
+  parent   MarketplaceCategory?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children MarketplaceCategory[] @relation("CategoryChildren")
+  products ProductCategory[]
 
   @@index([type])
   @@index([parentId])
 }
 
 model ProductCategory {
-  id          String @id @default(cuid())
-  productId   String
-  categoryId  String
+  id         String @id @default(cuid())
+  productId  String
+  categoryId String
 
-  product     Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  category    MarketplaceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  product  Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category MarketplaceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([productId, categoryId])
 }
 
 model ProductReview {
-  id          String    @id @default(cuid())
-  productId   String
-  patientId   String?
-  authorName  String
-  rating      Int
-  title       String?
-  body        String?
-  verified    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  id         String   @id @default(cuid())
+  productId  String
+  patientId  String?
+  authorName String
+  rating     Int
+  title      String?
+  body       String?
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  patient     Patient?  @relation(fields: [patientId], references: [id])
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  patient Patient? @relation(fields: [patientId], references: [id])
 
   @@index([productId, createdAt])
 }
@@ -1733,29 +1736,57 @@ model Order {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  patient         Patient      @relation(fields: [patientId], references: [id])
-  items           OrderItem[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id])
+  items        OrderItem[]
 
   @@index([patientId, createdAt])
   @@index([organizationId, status])
 }
 
 model OrderItem {
-  id          String          @id @default(cuid())
-  orderId     String
-  productId   String
-  variantId   String?
-  quantity    Int
-  unitPrice   Float
-  totalPrice  Float
-  createdAt   DateTime        @default(now())
+  id         String   @id @default(cuid())
+  orderId    String
+  productId  String
+  variantId  String?
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+  createdAt  DateTime @default(now())
 
-  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product     Product         @relation(fields: [productId], references: [id])
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@index([orderId])
+}
+
+// One cart per patient. Items survive browser reload; checkout converts to Order.
+model Cart {
+  id        String   @id @default(cuid())
+  patientId String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  items   CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  variantId String?
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart    Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@unique([cartId, productId, variantId])
+  @@index([cartId])
 }
 
 // --------------------------------------------------------------
@@ -1763,17 +1794,17 @@ model OrderItem {
 // --------------------------------------------------------------
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  type      String   // appointment_reminder, message_received, lab_results, etc.
-  priority  String   @default("normal") // urgent, normal, low
+  type      String // appointment_reminder, message_received, lab_results, etc.
+  priority  String    @default("normal") // urgent, normal, low
   title     String
   body      String
   href      String? // deep link to relevant page
-  read      Boolean  @default(false)
+  read      Boolean   @default(false)
   readAt    DateTime?
   metadata  Json?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1785,12 +1816,12 @@ model Notification {
 // --------------------------------------------------------------
 
 model Referral {
-  id                     String   @id @default(cuid())
+  id                     String    @id @default(cuid())
   organizationId         String
   patientId              String
-  direction              String   // outbound | inbound
-  status                 String   @default("draft") // draft, sent, received, scheduled, completed, cancelled, declined
-  priority               String   @default("routine") // stat, urgent, routine
+  direction              String // outbound | inbound
+  status                 String    @default("draft") // draft, sent, received, scheduled, completed, cancelled, declined
+  priority               String    @default("routine") // stat, urgent, routine
   referringProviderName  String
   referringPracticeName  String
   referredToProviderName String
@@ -1799,16 +1830,16 @@ model Referral {
   referredToPhone        String?
   referredToFax          String?
   reason                 String
-  diagnosisCodes         Json     @default("[]")
+  diagnosisCodes         Json      @default("[]")
   clinicalNotes          String?
-  attachedDocumentIds    Json     @default("[]")
+  attachedDocumentIds    Json      @default("[]")
   sentAt                 DateTime?
   receivedAt             DateTime?
   scheduledDate          DateTime?
   completedAt            DateTime?
   completionNotes        String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -1843,20 +1874,20 @@ model SignedConsent {
 // --------------------------------------------------------------
 
 model StateComplianceForm {
-  id           String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
-  patientId    String
-  encounterId  String?
-  stateCode    String
+  patientId      String
+  encounterId    String?
+  stateCode      String
   formTemplateId String
-  formName     String
-  fields       Json
-  status       String   @default("draft") // draft, complete, submitted
-  signedBy     String?
-  signedAt     DateTime?
-  submittedAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  formName       String
+  fields         Json
+  status         String    @default("draft") // draft, complete, submitted
+  signedBy       String?
+  signedAt       DateTime?
+  submittedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
@@ -1870,15 +1901,15 @@ model StateComplianceForm {
 // --------------------------------------------------------------
 
 model CaregiverInvite {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   patientId       String
   caregiverEmail  String
   caregiverName   String
   relationship    String
-  accessLevel     String   @default("read_only") // read_only, full, emergency_only
-  status          String   @default("invited") // invited, active, revoked, expired
-  caregiverUserId String?  // set when accepted
-  invitedAt       DateTime @default(now())
+  accessLevel     String    @default("read_only") // read_only, full, emergency_only
+  status          String    @default("invited") // invited, active, revoked, expired
+  caregiverUserId String? // set when accepted
+  invitedAt       DateTime  @default(now())
   acceptedAt      DateTime?
   revokedAt       DateTime?
   expiresAt       DateTime?
@@ -1898,7 +1929,7 @@ model SurveySubmission {
   patientId   String
   encounterId String?
   surveyType  String   @default("post_visit")
-  responses   Json     // Array of { questionId, value }
+  responses   Json // Array of { questionId, value }
   npsScore    Int?
   submittedAt DateTime @default(now())
 
@@ -1917,8 +1948,8 @@ model IntakeFormTemplate {
   organizationId String
   name           String
   description    String?
-  sections       Json     // Array of { id, title, description }
-  fields         Json     // Array of IntakeField objects
+  sections       Json // Array of { id, title, description }
+  fields         Json // Array of IntakeField objects
   version        Int      @default(1)
   isDefault      Boolean  @default(false)
   active         Boolean  @default(true)
@@ -1935,13 +1966,13 @@ model IntakeFormTemplate {
 // --------------------------------------------------------------
 
 model CommunicationPreference {
-  id              String  @id @default(cuid())
-  userId          String  @unique
-  smsOptIn        Boolean @default(false)
-  emailFrequency  String  @default("instant") // instant, daily, weekly, off
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  smsOptIn        Boolean  @default(false)
+  emailFrequency  String   @default("instant") // instant, daily, weekly, off
   quietHoursStart String? // "22:00"
   quietHoursEnd   String? // "07:00"
-  preferences     Json    @default("{}") // per-category: { appointments: { email: true, sms: false }, ... }
+  preferences     Json     @default("{}") // per-category: { appointments: { email: true, sms: false }, ... }
   updatedAt       DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1973,11 +2004,11 @@ model LabResult {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  signedBy       User?           @relation("LabResultSigner", fields: [signedById], references: [id])
-  outreach       LabOutreach?
-  monitoringFor  RefillRequest[] @relation("RefillMonitoringLab")
+  patient       Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  signedBy      User?           @relation("LabResultSigner", fields: [signedById], references: [id])
+  outreach      LabOutreach?
+  monitoringFor RefillRequest[] @relation("RefillMonitoringLab")
 
   @@index([organizationId, signedAt])
   @@index([patientId, receivedAt])
@@ -2016,37 +2047,37 @@ model LabOutreach {
 // --------------------------------------------------------------
 
 model RefillRequest {
-  id              String    @id @default(cuid())
-  organizationId  String
-  patientId       String
-  medicationId    String
-  requestedQty    Int
-  requestedDays   Int?
+  id                String    @id @default(cuid())
+  organizationId    String
+  patientId         String
+  medicationId      String
+  requestedQty      Int
+  requestedDays     Int?
   // Pharmacy (denormalized for Phase 1)
-  pharmacyName    String
-  pharmacyPhone   String?
-  pharmacyAddress String?
+  pharmacyName      String
+  pharmacyPhone     String?
+  pharmacyAddress   String?
   // Copilot context
   lastRelevantLabId String? // optional link to the lab the copilot thinks matters
   // Copilot outputs
   copilotSuggestion String? // "approve" | "deny" | "review"
-  safetyFlags     Json      @default("[]") // string[] of flag codes
-  rationale       String? // one-liner from the copilot
+  safetyFlags       Json      @default("[]") // string[] of flag codes
+  rationale         String? // one-liner from the copilot
   // Lifecycle
-  receivedAt      DateTime  @default(now())
-  status          String    @default("new") // "new" | "flagged" | "approved" | "sent" | "denied"
-  signedById      String?
-  signedAt        DateTime?
-  deniedReason    String?
-  faxPdfUrl       String? // populated by Phase 1 fax-PDF stub on sign
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  receivedAt        DateTime  @default(now())
+  status            String    @default("new") // "new" | "flagged" | "approved" | "sent" | "denied"
+  signedById        String?
+  signedAt          DateTime?
+  deniedReason      String?
+  faxPdfUrl         String? // populated by Phase 1 fax-PDF stub on sign
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  patient         Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  medication      PatientMedication  @relation(fields: [medicationId], references: [id], onDelete: Cascade)
-  signedBy        User?              @relation("RefillSigner", fields: [signedById], references: [id])
-  lastRelevantLab LabResult?         @relation("RefillMonitoringLab", fields: [lastRelevantLabId], references: [id])
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization    Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  medication      PatientMedication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  signedBy        User?             @relation("RefillSigner", fields: [signedById], references: [id])
+  lastRelevantLab LabResult?        @relation("RefillMonitoringLab", fields: [lastRelevantLabId], references: [id])
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
