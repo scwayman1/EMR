@@ -9,7 +9,10 @@ import { RatingStars } from "@/components/marketplace/RatingStars";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { getProductBySlug, getRelatedProducts } from "@/lib/marketplace/data";
+import {
+  getProductBySlug,
+  getRelatedProducts,
+} from "@/lib/marketplace/queries";
 import { FORMAT_LABELS } from "@/lib/marketplace/types";
 import { resolveAgeGate } from "@/server/marketplace/age-gate";
 
@@ -25,7 +28,7 @@ export async function generateMetadata({
   params,
 }: SlugPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return { title: "Product Not Found" };
   return {
     title: product.name,
@@ -39,7 +42,7 @@ export async function generateMetadata({
 
 export default async function ProductDetailPage({ params }: SlugPageProps) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
   const requires21Plus = product.requires21Plus ?? false;
 
@@ -119,7 +122,7 @@ export default async function ProductDetailPage({ params }: SlugPageProps) {
     );
   }
 
-  const relatedProducts = getRelatedProducts(product.id);
+  const relatedProducts = await getRelatedProducts(product.id);
   const formatLabel = FORMAT_LABELS[product.format] ?? product.format;
   const strainLabel =
     product.strainType && product.strainType !== "n/a"

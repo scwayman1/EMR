@@ -61,6 +61,51 @@ import { qualityImprovementAgent } from "./quality-improvement-agent";
 // Mission Control — Phase 1 (MALLIK-006 + MALLIK-007)
 import { labSummarizerAgent } from "./lab-summarizer-agent";
 import { refillCopilotAgent } from "./refill-copilot-agent";
+// Commerce Fleet — EMR-17 (20 agents, stub-shipped 2026-04-23)
+import { productRecommenderAgent } from "./commerce/product-recommender-agent";
+import { bundleSuggesterAgent } from "./commerce/bundle-suggester-agent";
+import { crossSellRankerAgent } from "./commerce/cross-sell-ranker-agent";
+import { searchPersonalizerAgent } from "./commerce/search-personalizer-agent";
+import { reviewModeratorAgent } from "./commerce/review-moderator-agent";
+import { productQCAgent } from "./commerce/product-qc-agent";
+import { seoMetadataAgent } from "./commerce/seo-metadata-agent";
+import { categoryCuratorAgent } from "./commerce/category-curator-agent";
+import { pricingAnomalyAgent } from "./commerce/pricing-anomaly-agent";
+import { restockPredictorAgent } from "./commerce/restock-predictor-agent";
+import { waitlistNotifierAgent } from "./commerce/waitlist-notifier-agent";
+import { abandonedCartRescuerAgent } from "./commerce/abandoned-cart-rescuer-agent";
+import { orderFraudDetectorAgent } from "./commerce/order-fraud-detector-agent";
+import { returnRiskScorerAgent } from "./commerce/return-risk-scorer-agent";
+import { pricingOptimizerAgent } from "./commerce/pricing-optimizer-agent";
+import { promoGeneratorAgent } from "./commerce/promo-generator-agent";
+import { cannabisComplianceGateAgent } from "./commerce/cannabis-compliance-gate-agent";
+import { cannabisTaxCalculatorAgent } from "./commerce/cannabis-tax-calculator-agent";
+import { shippingRouterAgent } from "./commerce/shipping-router-agent";
+import { vendorPerformanceScorerAgent } from "./commerce/vendor-performance-scorer-agent";
+// Research & Insights Fleet — EMR-269 (10 agents, 2026-04-23)
+import { cohortBuilderAgent } from "./research/cohort-builder-agent";
+import { efficacyComparatorAgent } from "./research/efficacy-comparator-agent";
+import { outcomeDigesterAgent } from "./research/outcome-digester-agent";
+import { rweBundlerAgent } from "./research/rwe-bundler-agent";
+import { deidentifierAgent } from "./research/deidentifier-agent";
+import { adverseEventScannerAgent } from "./research/adverse-event-scanner-agent";
+import { protocolRecommenderAgent } from "./research/protocol-recommender-agent";
+import { insuranceEvidenceBundlerAgent } from "./research/insurance-evidence-bundler-agent";
+import { publicationReadinessScorerAgent } from "./research/publication-readiness-scorer-agent";
+import { researchPartnerMatcherAgent } from "./research/research-partner-matcher-agent";
+// Cannabis Pharmacology Fleet — EMR-272 (12 agents, 2026-04-23)
+import { terpeneProfileMatcherAgent } from "./pharmacology/terpene-profile-matcher-agent";
+import { cannabinoidInteractionCheckerAgent } from "./pharmacology/cannabinoid-interaction-checker-agent";
+import { routeOfAdministrationAdvisorAgent } from "./pharmacology/route-of-administration-advisor-agent";
+import { pkPdCalculatorAgent } from "./pharmacology/pk-pd-calculator-agent";
+import { titrationSchedulerAgent } from "./pharmacology/titration-scheduler-agent";
+import { entourageAnalystAgent } from "./pharmacology/entourage-analyst-agent";
+import { drugCannabisInteractionCheckerAgent } from "./pharmacology/drug-cannabis-interaction-checker-agent";
+import { toleranceTrackerAgent } from "./pharmacology/tolerance-tracker-agent";
+import { washoutPlannerAgent } from "./pharmacology/washout-planner-agent";
+import { contraindicationSweeperAgent } from "./pharmacology/contraindication-sweeper-agent";
+import { bioequivalenceMapperAgent } from "./pharmacology/bioequivalence-mapper-agent";
+import { pregnancyLactationAdvisorAgent } from "./pharmacology/pregnancy-lactation-advisor-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -131,7 +176,106 @@ export const agentRegistry = {
   // Mission Control — Phase 1 (MALLIK-006 + MALLIK-007)
   labSummarizer: labSummarizerAgent,
   refillCopilot: refillCopilotAgent,
+  // Commerce Fleet — EMR-17 (20 agents stub-shipped 2026-04-23)
+  productRecommender: productRecommenderAgent,
+  bundleSuggester: bundleSuggesterAgent,
+  crossSellRanker: crossSellRankerAgent,
+  searchPersonalizer: searchPersonalizerAgent,
+  reviewModerator: reviewModeratorAgent,
+  productQC: productQCAgent,
+  seoMetadata: seoMetadataAgent,
+  categoryCurator: categoryCuratorAgent,
+  pricingAnomaly: pricingAnomalyAgent,
+  restockPredictor: restockPredictorAgent,
+  waitlistNotifier: waitlistNotifierAgent,
+  abandonedCartRescuer: abandonedCartRescuerAgent,
+  orderFraudDetector: orderFraudDetectorAgent,
+  returnRiskScorer: returnRiskScorerAgent,
+  pricingOptimizer: pricingOptimizerAgent,
+  promoGenerator: promoGeneratorAgent,
+  cannabisComplianceGate: cannabisComplianceGateAgent,
+  cannabisTaxCalculator: cannabisTaxCalculatorAgent,
+  shippingRouter: shippingRouterAgent,
+  vendorPerformanceScorer: vendorPerformanceScorerAgent,
+  // Research & Insights Fleet — EMR-269 (10 agents, 2026-04-23)
+  cohortBuilder: cohortBuilderAgent,
+  efficacyComparator: efficacyComparatorAgent,
+  outcomeDigester: outcomeDigesterAgent,
+  rweBundler: rweBundlerAgent,
+  deidentifier: deidentifierAgent,
+  adverseEventScanner: adverseEventScannerAgent,
+  protocolRecommender: protocolRecommenderAgent,
+  insuranceEvidenceBundler: insuranceEvidenceBundlerAgent,
+  publicationReadinessScorer: publicationReadinessScorerAgent,
+  researchPartnerMatcher: researchPartnerMatcherAgent,
+  // Cannabis Pharmacology Fleet — EMR-272 (12 agents, 2026-04-23)
+  terpeneProfileMatcher: terpeneProfileMatcherAgent,
+  cannabinoidInteractionChecker: cannabinoidInteractionCheckerAgent,
+  routeOfAdministrationAdvisor: routeOfAdministrationAdvisorAgent,
+  pkPdCalculator: pkPdCalculatorAgent,
+  titrationScheduler: titrationSchedulerAgent,
+  entourageAnalyst: entourageAnalystAgent,
+  drugCannabisInteractionChecker: drugCannabisInteractionCheckerAgent,
+  toleranceTracker: toleranceTrackerAgent,
+  washoutPlanner: washoutPlannerAgent,
+  contraindicationSweeper: contraindicationSweeperAgent,
+  bioequivalenceMapper: bioequivalenceMapperAgent,
+  pregnancyLactationAdvisor: pregnancyLactationAdvisorAgent,
 } satisfies Record<string, Agent<any, any>>;
+
+/** Agents tagged as "commerce" — used by the marketplace ops console. */
+export const COMMERCE_AGENT_NAMES: AgentName[] = [
+  "productRecommender",
+  "bundleSuggester",
+  "crossSellRanker",
+  "searchPersonalizer",
+  "reviewModerator",
+  "productQC",
+  "seoMetadata",
+  "categoryCurator",
+  "pricingAnomaly",
+  "restockPredictor",
+  "waitlistNotifier",
+  "abandonedCartRescuer",
+  "orderFraudDetector",
+  "returnRiskScorer",
+  "pricingOptimizer",
+  "promoGenerator",
+  "cannabisComplianceGate",
+  "cannabisTaxCalculator",
+  "shippingRouter",
+  "vendorPerformanceScorer",
+];
+
+/** Agents tagged as "research" — used by the research portal + insights console. */
+export const RESEARCH_AGENT_NAMES: AgentName[] = [
+  "cohortBuilder",
+  "efficacyComparator",
+  "outcomeDigester",
+  "rweBundler",
+  "deidentifier",
+  "adverseEventScanner",
+  "protocolRecommender",
+  "insuranceEvidenceBundler",
+  "publicationReadinessScorer",
+  "researchPartnerMatcher",
+];
+
+/** Agents tagged as "pharmacology" — used by the prescribe / titrate surfaces. */
+export const PHARMACOLOGY_AGENT_NAMES: AgentName[] = [
+  "terpeneProfileMatcher",
+  "cannabinoidInteractionChecker",
+  "routeOfAdministrationAdvisor",
+  "pkPdCalculator",
+  "titrationScheduler",
+  "entourageAnalyst",
+  "drugCannabisInteractionChecker",
+  "toleranceTracker",
+  "washoutPlanner",
+  "contraindicationSweeper",
+  "bioequivalenceMapper",
+  "pregnancyLactationAdvisor",
+];
 
 export type AgentName = keyof typeof agentRegistry;
 

@@ -160,7 +160,15 @@ export function leafjourneyPriceBasis(rawMonthlyCostUsd: number): "floor" | "key
 // tier drives the sensible starting assignment when a practice hasn't set
 // an override. Token estimates are calibrated from observed traffic.
 
-export type AgentCategory = "clinical" | "patient" | "billing" | "operations" | "safety";
+export type AgentCategory =
+  | "clinical"
+  | "patient"
+  | "billing"
+  | "operations"
+  | "safety"
+  | "commerce"
+  | "research"
+  | "pharmacology";
 
 export interface AgentCatalogEntry {
   /** Must match a key in agentRegistry (src/lib/agents/index.ts). */
@@ -242,6 +250,57 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   { id: "contentCreation", displayName: "Content Creation", description: "Marketing + education content drafts.", category: "operations", defaultTier: "balanced", estimatedTokensPerMonth: 80_000 },
   { id: "inventoryAlert", displayName: "Inventory Alert", description: "Supplies + consumables low-stock.", category: "operations", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
   { id: "qualityImprovement", displayName: "Quality Improvement", description: "QI projects + MIPS readiness.", category: "operations", defaultTier: "balanced", estimatedTokensPerMonth: 80_000 },
+
+  // Commerce (EMR-17 marketplace fleet — 20 agents shipped as stubs on
+  // 2026-04-23; full logic rolls out ticket-by-ticket)
+  { id: "productRecommender", displayName: "Product Recommender", description: "Per-patient marketplace recommendations, outcome-weighted (EMR-230).", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 180_000, qualitySensitive: true },
+  { id: "bundleSuggester", displayName: "Bundle Suggester", description: "Suggests themed product bundles from co-consumption.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 60_000 },
+  { id: "crossSellRanker", displayName: "Cross-Sell Ranker", description: "Frequently-bought-with ranking from OrderItem co-occurrence.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
+  { id: "searchPersonalizer", displayName: "Search Personalizer", description: "Reranks search results against patient context.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 90_000 },
+  { id: "reviewModerator", displayName: "Review Moderator", description: "Flags product reviews for spam, fake content, or harmful claims.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 60_000, qualitySensitive: true },
+  { id: "productQC", displayName: "Product QC", description: "Audits product catalog rows for missing or stale metadata.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "seoMetadata", displayName: "SEO Metadata", description: "Generates meta-title, meta-description, and alt text per product.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 80_000 },
+  { id: "categoryCurator", displayName: "Category Curator", description: "Suggests marketplace category additions and removals.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "pricingAnomaly", displayName: "Pricing Anomaly", description: "Flags inverted compareAt, zero price, deep-markdown outliers.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 30_000 },
+  { id: "restockPredictor", displayName: "Restock Predictor", description: "Forecasts per-variant stock-out dates from velocity.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "waitlistNotifier", displayName: "Waitlist Notifier", description: "Notifies patients waitlisted on a variant when it returns to stock.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 30_000 },
+  { id: "abandonedCartRescuer", displayName: "Abandoned Cart Rescuer", description: "Surfaces idle carts for follow-up outreach.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
+  { id: "orderFraudDetector", displayName: "Order Fraud Detector", description: "Scores new orders for fraud risk before fulfillment.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 70_000, qualitySensitive: true },
+  { id: "returnRiskScorer", displayName: "Return Risk Scorer", description: "Predicts return probability for an order before fulfillment.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "pricingOptimizer", displayName: "Pricing Optimizer", description: "Suggests price adjustments from demand + inventory signals.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 80_000 },
+  { id: "promoGenerator", displayName: "Promo Generator", description: "Generates targeted marketplace promos per patient intent.", category: "commerce", defaultTier: "balanced", estimatedTokensPerMonth: 70_000 },
+  { id: "cannabisComplianceGate", displayName: "Cannabis Compliance Gate", description: "Verifies medical auth, state caps, and age before fulfillment.", category: "commerce", defaultTier: "premium", estimatedTokensPerMonth: 100_000, qualitySensitive: true },
+  { id: "cannabisTaxCalculator", displayName: "Cannabis Tax Calculator", description: "Computes cannabis excise + retail tax per order destination.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 50_000 },
+  { id: "shippingRouter", displayName: "Shipping Router", description: "Picks a fulfillment carrier per order destination + product profile.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+  { id: "vendorPerformanceScorer", displayName: "Vendor Performance Scorer", description: "Scores marketplace brands on fulfillment + review performance.", category: "commerce", defaultTier: "budget", estimatedTokensPerMonth: 40_000 },
+
+  // Research & Insights (EMR-269 — 10-agent fleet mining outcome + regimen
+  // data for cohort analytics, RWE, reimbursement, and publication)
+  { id: "cohortBuilder", displayName: "Cohort Builder", description: "Filters patients into research cohorts with baseline metric summaries.", category: "research", defaultTier: "budget", estimatedTokensPerMonth: 30_000 },
+  { id: "efficacyComparator", displayName: "Efficacy Comparator", description: "Head-to-head outcome comparison across two cohorts.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 40_000, qualitySensitive: true },
+  { id: "outcomeDigester", displayName: "Outcome Digester", description: "Narrative cohort rollup for partner + investor updates.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 90_000, qualitySensitive: true },
+  { id: "rweBundler", displayName: "RWE Bundler", description: "Real-world-evidence dossier for pharma partnerships.", category: "research", defaultTier: "premium", estimatedTokensPerMonth: 80_000, qualitySensitive: true },
+  { id: "deidentifier", displayName: "De-identifier", description: "HIPAA Safe-Harbor de-identified dataset reference.", category: "research", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
+  { id: "adverseEventScanner", displayName: "Adverse Event Scanner", description: "Flags unusual AE clusters across a cohort or product.", category: "research", defaultTier: "premium", estimatedTokensPerMonth: 60_000, qualitySensitive: true },
+  { id: "protocolRecommender", displayName: "Protocol Recommender", description: "Suggests regimen protocols per condition from outcome clusters.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 70_000, qualitySensitive: true },
+  { id: "insuranceEvidenceBundler", displayName: "Insurance Evidence Bundler", description: "Assembles patient evidence for insurance submissions.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 50_000 },
+  { id: "publicationReadinessScorer", displayName: "Publication Readiness", description: "Scores a cohort for academic publication readiness.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 40_000 },
+  { id: "researchPartnerMatcher", displayName: "Research Partner Matcher", description: "Matches cohorts to academic, pharma, and regulator RFPs.", category: "research", defaultTier: "balanced", estimatedTokensPerMonth: 30_000 },
+
+  // Pharmacology (EMR-272 — 12-agent cannabis pharmacology fleet under the
+  // BIG EMR-146 module)
+  { id: "terpeneProfileMatcher", displayName: "Terpene Profile Matcher", description: "Maps a product's terpene profile to structure/function therapeutic hints.", category: "pharmacology", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
+  { id: "cannabinoidInteractionChecker", displayName: "Cannabinoid Interaction Checker", description: "Flags interactions within a multi-cannabinoid formulation at clinical dose.", category: "pharmacology", defaultTier: "premium", estimatedTokensPerMonth: 60_000, qualitySensitive: true },
+  { id: "routeOfAdministrationAdvisor", displayName: "Route of Administration", description: "Recommends route given indication + onset + duration needs.", category: "pharmacology", defaultTier: "balanced", estimatedTokensPerMonth: 40_000 },
+  { id: "pkPdCalculator", displayName: "PK/PD Calculator", description: "Estimates PK/PD parameters for cannabinoid + route + dose.", category: "pharmacology", defaultTier: "balanced", estimatedTokensPerMonth: 30_000, qualitySensitive: true },
+  { id: "titrationScheduler", displayName: "Titration Scheduler", description: "Generates up/down-titration ladder between starting and target dose.", category: "pharmacology", defaultTier: "balanced", estimatedTokensPerMonth: 50_000, qualitySensitive: true },
+  { id: "entourageAnalyst", displayName: "Entourage Analyst", description: "Advises full-spectrum vs broad-spectrum vs isolate for an indication.", category: "pharmacology", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
+  { id: "drugCannabisInteractionChecker", displayName: "Drug × Cannabis Interactions", description: "Flags interactions between patient medications and cannabinoid therapy.", category: "pharmacology", defaultTier: "premium", estimatedTokensPerMonth: 80_000, qualitySensitive: true },
+  { id: "toleranceTracker", displayName: "Tolerance Tracker", description: "Detects developing tolerance across recent DoseLog + OutcomeLog.", category: "pharmacology", defaultTier: "balanced", estimatedTokensPerMonth: 40_000 },
+  { id: "washoutPlanner", displayName: "Washout Planner", description: "Plans cannabinoid washout when switching formulations.", category: "pharmacology", defaultTier: "balanced", estimatedTokensPerMonth: 30_000 },
+  { id: "contraindicationSweeper", displayName: "Contraindication Sweeper", description: "Sweeps the catalog for products conflicting with a patient's contraindications.", category: "pharmacology", defaultTier: "balanced", estimatedTokensPerMonth: 40_000, qualitySensitive: true },
+  { id: "bioequivalenceMapper", displayName: "Bioequivalence Mapper", description: "Converts a cannabinoid dose between routes of administration.", category: "pharmacology", defaultTier: "budget", estimatedTokensPerMonth: 20_000 },
+  { id: "pregnancyLactationAdvisor", displayName: "Pregnancy/Lactation Advisor", description: "Cautious framing for cannabinoid use across pregnancy and lactation.", category: "pharmacology", defaultTier: "premium", estimatedTokensPerMonth: 30_000, qualitySensitive: true },
 ];
 
 /** Per-agent override. Undefined modelId → use the practice default. */
@@ -281,4 +340,7 @@ export const CATEGORY_LABELS: Record<AgentCategory, string> = {
   safety: "Safety & guardrails",
   billing: "Revenue cycle",
   operations: "Operations",
+  commerce: "Marketplace",
+  research: "Research & insights",
+  pharmacology: "Pharmacology",
 };
