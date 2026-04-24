@@ -47,10 +47,10 @@ export default function HomePage() {
             Education
           </Link>
           <Link
-            href="/store"
+            href="/leafmart"
             className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
-            Store
+            Leafmart
           </Link>
           <Link
             href="/login"
