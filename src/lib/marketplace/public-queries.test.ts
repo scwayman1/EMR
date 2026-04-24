@@ -59,6 +59,7 @@ function productRow(overrides: Record<string, unknown> = {}) {
     featured: true,
     organizationId: "org_1",
     deletedAt: null,
+    requires21Plus: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     variants: [],
@@ -99,14 +100,23 @@ describe("public-queries: field stripping", () => {
 });
 
 describe("public-queries: filter criteria", () => {
-  it("enforces status=active + deletedAt=null on all list queries", async () => {
+  it("enforces status=active + deletedAt=null + requires21Plus=false on all list queries", async () => {
     hoisted.mockPrisma.product.findMany.mockResolvedValue([]);
     await getAllPublicProducts();
     const where = hoisted.mockPrisma.product.findMany.mock.calls[0][0].where;
     expect(where.status).toBe("active");
     expect(where.deletedAt).toBeNull();
+    // EMR-245: 21+ products hidden from unauthenticated public surface.
+    expect(where.requires21Plus).toBe(false);
     // NOT org-scoped — Leafmart is platform-wide.
     expect(where.organizationId).toBeUndefined();
+  });
+
+  it("hides 21+ products from the public search query (EMR-245 age gate)", async () => {
+    hoisted.mockPrisma.product.findMany.mockResolvedValue([]);
+    await searchPublicProducts("sleep");
+    const where = hoisted.mockPrisma.product.findMany.mock.calls[0][0].where;
+    expect(where.requires21Plus).toBe(false);
   });
 
   it("featured query filters to featured=true", async () => {

@@ -98,6 +98,7 @@ function mapPublicProduct(p: PublicProductRow): MarketplaceProduct {
     clinicianPick: p.clinicianPick,
     // Clinician note stripped on the public surface — clinician-internal.
     clinicianNote: undefined,
+    requires21Plus: p.requires21Plus,
     inStock: p.inStock,
     averageRating: p.averageRating,
     reviewCount: p.reviewCount,
@@ -111,6 +112,11 @@ function mapPublicProduct(p: PublicProductRow): MarketplaceProduct {
 const PUBLIC_PRODUCT_WHERE = {
   status: ProductStatus.active,
   deletedAt: null,
+  // EMR-245: age-gated products (>0.3% delta-9 THC) are hidden from the
+  // unauthenticated public surface entirely. Visitors see them only after
+  // sign-in where the age-gate flow (src/server/marketplace/age-gate.ts)
+  // runs and verifies DOB.
+  requires21Plus: false,
 } as const;
 
 export async function getPublicFeaturedProducts(
