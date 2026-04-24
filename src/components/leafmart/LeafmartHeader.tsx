@@ -24,10 +24,16 @@ export function LeafmartHeader() {
 
         <nav className="flex items-center gap-0.5 md:gap-1">
           <Link
-            href="/leafmart/products"
+            href="/leafmart/shop"
             className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
           >
             Shop
+          </Link>
+          <Link
+            href="/leafmart/products"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors hidden md:inline"
+          >
+            All products
           </Link>
           <Link
             href="/leafmart/about"
@@ -42,10 +48,10 @@ export function LeafmartHeader() {
             Partner with us
           </Link>
           <Link
-            href="/education"
-            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
+            href="/leafmart/faq"
+            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors hidden md:inline"
           >
-            Education
+            FAQ
           </Link>
           <Link
             href="/login"
@@ -53,9 +59,9 @@ export function LeafmartHeader() {
           >
             Sign in
           </Link>
-          <Link href="/portal/shop" className="ml-1">
+          <Link href="/leafmart/shop" className="ml-1">
             <Button size="sm" variant="primary">
-              Shop
+              Start browsing
             </Button>
           </Link>
         </nav>
