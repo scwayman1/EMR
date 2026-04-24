@@ -97,16 +97,36 @@ export default async function LeafmartHomePage() {
               helps.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/leafmart/products">
+              <Link href="/leafmart/shop">
                 <Button size="lg" variant="primary">
-                  Browse products
+                  Shop by what you need
                 </Button>
               </Link>
-              <Link href="/leafmart/about">
+              <Link href="/leafmart/products">
                 <Button size="lg" variant="secondary">
-                  How it works
+                  See all products
                 </Button>
               </Link>
+            </div>
+
+            {/* Quick-browse chip row */}
+            <div className="mt-10 flex flex-wrap gap-2 max-w-2xl">
+              {[
+                { label: "Sleep", slug: "sleep" },
+                { label: "Pain support", slug: "pain-support" },
+                { label: "Calm", slug: "calm" },
+                { label: "Focus", slug: "focus" },
+                { label: "Recovery", slug: "recovery" },
+                { label: "Energy", slug: "energy" },
+              ].map((c) => (
+                <Link
+                  key={c.slug}
+                  href={`/leafmart/category/${c.slug}`}
+                  className="inline-flex items-center rounded-full border border-border bg-surface/80 px-3 py-1 text-xs font-medium text-text-muted hover:text-text hover:bg-surface transition-colors"
+                >
+                  {c.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
@@ -172,6 +192,33 @@ export default async function LeafmartHomePage() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* ── Clinician's note ───────────────────────────────── */}
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 py-10">
+        <div className="rounded-2xl border border-border bg-bg-subtle p-8 md:p-12 relative overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="absolute -top-10 -right-10 text-[160px] font-display text-accent-soft select-none"
+          >
+            &ldquo;
+          </div>
+          <p className="text-[11px] uppercase tracking-wider text-accent mb-4 relative">
+            A note from our care team
+          </p>
+          <blockquote className="relative">
+            <p className="font-display text-xl md:text-2xl tracking-tight text-text leading-snug max-w-3xl">
+              A good cannabis store doesn&apos;t sell you what&apos;s popular
+              — it sells you what&apos;s <em className="text-accent">right</em>.
+              Every product on Leafmart is here because one of us would
+              reach for it in clinic. Nothing here is paid placement.
+              Nothing here is untested.
+            </p>
+            <footer className="mt-4 text-sm text-text-muted relative">
+              — The Leafjourney clinical team
+            </footer>
+          </blockquote>
+        </div>
       </section>
 
       {/* ── How it works ───────────────────────────────────── */}
