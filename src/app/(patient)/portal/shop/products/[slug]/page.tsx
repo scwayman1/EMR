@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageShell } from "@/components/shell/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RatingStars } from "@/components/marketplace/RatingStars";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
+import { getCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/db/prisma";
 import {
   getProductBySlug,
   getRelatedProducts,
 } from "@/lib/marketplace/queries";
 import { FORMAT_LABELS } from "@/lib/marketplace/types";
+import { resolveAgeGate } from "@/server/marketplace/age-gate";
 
 // ---------------------------------------------------------------------------
 // Metadata
@@ -41,6 +44,83 @@ export default async function ProductDetailPage({ params }: SlugPageProps) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) notFound();
+  const requires21Plus = product.requires21Plus ?? false;
+
+  const user = await getCurrentUser();
+  if (requires21Plus && !user) {
+    redirect(`/login?next=${encodeURIComponent(`/portal/shop/products/${slug}`)}`);
+  }
+
+  const patient = user
+    ? await prisma.patient.findFirst({
+        where: { userId: user.id, deletedAt: null },
+        select: { dateOfBirth: true, state: true },
+      })
+    : null;
+
+  const ageGate = resolveAgeGate({
+    requires21Plus,
+    isAuthenticated: !!user,
+    dateOfBirth: patient?.dateOfBirth,
+    destinationState: patient?.state,
+  });
+
+  if (requires21Plus && ageGate.status === "blocked_underage") {
+    return (
+      <PageShell maxWidth="max-w-[680px]">
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <Badge tone="warning">Not eligible</Badge>
+            <h1 className="text-2xl font-semibold">This product is restricted to adults 21+</h1>
+            <p className="text-sm text-text-muted">{ageGate.message}</p>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  if (requires21Plus && ageGate.status === "blocked_state") {
+    return (
+      <PageShell maxWidth="max-w-[680px]">
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <Badge tone="warning">State restriction</Badge>
+            <h1 className="text-2xl font-semibold">Shipping is restricted for your delivery state</h1>
+            <p className="text-sm text-text-muted">{ageGate.message}</p>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
+
+  if (requires21Plus && ageGate.status === "needs_dob") {
+    return (
+      <PageShell maxWidth="max-w-[680px]">
+        <Card>
+          <CardContent className="pt-6 space-y-4">
+            <Badge tone="accent">21+ verification required</Badge>
+            <h1 className="text-2xl font-semibold">Confirm your date of birth to continue</h1>
+            <p className="text-sm text-text-muted">
+              We only ask this once. Your date of birth is stored to enforce legal age requirements.
+            </p>
+            <form action="/api/marketplace/age-gate/confirm" method="post" className="space-y-3">
+              <input
+                type="date"
+                name="dob"
+                required
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
+                aria-label="Date of birth"
+              />
+              <input type="hidden" name="redirectTo" value={`/portal/shop/products/${slug}`} />
+              <Button type="submit" variant="primary" className="w-full">
+                Confirm and continue
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </PageShell>
+    );
+  }
 
   const relatedProducts = await getRelatedProducts(product.id);
   const formatLabel = FORMAT_LABELS[product.format] ?? product.format;

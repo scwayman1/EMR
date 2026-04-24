@@ -78,6 +78,7 @@ function mapProduct(p: ProductRow): MarketplaceProduct {
     coaUrl: p.coaUrl ?? undefined,
     clinicianPick: p.clinicianPick,
     clinicianNote: p.clinicianNote ?? undefined,
+    requires21Plus: p.requires21Plus,
     inStock: p.inStock,
     averageRating: p.averageRating,
     reviewCount: p.reviewCount,

@@ -61,6 +61,8 @@ model Organization {
   intakeTemplates  IntakeFormTemplate[]
   products         Product[]
   orders           Order[]
+  vendors          Vendor[]
+  vendorDocuments  VendorDocument[]
 }
 
 model User {
@@ -129,6 +131,7 @@ model Patient {
   firstName              String
   lastName               String
   dateOfBirth            DateTime?
+  ageVerifiedAt          DateTime?
   email                  String?
   phone                  String?
   addressLine1           String?
@@ -1583,6 +1586,31 @@ enum ProductStatus {
   out_of_stock
 }
 
+enum VendorType {
+  hemp_brand
+  licensed_dispensary
+}
+
+enum VendorStatus {
+  pending
+  active
+  suspended
+  offboarded
+}
+
+enum VendorDocumentType {
+  insurance
+  w9
+  coa
+}
+
+enum VendorDocumentStatus {
+  missing
+  submitted
+  approved
+  rejected
+}
+
 model Product {
   id               String        @id @default(cuid())
   organizationId   String
@@ -1618,10 +1646,11 @@ model Product {
   beginnerFriendly Boolean @default(false)
 
   // Trust
-  labVerified   Boolean @default(false)
-  coaUrl        String?
-  clinicianPick Boolean @default(false)
-  clinicianNote String?
+  labVerified    Boolean @default(false)
+  coaUrl         String?
+  clinicianPick  Boolean @default(false)
+  clinicianNote  String?
+  requires21Plus Boolean @default(false)
 
   // Inventory
   inStock        Boolean @default(true)
@@ -1650,6 +1679,47 @@ model Product {
   @@index([organizationId, status])
   @@index([clinicianPick])
   @@index([featured])
+}
+
+model Vendor {
+  id                       String       @id @default(cuid())
+  organizationId           String
+  slug                     String       @unique
+  name                     String
+  vendorType               VendorType
+  categories               String[]     @default([])
+  productLines             String[]     @default([])
+  takeRatePct              Float        @default(0.10)
+  foundingPartnerFlag      Boolean      @default(false)
+  foundingPartnerExpiresAt DateTime?
+  payoutSchedule           String       @default("weekly")
+  reservePct               Float?       @default(0.10)
+  reserveDays              Int?         @default(14)
+  status                   VendorStatus @default(pending)
+  createdAt                DateTime     @default(now())
+  updatedAt                DateTime     @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documents    VendorDocument[]
+
+  @@index([organizationId, status])
+}
+
+model VendorDocument {
+  id             String               @id @default(cuid())
+  organizationId String
+  vendorId       String
+  documentType   VendorDocumentType
+  fileUrl        String?
+  status         VendorDocumentStatus @default(missing)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vendor       Vendor       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, documentType])
+  @@index([organizationId, status])
 }
 
 model ProductVariant {
