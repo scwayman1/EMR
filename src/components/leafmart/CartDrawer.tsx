@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
+import { ProductSilhouette } from "./ProductSilhouette";
 
 export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, subtotal } = useCart();
@@ -65,18 +66,9 @@ export function CartDrawer() {
                 <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
                   <path
                     d="M6 9h20l-2 14a3 3 0 0 1-3 2.6H11A3 3 0 0 1 8 23L6 9z"
-                    fill="none"
-                    stroke="var(--leaf)"
-                    strokeWidth="1.6"
-                    strokeLinejoin="round"
+                    fill="none" stroke="var(--leaf)" strokeWidth="1.6" strokeLinejoin="round"
                   />
-                  <path
-                    d="M11 9V7a5 5 0 0 1 10 0v2"
-                    fill="none"
-                    stroke="var(--leaf)"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
+                  <path d="M11 9V7a5 5 0 0 1 10 0v2" fill="none" stroke="var(--leaf)" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
               </div>
               <p className="font-display text-[22px] font-medium text-[var(--ink)]">
@@ -96,17 +88,15 @@ export function CartDrawer() {
           ) : (
             <ul className="divide-y divide-[var(--border)]">
               {items.map(({ product, quantity }) => (
-                <li key={product.slug} className="px-6 py-5 flex gap-4">
-                  <div
-                    className="w-[68px] h-[68px] rounded-2xl flex-shrink-0 flex items-center justify-center"
-                    style={{ background: product.bg }}
-                  >
-                    <span
-                      className="font-display text-[18px] font-medium"
-                      style={{ color: product.deep }}
-                    >
-                      {product.name.slice(0, 1)}
-                    </span>
+                <li key={product.slug} className="px-6 py-5 flex gap-4 animate-[fade-in_0.3s_ease-out]">
+                  {/* Product silhouette thumbnail */}
+                  <div className="w-[72px] h-[72px] rounded-2xl flex-shrink-0 overflow-hidden">
+                    <ProductSilhouette
+                      shape={product.shape}
+                      bg={product.bg}
+                      deep={product.deep}
+                      height={72}
+                    />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="eyebrow text-[var(--text-soft)] mb-1">{product.partner}</p>

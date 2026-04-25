@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
+import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 
 const TAX_RATE = 0.0875;
 const STEPS = ["Contact", "Shipping", "Payment", "Confirmation"] as const;
@@ -96,6 +97,7 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const [step, setStep] = useState<StepIndex>(0);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [contact, setContact] = useState<ContactInfo>({ email: "", phone: "" });
   const [shipping, setShipping] = useState<ShippingInfo>({
     firstName: "",
@@ -166,11 +168,15 @@ export default function CheckoutPage() {
     if (step === 2) {
       if (!validatePayment()) return;
       // mock processing — never actually charge
-      const num = generateOrderNumber();
-      setOrderNumber(num);
-      setConfirmedSnapshot({ items, subtotal, tax, total });
-      clearCart();
-      setStep(3);
+      setIsProcessing(true);
+      setTimeout(() => {
+        const num = generateOrderNumber();
+        setOrderNumber(num);
+        setConfirmedSnapshot({ items, subtotal, tax, total });
+        clearCart();
+        setIsProcessing(false);
+        setStep(3);
+      }, 1800);
       return;
     }
     setErrors({});
@@ -250,16 +256,8 @@ export default function CheckoutPage() {
           <ul className="divide-y divide-[var(--border)]">
             {confirmedSnapshot.items.map(({ product, quantity }) => (
               <li key={product.slug} className="py-4 flex items-center gap-4">
-                <div
-                  className="w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center"
-                  style={{ background: product.bg }}
-                >
-                  <span
-                    className="font-display text-[14px] font-medium"
-                    style={{ color: product.deep }}
-                  >
-                    {product.name.slice(0, 1)}
-                  </span>
+                <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden">
+                  <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={56} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-display text-[15px] font-medium text-[var(--ink)] truncate">
@@ -593,9 +591,24 @@ export default function CheckoutPage() {
             )}
             <button
               onClick={next}
-              className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-7 py-3.5 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+              disabled={isProcessing}
+              className={`inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-medium tracking-wide transition-all duration-300 ${
+                isProcessing
+                  ? "bg-[var(--leaf)] text-[#FFF8E8] cursor-wait"
+                  : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)]"
+              }`}
             >
-              {step === 2 ? `Pay ${formatUSD(total)}` : "Continue"}
+              {isProcessing ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" opacity="0.3" />
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                  </svg>
+                  Processing…
+                </>
+              ) : (
+                step === 2 ? `Pay ${formatUSD(total)}` : "Continue"
+              )}
             </button>
           </div>
         </div>
@@ -605,16 +618,8 @@ export default function CheckoutPage() {
           <ul className="divide-y divide-[var(--border)] mb-5">
             {items.map(({ product, quantity }) => (
               <li key={product.slug} className="py-3 flex items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center relative"
-                  style={{ background: product.bg }}
-                >
-                  <span
-                    className="font-display text-[13px] font-medium"
-                    style={{ color: product.deep }}
-                  >
-                    {product.name.slice(0, 1)}
-                  </span>
+                <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden relative">
+                  <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={48} />
                   <span className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[#FFF8E8] text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center tabular-nums">
                     {quantity}
                   </span>
