@@ -23,6 +23,8 @@ services:
     startCommand: npx prisma migrate deploy && npm run start
     healthCheckPath: /api/health
     envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
