@@ -2,7 +2,10 @@
   "mcpServers": {
     "linear": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
+      "args": ["-y", "@tacticlaunch/mcp-linear"],
+      "env": { 
+        "LINEAR_API_KEY": "PASTE_YOUR_LINEAR_API_KEY_HERE" 
+      }
     }
   }
 }

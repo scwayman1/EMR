@@ -1,96 +1,113 @@
+"use client";
+
 import Link from "next/link";
-import { LeafSprig } from "@/components/ui/ornament";
+import { useState } from "react";
 
-export function LeafmartFooter() {
+const COLUMNS = [
+  { title: "Shelves", links: [
+    { label: "Sleep", href: "/leafmart/category/sleep" },
+    { label: "Recovery", href: "/leafmart/category/recovery" },
+    { label: "Calm", href: "/leafmart/category/calm" },
+    { label: "Skin", href: "/leafmart/category/skin" },
+    { label: "Focus", href: "/leafmart/category/focus" },
+  ]},
+  { title: "About", links: [
+    { label: "The Method", href: "/leafmart/about" },
+    { label: "Vendors", href: "/leafmart/vendors" },
+    { label: "Field Notes", href: "/leafmart/about#field-notes" },
+    { label: "Careers", href: "/leafmart/about#careers" },
+  ]},
+  { title: "Help", links: [
+    { label: "FAQ", href: "/leafmart/faq" },
+    { label: "Shipping", href: "/leafmart/faq#shipping" },
+    { label: "Returns", href: "/leafmart/faq#returns" },
+    { label: "Contact", href: "/leafmart/faq#contact" },
+  ]},
+  { title: "Legal", links: [
+    { label: "Terms", href: "/leafmart/faq#terms" },
+    { label: "Privacy", href: "/security" },
+    { label: "21+ Notice", href: "/leafmart/faq#age" },
+    { label: "State Availability", href: "/leafmart/faq#states" },
+  ]},
+];
+
+function FooterColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
+  const [open, setOpen] = useState(false);
   return (
-    <footer className="mt-24 border-t border-border bg-surface-muted/40">
-      <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-12">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-          <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3">
-              <LeafSprig size={18} className="text-accent" />
-              <span className="font-display text-lg tracking-tight text-text">
-                Leafmart
-              </span>
-            </div>
-            <p className="text-xs text-text-muted leading-relaxed">
-              Physician-curated cannabis wellness products. Every product on
-              Leafmart is reviewed by our care team for quality, lab
-              verification, and real-world patient outcomes.
-            </p>
-          </div>
-
-          <FooterColumn title="Shop">
-            <FooterLink href="/leafmart/products">All products</FooterLink>
-            <FooterLink href="/leafmart/category/sleep">Sleep</FooterLink>
-            <FooterLink href="/leafmart/category/calm">Calm</FooterLink>
-            <FooterLink href="/leafmart/category/focus">Focus</FooterLink>
-            <FooterLink href="/leafmart/category/recovery">Recovery</FooterLink>
-          </FooterColumn>
-
-          <FooterColumn title="Leafmart">
-            <FooterLink href="/leafmart/about">About us</FooterLink>
-            <FooterLink href="/leafmart/vendors">Partner with us</FooterLink>
-            <FooterLink href="/leafmart/faq">FAQ</FooterLink>
-            <FooterLink href="/education">Education</FooterLink>
-          </FooterColumn>
-
-          <FooterColumn title="Trust">
-            <FooterLink href="/security">Security</FooterLink>
-            <FooterLink href="/leafmart/faq#lab-testing">Lab testing</FooterLink>
-            <FooterLink href="/leafmart/faq#clinician-review">
-              Clinician review
-            </FooterLink>
-            <FooterLink href="/login">Sign in</FooterLink>
-          </FooterColumn>
-        </div>
-
-        <div className="pt-6 border-t border-border flex flex-col md:flex-row justify-between gap-3 text-[11px] text-text-subtle">
-          <p>
-            &copy; {new Date().getFullYear()} Leafjourney Health. Leafmart is
-            Leafjourney&apos;s public marketplace.
-          </p>
-          <p className="uppercase tracking-wider">
-            Products may contain cannabinoids. 21+ where required by law.
-          </p>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
-function FooterColumn({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-text mb-3">
-        {title}
-      </p>
-      <ul className="space-y-2">{children}</ul>
+    <div className="border-b border-[var(--border)] sm:border-b-0">
+      {/* Mobile: button toggles. Desktop: title sits as a heading. */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between py-4 sm:py-0 sm:cursor-default sm:pointer-events-none text-left"
+      >
+        <span className="text-[12.5px] font-semibold tracking-[1.2px] uppercase text-[var(--ink)] sm:mb-3.5 block">
+          {title}
+        </span>
+        <span
+          aria-hidden="true"
+          className="sm:hidden text-[var(--muted)] text-2xl leading-none transition-transform duration-200"
+          style={{ transform: open ? "rotate(45deg)" : "rotate(0)" }}
+        >
+          +
+        </span>
+      </button>
+      <ul
+        className="overflow-hidden sm:!max-h-none sm:!opacity-100 sm:!visible sm:block space-y-2.5 sm:pb-0 transition-[max-height,opacity] duration-300 ease-out"
+        style={{
+          maxHeight: open ? "300px" : "0px",
+          opacity: open ? 1 : 0,
+          visibility: open ? "visible" : "hidden",
+          paddingBottom: open ? "16px" : "0px",
+        }}
+      >
+        {links.map((link) => (
+          <li key={link.label}>
+            <Link href={link.href} className="text-sm text-[var(--text-soft)] hover:text-[var(--text)] transition-colors">
+              {link.label}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
-function FooterLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
+export function LeafmartFooter() {
   return (
-    <li>
-      <Link
-        href={href}
-        className="text-xs text-text-muted hover:text-text transition-colors"
-      >
-        {children}
-      </Link>
-    </li>
+    <footer className="border-t border-[var(--border)]">
+      <div className="max-w-[1440px] mx-auto px-6 lg:px-14 py-10 sm:py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-8 gap-y-2 sm:gap-y-8 mb-8 sm:mb-10">
+          {/* Brand column */}
+          <div className="sm:col-span-2 lg:col-span-1 mb-6 sm:mb-0">
+            <div className="flex items-center gap-2.5 mb-3.5">
+              <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true">
+                <circle cx="16" cy="16" r="15" fill="var(--leaf)" />
+                <path d="M11 17.5 L14.5 21 L21.5 12.5" stroke="#F5E6B8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+              <span className="font-display text-[22px] font-medium tracking-tight">Leafmart</span>
+            </div>
+            <p className="text-[13.5px] text-[var(--text-soft)] leading-relaxed max-w-[280px]">
+              A clinician-curated cannabis wellness marketplace. From Leafjourney Health.
+            </p>
+          </div>
+
+          {/* Link columns */}
+          {COLUMNS.map((col) => (
+            <FooterColumn key={col.title} title={col.title} links={col.links} />
+          ))}
+        </div>
+
+        {/* Bottom bar */}
+        <div className="pt-6 border-t border-[var(--border)] flex flex-col md:flex-row justify-between gap-3 text-xs text-[var(--muted)]">
+          <div>&copy; {new Date().getFullYear()} Leafmart, from Leafjourney Health.</div>
+          <div className="flex flex-col sm:flex-row gap-1 sm:gap-4">
+            <span>Hemp-derived products ship nationally where permitted.</span>
+            <span>Licensed cannabis available intrastate only.</span>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }

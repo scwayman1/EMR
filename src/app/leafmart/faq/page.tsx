@@ -1,299 +1,88 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { LeafSprig } from "@/components/ui/ornament";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Leafmart FAQ",
-  description:
-    "Answers to common questions about Leafmart — lab testing, clinician review, shipping, age verification, returns, and privacy.",
-};
+import { useEffect, useRef, useState } from "react";
 
-interface FaqItem {
-  id: string;
-  q: string;
-  a: React.ReactNode;
-}
-
-const SECTIONS: { title: string; items: FaqItem[] }[] = [
-  {
-    title: "Product + clinical review",
-    items: [
-      {
-        id: "lab-testing",
-        q: "How do you verify lab testing?",
-        a: (
-          <>
-            Every Leafmart product has a third-party Certificate of Analysis
-            (COA) on file — typically an ISO 17025 accredited lab. COAs
-            cover cannabinoid content, terpene profile, and contaminant
-            screening (pesticides, heavy metals, microbial, solvents). We
-            refuse listings without a current COA. You can click through to
-            the COA on every PDP that has one.
-          </>
-        ),
-      },
-      {
-        id: "clinician-review",
-        q: "What does 'physician curated' mean exactly?",
-        a: (
-          <>
-            Every brand + product combination is reviewed by a practicing
-            clinician on our care team before it&apos;s listed. The clinician
-            looks at the cannabinoid profile, the lab result, the brand&apos;s
-            consistency record, and (when available) outcome signals from
-            patients who have used it. If the clinician wouldn&apos;t
-            recommend it in an encounter, it doesn&apos;t make the shelf.
-          </>
-        ),
-      },
-      {
-        id: "ranking",
-        q: "How are products ranked in search + recommendations?",
-        a: (
-          <>
-            A combination of clinician-pick status, in-stock + rating,
-            structure/function match against your goals, and — when data
-            exists — a per-product efficacy signal from de-identified
-            outcome data. We do not sell sponsored placements. Brands cannot
-            pay to move up.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    title: "Shipping + age",
-    items: [
-      {
-        id: "shipping",
-        q: "Where do you ship?",
-        a: (
-          <>
-            Hemp-derived products (≤ 0.3% delta-9 THC) ship to most states —
-            a handful have zero-THC or smokable-flower restrictions that our
-            checkout enforces automatically. Licensed-cannabis products (over
-            the hemp threshold) ship intrastate only. Every cart-to-state
-            combination is validated before checkout confirms.
-          </>
-        ),
-      },
-      {
-        id: "age-verification",
-        q: "Do I need to verify my age?",
-        a: (
-          <>
-            Any product containing more than 0.3% delta-9 THC requires 21+
-            age verification. We check date of birth on file (from your
-            patient chart, if you have one) or prompt you at first
-            interaction. Once verified, we don&apos;t re-prompt per product
-            or per session.
-          </>
-        ),
-      },
-      {
-        id: "partner-fulfillment",
-        q: "Who actually ships the product?",
-        a: (
-          <>
-            The brand. Leafmart is a marketplace — each vendor fulfills
-            their own orders under their own license. We route orders to the
-            right vendor, handle payment, and surface tracking numbers once
-            they&apos;re uploaded. Multi-vendor orders may arrive in
-            separate packages.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    title: "Payments + returns",
-    items: [
-      {
-        id: "payments",
-        q: "How do payments work?",
-        a: (
-          <>
-            Payabli-backed processing. Credit / debit + ACH supported. Your
-            card is charged on order confirmation. We hold funds briefly
-            before disbursing to vendors — if there&apos;s a dispute, it
-            resolves before money moves.
-          </>
-        ),
-      },
-      {
-        id: "returns",
-        q: "Can I return a product?",
-        a: (
-          <>
-            Within 30 days, yes — we&apos;re the customer-service first
-            line, not the vendor. Reach out through your order page or
-            email support@leafjourney.com. We review vendor-fault vs
-            buyer-remorse cases and issue partial or full refunds via the
-            original payment method. Opened consumables may be partial-refund
-            only, depending on the product type.
-          </>
-        ),
-      },
-      {
-        id: "disputes",
-        q: "What if something's wrong and the vendor isn't responding?",
-        a: (
-          <>
-            Open a dispute on your order page. We step in. Leafmart is on
-            the hook to resolve — not you chasing a brand.
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    title: "Privacy",
-    items: [
-      {
-        id: "privacy",
-        q: "What happens to my health data?",
-        a: (
-          <>
-            Your chart is your chart. If you sign in to Leafmart with your
-            Leafjourney patient account, we use your outcome data to tailor
-            recommendations — but that data never leaves our platform and is
-            never shared with vendors. Vendors see aggregate, de-identified,
-            cohort-level signal only (and only with consent).
-          </>
-        ),
-      },
-      {
-        id: "tracking",
-        q: "Do you sell my browsing data?",
-        a: (
-          <>
-            No. We don&apos;t run third-party ad pixels on Leafmart.
-            Analytics stays first-party. Your email never goes to a mailing
-            broker.
-          </>
-        ),
-      },
-      {
-        id: "account",
-        q: "How do I delete my account?",
-        a: (
-          <>
-            Email support@leafjourney.com with &ldquo;Delete my
-            account.&rdquo; We comply within 30 days (faster where state law
-            requires). Clinical records have retention requirements but can
-            be isolated and anonymized on request.
-          </>
-        ),
-      },
-    ],
-  },
+const FAQ_ITEMS = [
+  { q: "What is Leafmart?", a: "Leafmart is a clinician-curated cannabis wellness marketplace operated by Leafjourney Health. Every product is reviewed by a licensed physician, verified by a third-party lab, and ranked by real patient outcomes from the Leafjourney care platform." },
+  { q: "Who reviews the products?", a: "Products are reviewed by the Leafjourney clinical team — licensed physicians who also write treatment plans for patients in our cannabis care platform. The standards are the same ones they apply in clinical practice." },
+  { q: "What does 'lab verified' mean?", a: "Every product on Leafmart has a current Certificate of Analysis (COA) from a third-party testing lab. This covers potency, terpene profiles, residual solvents, pesticides, and heavy metals. If we can't verify the lab work, we don't list the product.", id: "lab-testing" },
+  { q: "How does clinician review work?", a: "Our medical team reviews the formulation, ingredients, delivery format, and dosing for every product before it reaches the shelf. They also write clinician notes that appear on each product page, summarizing their review.", id: "clinician-review" },
+  { q: "What does 'outcome informed' mean?", a: "Rankings on Leafmart are influenced by de-identified patient outcomes from the Leafjourney care platform. When patients report improvement from a specific product type, that signal helps shape what we recommend." },
+  { q: "Do you ship nationally?", a: "Hemp-derived products (those containing less than 0.3% THC by dry weight) ship nationally where permitted by state law. Licensed cannabis products are available intrastate only, subject to your state's regulations.", id: "shipping" },
+  { q: "What's your return policy?", a: "Unopened products can be returned within 30 days of delivery. Due to the nature of consumable products, opened items cannot be returned but may be eligible for store credit if there's a quality concern.", id: "returns" },
+  { q: "Do I need to be 21+?", a: "Age requirements depend on the product and your state's regulations. Hemp-derived CBD products may be available to those 18+, while THC-containing products require you to be 21+ in all jurisdictions.", id: "age" },
+  { q: "How do I contact support?", a: "Email us at support@leafmart.com or use the contact form in your account. We typically respond within one business day.", id: "contact" },
+  { q: "What states do you operate in?", a: "Hemp-derived products ship to all 50 states where permitted. Licensed cannabis products are currently available in states where Leafjourney Health operates clinical programs. Check our state availability page for the latest.", id: "states" },
 ];
 
-export default function LeafmartFaqPage() {
+function FAQItem({ item }: { item: typeof FAQ_ITEMS[0] }) {
+  const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [maxH, setMaxH] = useState(0);
+
+  // Measure content height for smooth max-height transition
+  useEffect(() => {
+    if (!contentRef.current) return;
+    if (open) {
+      setMaxH(contentRef.current.scrollHeight);
+    } else {
+      setMaxH(0);
+    }
+  }, [open]);
+
+  return (
+    <div id={item.id} className="border-b border-[var(--border)]">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={`faq-${item.q.replace(/\s+/g, "-").toLowerCase()}`}
+        className="w-full flex items-center justify-between py-5 sm:py-6 text-left group gap-4"
+      >
+        <h3 className="font-display text-[17px] sm:text-[20px] font-normal tracking-tight text-[var(--ink)] group-hover:text-[var(--leaf)] transition-colors">
+          {item.q}
+        </h3>
+        <span
+          aria-hidden="true"
+          className="text-[var(--muted)] text-2xl flex-shrink-0 leading-none transition-transform duration-300"
+          style={{ transform: open ? "rotate(45deg)" : "rotate(0)" }}
+        >
+          +
+        </span>
+      </button>
+      <div
+        id={`faq-${item.q.replace(/\s+/g, "-").toLowerCase()}`}
+        className="overflow-hidden transition-[max-height,opacity] duration-300 ease-out"
+        style={{
+          maxHeight: open ? maxH : 0,
+          opacity: open ? 1 : 0,
+        }}
+      >
+        <div ref={contentRef} className="pb-5 sm:pb-6 text-[14.5px] sm:text-[15px] text-[var(--text-soft)] leading-relaxed max-w-[720px] pr-4">
+          {item.a}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function FAQPage() {
   return (
     <>
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 pt-16 pb-8">
-        <div className="flex items-center gap-2 text-xs text-text-subtle mb-8">
-          <Link href="/leafmart" className="hover:text-text transition-colors">
-            Leafmart
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-text">FAQ</span>
-        </div>
-
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 mb-6">
-          <LeafSprig size={14} className="text-accent" />
-          <span className="text-[11px] uppercase tracking-wider text-text-muted">
-            Frequently asked
-          </span>
-        </div>
-
-        <h1 className="font-display text-[42px] sm:text-5xl md:text-[60px] leading-[1.02] tracking-tight text-text max-w-2xl">
-          The short list of{" "}
-          <span className="text-accent italic">what people ask</span>.
+      <section className="px-4 sm:px-6 lg:px-14 pt-12 sm:pt-16 pb-6 sm:pb-8 max-w-[1440px] mx-auto lm-fade-in">
+        <p className="eyebrow text-[var(--leaf)] mb-3">FAQ</p>
+        <h1 className="font-display text-[36px] sm:text-[52px] lg:text-[64px] font-normal tracking-[-1.4px] sm:tracking-[-2px] leading-[1.05] sm:leading-[1.0] text-[var(--ink)]">
+          Common questions.
         </h1>
-        <p className="mt-6 text-lg text-text-muted max-w-2xl leading-relaxed">
-          If something&apos;s missing, email{" "}
-          <a
-            href="mailto:support@leafjourney.com"
-            className="underline hover:text-text transition-colors"
-          >
-            support@leafjourney.com
-          </a>{" "}
-          and we&apos;ll add it.
+        <p className="mt-4 text-[15.5px] sm:text-[17px] text-[var(--text-soft)] max-w-[520px] leading-relaxed">
+          Everything you need to know about Leafmart, our products, and how we vet them.
         </p>
       </section>
 
-      {/* ── Jump-to table of contents ──────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 py-6">
-        <div className="rounded-lg border border-border bg-surface-muted/50 p-5">
-          <p className="text-[11px] uppercase tracking-wider text-text-subtle mb-3">
-            Jump to
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {SECTIONS.flatMap((s) => s.items).map((item) => (
-              <Link
-                key={item.id}
-                href={`#${item.id}`}
-                className="inline-flex items-center rounded-full border border-border bg-surface px-3 py-1 text-xs text-text-muted hover:text-text transition-colors"
-              >
-                {item.q}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Sections ───────────────────────────────────────── */}
-      {SECTIONS.map((section) => (
-        <section
-          key={section.title}
-          className="max-w-[1080px] mx-auto px-6 lg:px-12 py-10"
-        >
-          <h2 className="text-xl font-semibold tracking-tight text-text mb-6">
-            {section.title}
-          </h2>
-          <div className="space-y-8">
-            {section.items.map((item) => (
-              <article
-                key={item.id}
-                id={item.id}
-                className="scroll-mt-24 border-l-2 border-accent/40 pl-5"
-              >
-                <h3 className="text-base font-semibold text-text mb-2">
-                  {item.q}
-                </h3>
-                <p className="text-sm text-text-muted leading-relaxed">
-                  {item.a}
-                </p>
-              </article>
-            ))}
-          </div>
-        </section>
-      ))}
-
-      {/* ── CTA ────────────────────────────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 py-16 text-center">
-        <h2 className="font-display text-3xl tracking-tight text-text mb-3">
-          Still curious?
-        </h2>
-        <p className="text-sm text-text-muted mb-6">
-          Good questions make the FAQ better. Reach out.
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <a href="mailto:support@leafjourney.com">
-            <Button size="lg" variant="primary">
-              Email support
-            </Button>
-          </a>
-          <Link href="/leafmart/products">
-            <Button size="lg" variant="secondary">
-              Browse products
-            </Button>
-          </Link>
-        </div>
+      <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[800px] mx-auto">
+        {FAQ_ITEMS.map((item) => (
+          <FAQItem key={item.q} item={item} />
+        ))}
       </section>
     </>
   );

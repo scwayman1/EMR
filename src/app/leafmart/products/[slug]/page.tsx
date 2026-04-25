@@ -1,392 +1,126 @@
-import type { Metadata } from "next";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { RatingStars } from "@/components/marketplace/RatingStars";
-import { PublicProductGrid } from "@/components/leafmart/PublicProductCard";
-import { ProductTile } from "@/components/leafmart/ProductTile";
-import {
-  getPublicProductBySlug,
-  getAllPublicProducts,
-} from "@/lib/marketplace/public-queries";
-import { FORMAT_LABELS } from "@/lib/marketplace/types";
+import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
+import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
+import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
 
-interface PDPProps {
-  params: Promise<{ slug: string }>;
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const product = DEMO_PRODUCTS.find((p) => p.slug === params.slug);
+  if (!product) return { title: "Product" };
+  return { title: product.name, description: product.support };
 }
 
-export async function generateMetadata({
-  params,
-}: PDPProps): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await getPublicProductBySlug(slug);
-  if (!product) return { title: "Product not found" };
-  return {
-    title: `${product.name} — ${product.brand}`,
-    description: product.shortDescription || product.description.slice(0, 160),
-  };
-}
-
-export default async function LeafmartProductDetailPage({ params }: PDPProps) {
-  const { slug } = await params;
-  const product = await getPublicProductBySlug(slug);
+export default function ProductDetailPage({ params }: { params: { slug: string } }) {
+  const product = DEMO_PRODUCTS.find((p) => p.slug === params.slug);
   if (!product) notFound();
 
-  const formatLabel = FORMAT_LABELS[product.format] ?? product.format;
-  const strainLabel =
-    product.strainType && product.strainType !== "n/a"
-      ? product.strainType.charAt(0).toUpperCase() + product.strainType.slice(1)
-      : null;
-
-  // Lightweight "you may also like" — share symptoms/goals with the current
-  // product, bounded to 4 items. Public-safe (no personalization).
-  const related = await getRelatedPublic(product);
+  const related = DEMO_PRODUCTS.filter((p) => p.slug !== params.slug).slice(0, 3);
 
   return (
-    <div className="max-w-[1080px] mx-auto px-6 lg:px-12 py-12">
-      {/* ── Breadcrumb ─────────────────────────────────────── */}
-      <nav aria-label="Breadcrumb" className="mb-8">
-        <ol className="flex flex-wrap items-center gap-1.5 text-xs text-text-subtle">
-          <li>
-            <Link
-              href="/leafmart"
-              className="hover:text-text transition-colors"
-            >
-              Leafmart
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li>
-            <Link
-              href="/leafmart/products"
-              className="hover:text-text transition-colors"
-            >
-              Shop
-            </Link>
-          </li>
-          <li aria-hidden="true">/</li>
-          <li className="text-text font-medium truncate max-w-[240px]">
-            {product.name}
-          </li>
-        </ol>
-      </nav>
+    <>
+      {/* Breadcrumb */}
+      <div className="px-4 sm:px-6 lg:px-14 pt-5 sm:pt-6 max-w-[1440px] mx-auto">
+        <div className="flex items-center gap-2 text-[11.5px] sm:text-xs text-[var(--muted)] flex-wrap">
+          <Link href="/leafmart" className="hover:text-[var(--leaf)]">Leafmart</Link>
+          <span>·</span>
+          <Link href="/leafmart/products" className="hover:text-[var(--leaf)]">Products</Link>
+          <span>·</span>
+          <span className="text-[var(--text)]">{product.name}</span>
+        </div>
+      </div>
 
-      {/* ── Hero — image + buy card ────────────────────────── */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-14">
-        <ProductTile
-          format={product.format}
-          brand={product.brand}
-          name={product.name}
-          variant="hero"
-          className="shadow-sm"
-        />
-        {/* legacy format label kept for screen readers */}
-        <span className="sr-only">{formatLabel}</span>
+      {/* Product hero */}
+      <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-10 max-w-[1440px] mx-auto lm-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-start">
+          {/* Silhouette — appears above info on mobile, beside on desktop */}
+          <div className="relative order-1">
+            <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={480} big />
+            {product.tag && (
+              <div className="absolute top-4 left-4 sm:top-5 sm:left-5 bg-white text-[var(--ink)] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide inline-flex items-center gap-2">
+                <span className="w-[5px] h-[5px] rounded-full bg-[var(--leaf)]" />
+                {product.tag}
+              </div>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-4">
-          <p className="text-xs uppercase tracking-wider text-text-subtle">
-            {product.brand}
-          </p>
-          <h1 className="font-display text-3xl md:text-4xl tracking-tight text-text">
-            {product.name}
-          </h1>
-          {product.reviewCount > 0 && (
-            <RatingStars
-              rating={product.averageRating}
-              count={product.reviewCount}
-            />
-          )}
+          {/* Product info */}
+          <div className="order-2 lg:pt-8">
+            <p className="eyebrow text-[var(--muted)] mb-3">{product.partner} · {product.formatLabel}</p>
+            <h1 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-normal tracking-[-1.0px] sm:tracking-[-1.2px] leading-[1.05] text-[var(--ink)] mb-3 sm:mb-4">
+              {product.name}
+            </h1>
+            <p className="text-[15.5px] sm:text-[17px] text-[var(--text-soft)] leading-relaxed max-w-[500px] mb-5 sm:mb-6">
+              {product.support}
+            </p>
 
-          <div className="flex items-baseline gap-3">
-            <span className="text-2xl font-semibold text-text tabular-nums">
-              ${product.price.toFixed(2)}
-            </span>
-            {product.compareAtPrice != null &&
-              product.compareAtPrice > product.price && (
-                <span className="text-base text-text-subtle line-through">
-                  ${product.compareAtPrice.toFixed(2)}
+            {/* Details */}
+            <div className="space-y-3 mb-7 sm:mb-8">
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-[var(--muted)] w-16">Format</span>
+                <span className="font-medium">{product.formatLabel}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-[var(--muted)] w-16">Dose</span>
+                <span className="font-medium">{product.dose}</span>
+              </div>
+            </div>
+
+            {/* Trust chips */}
+            <div className="flex flex-wrap gap-2 sm:gap-2.5 mb-7 sm:mb-8">
+              {["Physician Curated", "Lab Verified", "Outcome Informed"].map((t) => (
+                <span key={t} className="trust-chip">
+                  <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M3.5 6.2L5.2 7.8L8.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  {t}
                 </span>
-              )}
-          </div>
-
-          {product.clinicianPick && (
-            <div className="rounded-lg bg-accent-soft/60 p-4">
-              <Badge tone="accent">Clinician pick</Badge>
-              <p className="text-sm text-text leading-relaxed mt-2">
-                Our care team selected this product for its quality,
-                cannabinoid profile, and documented outcomes. (Clinician
-                commentary shown after sign-in.)
-              </p>
+              ))}
             </div>
-          )}
 
-          {/* Variant pills (display-only on public surface) */}
-          {product.variants.length > 1 && (
-            <div className="space-y-2">
-              <p className="text-[11px] uppercase tracking-wider text-text-subtle">
-                Sizes
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {product.variants.map((v, idx) => (
-                  <span
-                    key={v.id}
-                    className={`inline-flex items-center rounded-md border px-3 py-1.5 text-xs font-medium ${
-                      idx === 0
-                        ? "border-accent bg-accent-soft text-accent"
-                        : "border-border bg-surface text-text"
-                    }`}
-                  >
-                    {v.name}
-                    {v.price !== product.variants[0]?.price && (
-                      <span className="ml-1.5 text-text-subtle">
-                        ${v.price.toFixed(2)}
-                      </span>
-                    )}
-                  </span>
-                ))}
+            {/* Outcome ornament */}
+            <div className="flex items-center gap-3 text-[var(--leaf)] mb-7 sm:mb-8 font-mono text-[13px] sm:text-sm font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--leaf)]" />
+              {product.pct}% reported improvement · n={product.n}
+            </div>
+
+            {/* Price + CTA */}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 pt-5 sm:pt-6 border-t border-[var(--border)]">
+              <span className="font-display text-[32px] sm:text-[36px] font-medium text-[var(--ink)]">${product.price}</span>
+              <button className="bg-[var(--ink)] text-[#FFF8E8] rounded-full px-6 sm:px-8 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] font-medium hover:bg-[var(--leaf)] transition-colors flex-1 sm:flex-none min-w-[140px]">
+                Add to cart
+              </button>
+              <div className="flex items-center gap-1.5 text-[var(--leaf)] text-[12px] font-semibold">
+                <svg width="14" height="14" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M3.5 6.2L5.2 7.8L8.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                COA on file
               </div>
             </div>
-          )}
 
-          {/* Auth handoff — public surface never wires checkout directly */}
-          <div className="mt-2">
-            <Link href={`/login?next=${encodeURIComponent(`/portal/shop/products/${product.slug}`)}`}>
-              <Button variant="primary" size="lg" className="w-full">
-                {product.inStock ? "Sign in to buy" : "Out of stock"}
-              </Button>
-            </Link>
-            <p className="text-[11px] text-text-subtle mt-2 text-center">
-              Checkout opens after you sign in — keeps dosing and outcome
-              tracking tied to your chart.
-            </p>
+            {/* Clinician note */}
+            <div className="mt-8 sm:mt-10 rounded-2xl bg-[var(--surface-muted)] p-5 sm:p-6 border-l-4 border-[var(--leaf)]">
+              <p className="eyebrow text-[var(--leaf)] mb-2">Clinician note</p>
+              <p className="font-display text-[15.5px] sm:text-[17px] leading-relaxed text-[var(--text)]">
+                &ldquo;We reviewed this product&apos;s COA and formulation. The cannabinoid profile matches the label, and the delivery format aligns with the intended use case.&rdquo;
+              </p>
+              <div className="flex items-center gap-2.5 mt-4">
+                <div className="w-7 h-7 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-xs font-medium">MC</div>
+                <div className="text-xs text-[var(--muted)]">Dr. M. Castellanos · Medical Lead</div>
+              </div>
+            </div>
           </div>
-
-          {/* Trust signals */}
-          <ul className="flex flex-col gap-1.5 mt-3">
-            {product.labVerified && (
-              <TrustLine>Third-party lab verified — COA available.</TrustLine>
-            )}
-            {product.clinicianPick && (
-              <TrustLine>Physician reviewed before listing.</TrustLine>
-            )}
-            {product.beginnerFriendly && (
-              <TrustLine>Beginner-friendly formulation.</TrustLine>
-            )}
-          </ul>
         </div>
       </section>
 
-      {/* ── Description ─────────────────────────────────── */}
-      <section className="space-y-10 mb-14">
-        <div>
-          <h2 className="text-lg font-semibold text-text mb-3">
-            About this product
-          </h2>
-          <p className="text-sm text-text-muted leading-relaxed whitespace-pre-line">
-            {product.description}
-          </p>
-        </div>
-
-        {/* Cannabinoid profile */}
-        {(product.thcContent != null ||
-          product.cbdContent != null ||
-          product.cbnContent != null ||
-          strainLabel) && (
-          <Card>
-            <CardContent className="pt-6">
-              <h3 className="text-sm font-semibold text-text mb-4">
-                Cannabinoid profile
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {product.thcContent != null && (
-                  <Stat label="THC" value={`${product.thcContent}%`} />
-                )}
-                {product.cbdContent != null && (
-                  <Stat label="CBD" value={`${product.cbdContent}%`} />
-                )}
-                {product.cbnContent != null && (
-                  <Stat label="CBN" value={`${product.cbnContent}%`} />
-                )}
-                {strainLabel && <Stat label="Strain" value={strainLabel} />}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Onset & duration */}
-        {(product.onsetTime || product.duration) && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {product.onsetTime && (
-              <InfoBox title="Onset">{product.onsetTime}</InfoBox>
-            )}
-            {product.duration && (
-              <InfoBox title="Duration">{product.duration}</InfoBox>
-            )}
-          </div>
-        )}
-
-        {/* Use cases */}
-        {(product.symptoms.length > 0 || product.goals.length > 0) && (
-          <div>
-            <h3 className="text-sm font-semibold text-text mb-3">
-              May support
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {product.symptoms.map((s) => (
-                <Badge key={`s-${s}`} tone="neutral">
-                  {s}
-                </Badge>
-              ))}
-              {product.goals.map((g) => (
-                <Badge key={`g-${g}`} tone="accent">
-                  {g}
-                </Badge>
-              ))}
-            </div>
-            <p className="text-[11px] text-text-subtle mt-3">
-              Structure/function terms only — not a claim to treat, cure, or
-              prevent any disease.
-            </p>
-          </div>
-        )}
-
-        {product.beginnerFriendly && (
-          <Badge tone="success" className="text-sm px-3 py-1">
-            Beginner-friendly
-          </Badge>
-        )}
-
-        {product.coaUrl && product.coaUrl !== "#" && (
-          <div>
-            <Link
-              href={product.coaUrl}
-              className="text-sm text-accent hover:underline"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Download Certificate of Analysis →
-            </Link>
-          </div>
-        )}
-      </section>
-
-      {/* ── Reviews ─────────────────────────────────────── */}
-      {product.reviews.length > 0 && (
-        <section className="mb-14">
-          <div className="flex items-center gap-3 mb-6">
-            <h2 className="text-lg font-semibold text-text">Reviews</h2>
-            <RatingStars rating={product.averageRating} />
-            <span className="text-sm text-text-muted">
-              {product.averageRating.toFixed(1)} ({product.reviewCount})
-            </span>
-          </div>
-          <div className="space-y-6">
-            {product.reviews.map((r) => (
-              <div
-                key={r.id}
-                className="border-b border-border pb-6 last:border-b-0 last:pb-0"
-              >
-                <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <span className="text-sm font-medium text-text">
-                    {r.authorName}
-                  </span>
-                  <RatingStars rating={r.rating} />
-                  {r.verified && (
-                    <Badge tone="success" className="text-[11px]">
-                      Verified purchase
-                    </Badge>
-                  )}
-                  <span className="text-xs text-text-subtle ml-auto">
-                    {new Date(r.createdAt).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                </div>
-                {r.title && (
-                  <p className="text-sm font-semibold text-text mb-1">
-                    {r.title}
-                  </p>
-                )}
-                {r.body && (
-                  <p className="text-sm text-text-muted leading-relaxed">
-                    {r.body}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Related ─────────────────────────────────────── */}
+      {/* Related products */}
       {related.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-text mb-6">
-            You may also like
-          </h2>
-          <PublicProductGrid products={related} columns={4} />
+        <section className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 pb-14 sm:pb-20 max-w-[1440px] mx-auto border-t border-[var(--border)]">
+          <div className="mb-6 sm:mb-8">
+            <p className="eyebrow text-[var(--leaf)] mb-2">You might also like</p>
+            <h2 className="font-display text-[26px] sm:text-[32px] font-normal tracking-tight text-[var(--ink)]">More from the shelf</h2>
+          </div>
+          <div className="lm-stagger">
+            <LeafmartProductGrid products={related} />
+          </div>
         </section>
       )}
-    </div>
-  );
-}
-
-async function getRelatedPublic(product: {
-  id: string;
-  symptoms: string[];
-  goals: string[];
-}) {
-  const all = await getAllPublicProducts();
-  const targets = new Set([...product.symptoms, ...product.goals]);
-  return all
-    .filter((p) => p.id !== product.id)
-    .map((p) => {
-      const shared = [...p.symptoms, ...p.goals].filter((t) => targets.has(t));
-      return { p, score: shared.length };
-    })
-    .filter((r) => r.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 4)
-    .map((r) => r.p);
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-2xl font-semibold text-text tabular-nums">{value}</p>
-      <p className="text-xs text-text-subtle mt-1">{label}</p>
-    </div>
-  );
-}
-
-function InfoBox({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">
-        {title}
-      </p>
-      <p className="text-sm font-medium text-text">{children}</p>
-    </div>
-  );
-}
-
-function TrustLine({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="flex items-center gap-2 text-sm text-text-muted">
-      <span className="text-success" aria-hidden="true">
-        ✓
-      </span>
-      {children}
-    </li>
+    </>
   );
 }
