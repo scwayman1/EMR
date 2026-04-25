@@ -59,18 +59,18 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
         <p className="text-[13.5px] text-[var(--text-soft)] leading-relaxed flex-1">{p.support}</p>
         <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-[var(--border)]">
           <div>
-            <div className="text-xs text-[var(--muted)] mb-0.5">{p.dose}</div>
-            <div className="text-xs text-[var(--leaf)] font-semibold flex items-center gap-1.5">
+            <div className="text-[11.5px] text-[var(--muted)] mb-0.5">{p.dose}</div>
+            <div className="text-[11.5px] text-[var(--leaf)] font-semibold flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full bg-[var(--leaf)]" />
               {p.pct}% helped · n={p.n}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="font-display text-[22px] font-medium text-[var(--ink)]">${p.price}</span>
+          <div className="flex items-center gap-2.5">
+            <span className="font-display text-[22px] font-medium text-[var(--ink)] tabular-nums">${p.price}</span>
             <button
               onClick={handleQuickAdd}
               aria-label={`Add ${p.name} to cart`}
-              className={`rounded-full w-[38px] h-[38px] flex items-center justify-center text-lg transition-all duration-300 ${
+              className={`group relative rounded-full w-[42px] h-[42px] flex items-center justify-center transition-all duration-300 ${
                 justAdded
                   ? "bg-[var(--leaf)] text-[#FFF8E8] scale-110"
                   : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] hover:scale-105"
@@ -81,7 +81,11 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
                   <path d="M3 8.5L6.5 12L13 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               ) : (
-                "+"
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M3 3h1.5l.8 4m0 0L6.5 13h8l1.5-6H5.3z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="7.5" cy="15.5" r="1" fill="currentColor" />
+                  <circle cx="13" cy="15.5" r="1" fill="currentColor" />
+                </svg>
               )}
             </button>
           </div>

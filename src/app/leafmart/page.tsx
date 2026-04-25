@@ -74,7 +74,7 @@ export default function LeafmartHomePage() {
               Join 12,000+ Leafmart members
             </div>
 
-            <h1 className="font-display text-[40px] sm:text-[56px] md:text-[64px] lg:text-[76px] leading-[1.02] sm:leading-[1.0] font-normal tracking-[-1.5px] sm:tracking-[-2px] text-[var(--ink)] mb-0">
+            <h1 className="font-display text-[40px] sm:text-[56px] md:text-[64px] lg:text-[76px] leading-[1.02] sm:leading-[1.0] font-normal tracking-[-1.5px] sm:tracking-[-2px] text-[var(--ink)] mb-0 text-balance">
               Cannabis wellness,<br />
               <em className="font-accent not-italic text-[var(--leaf)]">doctor-guided.</em>
             </h1>
@@ -152,12 +152,12 @@ export default function LeafmartHomePage() {
               className="card-lift rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 pb-0 flex flex-col overflow-hidden cursor-pointer min-h-[280px] sm:min-h-[340px] lg:min-h-[380px]"
               style={{ background: c.bg }}
             >
-              <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-display text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-tight text-[var(--ink)]">{c.name}</h3>
                   <p className="text-[13px] sm:text-[13.5px] text-[var(--text-soft)] mt-2 max-w-[200px] leading-snug">{c.sub}</p>
                 </div>
-                <div className="bg-white/60 text-[var(--ink)] rounded-full px-2.5 py-1 text-xs font-semibold">{c.count}</div>
+                <div className="bg-white/60 text-[var(--ink)] rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums">{c.count} products</div>
               </div>
               <div className="flex-1 flex items-end mt-2.5 justify-center">
                 <div className="w-3/4 h-[160px] sm:h-[200px]">
@@ -194,7 +194,7 @@ export default function LeafmartHomePage() {
       <section className="px-4 sm:px-6 lg:px-14 py-12 sm:py-16 max-w-[1440px] mx-auto">
         <div className="text-center mb-10 sm:mb-12">
           <p className="eyebrow text-[var(--leaf)]">The Method</p>
-          <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 max-w-3xl mx-auto">
+          <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 max-w-3xl mx-auto text-balance">
             Three layers of editing, <em className="font-accent not-italic text-[var(--leaf)]">before</em><br className="hidden sm:block" />
             a single product reaches your cart.
           </h2>
@@ -270,8 +270,8 @@ export default function LeafmartHomePage() {
               className="rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 flex flex-col min-h-[240px] sm:min-h-[260px] flex-shrink-0 w-[82%] md:w-auto snap-start"
               style={{ background: r.bg }}
             >
-              <div className="font-display text-[36px] text-[var(--leaf)] leading-none mb-2">&ldquo;</div>
-              <p className="font-display text-[17px] sm:text-[19px] leading-[1.4] font-normal text-[var(--ink)] flex-1">{r.quote}</p>
+              <div className="font-display text-[48px] sm:text-[56px] text-[var(--leaf)] leading-none mb-0 -mt-2 opacity-40 select-none" aria-hidden="true">&ldquo;</div>
+              <p className="font-display text-[17px] sm:text-[19px] leading-[1.4] font-normal text-[var(--ink)] flex-1 -mt-3">{r.quote}</p>
               <div className="flex items-center gap-3 mt-5 sm:mt-6">
                 <div className="w-9 h-9 rounded-full bg-white/70 flex items-center justify-center font-display font-medium">
                   {r.name[0]}

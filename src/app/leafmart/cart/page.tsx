@@ -164,7 +164,10 @@ export default function CartPage() {
             </div>
             <div className="flex justify-between">
               <dt className="text-[var(--text-soft)]">Shipping</dt>
-              <dd className="text-[var(--leaf)] font-medium">Free</dd>
+              <dd className="text-[var(--leaf)] font-medium flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M3.5 6.2L5.2 7.8L8.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                Free
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-[var(--text-soft)]">Estimated tax</dt>
