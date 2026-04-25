@@ -212,7 +212,7 @@ export default function CheckoutPage() {
   // ── Confirmation step ──────────────────────────────────────────
   if (step === 3 && orderNumber && confirmedSnapshot) {
     return (
-      <section className="max-w-[720px] mx-auto px-6 lg:px-10 py-20 lg:py-24">
+      <section className="max-w-[720px] mx-auto px-6 lg:px-10 py-20 lg:py-24 lm-fade-in">
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mb-7"
           style={{ background: "var(--sage)" }}
@@ -225,6 +225,9 @@ export default function CheckoutPage() {
               strokeWidth="2.2"
               strokeLinecap="round"
               strokeLinejoin="round"
+              strokeDasharray="28"
+              strokeDashoffset="28"
+              className="animate-[draw-check_0.6s_ease-out_0.3s_forwards]"
             />
           </svg>
         </div>
