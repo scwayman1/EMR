@@ -1,188 +1,73 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { EmptyState } from "@/components/ui/empty-state";
-import { SearchBar } from "@/components/marketplace/SearchBar";
-import { PublicProductGrid } from "@/components/leafmart/PublicProductCard";
-import {
-  getAllPublicProducts,
-  searchPublicProducts,
-  getPublicCategories,
-} from "@/lib/marketplace/public-queries";
-import { FORMAT_LABELS, type ProductFormat } from "@/lib/marketplace/types";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
+import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
 
-export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Shop all products" };
+export const metadata: Metadata = {
+  title: "All Products",
+  description: "Browse every clinician-curated product on Leafmart.",
+};
 
-interface ProductsPageProps {
-  searchParams: Promise<{
-    q?: string;
-    category?: string;
-    format?: string;
-  }>;
-}
-
-export default async function LeafmartProductsPage({
-  searchParams,
-}: ProductsPageProps) {
-  const { q, category, format } = await searchParams;
-  const formatFilter = format as ProductFormat | undefined;
-
-  const [base, categories] = await Promise.all([
-    q ? searchPublicProducts(q) : getAllPublicProducts(),
-    getPublicCategories(),
-  ]);
-
-  let products = base;
-  if (category) {
-    const cat = categories.find(
-      (c) => c.slug === category || c.id === category,
-    );
-    if (cat) products = products.filter((p) => p.categoryIds.includes(cat.id));
-  }
-  if (formatFilter) {
-    products = products.filter((p) => p.format === formatFilter);
-  }
-
-  const activeCategory = category
-    ? categories.find((c) => c.slug === category || c.id === category)
-    : undefined;
-  const activeFormatLabel = formatFilter
-    ? FORMAT_LABELS[formatFilter]
-    : undefined;
-  const title = q ? `Results for "${q}"` : "All products";
-
+function ProductCardSkeleton() {
   return (
-    <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-12">
-      <div className="flex items-center gap-2 text-xs text-text-subtle mb-6">
-        <Link href="/leafmart" className="hover:text-text transition-colors">
-          Leafmart
-        </Link>
-        <span aria-hidden="true">/</span>
-        <span className="text-text">Shop</span>
-      </div>
-
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-display text-3xl md:text-4xl tracking-tight text-text">
-            {title}
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            {products.length}{" "}
-            {products.length === 1 ? "product" : "products"}
-          </p>
+    <div className="rounded-3xl overflow-hidden bg-white border border-[var(--border)]" aria-hidden="true">
+      <div className="lm-skeleton h-[260px] sm:h-[280px] w-full" />
+      <div className="p-5">
+        <div className="lm-skeleton h-3 w-1/2 rounded-full mb-3" />
+        <div className="lm-skeleton h-5 w-3/4 rounded-md mb-3" />
+        <div className="lm-skeleton h-3 w-full rounded-full mb-2" />
+        <div className="lm-skeleton h-3 w-5/6 rounded-full" />
+        <div className="flex justify-between items-center mt-5 pt-4 border-t border-[var(--border)]">
+          <div className="lm-skeleton h-4 w-24 rounded-full" />
+          <div className="lm-skeleton h-9 w-20 rounded-full" />
         </div>
-        <SearchBar defaultValue={q} className="w-full md:w-[360px]" />
       </div>
-
-      {/* Format filter chips */}
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <span className="text-xs font-medium uppercase tracking-wider text-text-subtle mr-1">
-          Format
-        </span>
-        <FormatChip
-          label="All"
-          active={!formatFilter}
-          href={{ pathname: "/leafmart/products", query: queryWithout({ q, category }, "format") }}
-        />
-        {(Object.keys(FORMAT_LABELS) as ProductFormat[]).map((f) => (
-          <FormatChip
-            key={f}
-            label={FORMAT_LABELS[f]}
-            active={formatFilter === f}
-            href={{
-              pathname: "/leafmart/products",
-              query: queryWith({ q, category, format: f }),
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Active filter pills */}
-      {(activeCategory || activeFormatLabel) && (
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <span className="text-[11px] uppercase tracking-wider text-text-subtle">
-            Filters:
-          </span>
-          {activeCategory && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-medium text-text-muted">
-              {activeCategory.name}
-              <Link
-                href={{
-                  pathname: "/leafmart/products",
-                  query: queryWithout({ q, format }, "category"),
-                }}
-                className="ml-0.5 text-text-subtle hover:text-text"
-                aria-label={`Remove ${activeCategory.name} filter`}
-              >
-                ×
-              </Link>
-            </span>
-          )}
-          {activeFormatLabel && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted border border-border px-3 py-1 text-xs font-medium text-text-muted">
-              {activeFormatLabel}
-              <Link
-                href={{
-                  pathname: "/leafmart/products",
-                  query: queryWithout({ q, category }, "format"),
-                }}
-                className="ml-0.5 text-text-subtle hover:text-text"
-                aria-label={`Remove ${activeFormatLabel} filter`}
-              >
-                ×
-              </Link>
-            </span>
-          )}
-        </div>
-      )}
-
-      {products.length === 0 ? (
-        <EmptyState
-          title="No products match"
-          description="Try adjusting your filters or removing your search."
-        />
-      ) : (
-        <PublicProductGrid products={products} columns={4} />
-      )}
     </div>
   );
 }
 
-function queryWith(parts: Record<string, string | undefined>) {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(parts)) {
-    if (v) out[k] = v;
-  }
-  return out;
-}
-
-function queryWithout(
-  parts: Record<string, string | undefined>,
-  drop: string,
-) {
-  const { [drop]: _dropped, ...rest } = parts;
-  return queryWith(rest);
-}
-
-function FormatChip({
-  label,
-  active,
-  href,
-}: {
-  label: string;
-  active: boolean;
-  href: Parameters<typeof Link>[0]["href"];
-}) {
+function ProductsLoading() {
   return (
-    <Link
-      href={href}
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-        active
-          ? "border-accent bg-accent-soft text-accent"
-          : "border-border bg-surface text-text-muted hover:text-text"
-      }`}
+    <div
+      role="status"
+      aria-label="Loading products"
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[18px]"
     >
-      {label}
-    </Link>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <ProductCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <>
+      <section className="px-4 sm:px-6 lg:px-14 pt-10 sm:pt-12 pb-6 sm:pb-8 max-w-[1440px] mx-auto lm-fade-in">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between">
+          <div>
+            <p className="eyebrow text-[var(--leaf)] mb-2.5">All products</p>
+            <h1 className="font-display text-[34px] sm:text-[48px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] text-[var(--ink)]">
+              Everything on <em className="font-accent not-italic text-[var(--leaf)]">the shelf</em>.
+            </h1>
+            <p className="mt-3 text-[14px] sm:text-[15px] text-[var(--text-soft)]">
+              {DEMO_PRODUCTS.length} products · all clinician-reviewed · lab-verified
+            </p>
+          </div>
+          <Link href="/leafmart/shop" className="text-sm font-medium text-[var(--leaf)] hover:underline mt-3 sm:mt-0">
+            ← Shop by category
+          </Link>
+        </div>
+      </section>
+
+      <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
+        <Suspense fallback={<ProductsLoading />}>
+          <div className="lm-stagger">
+            <LeafmartProductGrid products={DEMO_PRODUCTS} />
+          </div>
+        </Suspense>
+      </section>
+    </>
   );
 }

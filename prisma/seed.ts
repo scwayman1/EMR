@@ -35,7 +35,16 @@ import {
 import bcrypt from "bcryptjs";
 import { CATEGORIES, PRODUCTS } from "../src/lib/marketplace/data";
 
-const prisma = new PrismaClient();
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+const connectionString = `${process.env.DATABASE_URL}`;
+const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 // ---------------------------------------------------------------------------
 // Helpers

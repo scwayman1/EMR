@@ -1,105 +1,62 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PublicProductGrid } from "@/components/leafmart/PublicProductCard";
-import {
-  getPublicCategoryBySlug,
-  getPublicProductsByCategory,
-} from "@/lib/marketplace/public-queries";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
+import { DEMO_PRODUCTS, CATEGORIES } from "@/components/leafmart/demo-data";
 
-interface CategoryPageProps {
-  params: Promise<{ slug: string }>;
+const CATEGORY_META: Record<string, { title: string; headline: string; accent: string; bg: string }> = {
+  sleep: { title: "Sleep", headline: "For evenings that should end quietly.", accent: "before bed", bg: "var(--sage)" },
+  recovery: { title: "Recovery", headline: "Built for the day after a long one.", accent: "long days", bg: "var(--peach)" },
+  calm: { title: "Calm", headline: "Take the edge off, gently.", accent: "gently", bg: "var(--butter)" },
+  skin: { title: "Skin", headline: "Plant-powered skin recovery.", accent: "recovery", bg: "var(--rose)" },
+  focus: { title: "Focus", headline: "Clarity when it counts.", accent: "clarity", bg: "var(--lilac)" },
+};
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const cat = CATEGORY_META[params.slug];
+  if (!cat) return { title: "Category" };
+  return { title: `${cat.title} Shelf`, description: cat.headline };
 }
 
-export async function generateMetadata({
-  params,
-}: CategoryPageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const category = await getPublicCategoryBySlug(slug);
-  return { title: category?.name ?? "Category" };
-}
+export default function CategoryPage({ params }: { params: { slug: string } }) {
+  const cat = CATEGORY_META[params.slug];
+  if (!cat) notFound();
 
-export default async function LeafmartCategoryPage({
-  params,
-}: CategoryPageProps) {
-  const { slug } = await params;
-  const category = await getPublicCategoryBySlug(slug);
-
-  if (!category) {
-    return (
-      <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-16">
-        <div className="flex items-center gap-2 text-xs text-text-subtle mb-6">
-          <Link href="/leafmart" className="hover:text-text transition-colors">
-            Leafmart
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-text">Not found</span>
-        </div>
-        <EmptyState
-          title="Category not found"
-          description="This category doesn't exist or may have been renamed."
-          action={
-            <Link
-              href="/leafmart/products"
-              className="text-sm text-accent hover:underline"
-            >
-              Browse all products →
-            </Link>
-          }
-        />
-      </div>
-    );
-  }
-
-  const products = await getPublicProductsByCategory(slug);
+  // In production this would filter by category — for now show all demo products
+  const products = DEMO_PRODUCTS;
+  const catInfo = CATEGORIES.find((c) => c.slug === params.slug);
 
   return (
-    <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-12">
-      <div className="flex items-center gap-2 text-xs text-text-subtle mb-6">
-        <Link href="/leafmart" className="hover:text-text transition-colors">
-          Leafmart
-        </Link>
-        <span aria-hidden="true">/</span>
-        <Link
-          href="/leafmart/products"
-          className="hover:text-text transition-colors"
-        >
-          Shop
-        </Link>
-        <span aria-hidden="true">/</span>
-        <span className="text-text">{category.name}</span>
-      </div>
+    <>
+      {/* Shelf header */}
+      <section className="px-4 sm:px-6 lg:px-14 pt-10 sm:pt-12 pb-6 sm:pb-8 max-w-[1440px] mx-auto lm-fade-in">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between">
+          <div>
+            <p className="eyebrow text-[var(--muted)] mb-1.5">
+              Shelf · {cat.title}
+            </p>
+            <h1 className="font-display text-[34px] sm:text-[48px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] text-[var(--ink)]">
+              {cat.headline}
+            </h1>
+            <p className="mt-3 text-[14px] sm:text-[15px] text-[var(--text-soft)]">
+              {catInfo?.count ?? 0} products · all clinician-reviewed
+            </p>
+          </div>
+          <Link href="/leafmart/shop" className="text-sm font-medium text-[var(--leaf)] hover:underline mt-3 sm:mt-0">
+            ← All shelves
+          </Link>
+        </div>
+      </section>
 
-      <header className="mb-10 max-w-2xl">
-        {category.icon && (
-          <span
-            className="block text-3xl text-accent mb-3"
-            aria-hidden="true"
-          >
-            {category.icon}
-          </span>
-        )}
-        <h1 className="font-display text-3xl md:text-4xl tracking-tight text-text">
-          {category.name}
-        </h1>
-        {category.description && (
-          <p className="text-sm text-text-muted mt-2 leading-relaxed">
-            {category.description}
-          </p>
-        )}
-        <p className="text-xs text-text-subtle mt-3">
-          {products.length} {products.length === 1 ? "product" : "products"}
-        </p>
-      </header>
+      {/* Category accent strip */}
+      <div className="mx-4 sm:mx-6 lg:mx-14 h-1.5 rounded-full max-w-[1440px]" style={{ background: cat.bg }} />
 
-      {products.length === 0 ? (
-        <EmptyState
-          title="No products yet"
-          description="We haven't curated anything for this category yet. Check back soon."
-        />
-      ) : (
-        <PublicProductGrid products={products} columns={4} />
-      )}
-    </div>
+      {/* Product grid */}
+      <section className="px-4 sm:px-6 lg:px-14 py-8 sm:py-12 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
+        <div className="lm-stagger">
+          <LeafmartProductGrid products={products} />
+        </div>
+      </section>
+    </>
   );
 }

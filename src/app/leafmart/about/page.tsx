@@ -1,212 +1,78 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { LeafSprig } from "@/components/ui/ornament";
+import type { Metadata } from "next";
+import { TRUST_STEPS } from "@/components/leafmart/demo-data";
 
 export const metadata: Metadata = {
-  title: "About Leafmart",
-  description:
-    "Leafmart is the public marketplace for Leafjourney — the AI-native cannabis wellness platform. Every product is physician-curated, lab-verified, and shaped by real patient outcomes.",
+  title: "The Method",
+  description: "How Leafmart vets every product: physician curation, lab verification, and outcome data from the Leafjourney care platform.",
 };
 
-const PILLARS = [
-  {
-    title: "Physician curated",
-    body: "A practicing clinician reviews every product before it's listed. If we wouldn't recommend it to a patient in clinic, it doesn't end up on Leafmart.",
-  },
-  {
-    title: "Lab verified",
-    body: "Third-party Certificate of Analysis is a hard requirement for every listing. Cannabinoid content, terpene profile, and contaminant screening — all on record.",
-  },
-  {
-    title: "Outcome informed",
-    body: "Products that help real patients move up in our rankings. Products that don't, quietly move down. The marketplace learns from the clinic.",
-  },
-] as const;
-
-export default function LeafmartAboutPage() {
+export default function AboutPage() {
   return (
     <>
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 pt-16 pb-10">
-        <div className="flex items-center gap-2 text-xs text-text-subtle mb-8">
-          <Link href="/leafmart" className="hover:text-text transition-colors">
-            Leafmart
-          </Link>
-          <span aria-hidden="true">/</span>
-          <span className="text-text">About</span>
-        </div>
-
-        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 mb-6">
-          <LeafSprig size={14} className="text-accent" />
-          <span className="text-[11px] uppercase tracking-wider text-text-muted">
-            About Leafmart
-          </span>
-        </div>
-
-        <h1 className="font-display text-[42px] sm:text-5xl md:text-[60px] leading-[1.02] tracking-tight text-text max-w-3xl">
-          A cannabis store with{" "}
-          <span className="text-accent italic">a clinic</span> behind it.
+      {/* Hero */}
+      <section className="px-4 sm:px-6 lg:px-14 pt-12 sm:pt-16 pb-10 sm:pb-12 max-w-[1440px] mx-auto lm-fade-in">
+        <p className="eyebrow text-[var(--leaf)] mb-3">About Leafmart</p>
+        <h1 className="font-display text-[36px] sm:text-[52px] lg:text-[64px] font-normal tracking-[-1.4px] sm:tracking-[-2px] leading-[1.05] sm:leading-[1.0] text-[var(--ink)] max-w-4xl">
+          A cannabis store with the <em className="font-accent not-italic text-[var(--leaf)]">rigor of a medical platform</em> behind it.
         </h1>
-        <p className="mt-6 text-lg text-text-muted max-w-2xl leading-relaxed">
-          Leafmart is the public-facing marketplace for Leafjourney. Leafjourney
-          is the AI-native cannabis wellness platform used by clinicians to
-          recommend, dose, and track cannabis-assisted therapies. What you buy
-          on Leafmart is what those clinicians use in practice.
+        <p className="mt-5 sm:mt-6 text-[15.5px] sm:text-[18px] text-[var(--text-soft)] max-w-[640px] leading-relaxed">
+          Leafmart is the marketplace arm of Leafjourney Health. We don&apos;t manufacture products. We don&apos;t take paid placement. We curate a short shelf of things our clinical team would actually recommend — and then we let the outcomes speak.
         </p>
       </section>
 
-      {/* ── The three pillars ──────────────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 py-12">
-        <h2 className="text-2xl font-semibold tracking-tight text-text mb-6">
-          How we decide what makes the shelf
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {PILLARS.map((p) => (
-            <Card key={p.title}>
-              <CardContent className="pt-6">
-                <LeafSprig size={16} className="text-accent mb-4" />
-                <h3 className="text-base font-semibold text-text mb-2">
-                  {p.title}
-                </h3>
-                <p className="text-sm text-text-muted leading-relaxed">
-                  {p.body}
-                </p>
-              </CardContent>
-            </Card>
+      {/* The Method */}
+      <section className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 max-w-[1440px] mx-auto">
+        <h2 className="font-display text-[28px] sm:text-[36px] font-normal tracking-tight text-[var(--ink)] mb-6 sm:mb-8">The Method</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 lm-stagger">
+          {TRUST_STEPS.map((s) => (
+            <div key={s.n} className="rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 min-h-[220px] sm:min-h-[280px] flex flex-col" style={{ background: s.bg }}>
+              <div className="flex items-center gap-3 sm:gap-3.5 mb-4 sm:mb-5">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/70 flex items-center justify-center font-display text-base sm:text-lg font-medium" style={{ color: s.deep }}>{s.n}</div>
+                <h3 className="font-display text-[20px] sm:text-[24px] font-medium tracking-tight text-[var(--ink)]">{s.t}</h3>
+              </div>
+              <p className="text-[14px] sm:text-[15px] leading-relaxed text-[var(--text-soft)]">{s.b}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ── The founding-partner pledge ────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 py-12">
-        <div className="rounded-2xl border border-border bg-accent-soft/40 p-8 md:p-12">
-          <p className="text-[11px] uppercase tracking-wider text-accent mb-2">
-            The founding-partner pledge
-          </p>
-          <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-text">
-            10% take rate. 24 months. Weekly payouts.
-          </h2>
-          <p className="mt-4 text-sm text-text-muted max-w-2xl leading-relaxed">
-            Amazon charges 30–40% all-in. Etsy 10%+. We&apos;ve locked our
-            first four partners at 10% for 24 months — a promise we keep
-            because we&apos;re asking them to trust a platform that doesn&apos;t
-            have proof yet. They get every new feature, every new patient, and
-            a seat at the table as we shape what Leafmart becomes.
-          </p>
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <PledgeStat label="Take rate" value="10%" sub="locked 24 months" />
-            <PledgeStat
-              label="Payout cadence"
-              value="Weekly"
-              sub="7-day hold, then paid"
-            />
-            <PledgeStat
-              label="First partners"
-              value="4"
-              sub="PhytoRx, Flower Powered, AULV, Potency 710"
-            />
+      {/* Clinician note */}
+      <section className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 max-w-[1440px] mx-auto">
+        <div className="rounded-2xl bg-[var(--surface-muted)] p-7 sm:p-10 lg:p-14 border-l-4 border-[var(--leaf)]">
+          <p className="eyebrow text-[var(--leaf)] mb-3 sm:mb-4">A note from our care team</p>
+          <blockquote className="font-display text-[22px] sm:text-[28px] lg:text-[36px] leading-[1.2] sm:leading-[1.15] tracking-tight text-[var(--text)] max-w-3xl">
+            &ldquo;A good cannabis store doesn&apos;t sell you what&apos;s popular — it sells you what&apos;s <em className="text-[var(--leaf)]">right</em>. Every product on Leafmart is here because one of us would reach for it in clinic.&rdquo;
+          </blockquote>
+          <div className="flex items-center gap-3 mt-5 sm:mt-6">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-sm font-medium text-[var(--ink)]">MC</div>
+            <div>
+              <div className="text-sm font-semibold">Dr. M. Castellanos, MD</div>
+              <div className="text-xs text-[var(--muted)]">Medical Lead · Leafjourney Health</div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── The clinic behind the store ────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1.3fr] gap-8 md:gap-12 items-start">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-text mb-4">
-              The clinic behind the store
-            </h2>
-            <p className="text-sm text-text-muted leading-relaxed">
-              Leafjourney is an EMR — the chart, the prescribing tool, the
-              outcome tracker. When a patient logs how they felt after a
-              dose, that signal feeds back into what Leafmart recommends next.
-            </p>
+      {/* From Leafjourney */}
+      <section className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
+        <div className="rounded-[28px] sm:rounded-[36px] p-7 sm:p-10 lg:p-14" style={{ background: "linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%)" }}>
+          <p className="eyebrow text-[var(--leaf)] mb-3">From Leafjourney Health</p>
+          <h2 className="font-display text-[28px] sm:text-[36px] font-normal tracking-tight text-[var(--ink)] mb-5 sm:mb-6">Built on an actual healthcare brand.</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 text-[14.5px] sm:text-[15px] text-[var(--text-soft)] leading-relaxed">
+            <p>Leafmart isn&apos;t a startup selling supplements with influencer endorsements. It&apos;s a curated shelf operated by the same team that runs the Leafjourney EMR — a physician-led cannabis care platform used in clinical practice.</p>
+            <p>That means the same clinicians who write treatment plans for patients are also the ones reviewing products for this shelf. The standards are the same. The rigor is the same. The difference is that Leafmart is open to anyone, not just patients in our network.</p>
           </div>
-          <ul className="space-y-4 text-sm">
-            <ClinicPoint title="Charts are charts.">
-              Your clinical data stays with your clinician. Leafmart surfaces
-              aggregate outcome signals, never individual records.
-            </ClinicPoint>
-            <ClinicPoint title="Recommendations are ranked, not sold.">
-              Products rise in ranking because patients improve, not because
-              a brand paid for placement. We do not sell sponsored slots.
-            </ClinicPoint>
-            <ClinicPoint title="Vendors see their own numbers, never yours.">
-              Brands on Leafmart see their sales, payouts, and reviews.
-              They never see your chart, your outcomes, or your identity.
-            </ClinicPoint>
-          </ul>
-        </div>
-      </section>
-
-      {/* ── CTA ────────────────────────────────────────────── */}
-      <section className="max-w-[1080px] mx-auto px-6 lg:px-12 py-16 text-center">
-        <h2 className="font-display text-3xl tracking-tight text-text mb-3">
-          Browse what a clinician would pick.
-        </h2>
-        <p className="text-sm text-text-muted mb-6">
-          Free to browse. Sign up to track outcomes and get recommendations
-          tailored to what works for you.
-        </p>
-        <div className="flex flex-wrap justify-center gap-3">
-          <Link href="/leafmart/products">
-            <Button size="lg" variant="primary">
-              Browse products
-            </Button>
-          </Link>
-          <Link href="/leafmart/vendors">
-            <Button size="lg" variant="secondary">
-              Sell on Leafmart
-            </Button>
-          </Link>
+          <div className="mt-6 sm:mt-8">
+            <Link
+              href="/leafmart/shop"
+              className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] w-full sm:w-auto"
+            >
+              Browse the shelf →
+            </Link>
+          </div>
         </div>
       </section>
     </>
-  );
-}
-
-function PledgeStat({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <p className="text-[11px] uppercase tracking-wider text-text-subtle mb-1">
-        {label}
-      </p>
-      <p className="text-2xl font-display text-text tabular-nums">{value}</p>
-      <p className="text-[11px] text-text-subtle mt-1">{sub}</p>
-    </div>
-  );
-}
-
-function ClinicPoint({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <li className="flex gap-3">
-      <span
-        className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-accent-soft text-accent shrink-0 mt-0.5"
-        aria-hidden="true"
-      >
-        ✓
-      </span>
-      <div>
-        <p className="text-sm font-semibold text-text mb-1">{title}</p>
-        <p className="text-sm text-text-muted leading-relaxed">{children}</p>
-      </div>
-    </li>
   );
 }

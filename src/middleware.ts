@@ -1,23 +1,78 @@
-// Middleware — pass-through.
+// Middleware — multi-domain routing for Leafmart + Leafjourney.
 //
-// Clerk was scaffolded in an earlier commit but is not yet wired in prod
-// (AUTH_PROVIDER=iron-session). The previous version imported Clerk at the
-// top of this file, which forced @clerk/nextjs to initialize during Next.js
-// boot — combined with the Clerk v7 / Next 14 peer-dep mismatch, this was
-// causing the web server to fail to bind a port on Render, triggering
-// "Timed out while running your code" deploy cancellations.
+// How it works:
+// 1. Reads the Host header to determine which brand is being accessed
+// 2. For leafmart.com requests, internally rewrites "/" → "/leafmart",
+//    "/products/x" → "/leafmart/products/x", etc.
+// 3. The user never sees "/leafmart/" in their URL bar
+// 4. For leafjourney.com (or localhost), passes through normally
 //
-// Until Clerk is actually enabled, keep this file Clerk-free. Route
-// protection continues to live at the layout level via `requireUser()`.
-//
-// To re-enable Clerk later:
-//   1. Ensure @clerk/nextjs is compatible with the installed Next version
-//   2. Restore the clerkMiddleware + createRouteMatcher wiring
-//   3. Guard the Clerk import behind `AUTH_PROVIDER === "clerk"` via dynamic import
+// Domain config:
+//   leafmart.com / www.leafmart.com / leafmart.localhost → Leafmart
+//   Everything else → Leafjourney (EMR)
 
 import { NextResponse, type NextRequest } from "next/server";
 
-export default function middleware(_req: NextRequest) {
+/** Hostnames that should resolve to the Leafmart storefront */
+const LEAFMART_HOSTS = [
+  "leafmart.com",
+  "www.leafmart.com",
+  "leafmart.localhost",
+];
+
+/** Paths that should NOT be rewritten (shared infra) */
+const SHARED_PATHS = [
+  "/api/",
+  "/_next/",
+  "/favicon.ico",
+  "/icon.svg",
+];
+
+function isLeafmartHost(host: string): boolean {
+  // Strip port for localhost comparison
+  const hostname = host.split(":")[0];
+  return LEAFMART_HOSTS.includes(hostname);
+}
+
+function isSharedPath(pathname: string): boolean {
+  return SHARED_PATHS.some((p) => pathname.startsWith(p));
+}
+
+export default function middleware(req: NextRequest) {
+  const host = req.headers.get("host") || "";
+  const { pathname } = req.nextUrl;
+
+  // Skip shared paths (API, static assets)
+  if (isSharedPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  // ── Leafmart domain routing ──────────────────────────────
+  // When accessed via leafmart.com, rewrite all paths to /leafmart/*
+  // so the user sees clean URLs (leafmart.com/products/x instead of
+  // leafmart.com/leafmart/products/x)
+  if (isLeafmartHost(host)) {
+    // Already on a /leafmart path? Strip the prefix to avoid double-nesting
+    if (pathname.startsWith("/leafmart")) {
+      // /leafmart/products/x → /products/x (redirect to clean URL)
+      const cleanPath = pathname.replace(/^\/leafmart/, "") || "/";
+      const url = req.nextUrl.clone();
+      url.pathname = cleanPath;
+      return NextResponse.redirect(url, 308);
+    }
+
+    // Rewrite clean URL to internal /leafmart/* route
+    const url = req.nextUrl.clone();
+    url.pathname = `/leafmart${pathname === "/" ? "" : pathname}`;
+
+    const response = NextResponse.rewrite(url);
+    // Set brand header so components can detect which domain they're on
+    response.headers.set("x-leafmart-brand", "leafmart");
+    return response;
+  }
+
+  // ── Leafjourney (default) ────────────────────────────────
+  // Pass through normally — the EMR routes are at the root
   return NextResponse.next();
 }
 
