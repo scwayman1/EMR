@@ -174,7 +174,7 @@ export default function StorePage() {
               Trusted by leading cannabis wellness brands
             </h2>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-8 text-text-muted">
-              <span className="font-display text-xl tracking-tight">AULV</span>
+              <span className="font-display text-xl tracking-tight">Greenleaf Co.</span>
               <span className="text-border-strong">|</span>
               <span className="text-sm text-text-subtle italic">More partners coming soon</span>
             </div>

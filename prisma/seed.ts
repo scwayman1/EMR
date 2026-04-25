@@ -407,8 +407,8 @@ async function main() {
       status: VendorStatus.pending,
     },
     {
-      slug: "aulv",
-      name: "AULV (PLNT PWRD)",
+      slug: "greenleaf-co",
+      name: "Greenleaf Co.",
       vendorType: VendorType.hemp_brand,
       categories: ["plant_powered_wellness"],
       takeRatePct: 0.10,
