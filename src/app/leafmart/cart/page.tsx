@@ -205,6 +205,50 @@ export default function CartPage() {
           </div>
         </aside>
       </div>
+
+      {/* Recommendations */}
+      {(() => {
+        const cartSlugs = new Set(items.map((i) => i.product.slug));
+        const recs = DEMO_PRODUCTS.filter((p) => !cartSlugs.has(p.slug)).slice(0, 4);
+        if (recs.length === 0) return null;
+        return (
+          <div className="mt-14 pt-10 border-t border-[var(--border)]">
+            <div className="flex items-end justify-between mb-6">
+              <div>
+                <p className="eyebrow text-[var(--leaf)] mb-2">You might also like</p>
+                <h2 className="font-display text-[26px] sm:text-[32px] font-normal tracking-tight text-[var(--ink)]">
+                  Pairs well with your order
+                </h2>
+              </div>
+              <Link
+                href="/leafmart/shop"
+                className="text-[14px] font-medium text-[var(--ink)] hover:text-[var(--leaf)] transition-colors hidden sm:inline-flex items-center gap-1.5"
+              >
+                See all →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {recs.map((p) => (
+                <Link
+                  key={p.slug}
+                  href={`/leafmart/products/${p.slug}`}
+                  className="block card-lift rounded-3xl overflow-hidden bg-white border border-[var(--border)]"
+                >
+                  <ProductSilhouette shape={p.shape} bg={p.bg} deep={p.deep} height={180} />
+                  <div className="p-4">
+                    <p className="font-display text-[15px] font-medium text-[var(--ink)] truncate">
+                      {p.name}
+                    </p>
+                    <p className="text-[12px] text-[var(--muted)] mt-1">
+                      {p.dose} · ${p.price}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </section>
   );
 }
