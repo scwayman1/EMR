@@ -94,7 +94,7 @@ export const FOUNDING_PARTNER_BRANDS: BrandIdentity[] = [
     inkClass: "text-[#1E2E19]",
   },
   {
-    name: "AULV",
+    name: "Greenleaf Co.",
     tagline: "Plant-powered wellness",
     tileClass:
       "bg-[linear-gradient(155deg,#F2E4C2_0%,#D9B880_55%,#9C7637_100%)]",

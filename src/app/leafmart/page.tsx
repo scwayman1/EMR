@@ -329,7 +329,7 @@ export default function LeafmartHomePage() {
                 </div>
                 <div>
                   <Portrait tone="butter" caption="James, 82 · Sleep" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Quiet Hours Tincture · AULV</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Quiet Hours Tincture · Greenleaf Co.</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait tone="lilac" caption="Eleanor, 71 · Skin" />
