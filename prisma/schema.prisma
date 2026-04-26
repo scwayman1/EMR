@@ -190,9 +190,37 @@ model Patient {
   orders               Order[]
   productReviews       ProductReview[]
   cart                 Cart?
+  shippingAddresses    ShippingAddress[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
+}
+
+// --------------------------------------------------------------
+// Saved shipping addresses — Leafmart account → checkout autofill.
+// Patient.addressLine1/2/etc. is the *primary* address from intake;
+// ShippingAddress is a multi-row book a customer can manage and pick
+// from at checkout.
+// --------------------------------------------------------------
+model ShippingAddress {
+  id         String   @id @default(cuid())
+  patientId  String
+  label      String? // "Home", "Work", etc.
+  firstName  String
+  lastName   String
+  address1   String
+  address2   String?
+  city       String
+  state      String
+  postalCode String
+  phone      String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, isDefault])
 }
 
 model Provider {

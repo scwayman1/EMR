@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useCart } from "@/lib/leafmart/cart-store";
+import { ThemeToggle } from "@/components/leafmart/ThemeToggle";
+import { AccountUserMenu } from "@/components/leafmart/AccountUserMenu";
 
 const NAV_LINKS = [
   { label: "Sleep", href: "/leafmart/category/sleep" },
@@ -22,6 +25,64 @@ const SECONDARY_LINKS = [
  * checkmark, Fraunces wordmark, category nav, trust links, and pill CTA.
  * Collapses into a hamburger menu on screens narrower than md (768px).
  */
+function CartBadgeButton({
+  onClick,
+  variant = "icon",
+}: {
+  onClick?: () => void;
+  variant?: "icon" | "row";
+}) {
+  const { itemCount, openCart } = useCart();
+  const handle = onClick ?? openCart;
+  if (variant === "row") {
+    return (
+      <button
+        type="button"
+        onClick={handle}
+        className="flex items-center justify-between w-full py-2.5 text-[15px] font-medium text-[var(--text)] hover:text-[var(--leaf)] transition-colors"
+      >
+        <span className="flex items-center gap-3">
+          <CartIcon />
+          Cart
+        </span>
+        {itemCount > 0 && (
+          <span className="bg-[var(--leaf)] text-[#FFF8E8] text-[11px] font-bold rounded-full w-[22px] h-[22px] flex items-center justify-center tabular-nums">
+            {itemCount > 99 ? "99+" : itemCount}
+          </span>
+        )}
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      aria-label={itemCount > 0 ? `Open cart, ${itemCount} item${itemCount === 1 ? "" : "s"}` : "Open cart"}
+      className="relative inline-flex items-center justify-center w-10 h-10 rounded-full text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors"
+    >
+      <CartIcon />
+      {itemCount > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute -top-0.5 -right-0.5 bg-[var(--leaf)] text-[#FFF8E8] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center tabular-nums"
+          style={{ animation: "lmFadeInUp 280ms cubic-bezier(0.2, 0, 0, 1)" }}
+        >
+          {itemCount > 99 ? "99+" : itemCount}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+      <path d="M4 5h14l-1.5 10a2 2 0 0 1-2 1.7H7.5A2 2 0 0 1 5.5 15L4 5z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M8 5V4a3 3 0 0 1 6 0v1" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function LeafmartHeader() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -66,7 +127,7 @@ export function LeafmartHeader() {
 
   return (
     <header className="sticky top-0 z-30 bg-[var(--bg)]/90 backdrop-blur border-b border-[var(--border)]">
-      <nav className="max-w-[1440px] mx-auto flex items-center justify-between px-5 sm:px-6 lg:px-14 h-[64px] md:h-[72px]">
+      <nav aria-label="Main" className="max-w-[1440px] mx-auto flex items-center justify-between px-5 sm:px-6 lg:px-14 h-[64px] md:h-[72px]">
         {/* Logo */}
         <Link href="/leafmart" className="flex items-center gap-2.5 group" aria-label="Leafmart home">
           <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" className="md:w-8 md:h-8">
@@ -94,10 +155,10 @@ export function LeafmartHeader() {
         </div>
 
         {/* Desktop actions */}
-        <div className="hidden md:flex items-center gap-3.5">
-          <Link href="/login" className="hidden sm:inline text-sm font-medium text-[var(--text)] hover:text-[var(--leaf)] transition-colors">
-            Sign in
-          </Link>
+        <div className="hidden md:flex items-center gap-2 lg:gap-3">
+          <AccountUserMenu />
+          <ThemeToggle />
+          <CartBadgeButton />
           <Link
             href="/leafmart/quiz"
             className="bg-[var(--ink)] text-[#FFF8E8] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
@@ -106,16 +167,18 @@ export function LeafmartHeader() {
           </Link>
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          ref={buttonRef}
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-controls="leafmart-mobile-nav"
-          aria-label={open ? "Close menu" : "Open menu"}
-          className="md:hidden inline-flex items-center justify-center w-11 h-11 -mr-2 rounded-full text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors"
-        >
+        {/* Mobile actions: cart + hamburger */}
+        <div className="md:hidden flex items-center gap-1">
+          <CartBadgeButton />
+          <button
+            ref={buttonRef}
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls="leafmart-mobile-nav"
+            aria-label={open ? "Close menu" : "Open menu"}
+            className="inline-flex items-center justify-center w-11 h-11 -mr-2 rounded-full text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors"
+          >
           <span className="relative block w-5 h-4" aria-hidden="true">
             <span
               className="absolute left-0 right-0 h-[2px] rounded bg-current transition-all duration-300"
@@ -136,7 +199,8 @@ export function LeafmartHeader() {
               }}
             />
           </span>
-        </button>
+          </button>
+        </div>
       </nav>
 
       {/* Mobile slide-down panel */}
@@ -167,6 +231,12 @@ export function LeafmartHeader() {
           </div>
 
           <div className="flex flex-col mt-4">
+            <div
+              className="lm-fade-in"
+              style={{ animationDelay: open ? "200ms" : "0ms" }}
+            >
+              <CartBadgeButton onClick={() => setOpen(false)} variant="row" />
+            </div>
             {SECONDARY_LINKS.map((l, i) => (
               <Link
                 key={l.href}
@@ -186,14 +256,19 @@ export function LeafmartHeader() {
             >
               FAQ
             </Link>
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="py-2.5 text-[15px] font-medium text-[var(--text)] hover:text-[var(--leaf)] transition-colors lm-fade-in"
+            <div
+              className="lm-fade-in"
               style={{ animationDelay: open ? "310ms" : "0ms" }}
             >
-              Sign in
-            </Link>
+              <AccountUserMenu variant="mobile" onNavigate={() => setOpen(false)} />
+            </div>
+            <div
+              className="flex items-center justify-between py-3 mt-1 border-t border-[var(--border)] lm-fade-in"
+              style={{ animationDelay: open ? "340ms" : "0ms" }}
+            >
+              <span className="text-[14px] text-[var(--text-soft)]">Theme</span>
+              <ThemeToggle />
+            </div>
           </div>
 
           <Link

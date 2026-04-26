@@ -133,6 +133,57 @@ export default function CheckoutPage() {
     }
   }, [step, items.length, confirmedSnapshot]);
 
+  // Prefill shipping (and contact email/phone if available) from the user's
+  // default saved address on mount. Silently no-ops when not signed in or
+  // when the user has already started typing.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/leafmart/addresses");
+        if (!res.ok) return;
+        const data: {
+          addresses: Array<{
+            firstName: string;
+            lastName: string;
+            address1: string;
+            address2?: string | null;
+            city: string;
+            state: string;
+            postalCode: string;
+            phone?: string | null;
+            isDefault: boolean;
+          }>;
+        } = await res.json();
+        if (cancelled) return;
+        const def = data.addresses.find((a) => a.isDefault) ?? data.addresses[0];
+        if (!def) return;
+        setShipping((prev) =>
+          // Only prefill blank shipping — never overwrite user input.
+          prev.firstName || prev.lastName || prev.address1
+            ? prev
+            : {
+                firstName: def.firstName,
+                lastName: def.lastName,
+                address1: def.address1,
+                address2: def.address2 ?? "",
+                city: def.city,
+                state: def.state,
+                zip: def.postalCode,
+              },
+        );
+        if (def.phone) {
+          setContact((prev) => (prev.phone ? prev : { ...prev, phone: def.phone! }));
+        }
+      } catch {
+        // best-effort prefill — silently ignore network errors
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function validateContact(): boolean {
     const e: Record<string, string> = {};
     if (!/^\S+@\S+\.\S+$/.test(contact.email)) e.email = "Enter a valid email.";
@@ -162,21 +213,83 @@ export default function CheckoutPage() {
     return Object.keys(e).length === 0;
   }
 
+  async function processOrder() {
+    const startedAt = Date.now();
+    setIsProcessing(true);
+    setErrors({});
+
+    let resolvedNumber = generateOrderNumber();
+    let serverError: string | null = null;
+
+    try {
+      const res = await fetch("/api/leafmart/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contact,
+          shipping,
+          subtotal,
+          tax,
+          total,
+          items: items.map(({ product, quantity }) => ({
+            slug: product.slug,
+            name: product.name,
+            partner: product.partner,
+            format: product.format,
+            formatLabel: product.formatLabel,
+            support: product.support,
+            dose: product.dose,
+            price: product.price,
+            quantity,
+            shape: product.shape,
+            bg: product.bg,
+            deep: product.deep,
+            pct: product.pct,
+            n: product.n,
+            tag: product.tag,
+          })),
+        }),
+      });
+
+      if (res.ok) {
+        const data: { orderNumber?: string } = await res.json();
+        if (data.orderNumber) resolvedNumber = data.orderNumber;
+      } else if (res.status === 401) {
+        // Not signed in — leaf-fall back to a client-only demo confirmation
+        // so the UX keeps working until auth is wired.
+      } else {
+        const data: { error?: string } = await res.json().catch(() => ({}));
+        serverError = data.error || `Checkout failed (${res.status}).`;
+      }
+    } catch (err) {
+      serverError = (err as Error).message || "Network error during checkout.";
+    }
+
+    // Minimum 1.8s spinner — per spec, the animation matters more than ms.
+    const elapsed = Date.now() - startedAt;
+    if (elapsed < 1800) {
+      await new Promise((r) => setTimeout(r, 1800 - elapsed));
+    }
+
+    if (serverError) {
+      setErrors({ submit: serverError });
+      setIsProcessing(false);
+      return;
+    }
+
+    setOrderNumber(resolvedNumber);
+    setConfirmedSnapshot({ items, subtotal, tax, total });
+    clearCart();
+    setIsProcessing(false);
+    setStep(3);
+  }
+
   function next() {
     if (step === 0 && !validateContact()) return;
     if (step === 1 && !validateShipping()) return;
     if (step === 2) {
       if (!validatePayment()) return;
-      // mock processing — never actually charge
-      setIsProcessing(true);
-      setTimeout(() => {
-        const num = generateOrderNumber();
-        setOrderNumber(num);
-        setConfirmedSnapshot({ items, subtotal, tax, total });
-        clearCart();
-        setIsProcessing(false);
-        setStep(3);
-      }, 1800);
+      void processOrder();
       return;
     }
     setErrors({});
@@ -573,6 +686,11 @@ export default function CheckoutPage() {
                 </svg>
                 Demo checkout. No card is charged and no payment data is transmitted.
               </div>
+              {errors.submit && (
+                <div className="rounded-2xl border border-[var(--danger)] bg-[var(--danger)]/[0.04] px-4 py-3 text-[13px] text-[var(--danger)]">
+                  {errors.submit}
+                </div>
+              )}
             </div>
           )}
 

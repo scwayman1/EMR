@@ -8,22 +8,67 @@ import {
   DEMO_OUTCOMES,
   formatDate,
   uniqueOrderedProductSlugs,
+  type OrderStatus,
 } from "@/components/leafmart/AccountData";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getOrdersByUser, formatOrderNumber } from "@/lib/leafmart/orders";
 
 export const metadata: Metadata = {
   title: "Your account",
   description: "Your Leafmart orders, outcomes, and clinician connection.",
 };
 
-const USER_NAME = "Maya";
+export const dynamic = "force-dynamic";
 
-export default function AccountDashboardPage() {
-  const ordersCount = DEMO_ORDERS.length;
-  const productsTried = uniqueOrderedProductSlugs(DEMO_ORDERS).length;
-  const outcomesLogged = DEMO_OUTCOMES.length;
-  const recentOrders = [...DEMO_ORDERS]
+export default async function AccountDashboardPage() {
+  const user = await getCurrentUser().catch(() => null);
+
+  type RecentOrder = {
+    id: string;
+    number: string;
+    date: string;
+    total: number;
+    status: OrderStatus;
+    itemNames: string[];
+  };
+
+  let userName = "there";
+  let ordersCount = DEMO_ORDERS.length;
+  let productsTried = uniqueOrderedProductSlugs(DEMO_ORDERS).length;
+  let outcomesLogged = DEMO_OUTCOMES.length;
+  let recentOrders: RecentOrder[] = [...DEMO_ORDERS]
     .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 3);
+    .slice(0, 3)
+    .map((o) => ({
+      id: o.id,
+      number: o.id,
+      date: o.date,
+      total: o.total,
+      status: o.status,
+      itemNames: o.items.map((it) => it.name),
+    }));
+
+  if (user) {
+    userName = user.firstName || user.email.split("@")[0] || "there";
+    try {
+      const real = await getOrdersByUser(user.id);
+      const slugs = new Set<string>();
+      for (const o of real) for (const it of o.items) slugs.add(it.product.slug);
+      ordersCount = real.length;
+      productsTried = slugs.size;
+      // Outcomes are still demo until OutcomeLog wiring lands.
+      recentOrders = real.slice(0, 3).map((o) => ({
+        id: o.id,
+        number: formatOrderNumber(o.id),
+        date: o.createdAt.toISOString().slice(0, 10),
+        total: o.total,
+        status: (o.status as OrderStatus) ?? "processing",
+        itemNames: o.items.map((it) => it.product.name),
+      }));
+    } catch {
+      // DB unreachable — keep demo numbers.
+    }
+  }
 
   return (
     <section className="px-6 lg:px-14 pt-10 pb-20 max-w-[1440px] mx-auto">
@@ -32,7 +77,7 @@ export default function AccountDashboardPage() {
         <p className="eyebrow text-[var(--muted)] mb-3">Your account</p>
         <h1 className="font-display text-[40px] sm:text-[56px] font-normal tracking-[-1.5px] leading-[1.05] text-[var(--ink)]">
           Welcome back,{" "}
-          <em className="font-accent not-italic text-[var(--leaf)]">{USER_NAME}.</em>
+          <em className="font-accent not-italic text-[var(--leaf)]">{userName}.</em>
         </h1>
         <p className="text-[17px] text-[var(--text-soft)] max-w-[560px] mt-4 leading-relaxed">
           Pick up where you left off — recent orders, outcomes you&rsquo;ve logged,
@@ -68,25 +113,30 @@ export default function AccountDashboardPage() {
               </Link>
             </div>
             <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+              {recentOrders.length === 0 && (
+                <div className="px-6 py-10 text-center text-[14px] text-[var(--text-soft)]">
+                  No orders yet — your first one will land here.
+                </div>
+              )}
               {recentOrders.map((order, i) => (
                 <Link
                   key={order.id}
-                  href={`/leafmart/account/orders`}
+                  href={user ? `/leafmart/account/orders/${order.id}` : `/leafmart/account/orders`}
                   className="card-lift block px-6 py-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 hover:bg-[var(--bg-deep)]"
                   style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <p className="font-mono text-[13px] text-[var(--ink)]">{order.id}</p>
+                      <p className="font-mono text-[13px] text-[var(--ink)]">{order.number}</p>
                       <AccountStatusBadge status={order.status} />
                     </div>
                     <p className="text-[14px] text-[var(--text-soft)] truncate">
-                      {order.items.map((it) => it.name).join(" · ")}
+                      {order.itemNames.join(" · ")}
                     </p>
                   </div>
                   <div className="flex items-center justify-between sm:justify-end gap-6 sm:gap-10">
                     <p className="text-[13px] text-[var(--muted)]">{formatDate(order.date)}</p>
-                    <p className="font-display text-[20px] text-[var(--ink)]">${order.total}</p>
+                    <p className="font-display text-[20px] text-[var(--ink)]">${order.total.toFixed(2)}</p>
                   </div>
                 </Link>
               ))}

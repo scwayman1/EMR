@@ -1,6 +1,13 @@
 import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
 
-export type OrderStatus = "delivered" | "shipped" | "processing" | "cancelled";
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled"
+  | "refunded";
 
 export interface OrderItem {
   slug: string;
@@ -82,24 +89,33 @@ export function uniqueOrderedProductSlugs(orders: Order[]): string[] {
 }
 
 export const STATUS_LABEL: Record<OrderStatus, string> = {
-  delivered: "Delivered",
-  shipped: "Shipped",
+  pending: "Pending",
+  confirmed: "Confirmed",
   processing: "Processing",
+  shipped: "Shipped",
+  delivered: "Delivered",
   cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 export const STATUS_BG: Record<OrderStatus, string> = {
-  delivered: "var(--sage)",
-  shipped: "var(--butter)",
+  pending: "var(--bg-deep)",
+  confirmed: "var(--leaf-soft)",
   processing: "var(--peach)",
+  shipped: "var(--butter)",
+  delivered: "var(--sage)",
   cancelled: "var(--rose)",
+  refunded: "var(--lilac)",
 };
 
 export const STATUS_FG: Record<OrderStatus, string> = {
-  delivered: "var(--leaf)",
-  shipped: "#8A6A1F",
+  pending: "var(--text-soft)",
+  confirmed: "var(--leaf)",
   processing: "#9E5621",
+  shipped: "#8A6A1F",
+  delivered: "var(--leaf)",
   cancelled: "#9E4D45",
+  refunded: "#5C4972",
 };
 
 export function formatDate(iso: string): string {
