@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/ui/logo";
@@ -5,12 +6,35 @@ import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { AmbientMusicPlayer } from "@/components/ui/ambient-music";
 import { LiveConsole } from "@/components/marketing/live-console";
 import { Reveal } from "@/components/marketing/reveal";
+import { JsonLd } from "@/components/marketing/JsonLd";
+import { organizationJsonLd, webSiteJsonLd, SITE_URL } from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: "Leafjourney — AI-native cannabis care platform",
+  description:
+    "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",
+  alternates: { canonical: SITE_URL },
+  // Public marketing surface — override the layout's default noindex.
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Leafjourney — AI-native cannabis care platform",
+    description:
+      "Patient portal, clinician workspace, and practice operations in one unified system. Built for the modern cannabis clinic.",
+    url: SITE_URL,
+    siteName: "Leafjourney",
+    type: "website",
+  },
+};
 
 // Public marketing / acquisition home page.
 // Editorial, warm, botanical — with a live agent console to sell the core value prop.
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-bg relative overflow-hidden">
+      {/* Site-wide structured data — Organization + WebSite. Google
+          de-dups, so embedding once on the homepage is enough. */}
+      <JsonLd data={[organizationJsonLd(), webSiteJsonLd()]} />
+
       {/* Global ambient wash */}
       <div
         aria-hidden="true"
