@@ -18,6 +18,8 @@ const NAV_LINKS = [
 const SECONDARY_LINKS = [
   { label: "The Method", href: "/leafmart/about" },
   { label: "Vendors", href: "/leafmart/vendors" },
+  { label: "Education", href: "/education" },
+  { label: "Advocacy", href: "/advocacy" },
 ];
 
 /**
