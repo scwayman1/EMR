@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useCallback } from "react";
-import { ProductSilhouette } from "./ProductSilhouette";
+import { ProductImage } from "./ProductImage";
 import { useCart } from "@/lib/leafmart/cart-store";
 
 export interface LeafmartProduct {
@@ -20,6 +20,7 @@ export interface LeafmartProduct {
   deep: string;
   shape: "bottle" | "can" | "jar" | "tin" | "serum" | "box";
   tag?: string;
+  imageUrl?: string | null;
 }
 
 export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
@@ -39,11 +40,11 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
   );
 
   return (
-    <Link href={`/leafmart/products/${p.slug}`} className="block card-lift rounded-3xl overflow-hidden bg-white border border-[var(--border)]">
+    <Link href={`/leafmart/products/${p.slug}`} className="block card-lift rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
       <div className="relative">
-        <ProductSilhouette shape={p.shape} bg={p.bg} deep={p.deep} height={280} />
+        <ProductImage src={p.imageUrl} alt={p.name} shape={p.shape} bg={p.bg} deep={p.deep} height={280} />
         {p.tag && (
-          <div className="absolute top-4 left-4 bg-white text-[var(--ink)] px-3 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide inline-flex items-center gap-1.5">
+          <div className="absolute top-4 left-4 bg-[var(--surface)] text-[var(--ink)] px-3 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide inline-flex items-center gap-1.5">
             <span className="w-[5px] h-[5px] rounded-full bg-[var(--leaf)]" />
             {p.tag}
           </div>

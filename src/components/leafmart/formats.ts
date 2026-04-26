@@ -65,6 +65,18 @@ export const FORMAT_VISUALS: Record<ProductFormat, FormatVisual> = {
     inkClass: "text-[#3E2F17]",
     label: "Patch",
   },
+  beverage: {
+    tileClass:
+      "bg-[linear-gradient(135deg,#E4ECE8_0%,#B5CCC4_55%,#4E6F67_100%)]",
+    inkClass: "text-[#1F332F]",
+    label: "Beverage",
+  },
+  serum: {
+    tileClass:
+      "bg-[linear-gradient(135deg,#F1D4D0_0%,#D89E97_55%,#9E4D45_100%)]",
+    inkClass: "text-[#3E1F1B]",
+    label: "Serum",
+  },
 };
 
 // Founding-partner brand identities. Kept in the warm / editorial

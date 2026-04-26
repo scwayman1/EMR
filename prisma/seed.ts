@@ -240,6 +240,12 @@ async function seedMarketplace(organizationId: string) {
         averageRating: p.averageRating,
         reviewCount: p.reviewCount,
         featured: p.featured,
+        bgColor: p.bgColor ?? null,
+        deepColor: p.deepColor ?? null,
+        displayShape: p.displayShape ?? null,
+        doseLabel: p.doseLabel ?? null,
+        outcomePct: p.outcomePct ?? null,
+        outcomeSampleSize: p.outcomeSampleSize ?? null,
         variants: {
           create: p.variants.map((v, i) => ({
             name: v.name,

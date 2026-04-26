@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
 import { ProductSilhouette } from "./ProductSilhouette";
 
@@ -9,20 +9,46 @@ const FREE_SHIPPING_THRESHOLD = 75;
 
 export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, subtotal, itemCount } = useCart();
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const previouslyFocused = useRef<HTMLElement | null>(null);
 
   const shippingProgress = Math.min(1, subtotal / FREE_SHIPPING_THRESHOLD);
   const shippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
 
+  // Escape, scroll-lock, focus trap, and focus restore.
   useEffect(() => {
     if (!isOpen) return;
+    previouslyFocused.current = document.activeElement as HTMLElement | null;
+    closeBtnRef.current?.focus();
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeCart();
+      if (e.key === "Escape") {
+        closeCart();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const focusables = dialogRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      previouslyFocused.current?.focus?.();
     };
   }, [isOpen, closeCart]);
 
@@ -36,6 +62,7 @@ export function CartDrawer() {
         }`}
       />
       <aside
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
@@ -52,9 +79,10 @@ export function CartDrawer() {
             </h2>
           </div>
           <button
+            ref={closeBtnRef}
             onClick={closeCart}
             aria-label="Close cart"
-            className="rounded-full w-8 h-8 flex items-center justify-center border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors"
+            className="rounded-full w-10 h-10 flex items-center justify-center border border-[var(--border)] text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />

@@ -47,6 +47,15 @@ export interface MarketplaceProduct {
   averageRating: number;
   reviewCount: number;
 
+  // Storefront UI — pre-formatted display values for the Leafmart shelf.
+  // Optional; the UI mapper falls back to category/format-derived defaults.
+  bgColor?: string;
+  deepColor?: string;
+  displayShape?: "bottle" | "can" | "jar" | "tin" | "serum" | "box";
+  doseLabel?: string;
+  outcomePct?: number;
+  outcomeSampleSize?: number;
+
   // Features
   featured: boolean;
   categoryIds: string[];
@@ -101,7 +110,9 @@ export type ProductFormat =
   | "capsule"
   | "vape"
   | "concentrate"
-  | "patch";
+  | "patch"
+  | "beverage"
+  | "serum";
 
 export type SortOption = "featured" | "price-asc" | "price-desc" | "rating" | "newest";
 
@@ -114,6 +125,8 @@ export const FORMAT_LABELS: Record<ProductFormat, string> = {
   vape: "Vaporizer",
   concentrate: "Concentrate",
   patch: "Patch",
+  beverage: "Beverage",
+  serum: "Serum",
 };
 
 export const SYMPTOM_OPTIONS = [
