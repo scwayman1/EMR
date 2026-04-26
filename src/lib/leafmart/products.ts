@@ -1,12 +1,24 @@
 import "server-only";
-import type { Product, MarketplaceCategory, Vendor } from "@prisma/client";
+import type {
+  Product,
+  ProductVariant,
+  ProductReview,
+  MarketplaceCategory,
+  Vendor,
+} from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import type { LeafmartProduct } from "@/components/leafmart/LeafmartProductCard";
+import type {
+  LeafmartProduct,
+  LeafmartVariant,
+  LeafmartReview,
+} from "@/components/leafmart/LeafmartProductCard";
 import {
   DEMO_PRODUCTS,
   CATEGORIES as DEMO_CATEGORIES,
   PARTNERS as DEMO_PARTNERS,
 } from "@/components/leafmart/demo-data";
+import { PRODUCTS as MARKETPLACE_PRODUCTS } from "@/lib/marketplace/data";
+import type { MarketplaceProduct } from "@/lib/marketplace/types";
 
 /**
  * Server-side data layer for the Leafmart storefront.
@@ -38,19 +50,43 @@ type ProductWithJoins = Product & {
   categoryMappings: Array<{
     category: Pick<MarketplaceCategory, "slug" | "name">;
   }>;
+  variants?: ProductVariant[];
+  reviews?: ProductReview[];
 };
 
 /* ── Visual mappings for derived UI fields ───────────────────── */
 
+/**
+ * SHELF_BY_CATEGORY — every Leafmart category gets its own visual world.
+ *
+ * `deep` uses a `--{name}-stamp` token (defined in globals.css) so the
+ * silhouette colour flips for dark mode automatically. Hardcoding hex
+ * here would leave silhouettes invisible on dark shelves.
+ */
 const SHELF_BY_CATEGORY: Record<
   string,
   { bg: string; deep: string; shape: LeafmartProduct["shape"] }
 > = {
-  sleep: { bg: "var(--sage)", deep: "var(--leaf)", shape: "can" },
-  recovery: { bg: "var(--peach)", deep: "#9E5621", shape: "tin" },
-  calm: { bg: "var(--butter)", deep: "#8A6A1F", shape: "bottle" },
-  skin: { bg: "var(--rose)", deep: "#9E4D45", shape: "serum" },
-  focus: { bg: "var(--lilac)", deep: "#5C4972", shape: "box" },
+  // Goals / Symptoms
+  sleep:               { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
+  recovery:            { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
+  calm:                { bg: "var(--butter)",   deep: "var(--butter-stamp)",   shape: "bottle" },
+  skin:                { bg: "var(--blush)",    deep: "var(--blush-stamp)",    shape: "serum" },
+  focus:               { bg: "var(--sky)",      deep: "var(--sky-stamp)",      shape: "box" },
+  anxiety:             { bg: "var(--lavender)", deep: "var(--lavender-stamp)", shape: "bottle" },
+  "pain-support":      { bg: "var(--coral)",    deep: "var(--coral-stamp)",    shape: "tin" },
+  nausea:              { bg: "var(--seafoam)",  deep: "var(--seafoam-stamp)",  shape: "can" },
+  energy:              { bg: "var(--honey)",    deep: "var(--honey-stamp)",    shape: "can" },
+  // Formats
+  tinctures:           { bg: "var(--lilac)",    deep: "var(--lilac-stamp)",    shape: "bottle" },
+  edibles:             { bg: "var(--cream)",    deep: "var(--cream-stamp)",    shape: "box" },
+  topicals:            { bg: "var(--stone)",    deep: "var(--stone-stamp)",    shape: "tin" },
+  capsules:            { bg: "var(--sand)",     deep: "var(--sand-stamp)",     shape: "bottle" },
+  vaporizers:          { bg: "var(--moss)",     deep: "var(--moss-stamp)",     shape: "jar" },
+  // Collections
+  "clinician-picks":   { bg: "var(--gold)",     deep: "var(--gold-stamp)",     shape: "bottle" },
+  "best-sellers":      { bg: "var(--cloud)",    deep: "var(--cloud-stamp)",    shape: "can" },
+  "beginner-friendly": { bg: "var(--sprout)",   deep: "var(--sprout-stamp)",   shape: "bottle" },
 };
 
 const SHELF_BY_FORMAT: Record<string, LeafmartProduct["shape"]> = {
@@ -167,7 +203,139 @@ export function mapProductToLeafmart(p: ProductWithJoins): LeafmartProduct {
     shape: dbShape ?? derivedShelf.shape,
     tag: tagFor(p),
     imageUrl: p.imageUrl,
+    description: p.description,
+    compareAtPrice: p.compareAtPrice ?? null,
+    averageRating: p.averageRating,
+    reviewCount: p.reviewCount,
+    labVerified: p.labVerified,
+    coaUrl: p.coaUrl,
+    clinicianPick: p.clinicianPick,
+    clinicianNote: p.clinicianNote,
+    variants: (p.variants ?? []).map<LeafmartVariant>((v) => ({
+      id: v.id,
+      name: v.name,
+      price: v.price,
+      compareAtPrice: v.compareAtPrice ?? null,
+      inStock: v.inStock,
+    })),
+    reviews: (p.reviews ?? []).map<LeafmartReview>((r) => ({
+      id: r.id,
+      authorName: r.authorName,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      verified: r.verified,
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    })),
   };
+}
+
+/* ── Static-data fallback ────────────────────────────────────
+ * When the DB is empty (local/dev/preview), we still want the PDP to render
+ * with the rich variant/review data the marketplace catalog ships with.
+ * MARKETPLACE_PRODUCTS is the curated source of truth; this maps it into
+ * the same LeafmartProduct shape the DB-backed mapper produces.
+ */
+
+const MARKETPLACE_FALLBACK_SHELVES: Record<string, { bg: string; deep: string; shape: LeafmartProduct["shape"] }> = {
+  "cat-sleep":     SHELF_BY_CATEGORY.sleep,
+  "cat-recovery":  SHELF_BY_CATEGORY.recovery,
+  "cat-calm":      SHELF_BY_CATEGORY.calm,
+  "cat-skin":      SHELF_BY_CATEGORY.skin,
+  "cat-focus":     SHELF_BY_CATEGORY.focus,
+  "cat-anxiety":   SHELF_BY_CATEGORY.anxiety,
+  "cat-pain":      SHELF_BY_CATEGORY["pain-support"],
+  "cat-nausea":    SHELF_BY_CATEGORY.nausea,
+  "cat-energy":    SHELF_BY_CATEGORY.energy,
+  "cat-tincture":  SHELF_BY_CATEGORY.tinctures,
+  "cat-edible":    SHELF_BY_CATEGORY.edibles,
+  "cat-topical":   SHELF_BY_CATEGORY.topicals,
+  "cat-capsule":   SHELF_BY_CATEGORY.capsules,
+  "cat-vape":      SHELF_BY_CATEGORY.vaporizers,
+  "cat-clinician": SHELF_BY_CATEGORY["clinician-picks"],
+  "cat-best":      SHELF_BY_CATEGORY["best-sellers"],
+  "cat-beginner":  SHELF_BY_CATEGORY["beginner-friendly"],
+};
+
+function mapMarketplaceToLeafmart(m: MarketplaceProduct): LeafmartProduct {
+  const fallbackShelf =
+    m.categoryIds.map((id) => MARKETPLACE_FALLBACK_SHELVES[id]).find(Boolean) ??
+    { ...DEFAULT_SHELF, shape: SHELF_BY_FORMAT[m.format] ?? DEFAULT_SHELF.shape };
+  const totalMg = (m.cbdContent ?? 0) + (m.cbnContent ?? 0) + (m.thcContent ?? 0);
+  const formatTitle = m.format[0].toUpperCase() + m.format.slice(1);
+  const dominant =
+    (m.cbnContent ?? 0) > 0 ? "CBN" :
+    (m.cbdContent ?? 0) > 0 ? "CBD" :
+    (m.thcContent ?? 0) > 0 ? "THC" : null;
+  const formatLabel = dominant ? `${formatTitle} · ${dominant}` : formatTitle;
+  const dose = m.doseLabel ?? (totalMg > 0 ? `${Math.round(totalMg)}mg` : formatTitle);
+  const tag = m.clinicianPick ? "Clinician Pick" : undefined;
+  const shape =
+    (m.displayShape as LeafmartProduct["shape"] | undefined) ?? fallbackShelf.shape;
+  return {
+    slug: m.slug,
+    partner: m.brand.toUpperCase(),
+    name: m.name,
+    format: m.format,
+    formatLabel,
+    support: m.shortDescription || m.description,
+    dose,
+    price: m.price,
+    pct: m.outcomePct ?? (m.averageRating > 0 ? Math.round(m.averageRating * 20) : 78),
+    n: m.outcomeSampleSize ?? (m.reviewCount > 0 ? m.reviewCount : 120),
+    bg: m.bgColor ?? fallbackShelf.bg,
+    deep: m.deepColor ?? fallbackShelf.deep,
+    shape,
+    tag,
+    imageUrl: m.imageUrl,
+    description: m.description,
+    compareAtPrice: m.compareAtPrice ?? null,
+    averageRating: m.averageRating,
+    reviewCount: m.reviewCount,
+    labVerified: m.labVerified,
+    coaUrl: m.coaUrl,
+    clinicianPick: m.clinicianPick,
+    clinicianNote: m.clinicianNote,
+    variants: m.variants.map((v) => ({
+      id: v.id,
+      name: v.name,
+      price: v.price,
+      compareAtPrice: v.compareAtPrice ?? null,
+      inStock: v.inStock,
+    })),
+    reviews: m.reviews.map((r) => ({
+      id: r.id,
+      authorName: r.authorName,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      verified: r.verified,
+      createdAt: r.createdAt,
+    })),
+  };
+}
+
+function findMarketplaceBySlug(slug: string): LeafmartProduct | null {
+  const m = MARKETPLACE_PRODUCTS.find((p) => p.slug === slug);
+  return m ? mapMarketplaceToLeafmart(m) : null;
+}
+
+function relatedFromMarketplace(slug: string, limit: number): LeafmartProduct[] {
+  const target = MARKETPLACE_PRODUCTS.find((p) => p.slug === slug);
+  if (!target) {
+    return MARKETPLACE_PRODUCTS.filter((p) => p.slug !== slug)
+      .slice(0, limit)
+      .map(mapMarketplaceToLeafmart);
+  }
+  const targetTags = new Set([...target.symptoms, ...target.goals]);
+  return MARKETPLACE_PRODUCTS.filter((p) => p.slug !== slug)
+    .map((p) => ({
+      product: p,
+      score: [...p.symptoms, ...p.goals].filter((t) => targetTags.has(t)).length,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((r) => mapMarketplaceToLeafmart(r.product));
 }
 
 /* ── Public getters ─────────────────────────────────────────── */
@@ -195,12 +363,18 @@ export async function getProductBySlug(slug: string): Promise<LeafmartProduct | 
       where: { slug, status: "active", deletedAt: null },
       include: {
         categoryMappings: { include: { category: { select: { slug: true, name: true } } } },
+        variants: { orderBy: [{ sortOrder: "asc" }, { price: "asc" }] },
+        reviews: { orderBy: { createdAt: "desc" } },
       },
     });
     if (row) return mapProductToLeafmart(row);
   } catch (err) {
     console.error(`[leafmart] getProductBySlug(${slug}) failed:`, err);
   }
+  // DB miss: prefer the rich marketplace catalog (variants + reviews + COA),
+  // and only fall through to the lean DEMO_PRODUCTS if nothing matches there.
+  const marketplaceMatch = findMarketplaceBySlug(slug);
+  if (marketplaceMatch) return marketplaceMatch;
   return DEMO_PRODUCTS.find((p) => p.slug === slug) ?? null;
 }
 
@@ -230,18 +404,37 @@ export async function getRelatedProducts(
   limit = 3
 ): Promise<LeafmartProduct[]> {
   try {
+    // Find the source product so we can match its categories — "pairs well
+    // with" should surface same-category neighbours, not arbitrary picks.
+    const source = await prisma.product.findFirst({
+      where: { slug, status: "active", deletedAt: null },
+      select: { id: true, categoryMappings: { select: { categoryId: true } } },
+    });
+    const categoryIds = source?.categoryMappings.map((m) => m.categoryId) ?? [];
+
     const rows = await prisma.product.findMany({
-      where: { status: "active", deletedAt: null, slug: { not: slug } },
+      where: {
+        status: "active",
+        deletedAt: null,
+        slug: { not: slug },
+        ...(categoryIds.length > 0
+          ? { categoryMappings: { some: { categoryId: { in: categoryIds } } } }
+          : {}),
+      },
       orderBy: [{ clinicianPick: "desc" }, { sortOrder: "asc" }],
       take: limit,
       include: {
         categoryMappings: { include: { category: { select: { slug: true, name: true } } } },
+        variants: { orderBy: [{ sortOrder: "asc" }, { price: "asc" }] },
       },
     });
     if (rows.length > 0) return rows.map(mapProductToLeafmart);
   } catch (err) {
     console.error(`[leafmart] getRelatedProducts(${slug}) failed:`, err);
   }
+  // DB miss: rank the marketplace catalog by shared symptoms/goals.
+  const marketplaceRelated = relatedFromMarketplace(slug, limit);
+  if (marketplaceRelated.length > 0) return marketplaceRelated;
   return DEMO_PRODUCTS.filter((p) => p.slug !== slug).slice(0, limit);
 }
 

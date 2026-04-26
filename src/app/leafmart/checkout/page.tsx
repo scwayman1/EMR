@@ -8,6 +8,93 @@ import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 const TAX_RATE = 0.0875;
 const STEPS = ["Contact", "Shipping", "Payment", "Confirmation"] as const;
 type StepIndex = 0 | 1 | 2 | 3;
+type Direction = "forward" | "backward";
+
+// Live validators — used to drive the per-field "valid" check icon as the user types.
+const validators = {
+  email: (v: string) => /^\S+@\S+\.\S+$/.test(v.trim()),
+  phone: (v: string) => v.replace(/\D/g, "").length >= 10,
+  required: (v: string) => v.trim().length > 0,
+  state: (v: string) => /^[A-Za-z]{2}$/.test(v.trim()),
+  zip: (v: string) => /^\d{5}(-\d{4})?$/.test(v.trim()),
+  cardNumber: (v: string) => {
+    const d = v.replace(/\s/g, "");
+    return d.length >= 13 && d.length <= 19 && /^\d+$/.test(d);
+  },
+  expiry: (v: string) => /^(0[1-9]|1[0-2])\s?\/\s?\d{2}$/.test(v.trim()),
+  cvc: (v: string) => /^\d{3,4}$/.test(v.trim()),
+};
+
+function FieldCheck({ valid }: { valid: boolean }) {
+  // Inline green check that appears once a field becomes valid. Animates the
+  // stroke draw so it feels like confirmation rather than a static badge.
+  if (!valid) return null;
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      aria-hidden="true"
+      className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none"
+    >
+      <circle cx="7" cy="7" r="6" fill="var(--leaf)" />
+      <path
+        d="M4 7.2L6 9L10 5"
+        fill="none"
+        stroke="#FFF8E8"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeDasharray="14"
+        strokeDashoffset="14"
+        className="animate-[draw-check_0.4s_ease-out_forwards]"
+      />
+    </svg>
+  );
+}
+
+function ConfettiBurst() {
+  // 14 dots with randomized x-drift, color, and rotation. Pure CSS — no JS frame loop.
+  const colors = [
+    "var(--leaf)",
+    "var(--sage)",
+    "var(--peach)",
+    "var(--butter)",
+    "var(--lilac)",
+    "var(--mint)",
+  ];
+  const pieces = Array.from({ length: 14 }, (_, i) => {
+    // deterministic-ish pseudo-random offsets so SSR/CSR match — seeded by index.
+    const seed = (i + 1) * 9301 + 49297;
+    const r = (seed % 233280) / 233280;
+    const cx = `${Math.round((r - 0.5) * 320)}px`;
+    const cr = `${Math.round(r * 720 - 180)}deg`;
+    const delay = `${Math.round(r * 250)}ms`;
+    const left = `${10 + Math.round(r * 80)}%`;
+    return { i, cx, cr, delay, left, color: colors[i % colors.length] };
+  });
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-0 w-[280px] h-[260px]"
+    >
+      {pieces.map((p) => (
+        <span
+          key={p.i}
+          className="lm-confetti-piece absolute top-6 w-1.5 h-2.5 rounded-sm"
+          style={{
+            left: p.left,
+            background: p.color,
+            animationDelay: p.delay,
+            // CSS vars consumed by the keyframe
+            ["--lm-cx" as string]: p.cx,
+            ["--lm-cr" as string]: p.cr,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
 
 interface ContactInfo {
   email: string;
@@ -35,21 +122,33 @@ function generateOrderNumber() {
 }
 
 function StepIndicator({ active }: { active: StepIndex }) {
+  // Overall progress through steps 0..3 — drives the connector fill bar.
+  const progress = active / (STEPS.length - 1);
   return (
-    <ol className="flex items-center justify-center gap-3 sm:gap-5 mb-12">
-      {STEPS.map((label, i) => {
-        const isActive = i === active;
-        const isDone = i < active;
-        return (
-          <li key={label} className="flex items-center gap-3 sm:gap-5">
-            <div className="flex items-center gap-2.5">
+    <div className="relative max-w-[680px] mx-auto mb-12">
+      {/* Connector track + animated fill, sits behind the dots */}
+      <div
+        className="absolute top-3.5 left-[14px] right-[14px] h-px bg-[var(--border)]"
+        aria-hidden="true"
+      />
+      <div
+        className="absolute top-3.5 left-[14px] h-px bg-[var(--leaf)] transition-all duration-500 ease-out origin-left"
+        style={{ width: `calc((100% - 28px) * ${progress})` }}
+        aria-hidden="true"
+      />
+      <ol className="relative flex items-start justify-between">
+        {STEPS.map((label, i) => {
+          const isActive = i === active;
+          const isDone = i < active;
+          return (
+            <li key={label} className="flex flex-col items-center gap-2 min-w-0">
               <span
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold tabular-nums transition-colors ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold tabular-nums transition-all duration-300 relative z-10 ${
                   isActive
-                    ? "bg-[var(--ink)] text-[#FFF8E8]"
+                    ? "bg-[var(--ink)] text-[#FFF8E8] scale-110 shadow-[0_0_0_4px_var(--bg)]"
                     : isDone
-                      ? "bg-[var(--leaf)] text-[#FFF8E8]"
-                      : "bg-[var(--surface-muted)] text-[var(--muted)]"
+                      ? "bg-[var(--leaf)] text-[#FFF8E8] shadow-[0_0_0_4px_var(--bg)]"
+                      : "bg-[var(--surface-muted)] text-[var(--muted)] shadow-[0_0_0_4px_var(--bg)]"
                 }`}
               >
                 {isDone ? (
@@ -68,25 +167,26 @@ function StepIndicator({ active }: { active: StepIndex }) {
                 )}
               </span>
               <span
-                className={`hidden sm:inline text-[12.5px] font-medium tracking-wide uppercase ${
+                className={`hidden sm:inline text-[11.5px] font-medium tracking-wide uppercase whitespace-nowrap ${
                   isActive ? "text-[var(--ink)]" : "text-[var(--muted)]"
                 }`}
               >
                 {label}
               </span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <span className="w-6 sm:w-12 h-px bg-[var(--border)]" />
-            )}
-          </li>
-        );
-      })}
-    </ol>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 
-function fieldClass() {
-  return "w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 text-[14.5px] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--leaf)] focus:ring-2 focus:ring-[var(--accent-soft)] transition";
+function fieldClass(opts: { valid?: boolean; error?: boolean } = {}) {
+  const base =
+    "w-full rounded-2xl border bg-[var(--surface)] pl-4 pr-10 py-3.5 text-[14.5px] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] transition";
+  if (opts.error) return `${base} border-[var(--danger)] focus:border-[var(--danger)]`;
+  if (opts.valid) return `${base} border-[var(--leaf)]/60 focus:border-[var(--leaf)]`;
+  return `${base} border-[var(--border)] focus:border-[var(--leaf)]`;
 }
 
 function labelClass() {
@@ -96,6 +196,10 @@ function labelClass() {
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
   const [step, setStep] = useState<StepIndex>(0);
+  // Direction drives the slide-in animation when stepping forward vs back.
+  const [direction, setDirection] = useState<Direction>("forward");
+  // Bumped on every failed validation so the form panel re-keys and shakes.
+  const [shakeKey, setShakeKey] = useState(0);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [contact, setContact] = useState<ContactInfo>({ email: "", phone: "" });
@@ -186,30 +290,32 @@ export default function CheckoutPage() {
 
   function validateContact(): boolean {
     const e: Record<string, string> = {};
-    if (!/^\S+@\S+\.\S+$/.test(contact.email)) e.email = "Enter a valid email.";
-    if (contact.phone.replace(/\D/g, "").length < 10) e.phone = "Enter a valid phone.";
+    if (!validators.email(contact.email)) e.email = "Enter a valid email.";
+    if (!validators.phone(contact.phone)) e.phone = "Enter a valid phone.";
     setErrors(e);
+    if (Object.keys(e).length > 0) setShakeKey((k) => k + 1);
     return Object.keys(e).length === 0;
   }
   function validateShipping(): boolean {
     const e: Record<string, string> = {};
-    if (!shipping.firstName.trim()) e.firstName = "Required";
-    if (!shipping.lastName.trim()) e.lastName = "Required";
-    if (!shipping.address1.trim()) e.address1 = "Required";
-    if (!shipping.city.trim()) e.city = "Required";
-    if (!shipping.state.trim()) e.state = "Required";
-    if (!/^\d{5}(-\d{4})?$/.test(shipping.zip.trim())) e.zip = "Enter a valid ZIP";
+    if (!validators.required(shipping.firstName)) e.firstName = "Required";
+    if (!validators.required(shipping.lastName)) e.lastName = "Required";
+    if (!validators.required(shipping.address1)) e.address1 = "Required";
+    if (!validators.required(shipping.city)) e.city = "Required";
+    if (!validators.state(shipping.state)) e.state = "Required";
+    if (!validators.zip(shipping.zip)) e.zip = "Enter a valid ZIP";
     setErrors(e);
+    if (Object.keys(e).length > 0) setShakeKey((k) => k + 1);
     return Object.keys(e).length === 0;
   }
   function validatePayment(): boolean {
     const e: Record<string, string> = {};
-    const digits = payment.cardNumber.replace(/\s/g, "");
-    if (digits.length < 13 || digits.length > 19) e.cardNumber = "Enter a valid card number.";
-    if (!/^(0[1-9]|1[0-2])\s?\/\s?\d{2}$/.test(payment.expiry)) e.expiry = "MM / YY";
-    if (!/^\d{3,4}$/.test(payment.cvc)) e.cvc = "3–4 digits";
-    if (!payment.nameOnCard.trim()) e.nameOnCard = "Required";
+    if (!validators.cardNumber(payment.cardNumber)) e.cardNumber = "Enter a valid card number.";
+    if (!validators.expiry(payment.expiry)) e.expiry = "MM / YY";
+    if (!validators.cvc(payment.cvc)) e.cvc = "3–4 digits";
+    if (!validators.required(payment.nameOnCard)) e.nameOnCard = "Required";
     setErrors(e);
+    if (Object.keys(e).length > 0) setShakeKey((k) => k + 1);
     return Object.keys(e).length === 0;
   }
 
@@ -293,11 +399,13 @@ export default function CheckoutPage() {
       return;
     }
     setErrors({});
+    setDirection("forward");
     setStep((s) => Math.min(3, (s + 1) as StepIndex) as StepIndex);
   }
 
   function back() {
     setErrors({});
+    setDirection("backward");
     setStep((s) => Math.max(0, (s - 1) as StepIndex) as StepIndex);
   }
 
@@ -325,24 +433,34 @@ export default function CheckoutPage() {
   // ── Confirmation step ──────────────────────────────────────────
   if (step === 3 && orderNumber && confirmedSnapshot) {
     return (
-      <section className="max-w-[720px] mx-auto px-6 lg:px-10 py-20 lg:py-24 lm-fade-in">
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center mb-7"
-          style={{ background: "var(--sage)" }}
-        >
-          <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-            <path
-              d="M7 14.5L12 19.5L21 9"
-              fill="none"
-              stroke="var(--leaf)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray="28"
-              strokeDashoffset="28"
-              className="animate-[draw-check_0.6s_ease-out_0.3s_forwards]"
-            />
-          </svg>
+      <section className="max-w-[720px] mx-auto px-6 lg:px-10 py-20 lg:py-24 lm-fade-in relative">
+        {/* Confetti pieces fall behind the headline; pure CSS, plays once. */}
+        <ConfettiBurst />
+        <div className="relative w-16 h-16 mb-7">
+          {/* Soft pulse burst behind the badge */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 rounded-full lm-confirm-burst"
+            style={{ background: "var(--leaf)" }}
+          />
+          <div
+            className="relative w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ background: "var(--sage)" }}
+          >
+            <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+              <path
+                d="M7 14.5L12 19.5L21 9"
+                fill="none"
+                stroke="var(--leaf)"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="28"
+                strokeDashoffset="28"
+                className="animate-[draw-check_0.6s_ease-out_0.3s_forwards]"
+              />
+            </svg>
+          </div>
         </div>
         <p className="eyebrow text-[var(--text-soft)] mb-3">Order confirmed</p>
         <h1 className="font-display text-[44px] sm:text-[56px] font-medium tracking-tight text-[var(--ink)] leading-[1.05] mb-5">

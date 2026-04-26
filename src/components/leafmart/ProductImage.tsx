@@ -49,7 +49,8 @@ export function ProductImage({
     <div
       className={className}
       style={{
-        background: bg,
+        backgroundImage: `linear-gradient(180deg, ${bg} 0%, color-mix(in srgb, ${bg} 82%, ${deep}) 100%)`,
+        backgroundColor: bg,
         borderRadius: 28,
         position: "relative",
         overflow: "hidden",

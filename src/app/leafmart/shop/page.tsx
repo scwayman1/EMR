@@ -1,12 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
+import { CategoryIcon } from "@/components/leafmart/CategoryIcon";
 import { getCategories } from "@/lib/leafmart/products";
 
 export const metadata: Metadata = {
   title: "Shop by what you need",
   description: "Browse clinician-curated cannabis wellness products organized by how you want to feel.",
 };
+
+export const revalidate = 3600;
 
 export default async function ShopPage() {
   const categories = await getCategories();
@@ -28,14 +31,29 @@ export default async function ShopPage() {
             <Link
               key={c.slug}
               href={`/leafmart/category/${c.slug}`}
-              className="card-lift rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 flex items-center gap-6 sm:gap-8 overflow-hidden"
-              style={{ background: c.bg, minHeight: 180 }}
+              className="card-lift rounded-[24px] sm:rounded-[28px] p-6 sm:p-8 flex items-center gap-6 sm:gap-8 overflow-hidden relative"
+              style={{
+                backgroundImage: `linear-gradient(180deg, ${c.bg} 0%, color-mix(in srgb, ${c.bg} 78%, ${c.deep}) 100%)`,
+                backgroundColor: c.bg,
+                minHeight: 180,
+              }}
             >
               <div className="flex-1">
-                <h2 className="font-display text-[28px] sm:text-[36px] font-medium tracking-tight text-[var(--ink)]">{c.name}</h2>
+                <div className="flex items-start gap-3 mb-2">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(255,255,255,0.55)", color: c.deep }}
+                  >
+                    <CategoryIcon slug={c.slug} size={18} />
+                  </div>
+                  <h2 className="font-display text-[28px] sm:text-[36px] font-medium tracking-tight text-[var(--ink)] leading-[1.0]">{c.name}</h2>
+                </div>
                 <p className="text-[13.5px] sm:text-[14.5px] text-[var(--text-soft)] mt-2 leading-snug max-w-[280px]">{c.sub}</p>
-                <div className="mt-3 sm:mt-4 inline-flex items-center gap-2 bg-white/60 rounded-full px-3 py-1.5 text-xs font-semibold text-[var(--ink)]">
-                  {c.count} products · all reviewed
+                <div
+                  className="mt-3 sm:mt-4 inline-flex items-center text-[10.5px] font-semibold tracking-[1.4px] uppercase"
+                  style={{ color: c.deep }}
+                >
+                  {c.count} {c.count === 1 ? "product" : "products"} · all reviewed
                 </div>
               </div>
               <div className="w-[110px] h-[150px] sm:w-[140px] sm:h-[180px] flex-shrink-0 hidden xs:block sm:block">

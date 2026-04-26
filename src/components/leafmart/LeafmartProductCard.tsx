@@ -5,6 +5,24 @@ import { useState, useCallback } from "react";
 import { ProductImage } from "./ProductImage";
 import { useCart } from "@/lib/leafmart/cart-store";
 
+export interface LeafmartVariant {
+  id: string;
+  name: string;
+  price: number;
+  compareAtPrice?: number | null;
+  inStock: boolean;
+}
+
+export interface LeafmartReview {
+  id: string;
+  authorName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  verified: boolean;
+  createdAt: string;
+}
+
 export interface LeafmartProduct {
   slug: string;
   partner: string;
@@ -21,6 +39,19 @@ export interface LeafmartProduct {
   shape: "bottle" | "can" | "jar" | "tin" | "serum" | "box";
   tag?: string;
   imageUrl?: string | null;
+
+  // Optional richer fields surfaced on the PDP. Older callers (cart, demo data)
+  // may omit these; the PDP falls back gracefully when they are absent.
+  description?: string;
+  compareAtPrice?: number | null;
+  averageRating?: number;
+  reviewCount?: number;
+  labVerified?: boolean;
+  coaUrl?: string | null;
+  clinicianPick?: boolean;
+  clinicianNote?: string | null;
+  variants?: LeafmartVariant[];
+  reviews?: LeafmartReview[];
 }
 
 export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
@@ -44,8 +75,11 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
       <div className="relative">
         <ProductImage src={p.imageUrl} alt={p.name} shape={p.shape} bg={p.bg} deep={p.deep} height={280} />
         {p.tag && (
-          <div className="absolute top-4 left-4 bg-[var(--surface)] text-[var(--ink)] px-3 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide inline-flex items-center gap-1.5">
-            <span className="w-[5px] h-[5px] rounded-full bg-[var(--leaf)]" />
+          <div
+            className="absolute top-4 left-4 px-3 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide inline-flex items-center gap-1.5 shadow-sm"
+            style={{ background: p.deep, color: "#FFF8E8" }}
+          >
+            <span className="w-[5px] h-[5px] rounded-full" style={{ background: "#FFF8E8", opacity: 0.85 }} />
             {p.tag}
           </div>
         )}

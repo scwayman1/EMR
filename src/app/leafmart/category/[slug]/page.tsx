@@ -3,6 +3,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
 import { getCategories, getProductsByCategory } from "@/lib/leafmart/products";
+import { JsonLd } from "@/components/leafmart/JsonLd";
+import {
+  absoluteUrl,
+  breadcrumbList,
+  collectionPageLd,
+} from "@/lib/leafmart/seo";
+
+export const revalidate = 3600;
 
 const CATEGORY_META: Record<string, { title: string; headline: string; accent: string; bg: string }> = {
   sleep: { title: "Sleep", headline: "For evenings that should end quietly.", accent: "before bed", bg: "var(--sage)" },
@@ -12,10 +20,30 @@ const CATEGORY_META: Record<string, { title: string; headline: string; accent: s
   focus: { title: "Focus", headline: "Clarity when it counts.", accent: "clarity", bg: "var(--lilac)" },
 };
 
+export async function generateStaticParams() {
+  try {
+    const categories = await getCategories();
+    return categories.map((c) => ({ slug: c.slug }));
+  } catch {
+    return Object.keys(CATEGORY_META).map((slug) => ({ slug }));
+  }
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const cat = CATEGORY_META[params.slug];
   if (!cat) return { title: "Category" };
-  return { title: `${cat.title} Shelf`, description: cat.headline };
+  return {
+    title: `${cat.title} Shelf`,
+    description: cat.headline,
+    alternates: { canonical: absoluteUrl(`/leafmart/category/${params.slug}`) },
+    openGraph: {
+      title: `${cat.title} — Leafmart`,
+      description: cat.headline,
+      url: absoluteUrl(`/leafmart/category/${params.slug}`),
+      type: "website",
+      siteName: "Leafmart",
+    },
+  };
 }
 
 export default async function CategoryPage({ params }: { params: { slug: string } }) {
@@ -28,8 +56,23 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   ]);
   const catInfo = categories.find((c) => c.slug === params.slug);
 
+  const breadcrumbs = breadcrumbList([
+    { name: "Leafmart", url: "/leafmart" },
+    { name: "Shop", url: "/leafmart/shop" },
+    { name: cat.title, url: `/leafmart/category/${params.slug}` },
+  ]);
+
+  const collection = collectionPageLd({
+    name: cat.title,
+    slug: params.slug,
+    description: cat.headline,
+    count: catInfo?.count ?? products.length,
+    productSlugs: products.map((p) => p.slug),
+  });
+
   return (
     <>
+      <JsonLd data={[collection, breadcrumbs]} />
       {/* Shelf header */}
       <section className="px-4 sm:px-6 lg:px-14 pt-10 sm:pt-12 pb-6 sm:pb-8 max-w-[1440px] mx-auto lm-fade-in">
         <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between">
