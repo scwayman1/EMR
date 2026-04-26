@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
 import { ProductSilhouette } from "./ProductSilhouette";
 
 const FREE_SHIPPING_THRESHOLD = 75;
+const REMOVE_ANIM_MS = 240;
 
 export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, subtotal, itemCount } = useCart();
@@ -13,8 +14,54 @@ export function CartDrawer() {
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
+  // Track which items are mid-removal so we can play the slide-out before
+  // dispatching the actual removal to the store.
+  const [removing, setRemoving] = useState<Set<string>>(new Set());
+  // Track the previously-known quantity per slug so we can fire the count-tick
+  // animation only when the number actually changes.
+  const prevQty = useRef<Record<string, number>>({});
+  const [tickKey, setTickKey] = useState<Record<string, number>>({});
+
   const shippingProgress = Math.min(1, subtotal / FREE_SHIPPING_THRESHOLD);
   const shippingRemaining = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
+
+  // Detect quantity changes to retrigger the tick animation on the count span.
+  useEffect(() => {
+    const next = { ...tickKey };
+    let changed = false;
+    for (const { product, quantity } of items) {
+      const prior = prevQty.current[product.slug];
+      if (prior !== undefined && prior !== quantity) {
+        next[product.slug] = (next[product.slug] ?? 0) + 1;
+        changed = true;
+      }
+      prevQty.current[product.slug] = quantity;
+    }
+    // Drop quantities for items no longer in cart so memory stays bounded.
+    for (const slug of Object.keys(prevQty.current)) {
+      if (!items.find((i) => i.product.slug === slug)) {
+        delete prevQty.current[slug];
+      }
+    }
+    if (changed) setTickKey(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  function handleRemove(slug: string) {
+    setRemoving((prev) => {
+      const next = new Set(prev);
+      next.add(slug);
+      return next;
+    });
+    window.setTimeout(() => {
+      removeItem(slug);
+      setRemoving((prev) => {
+        const next = new Set(prev);
+        next.delete(slug);
+        return next;
+      });
+    }, REMOVE_ANIM_MS);
+  }
 
   // Escape, scroll-lock, focus trap, and focus restore.
   useEffect(() => {
@@ -116,7 +163,10 @@ export function CartDrawer() {
         <div className="flex-1 overflow-y-auto">
           {items.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center px-8 text-center gap-4">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: "var(--sage)" }}>
+              <div
+                className="w-20 h-20 rounded-full flex items-center justify-center lm-empty-float"
+                style={{ background: "var(--sage)" }}
+              >
                 <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
                   <path d="M6 9h20l-2 14a3 3 0 0 1-3 2.6H11A3 3 0 0 1 8 23L6 9z" fill="none" stroke="var(--leaf)" strokeWidth="1.6" strokeLinejoin="round" />
                   <path d="M11 9V7a5 5 0 0 1 10 0v2" fill="none" stroke="var(--leaf)" strokeWidth="1.6" strokeLinecap="round" />
@@ -136,65 +186,80 @@ export function CartDrawer() {
             </div>
           ) : (
             <ul className="divide-y divide-[var(--border)]">
-              {items.map(({ product, quantity }) => (
-                <li key={product.slug} className="px-5 py-4 flex gap-3.5 animate-[fade-in_0.3s_ease-out]">
-                  {/* Compact silhouette with quantity badge */}
-                  <div className="relative flex-shrink-0">
-                    <div className="w-[64px] h-[64px] rounded-2xl overflow-hidden">
-                      <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={64} />
-                    </div>
-                    {quantity > 1 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[#FFF8E8] text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center tabular-nums shadow-sm">
-                        {quantity}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Product info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10.5px] font-semibold tracking-[1.4px] uppercase text-[var(--text-soft)] mb-0.5">{product.partner}</p>
-                    <p className="font-display text-[15px] font-medium text-[var(--ink)] leading-tight truncate">
-                      {product.name}
-                    </p>
-                    <p className="text-[11.5px] text-[var(--muted)] mt-0.5">{product.dose}</p>
-
-                    <div className="flex items-center justify-between mt-2.5">
-                      <div className="inline-flex items-center border border-[var(--border)] rounded-full overflow-hidden">
-                        <button
-                          onClick={() => updateQuantity(product.slug, quantity - 1)}
-                          aria-label={`Decrease ${product.name} quantity`}
-                          className="w-7 h-7 flex items-center justify-center text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors text-[13px]"
-                        >
-                          −
-                        </button>
-                        <span className="w-6 text-center text-[12px] font-medium tabular-nums">{quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(product.slug, quantity + 1)}
-                          aria-label={`Increase ${product.name} quantity`}
-                          className="w-7 h-7 flex items-center justify-center text-[var(--ink)] hover:bg-[var(--surface-muted)] transition-colors text-[13px]"
-                        >
-                          +
-                        </button>
+              {items.map(({ product, quantity }) => {
+                const isRemoving = removing.has(product.slug);
+                const tk = tickKey[product.slug] ?? 0;
+                return (
+                  <li
+                    key={product.slug}
+                    className={`px-5 py-4 flex gap-3.5 ${isRemoving ? "lm-item-exit" : "lm-item-enter"}`}
+                  >
+                    {/* Compact silhouette with quantity badge */}
+                    <div className="relative flex-shrink-0">
+                      <div className="w-[64px] h-[64px] rounded-2xl overflow-hidden">
+                        <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={64} />
                       </div>
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => removeItem(product.slug)}
-                          aria-label={`Remove ${product.name}`}
-                          className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--surface-muted)] text-[var(--muted)] hover:text-[var(--danger)] transition-colors"
+                      {quantity > 1 && (
+                        <span
+                          key={`badge-${product.slug}-${tk}`}
+                          className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[#FFF8E8] text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center tabular-nums shadow-sm lm-count-tick"
                         >
-                          <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
-                            <path d="M3 4.5h7M5 4.5V3.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1M4.5 4.5l.4 6a1 1 0 0 0 1 .9h1.2a1 1 0 0 0 1-.9l.4-6" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                        <span className="font-display text-[16px] font-medium text-[var(--ink)] tabular-nums">
-                          {formatUSD(product.price * quantity)}
+                          {quantity}
                         </span>
+                      )}
+                    </div>
+
+                    {/* Product info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10.5px] font-semibold tracking-[1.4px] uppercase text-[var(--text-soft)] mb-0.5">{product.partner}</p>
+                      <p className="font-display text-[15px] font-medium text-[var(--ink)] leading-tight truncate">
+                        {product.name}
+                      </p>
+                      <p className="text-[11.5px] text-[var(--muted)] mt-0.5">{product.dose}</p>
+
+                      <div className="flex items-center justify-between mt-2.5">
+                        <div className="inline-flex items-center border border-[var(--border)] rounded-full overflow-hidden">
+                          <button
+                            onClick={() => updateQuantity(product.slug, quantity - 1)}
+                            aria-label={`Decrease ${product.name} quantity`}
+                            className="w-8 h-8 flex items-center justify-center text-[var(--ink)] hover:bg-[var(--surface-muted)] active:scale-90 transition-all text-[13px]"
+                          >
+                            −
+                          </button>
+                          <span
+                            key={`qty-${product.slug}-${tk}`}
+                            className="w-7 text-center text-[12px] font-medium tabular-nums lm-count-tick inline-block"
+                          >
+                            {quantity}
+                          </span>
+                          <button
+                            onClick={() => updateQuantity(product.slug, quantity + 1)}
+                            aria-label={`Increase ${product.name} quantity`}
+                            className="w-8 h-8 flex items-center justify-center text-[var(--ink)] hover:bg-[var(--surface-muted)] active:scale-90 transition-all text-[13px]"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleRemove(product.slug)}
+                            aria-label={`Remove ${product.name}`}
+                            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--surface-muted)] text-[var(--muted)] hover:text-[var(--danger)] transition-colors"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">
+                              <path d="M3 4.5h7M5 4.5V3.5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1M4.5 4.5l.4 6a1 1 0 0 0 1 .9h1.2a1 1 0 0 0 1-.9l.4-6" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <span className="font-display text-[16px] font-medium text-[var(--ink)] tabular-nums">
+                            {formatUSD(product.price * quantity)}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -209,7 +274,7 @@ export function CartDrawer() {
               </span>
             </div>
             <p className="text-[11.5px] text-[var(--muted)] mb-3.5 leading-relaxed">
-              Shipping &amp; tax calculated at checkout.
+              Shipping &amp; tax calculated at checkout. Typically ships in 1–2 business days.
             </p>
             <Link
               href="/leafmart/checkout"

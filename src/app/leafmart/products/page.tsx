@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Browse every clinician-curated product on Leafmart.",
 };
 
+export const revalidate = 3600;
+
 function ProductCardSkeleton() {
   return (
     <div className="rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]" aria-hidden="true">

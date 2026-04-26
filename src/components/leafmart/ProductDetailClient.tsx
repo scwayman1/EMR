@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ProductImage } from "./ProductImage";
-import { LeafmartProductGrid, type LeafmartProduct } from "./LeafmartProductCard";
+import type { LeafmartProduct, LeafmartVariant } from "./LeafmartProductCard";
+import { PriceDisplay, VariantSelector } from "./VariantSelector";
+import { TrustSignalsBar } from "./TrustSignalsBar";
+import { ProductReviews } from "./ProductReviews";
+import { PairsWellWith } from "./PairsWellWith";
+import { StarRating } from "./StarRating";
 import { useCart } from "@/lib/leafmart/cart-store";
 import { findGuideByFormat } from "@/lib/leafmart/dosing-guides";
 
@@ -18,11 +23,55 @@ export function ProductDetailClient({ product, related }: Props) {
   const [added, setAdded] = useState(false);
   const dosingGuide = findGuideByFormat(product.format);
 
+  const variants = useMemo<LeafmartVariant[]>(
+    () => product.variants ?? [],
+    [product.variants]
+  );
+  const [selectedVariantId, setSelectedVariantId] = useState<string>(
+    variants[0]?.id ?? ""
+  );
+  const selectedVariant: LeafmartVariant | undefined = useMemo(
+    () => variants.find((v) => v.id === selectedVariantId),
+    [variants, selectedVariantId]
+  );
+
+  // Effective price comes from the chosen variant when present, else the
+  // product-level price. Compare-at follows the same precedence so the
+  // strikethrough reflects the variant the user actually picked.
+  const effectivePrice = selectedVariant?.price ?? product.price;
+  const effectiveCompareAt =
+    selectedVariant?.compareAtPrice ?? product.compareAtPrice ?? null;
+  const inStock = selectedVariant?.inStock ?? true;
+
   const handleAdd = useCallback(() => {
-    addItem(product, quantity);
+    // Pass a derived product into the cart-store with the chosen variant's
+    // price and the size embedded in the display name. Slug is stable so
+    // links from the cart back to the PDP keep working — the cart-store
+    // owns variant identity by slug only (do not modify cart-store.tsx).
+    const productForCart: LeafmartProduct = {
+      ...product,
+      price: effectivePrice,
+      compareAtPrice: effectiveCompareAt,
+      name: selectedVariant && variants.length > 1
+        ? `${product.name} · ${selectedVariant.name}`
+        : product.name,
+    };
+    addItem(productForCart, quantity);
     setAdded(true);
     setTimeout(() => setAdded(false), 1800);
-  }, [addItem, product, quantity]);
+  }, [
+    addItem,
+    product,
+    quantity,
+    selectedVariant,
+    effectivePrice,
+    effectiveCompareAt,
+    variants.length,
+  ]);
+
+  const reviewCount = product.reviewCount ?? product.reviews?.length ?? 0;
+  const averageRating =
+    product.averageRating ?? deriveAverageRating(product.reviews ?? []);
 
   return (
     <>
@@ -57,9 +106,32 @@ export function ProductDetailClient({ product, related }: Props) {
             <h1 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-normal tracking-[-1.0px] sm:tracking-[-1.2px] leading-[1.05] text-[var(--ink)] mb-3 sm:mb-4">
               {product.name}
             </h1>
+
+            {/* Inline rating row */}
+            {reviewCount > 0 && (
+              <div className="flex items-center gap-2.5 mb-4 sm:mb-5">
+                <StarRating rating={averageRating} size={15} />
+                <span className="text-[13px] font-medium text-[var(--text)] tabular-nums">
+                  {averageRating.toFixed(1)}
+                </span>
+                <a href="#reviews" className="text-[13px] text-[var(--muted)] hover:text-[var(--leaf)]">
+                  ({reviewCount.toLocaleString()} {reviewCount === 1 ? "review" : "reviews"})
+                </a>
+              </div>
+            )}
+
             <p className="text-[15.5px] sm:text-[17px] text-[var(--text-soft)] leading-relaxed max-w-[500px] mb-5 sm:mb-6">
               {product.support}
             </p>
+
+            {/* Trust signals — moved into the info column so it sits above the buy box */}
+            <TrustSignalsBar
+              labVerified={product.labVerified ?? true}
+              coaUrl={product.coaUrl}
+              clinicianReviewed={product.clinicianPick ?? true}
+              outcomeSampleSize={product.n}
+              freeShipping
+            />
 
             {/* Details */}
             <div className="space-y-3 mb-7 sm:mb-8">
@@ -82,15 +154,12 @@ export function ProductDetailClient({ product, related }: Props) {
               </div>
             </div>
 
-            {/* Trust chips */}
-            <div className="flex flex-wrap gap-2 sm:gap-2.5 mb-7 sm:mb-8">
-              {["Physician Curated", "Lab Verified", "Outcome Informed"].map((t) => (
-                <span key={t} className="trust-chip">
-                  <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M3.5 6.2L5.2 7.8L8.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  {t}
-                </span>
-              ))}
-            </div>
+            {/* Variant selector */}
+            <VariantSelector
+              variants={variants}
+              selectedId={selectedVariantId}
+              onSelect={setSelectedVariantId}
+            />
 
             {/* Outcome ornament */}
             <div className="flex items-center gap-3 text-[var(--leaf)] mb-7 sm:mb-8 font-mono text-[13px] sm:text-sm font-medium">
@@ -101,7 +170,7 @@ export function ProductDetailClient({ product, related }: Props) {
             {/* Price + Quantity + CTA */}
             <div className="pt-5 sm:pt-6 border-t border-[var(--border)]">
               <div className="flex flex-wrap items-center gap-4 sm:gap-5">
-                <span className="font-display text-[32px] sm:text-[36px] font-medium text-[var(--ink)]">${product.price}</span>
+                <PriceDisplay price={effectivePrice} compareAtPrice={effectiveCompareAt} />
 
                 {/* Quantity selector */}
                 <div className="inline-flex items-center border border-[var(--border)] rounded-full overflow-hidden">
@@ -125,13 +194,18 @@ export function ProductDetailClient({ product, related }: Props) {
                 {/* Add to cart button */}
                 <button
                   onClick={handleAdd}
+                  disabled={!inStock}
                   className={`rounded-full px-6 sm:px-8 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] font-medium transition-all duration-300 flex-1 sm:flex-none min-w-[160px] flex items-center justify-center gap-2 ${
-                    added
-                      ? "bg-[var(--leaf)] text-[#FFF8E8] scale-[1.02]"
-                      : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)]"
+                    !inStock
+                      ? "bg-[var(--border)] text-[var(--muted)] cursor-not-allowed"
+                      : added
+                        ? "bg-[var(--leaf)] text-[#FFF8E8] scale-[1.02]"
+                        : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)]"
                   }`}
                 >
-                  {added ? (
+                  {!inStock ? (
+                    "Sold out"
+                  ) : added ? (
                     <>
                       <svg width="16" height="16" viewBox="0 0 16 16" className="animate-[scale-in_0.3s_ease-out]">
                         <path d="M3 8.5L6.5 12L13 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -154,7 +228,9 @@ export function ProductDetailClient({ product, related }: Props) {
             <div className="mt-8 sm:mt-10 rounded-2xl bg-[var(--surface-muted)] p-5 sm:p-6 border-l-4 border-[var(--leaf)]">
               <p className="eyebrow text-[var(--leaf)] mb-2">Clinician note</p>
               <p className="font-display text-[15.5px] sm:text-[17px] leading-relaxed text-[var(--text)]">
-                &ldquo;We reviewed this product&apos;s COA and formulation. The cannabinoid profile matches the label, and the delivery format aligns with the intended use case.&rdquo;
+                {product.clinicianNote
+                  ? `“${product.clinicianNote}”`
+                  : "“We reviewed this product’s COA and formulation. The cannabinoid profile matches the label, and the delivery format aligns with the intended use case.”"}
               </p>
               <div className="flex items-center gap-2.5 mt-4">
                 <div className="w-7 h-7 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-xs font-medium">MC</div>
@@ -165,18 +241,23 @@ export function ProductDetailClient({ product, related }: Props) {
         </div>
       </section>
 
-      {/* Related products */}
-      {related.length > 0 && (
-        <section className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 pb-14 sm:pb-20 max-w-[1440px] mx-auto border-t border-[var(--border)]">
-          <div className="mb-6 sm:mb-8">
-            <p className="eyebrow text-[var(--leaf)] mb-2">You might also like</p>
-            <h2 className="font-display text-[26px] sm:text-[32px] font-normal tracking-tight text-[var(--ink)]">More from the shelf</h2>
-          </div>
-          <div className="lm-stagger">
-            <LeafmartProductGrid products={related} />
-          </div>
-        </section>
-      )}
+      {/* Reviews — anchored so the rating row links here */}
+      <div id="reviews" className="scroll-mt-24">
+        <ProductReviews
+          reviews={product.reviews ?? []}
+          averageRating={averageRating}
+          reviewCount={reviewCount}
+        />
+      </div>
+
+      {/* Pairs well with */}
+      <PairsWellWith products={related} />
     </>
   );
+}
+
+function deriveAverageRating(reviews: { rating: number }[]): number {
+  if (reviews.length === 0) return 0;
+  const sum = reviews.reduce((s, r) => s + r.rating, 0);
+  return sum / reviews.length;
 }

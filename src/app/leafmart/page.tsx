@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
 import { Portrait } from "@/components/leafmart/PortraitPlaceholder";
+import { CategoryIcon } from "@/components/leafmart/CategoryIcon";
 import { TESTIMONIALS, TRUST_STEPS } from "@/components/leafmart/demo-data";
 import { getProducts, getCategories, getVendors } from "@/lib/leafmart/products";
 
@@ -11,6 +12,10 @@ export const metadata: Metadata = {
   description:
     "Every product on Leafmart is reviewed by a clinician, verified by a third-party lab, and ranked by real patient outcomes.",
 };
+
+// Re-render the homepage at most once an hour. Product/category data is
+// stable across visits and re-fetching on every request defeats the CDN.
+export const revalidate = 3600;
 
 /* ── Helper components ──────────────────────────────────────── */
 
@@ -146,27 +151,54 @@ export default async function LeafmartHomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px] lm-stagger">
-          {categories.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/leafmart/category/${c.slug}`}
-              className="card-lift rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 pb-0 flex flex-col overflow-hidden cursor-pointer min-h-[280px] sm:min-h-[340px] lg:min-h-[380px]"
-              style={{ background: c.bg }}
-            >
+          {categories.map((c, i) => {
+            // Subtle per-card variation so 17 cards feel like a row of unique
+            // shelves rather than a single template repeating.
+            const tilt = i % 3 === 1 ? -3 : i % 3 === 2 ? 3 : 0;
+            const offset = i % 4 === 0 ? 0 : i % 4 === 1 ? -8 : i % 4 === 2 ? 8 : 0;
+            return (
+              <Link
+                key={c.slug}
+                href={`/leafmart/category/${c.slug}`}
+                className="card-lift rounded-[24px] sm:rounded-[28px] p-5 sm:p-6 pb-0 flex flex-col overflow-hidden cursor-pointer min-h-[280px] sm:min-h-[340px] lg:min-h-[380px] relative"
+                style={{
+                  backgroundImage: `linear-gradient(180deg, ${c.bg} 0%, color-mix(in srgb, ${c.bg} 78%, ${c.deep}) 100%)`,
+                  backgroundColor: c.bg,
+                }}
+              >
                 <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-display text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-tight text-[var(--ink)]">{c.name}</h3>
-                  <p className="text-[13px] sm:text-[13.5px] text-[var(--text-soft)] mt-2 max-w-[200px] leading-snug">{c.sub}</p>
+                  <div>
+                    <h3 className="font-display text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-tight text-[var(--ink)]">{c.name}</h3>
+                    <p className="text-[13px] sm:text-[13.5px] text-[var(--text-soft)] mt-2 max-w-[200px] leading-snug">{c.sub}</p>
+                  </div>
+                  {/* Category icon — tinted with the shelf's stamp colour */}
+                  <div
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(255,255,255,0.55)", color: c.deep }}
+                  >
+                    <CategoryIcon slug={c.slug} size={20} />
+                  </div>
                 </div>
-                <div className="bg-white/60 text-[var(--ink)] rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums">{c.count} products</div>
-              </div>
-              <div className="flex-1 flex items-end mt-2.5 justify-center">
-                <div className="w-3/4 h-[160px] sm:h-[200px]">
-                  <ProductSilhouette shape={c.shape} bg="transparent" deep={c.deep} height={200} />
+                {/* Count chip — moved below copy, restyled with stamp colour */}
+                <div
+                  className="mt-3 inline-flex items-center self-start text-[10.5px] font-semibold tracking-[1.4px] uppercase"
+                  style={{ color: c.deep }}
+                >
+                  {c.count} {c.count === 1 ? "product" : "products"}
                 </div>
-              </div>
-            </Link>
-          ))}
+                <div className="flex-1 flex items-end mt-2.5 justify-center">
+                  <div
+                    className="w-3/4 h-[160px] sm:h-[200px] transition-transform duration-300 group-hover:scale-105"
+                    style={{
+                      transform: `translateX(${offset}px) rotate(${tilt}deg)`,
+                    }}
+                  >
+                    <ProductSilhouette shape={c.shape} bg="transparent" deep={c.deep} height={200} />
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </section>
 

@@ -3,14 +3,26 @@ import { LeafmartHeader } from "@/components/leafmart/LeafmartHeader";
 import { LeafmartFooter } from "@/components/leafmart/LeafmartFooter";
 import { CartProvider } from "@/lib/leafmart/cart-store";
 import { CartDrawer } from "@/components/leafmart/CartDrawer";
+import { JsonLd } from "@/components/leafmart/JsonLd";
+import { SITE_URL, organizationLd, websiteLd } from "@/lib/leafmart/seo";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Leafmart — Physician-curated cannabis wellness",
     template: "%s | Leafmart",
   },
   description:
     "The marketplace for physician-curated cannabis wellness products. Every product reviewed for quality, lab verification, and real patient outcomes.",
+  // Override the root layout's robots: { index: false } — Leafmart is the
+  // public-facing storefront and should be indexable.
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    siteName: "Leafmart",
+    url: SITE_URL,
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 // Inline script that runs before paint to apply the stored theme.
@@ -48,6 +60,7 @@ export default function LeafmartLayout({
           // No FOUC: applies stored or system theme synchronously before paint
           dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }}
         />
+        <JsonLd data={[organizationLd(), websiteLd()]} />
         <LeafmartHeader />
         <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
         <LeafmartFooter />

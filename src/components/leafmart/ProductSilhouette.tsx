@@ -233,11 +233,17 @@ export function ProductSilhouette({
     }
   }
 
+  // Atmospheric gradient — pastel at top, 18% blend toward the stamp at the
+  // bottom. Gives every shelf subtle depth without per-shape SVG work.
+  // color-mix is supported in Chrome 111+/Safari 16.2+.
+  const backgroundImage = `linear-gradient(180deg, ${bg} 0%, color-mix(in srgb, ${bg} 82%, ${deep}) 100%)`;
+
   return (
     <div
       className={className}
       style={{
-        background: bg,
+        backgroundImage,
+        backgroundColor: bg, /* fallback for browsers without color-mix */
         borderRadius: radius,
         position: "relative",
         overflow: "hidden",
