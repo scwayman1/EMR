@@ -25,11 +25,11 @@ import { askChatCB, searchPubMedArticles, type ChatCBResponse, type PubMedSearch
 type Tab = "chatcb" | "wheel" | "drugmix" | "research" | "learn";
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: "chatcb", label: "ChatCB", icon: "AI" },
-  { key: "wheel", label: "Cannabis Wheel", icon: "W" },
-  { key: "drugmix", label: "Drug Mix", icon: "Rx" },
-  { key: "research", label: "Research", icon: "R" },
-  { key: "learn", label: "Learn", icon: "L" },
+  { key: "chatcb", label: "ChatCB", icon: "✦" },
+  { key: "wheel", label: "Cannabis Wheel", icon: "⚛" },
+  { key: "drugmix", label: "Drug Mix", icon: "℞" },
+  { key: "research", label: "Research", icon: "📚" },
+  { key: "learn", label: "Learn", icon: "🎓" },
 ];
 
 const SUGGESTED_QUESTIONS = [
@@ -208,7 +208,7 @@ function ChatCBTab() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 placeholder="Ask anything about cannabis medicine..."
-                className="w-full h-14 rounded-2xl border border-border-strong bg-white pl-5 pr-14 text-base text-text shadow-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+                className="w-full h-14 rounded-2xl border border-border-strong bg-surface pl-5 pr-14 text-base text-text shadow-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
               />
               <button
                 onClick={() => handleSubmit()}
@@ -226,7 +226,7 @@ function ChatCBTab() {
               <button
                 key={q}
                 onClick={() => handleSubmit(q)}
-                className="text-sm px-4 py-2 rounded-full border border-border bg-white text-text-muted hover:border-accent hover:text-accent transition-colors"
+                className="text-sm px-4 py-2 rounded-full border border-border bg-surface text-text-muted hover:border-accent hover:text-accent transition-colors"
               >
                 {q}
               </button>
@@ -242,7 +242,7 @@ function ChatCBTab() {
                 "max-w-[85%] rounded-2xl px-5 py-4",
                 msg.role === "user"
                   ? "bg-accent text-white"
-                  : "bg-white border border-border shadow-sm"
+                  : "bg-surface border border-border shadow-sm"
               )}>
                 <p className={cn(
                   "text-sm leading-relaxed whitespace-pre-wrap",
@@ -276,7 +276,7 @@ function ChatCBTab() {
 
           {loading && (
             <div className="flex justify-start">
-              <div className="bg-white border border-border rounded-2xl px-5 py-4 shadow-sm">
+              <div className="bg-surface border border-border rounded-2xl px-5 py-4 shadow-sm">
                 <div className="flex items-center gap-2 text-sm text-text-muted">
                   <span className="animate-pulse">Researching</span>
                   <span className="animate-bounce">...</span>
@@ -298,7 +298,7 @@ function ChatCBTab() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
               placeholder="Ask a follow-up..."
-              className="w-full h-14 rounded-2xl border border-border-strong bg-white pl-5 pr-14 text-base text-text shadow-md focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className="w-full h-14 rounded-2xl border border-border-strong bg-surface pl-5 pr-14 text-base text-text shadow-md focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
             <button
               onClick={() => handleSubmit()}
@@ -402,7 +402,7 @@ function DrugMixTab() {
             onChange={(e) => setMeds(e.target.value)}
             placeholder="Enter one medication per line, e.g.:\nWarfarin\nMetformin\nLisinopril"
             rows={5}
-            className="w-full rounded-xl border border-border-strong bg-white px-4 py-3 text-base text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            className="w-full rounded-xl border border-border-strong bg-surface px-4 py-3 text-base text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
           <Button onClick={checkMix} disabled={!meds.trim()} className="mt-4 rounded-xl w-full">
             Check interactions
@@ -501,7 +501,7 @@ function ResearchTab() {
               onChange={(e) => setPubmedQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handlePubmedSearch()}
               placeholder="Search PubMed for cannabis research..."
-              className="flex-1 h-12 rounded-xl border border-border-strong bg-white px-4 text-base text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              className="flex-1 h-12 rounded-xl border border-border-strong bg-surface px-4 text-base text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
             />
             <Button
               onClick={handlePubmedSearch}
@@ -569,7 +569,7 @@ function ResearchTab() {
         <select
           value={cannabinoidFilter}
           onChange={(e) => setCannabinoidFilter(e.target.value)}
-          className="rounded-xl border border-border-strong bg-white px-4 h-10 text-sm text-text"
+          className="rounded-xl border border-border-strong bg-surface px-4 h-10 text-sm text-text"
         >
           <option value="">All cannabinoids</option>
           {cannabinoids.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -577,7 +577,7 @@ function ResearchTab() {
         <select
           value={conditionFilter}
           onChange={(e) => setConditionFilter(e.target.value)}
-          className="rounded-xl border border-border-strong bg-white px-4 h-10 text-sm text-text"
+          className="rounded-xl border border-border-strong bg-surface px-4 h-10 text-sm text-text"
         >
           <option value="">All conditions</option>
           {conditions.map((c) => <option key={c} value={c}>{c}</option>)}

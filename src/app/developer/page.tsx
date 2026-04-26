@@ -3,8 +3,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/ui/ornament";
+import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 
-export const metadata = { title: "Developers — Leafjourney" };
+// /developer is disallowed in robots.txt — keep the layout's noindex
+// default. Still ship rich metadata for direct shares (Slack, email).
+export const metadata: Metadata = {
+  title: "Developers — Leafjourney",
+  description:
+    "API references, integration guides, and SDK docs for building on the Leafjourney platform.",
+  alternates: { canonical: `${SITE_URL}/developer` },
+  openGraph: {
+    title: "Developers — Leafjourney",
+    description:
+      "API references, integration guides, and SDK docs for building on the Leafjourney platform.",
+    url: `${SITE_URL}/developer`,
+    siteName: "Leafjourney",
+    type: "website",
+  },
+};
 
 export default function DeveloperPortalPage() {
   return (

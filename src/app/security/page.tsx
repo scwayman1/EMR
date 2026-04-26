@@ -10,11 +10,23 @@ import {
 } from "@/components/ui/card";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { Badge } from "@/components/ui/badge";
+import type { Metadata } from "next";
+import { SITE_URL } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Security & Data Ownership — Leafjourney",
   description:
     "Your data belongs to you. Learn about our security practices and data ownership framework.",
+  alternates: { canonical: `${SITE_URL}/security` },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "Security & Data Ownership — Leafjourney",
+    description:
+      "HIPAA-compliant infrastructure with patient data ownership built in. Audit logs, encryption, and a portability framework that puts you in control.",
+    url: `${SITE_URL}/security`,
+    siteName: "Leafjourney",
+    type: "website",
+  },
 };
 
 const SECURITY_PILLARS = [

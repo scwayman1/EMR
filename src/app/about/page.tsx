@@ -1,12 +1,24 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { SITE_URL } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "About — Leafjourney",
   description:
     "Meet the founders behind Leafjourney: visionaries rebuilding healthcare from the ground up.",
+  alternates: { canonical: `${SITE_URL}/about` },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "About — Leafjourney",
+    description:
+      "Meet the founders behind Leafjourney: visionaries rebuilding healthcare from the ground up.",
+    url: `${SITE_URL}/about`,
+    siteName: "Leafjourney",
+    type: "website",
+  },
 };
 
 const FOUNDERS = [
