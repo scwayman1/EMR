@@ -22,6 +22,7 @@ import {
 } from "@/lib/leafmart/sync";
 import { checkShippingRestriction } from "@/lib/marketplace/shipping-restrictions";
 import { recordEventAsync } from "@/lib/marketplace/event-recorder";
+import { resolveCartAgeGate } from "@/server/marketplace/age-gate";
 
 const ItemSchema = z.object({
   slug: z.string().min(1),
@@ -136,21 +137,9 @@ export async function POST(req: Request) {
     );
   }
 
-  // Run payment first so we don't write an Order for a declined card.
-  let intentId = body.paymentIntentId;
-  if (!intentId) {
-    const intent = await createPaymentIntent(computedTotal, "usd");
-    intentId = intent.intentId;
-  }
-  const result = await confirmPayment(intentId);
-  if (!result.success) {
-    return NextResponse.json(
-      { error: result.error || "Payment was declined." },
-      { status: 402 },
-    );
-  }
-
   // Bridge the demo cart into the EMR tables so OrderItem FKs resolve.
+  // Run before payment so we can enforce age gating without charging
+  // a card that we'll then refuse to ship against. Upserts are idempotent.
   const org = await ensureLeafmartOrganization();
   const patient = await ensurePatientForUser(user, org.id);
   const productMap = await ensureProductsForLeafmart(
@@ -174,6 +163,58 @@ export async function POST(req: Request) {
     })),
     org.id,
   );
+
+  // EMR-245: server-side 21+ enforcement. The patient-portal PDP collects
+  // DOB once via /api/marketplace/age-gate/confirm; this is the boundary
+  // that catches anyone who reached checkout without going through that
+  // flow (e.g., a bug, a bypassed UI, or an API client).
+  const patientAge = await prisma.patient.findUnique({
+    where: { id: patient.id },
+    select: { dateOfBirth: true, ageVerifiedAt: true },
+  });
+  const ageGateResult = resolveCartAgeGate({
+    items: body.items.map((it) => {
+      const product = productMap.get(it.slug);
+      return {
+        productSlug: it.slug,
+        productName: it.name,
+        requires21Plus: product?.requires21Plus ?? false,
+      };
+    }),
+    isAuthenticated: true,
+    dateOfBirth: patientAge?.dateOfBirth ?? null,
+    ageVerifiedAt: patientAge?.ageVerifiedAt ?? null,
+    destinationState: body.shipping.state,
+  });
+  if (!ageGateResult.ok) {
+    return NextResponse.json(
+      {
+        error: "21+ age verification is required to purchase some items in your cart.",
+        ageBlocked: ageGateResult.blocked.map((b) => ({
+          slug: b.item.productSlug,
+          name: b.item.productName,
+          status: b.decision.status,
+          message: b.decision.message,
+        })),
+      },
+      { status: 422 },
+    );
+  }
+
+  // Run payment after the gating checks so we never charge a card we
+  // can't ship against.
+  let intentId = body.paymentIntentId;
+  if (!intentId) {
+    const intent = await createPaymentIntent(computedTotal, "usd");
+    intentId = intent.intentId;
+  }
+  const result = await confirmPayment(intentId);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error || "Payment was declined." },
+      { status: 402 },
+    );
+  }
 
   const order = await prisma.order.create({
     data: {

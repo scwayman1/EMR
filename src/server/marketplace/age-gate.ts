@@ -63,3 +63,56 @@ export function resolveAgeGate(input: AgeGateInput): AgeGateDecision {
 
   return { status: "allowed" };
 }
+
+// EMR-245: server-side cart enforcement.
+//
+// Runs the age gate against every cart item that requires 21+ and
+// returns the list of items that fail. Caller (checkout API) decides
+// how to render: a single banner ("3 items in your cart require 21+
+// verification") or a per-item callout. Items that don't require 21+
+// are never blocked.
+export interface AgeRestrictedCartItem {
+  productSlug: string;
+  productName: string;
+  requires21Plus: boolean;
+}
+
+export interface CartAgeGateInput<T extends AgeRestrictedCartItem> {
+  items: ReadonlyArray<T>;
+  isAuthenticated: boolean;
+  dateOfBirth?: Date | null;
+  ageVerifiedAt?: Date | null;
+  destinationState?: string | null;
+}
+
+export interface CartAgeGateResult<T extends AgeRestrictedCartItem> {
+  ok: boolean;
+  blocked: Array<{ item: T; decision: AgeGateDecision }>;
+}
+
+export function resolveCartAgeGate<T extends AgeRestrictedCartItem>(
+  input: CartAgeGateInput<T>,
+): CartAgeGateResult<T> {
+  // Trust ageVerifiedAt as a fast-path: a verified patient has already
+  // gone through the DOB confirmation flow (see /api/marketplace/age-
+  // gate/confirm) and we don't re-prompt on every cart submit.
+  const verifiedFastPath =
+    !!input.ageVerifiedAt && input.dateOfBirth && computeAgeYears(input.dateOfBirth) >= 21;
+
+  const blocked: CartAgeGateResult<T>["blocked"] = [];
+  for (const item of input.items) {
+    if (!item.requires21Plus) continue;
+    if (verifiedFastPath) continue;
+
+    const decision = resolveAgeGate({
+      requires21Plus: true,
+      isAuthenticated: input.isAuthenticated,
+      dateOfBirth: input.dateOfBirth,
+      destinationState: input.destinationState,
+    });
+    if (decision.status === "allowed") continue;
+    blocked.push({ item, decision });
+  }
+
+  return { ok: blocked.length === 0, blocked };
+}
