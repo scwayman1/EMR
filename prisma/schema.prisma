@@ -42,28 +42,38 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships      Membership[]
-  patients         Patient[]
-  providers        Provider[]
-  encounters       Encounter[]
-  documents        Document[]
-  labResults       LabResult[]
-  refillRequests   RefillRequest[]
-  auditLogs        AuditLog[]
-  agentJobs        AgentJob[]
-  agentFeedback    AgentFeedback[]
-  escalationCases  EscalationCase[]
-  launchStatus     PracticeLaunchStatus?
-  cannabisProducts CannabisProduct[]
-  claims           Claim[]
-  feeSchedule      FeeScheduleEntry[]
-  referrals        Referral[]
-  complianceForms  StateComplianceForm[]
-  intakeTemplates  IntakeFormTemplate[]
-  products         Product[]
-  orders           Order[]
-  vendors          Vendor[]
-  vendorDocuments  VendorDocument[]
+  memberships       Membership[]
+  patients          Patient[]
+  providers         Provider[]
+  encounters        Encounter[]
+  documents         Document[]
+  labResults        LabResult[]
+  refillRequests    RefillRequest[]
+  auditLogs         AuditLog[]
+  agentJobs         AgentJob[]
+  agentFeedback     AgentFeedback[]
+  escalationCases   EscalationCase[]
+  launchStatus      PracticeLaunchStatus?
+  cannabisProducts  CannabisProduct[]
+  claims            Claim[]
+  feeSchedule       FeeScheduleEntry[]
+  referrals         Referral[]
+  complianceForms   StateComplianceForm[]
+  intakeTemplates   IntakeFormTemplate[]
+  products          Product[]
+  orders            Order[]
+  vendors           Vendor[]
+  vendorDocuments   VendorDocument[]
+  // CFO / Controller surface
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+  bankAccounts      BankAccount[]
+  cashFlowEntries   CashFlowEntry[]
+  fixedAssets       FixedAsset[]
+  liabilities       Liability[]
+  equityEntries     EquityEntry[]
+  financialReports  FinancialReport[]
+  financialGoals    FinancialGoal[]
 }
 
 model User {
@@ -2302,4 +2312,370 @@ model RefillRequest {
 
   @@index([organizationId, status])
   @@index([patientId, receivedAt])
+}
+
+// --------------------------------------------------------------
+// CFO / Controller — Books, Reports, Cash, Expenses, Equity
+// --------------------------------------------------------------
+// The CFO agent reads everything below to produce real-time P&L,
+// cash flow statements, and balance sheets. Every dollar in or
+// out of the practice flows through one of these tables.
+// --------------------------------------------------------------
+
+enum ExpenseCategory {
+  cogs_inventory // cost of goods (cannabis products, medical supplies)
+  cogs_lab // lab fees, COA testing
+  payroll_clinical // physicians, NPs, PAs, MAs
+  payroll_admin // billing staff, ops staff, executives
+  payroll_taxes // employer FICA / SUTA / FUTA
+  benefits // health insurance, retirement match
+  rent // clinic rent
+  utilities // power, water, internet
+  software // SaaS subscriptions
+  insurance // malpractice, business, cyber
+  marketing // ads, content, conferences
+  legal_professional // attorneys, CPAs, consultants
+  office_supplies
+  equipment // small equipment, < capitalize threshold
+  travel
+  meals_entertainment
+  banking_fees // merchant fees, wire fees, interest
+  taxes_state_local // state excise, local cannabis tax (non-payroll)
+  taxes_federal // estimated federal income tax
+  depreciation // non-cash, allocated from FixedAsset
+  amortization
+  bad_debt // write-offs of patient AR
+  refunds_chargebacks
+  contractor // 1099 contractors
+  research_development
+  training_education
+  charitable
+  other
+}
+
+enum ExpenseStatus {
+  draft
+  pending_approval
+  approved
+  paid
+  void
+}
+
+/// A single expense the practice incurs. Cash impact is captured when
+/// `paidAt` is non-null. Recurring expenses spawn child rows on cadence.
+model Expense {
+  id              String          @id @default(cuid())
+  organizationId  String
+  category        ExpenseCategory
+  vendor          String
+  description     String
+  amountCents     Int // always positive — sign is implied by category
+  taxCents        Int             @default(0)
+  totalCents      Int // amount + tax
+  occurredOn      DateTime // when the cost was incurred (accrual date)
+  paidAt          DateTime? // when cash actually left (cash basis date)
+  paymentMethod   String? // ach | card | check | wire | cash
+  bankAccountId   String? // which account paid for it
+  receiptUrl      String?
+  invoiceNumber   String?
+  status          ExpenseStatus   @default(approved)
+  recurringRuleId String? // links to a parent RecurringExpense
+  notes           String?
+  metadata        Json? // free-form: GL code, dept, project, memo
+  createdByUserId String?
+  createdByAgent  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  organization  Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bankAccount   BankAccount?      @relation(fields: [bankAccountId], references: [id])
+  recurringRule RecurringExpense? @relation(fields: [recurringRuleId], references: [id])
+
+  @@index([organizationId, occurredOn])
+  @@index([organizationId, category, occurredOn])
+  @@index([organizationId, paidAt])
+}
+
+/// Recurring expense templates (e.g. monthly rent, weekly payroll).
+/// A nightly job materializes the next Expense row when due.
+model RecurringExpense {
+  id             String          @id @default(cuid())
+  organizationId String
+  category       ExpenseCategory
+  vendor         String
+  description    String
+  amountCents    Int
+  cadence        String // weekly | biweekly | semimonthly | monthly | quarterly | annual
+  dayOfPeriod    Int? // day-of-month or day-of-week anchor
+  bankAccountId  String?
+  active         Boolean         @default(true)
+  startsOn       DateTime
+  endsOn         DateTime?
+  lastSpawnedAt  DateTime?
+  nextSpawnAt    DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bankAccount  BankAccount? @relation(fields: [bankAccountId], references: [id])
+  expenses     Expense[]
+
+  @@index([organizationId, active, nextSpawnAt])
+}
+
+enum BankAccountType {
+  checking
+  savings
+  merchant
+  credit_card
+  line_of_credit
+  payroll
+  reserves
+}
+
+/// A real-world bank or merchant account. Balances roll up into the
+/// balance sheet's cash + cash-equivalents line.
+model BankAccount {
+  id                  String          @id @default(cuid())
+  organizationId      String
+  name                String
+  type                BankAccountType
+  institution         String?
+  last4               String?
+  openingBalanceCents Int             @default(0)
+  currentBalanceCents Int             @default(0) // synced or manually updated
+  asOfDate            DateTime        @default(now())
+  isActive            Boolean         @default(true)
+  notes               String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+  cashFlowEntries   CashFlowEntry[]
+
+  @@index([organizationId, isActive])
+}
+
+enum CashFlowDirection {
+  in
+  out
+}
+
+enum CashFlowActivity {
+  operating // collections, payroll, rent, marketing
+  investing // equipment purchase, asset sale
+  financing // loan draw, loan repayment, owner equity, dividends
+}
+
+/// Every actual cash movement. Distinct from FinancialEvent (which is
+/// accrual / claim-lifecycle). The CFO agent consumes this for the cash
+/// flow statement.
+model CashFlowEntry {
+  id             String            @id @default(cuid())
+  organizationId String
+  bankAccountId  String?
+  direction      CashFlowDirection
+  activity       CashFlowActivity
+  amountCents    Int // always positive — direction tells sign
+  description    String
+  occurredOn     DateTime
+  // Source linkage (any of these may be set)
+  expenseId      String?
+  paymentId      String?
+  orderId        String?
+  liabilityId    String?
+  fixedAssetId   String?
+  equityEntryId  String?
+  metadata       Json?
+  createdByAgent String?
+  createdAt      DateTime          @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bankAccount  BankAccount? @relation(fields: [bankAccountId], references: [id])
+
+  @@index([organizationId, occurredOn])
+  @@index([organizationId, activity, occurredOn])
+}
+
+enum FixedAssetCategory {
+  medical_equipment
+  computer_hardware
+  furniture
+  leasehold_improvement
+  vehicle
+  software_capitalized
+  deposit
+  other
+}
+
+/// Capitalized assets — appear on the balance sheet, depreciated over
+/// useful life into the P&L as `depreciation` expense.
+model FixedAsset {
+  id                     String             @id @default(cuid())
+  organizationId         String
+  name                   String
+  category               FixedAssetCategory
+  purchaseDate           DateTime
+  acquiredCostCents      Int
+  salvageValueCents      Int                @default(0)
+  usefulLifeMonths       Int
+  accumulatedDeprecCents Int                @default(0)
+  disposedAt             DateTime?
+  disposalProceedsCents  Int?
+  notes                  String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, disposedAt])
+}
+
+enum LiabilityType {
+  loan_term // SBA, bank term loan
+  line_of_credit
+  credit_card
+  accounts_payable // vendor AP not yet paid
+  payroll_payable
+  tax_payable
+  deferred_revenue // patient prepay, gift cards
+  capital_lease
+  other
+}
+
+/// Anything the practice owes. Balance shrinks as cash flows out.
+model Liability {
+  id                  String        @id @default(cuid())
+  organizationId      String
+  name                String
+  type                LiabilityType
+  principalCents      Int // original principal
+  balanceCents        Int // current outstanding
+  interestRate        Float? // annual %, e.g. 0.085
+  termMonths          Int?
+  monthlyPaymentCents Int?
+  startDate           DateTime
+  maturityDate        DateTime?
+  closedAt            DateTime?
+  notes               String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, closedAt])
+  @@index([organizationId, type])
+}
+
+enum EquityEntryType {
+  capital_contribution // owner puts cash in
+  distribution // owner takes cash out
+  retained_earnings_adjustment
+  stock_issuance
+  stock_buyback
+  prior_period_adjustment
+}
+
+/// Owners' equity movements. The balance sheet's equity line is opening
+/// equity + retained earnings + sum(capital contributions - distributions).
+model EquityEntry {
+  id             String          @id @default(cuid())
+  organizationId String
+  type           EquityEntryType
+  amountCents    Int // signed: + into the company, - out of the company
+  occurredOn     DateTime
+  ownerName      String?
+  description    String
+  createdAt      DateTime        @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, occurredOn])
+}
+
+enum FinancialReportType {
+  pnl
+  cash_flow
+  balance_sheet
+  kpi_dashboard
+  cfo_briefing // narrative-only, ties the three statements together
+}
+
+enum FinancialReportPeriod {
+  daily
+  weekly
+  monthly
+  quarterly
+  annual
+  custom
+}
+
+/// Snapshot of a generated financial report. The CFO agent writes one
+/// row per generation; the operator UI renders the latest per type.
+/// The full statement lives in `data` as a versioned JSON shape.
+model FinancialReport {
+  id                    String                @id @default(cuid())
+  organizationId        String
+  type                  FinancialReportType
+  period                FinancialReportPeriod
+  periodStart           DateTime
+  periodEnd             DateTime
+  generatedAt           DateTime              @default(now())
+  generatedBy           String // "agent:cfo@1.0.0" or user id
+  // Headline metrics for fast querying without parsing JSON
+  revenueCents          Int                   @default(0)
+  cogsCents             Int                   @default(0)
+  grossProfitCents      Int                   @default(0)
+  opexCents             Int                   @default(0)
+  ebitdaCents           Int                   @default(0)
+  netIncomeCents        Int                   @default(0)
+  cashCents             Int                   @default(0)
+  arCents               Int                   @default(0)
+  apCents               Int                   @default(0)
+  totalAssetsCents      Int                   @default(0)
+  totalLiabilitiesCents Int                   @default(0)
+  totalEquityCents      Int                   @default(0)
+  // Full structured statement
+  data                  Json
+  // CFO narrative + flagged anomalies
+  narrative             String?
+  anomalies             Json                  @default("[]")
+  metadata              Json?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type, periodEnd])
+  @@index([organizationId, generatedAt])
+}
+
+enum FinancialGoalKind {
+  revenue_target
+  gross_margin_target
+  ebitda_target
+  cash_runway_min
+  ar_days_max
+  collection_rate_min
+  custom
+}
+
+/// Operator-defined targets the CFO agent benchmarks against and flags.
+model FinancialGoal {
+  id             String                @id @default(cuid())
+  organizationId String
+  kind           FinancialGoalKind
+  label          String
+  targetCents    Int? // for $-denominated goals
+  targetPct      Float? // for ratio / % goals
+  targetDays     Int? // for days-based goals (runway, AR)
+  period         FinancialReportPeriod @default(monthly)
+  active         Boolean               @default(true)
+  notes          String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, active])
 }

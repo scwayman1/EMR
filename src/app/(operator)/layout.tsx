@@ -146,6 +146,23 @@ export default async function OperatorLayout({
       ],
     },
     {
+      label: "Office of the CFO",
+      pillar: "cfo",
+      items: [
+        { label: "CFO overview", href: "/ops/cfo" },
+        { label: "P&L", href: "/ops/cfo/pnl" },
+        { label: "Cash flow", href: "/ops/cfo/cash-flow" },
+        { label: "Balance sheet", href: "/ops/cfo/balance-sheet" },
+        { label: "Expenses", href: "/ops/cfo/expenses" },
+        { label: "Cash & banks", href: "/ops/cfo/cash" },
+        { label: "Assets", href: "/ops/cfo/assets" },
+        { label: "Liabilities", href: "/ops/cfo/liabilities" },
+        { label: "Equity", href: "/ops/cfo/equity" },
+        { label: "Goals", href: "/ops/cfo/goals" },
+        { label: "Reports", href: "/ops/cfo/reports" },
+      ],
+    },
+    {
       label: "Operations",
       items: [
         { label: "Staff schedule", href: "/ops/staff-schedule" },

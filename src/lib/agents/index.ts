@@ -106,6 +106,8 @@ import { washoutPlannerAgent } from "./pharmacology/washout-planner-agent";
 import { contraindicationSweeperAgent } from "./pharmacology/contraindication-sweeper-agent";
 import { bioequivalenceMapperAgent } from "./pharmacology/bioequivalence-mapper-agent";
 import { pregnancyLactationAdvisorAgent } from "./pharmacology/pregnancy-lactation-advisor-agent";
+// CFO / Controller — autonomous financial reporting
+import { cfoAgent } from "./cfo-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -221,6 +223,8 @@ export const agentRegistry = {
   contraindicationSweeper: contraindicationSweeperAgent,
   bioequivalenceMapper: bioequivalenceMapperAgent,
   pregnancyLactationAdvisor: pregnancyLactationAdvisorAgent,
+  // CFO / Controller — autonomous financial reporting
+  cfo: cfoAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 /** Agents tagged as "commerce" — used by the marketplace ops console. */
