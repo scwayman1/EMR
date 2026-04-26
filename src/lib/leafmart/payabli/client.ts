@@ -93,7 +93,10 @@ export class PayabliClient {
   private readonly fetch: typeof fetch;
 
   constructor(cfg?: Partial<PayabliClientConfig>) {
-    const env = cfg?.apiKey ? null : configFromEnv();
+    // Always load env as a fallback — cfg fields override individually.
+    // Previous code nulled env when cfg.apiKey was present, crashing on
+    // partial overrides like { apiKey: "foo" } with no entryPoint.
+    const env = (cfg?.apiKey && cfg?.entryPoint) ? null : configFromEnv();
     this.cfg = {
       apiKey: cfg?.apiKey ?? env!.apiKey,
       entryPoint: cfg?.entryPoint ?? env!.entryPoint,

@@ -32,6 +32,8 @@ function makeDoc(overrides: Partial<VendorDocument> = {}): VendorDocument {
     vendorId: "v1",
     documentType: "w9",
     fileUrl: null,
+    publicUrl: null,
+    expiresAt: null,
     status: "missing",
     createdAt: new Date(),
     updatedAt: new Date(),
