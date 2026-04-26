@@ -8,7 +8,7 @@ import type { LeafmartProduct } from "@/components/leafmart/LeafmartProductCard"
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  "https://leafmart.com";
+  "https://www.theleafmart.com";
 
 export const ORG_NAME = "Leafmart";
 export const ORG_LEGAL_NAME = "Leafjourney Health";

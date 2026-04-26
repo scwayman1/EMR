@@ -8,7 +8,7 @@
 // 4. For leafjourney.com (or localhost), passes through normally
 //
 // Domain config:
-//   leafmart.com / www.leafmart.com / leafmart.localhost → Leafmart
+//   leafmart.com / www.leafmart.com / theleafmart.com / www.theleafmart.com → Leafmart
 //   Everything else → Leafjourney (EMR)
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -17,6 +17,8 @@ import { NextResponse, type NextRequest } from "next/server";
 const LEAFMART_HOSTS = [
   "leafmart.com",
   "www.leafmart.com",
+  "theleafmart.com",
+  "www.theleafmart.com",
   "leafmart.localhost",
 ];
 
