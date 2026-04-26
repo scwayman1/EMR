@@ -45,9 +45,9 @@ export default function AboutPage() {
             &ldquo;A good cannabis store doesn&apos;t sell you what&apos;s popular — it sells you what&apos;s <em className="text-[var(--leaf)]">right</em>. Every product on Leafmart is here because one of us would reach for it in clinic.&rdquo;
           </blockquote>
           <div className="flex items-center gap-3 mt-5 sm:mt-6">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-sm font-medium text-[var(--ink)]">MC</div>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-sm font-medium text-[var(--ink)]">NP</div>
             <div>
-              <div className="text-sm font-semibold">Dr. M. Castellanos, MD</div>
+              <div className="text-sm font-semibold">Dr. N.H. Patel, DO</div>
               <div className="text-xs text-[var(--muted)]">Medical Lead · Leafjourney Health</div>
             </div>
           </div>
