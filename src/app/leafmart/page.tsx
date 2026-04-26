@@ -114,9 +114,9 @@ export default async function LeafmartHomePage() {
             {/* Floating clinician note */}
             <div className="absolute -left-9 bottom-7 bg-[var(--surface)] rounded-[20px] p-[18px_22px] max-w-[280px] shadow-[0_12px_40px_rgba(28,40,32,0.10)]">
               <div className="flex items-center gap-2.5 mb-2.5">
-                <div className="w-8 h-8 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-sm font-medium text-[var(--ink)]">MC</div>
+                <div className="w-8 h-8 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-sm font-medium text-[var(--ink)]">NP</div>
                 <div>
-                  <div className="text-[12.5px] font-semibold">Dr. M. Castellanos</div>
+                  <div className="text-[12.5px] font-semibold">Dr. N.H. Patel, DO</div>
                   <div className="text-[11px] text-[var(--muted)]">Medical Lead, Leafjourney</div>
                 </div>
               </div>

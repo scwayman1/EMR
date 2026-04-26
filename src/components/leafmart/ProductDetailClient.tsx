@@ -233,8 +233,8 @@ export function ProductDetailClient({ product, related }: Props) {
                   : "“We reviewed this product’s COA and formulation. The cannabinoid profile matches the label, and the delivery format aligns with the intended use case.”"}
               </p>
               <div className="flex items-center gap-2.5 mt-4">
-                <div className="w-7 h-7 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-xs font-medium">MC</div>
-                <div className="text-xs text-[var(--muted)]">Dr. M. Castellanos · Medical Lead</div>
+                <div className="w-7 h-7 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-xs font-medium">NP</div>
+                <div className="text-xs text-[var(--muted)]">Dr. N.H. Patel, DO · Medical Lead</div>
               </div>
             </div>
           </div>
