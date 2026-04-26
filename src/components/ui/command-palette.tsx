@@ -189,6 +189,18 @@ const OPERATOR_COMMANDS: CommandDef[] = [
   { id: "o-revenue", label: "Revenue", href: "/ops/revenue", group: "Billing", roles: ["operator"], keywords: ["revenue", "collections"] },
   { id: "o-eligibility", label: "Eligibility checks", href: "/ops/eligibility", group: "Billing", roles: ["operator"], keywords: ["eligibility", "verify", "insurance"] },
 
+  { id: "o-cfo", label: "CFO overview", href: "/ops/cfo", group: "Office of the CFO", roles: ["operator"], keywords: ["cfo", "finance", "controller", "books"] },
+  { id: "o-cfo-pnl", label: "P&L", href: "/ops/cfo/pnl", group: "Office of the CFO", roles: ["operator"], keywords: ["pnl", "profit", "loss", "income statement"] },
+  { id: "o-cfo-cash-flow", label: "Cash flow statement", href: "/ops/cfo/cash-flow", group: "Office of the CFO", roles: ["operator"], keywords: ["cash flow", "statement", "burn", "runway"] },
+  { id: "o-cfo-balance-sheet", label: "Balance sheet", href: "/ops/cfo/balance-sheet", group: "Office of the CFO", roles: ["operator"], keywords: ["balance sheet", "assets", "liabilities", "equity"] },
+  { id: "o-cfo-expenses", label: "Expenses", href: "/ops/cfo/expenses", group: "Office of the CFO", roles: ["operator"], keywords: ["expenses", "bills", "vendors"] },
+  { id: "o-cfo-cash", label: "Cash & banks", href: "/ops/cfo/cash", group: "Office of the CFO", roles: ["operator"], keywords: ["cash", "bank", "checking", "merchant"] },
+  { id: "o-cfo-assets", label: "Fixed assets", href: "/ops/cfo/assets", group: "Office of the CFO", roles: ["operator"], keywords: ["assets", "equipment", "depreciation"] },
+  { id: "o-cfo-liabilities", label: "Liabilities", href: "/ops/cfo/liabilities", group: "Office of the CFO", roles: ["operator"], keywords: ["liabilities", "loans", "debt", "credit"] },
+  { id: "o-cfo-equity", label: "Equity", href: "/ops/cfo/equity", group: "Office of the CFO", roles: ["operator"], keywords: ["equity", "capital", "distributions", "owner"] },
+  { id: "o-cfo-goals", label: "Financial goals", href: "/ops/cfo/goals", group: "Office of the CFO", roles: ["operator"], keywords: ["goals", "targets", "kpi"] },
+  { id: "o-cfo-reports", label: "Reports archive", href: "/ops/cfo/reports", group: "Office of the CFO", roles: ["operator"], keywords: ["reports", "archive", "history"] },
+
   { id: "o-staff-schedule", label: "Staff schedule", href: "/ops/staff-schedule", group: "Operations", roles: ["operator"], keywords: ["shifts", "staff"] },
   { id: "o-time-clock", label: "Time clock", href: "/ops/time-clock", group: "Operations", roles: ["operator"], keywords: ["clock", "punch", "timesheet"] },
   { id: "o-training", label: "Training", href: "/ops/training", group: "Operations", roles: ["operator"], keywords: ["learn", "compliance"] },

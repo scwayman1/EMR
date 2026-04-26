@@ -37,6 +37,9 @@ export type DomainEvent =
   | { name: "billing.underpayment.scan"; organizationId: string }
   | { name: "billing.credit.scan"; organizationId: string }
   | { name: "billing.command.brief"; organizationId: string }
+  | { name: "cfo.report.generate"; organizationId: string; period?: "weekly" | "monthly" | "quarterly" | "annual" | "daily"; anchorISO?: string }
+  | { name: "cfo.expense.recorded"; expenseId: string; organizationId: string }
+  | { name: "cfo.cash.recorded"; cashFlowEntryId: string; organizationId: string }
   // RCM Fleet events — Layer 4 (new)
   | { name: "encounter.documentation.updated"; encounterId: string; noteId: string; patientId: string }
   | { name: "charge.created"; chargeId: string; encounterId: string; patientId: string; organizationId: string }

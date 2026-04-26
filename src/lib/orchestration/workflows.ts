@@ -242,6 +242,20 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "cfo-report",
+    on: ["cfo.report.generate", "cfo.expense.recorded", "cfo.cash.recorded"],
+    steps: [
+      {
+        agent: "cfo",
+        input: (e) => ({
+          organizationId: (e as any).organizationId,
+          period: (e as any).period ?? "weekly",
+          anchorISO: (e as any).anchorISO,
+        }),
+      },
+    ],
+  },
   // ─────────────────────────────────────────────────────────────────
   // RCM Fleet — Phase 5 pre-submission pipeline (Layer 8, Flow 1)
   // ─────────────────────────────────────────────────────────────────

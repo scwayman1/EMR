@@ -327,11 +327,11 @@ export default async function LeafmartHomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             {/* Left: anchor portrait + checklist */}
             <div className="order-2 lg:order-1">
-              <Portrait tone="rose" caption="Rosa, 64 · Sleep Shelf" />
+              <Portrait src="/portraits/rosa.png" tone="rose" caption="Rosa, 64 · Sleep Shelf" />
               <div className="mt-6 sm:mt-7">
                 <h3 className="font-display text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--ink)]">Wellness, across every life</h3>
                 <div className="mt-4 flex flex-col gap-2.5">
-                  {["Curated for people, not patients", "Plant-powered, plainly labeled", "Across ages 30 to 85, every body, every ritual", "Quiet support for everyday life", "From an actual healthcare brand"].map((b) => (
+                  {["Curated for people, not patients", "Plant-powered, plainly labeled", "For every stage of life, every body, every ritual", "Quiet support for everyday life", "From an actual healthcare brand"].map((b) => (
                     <div key={b} className="flex items-center gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-[var(--leaf)] flex items-center justify-center flex-shrink-0">
                         <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2.5 5.7 L4.5 7.5 L8.5 3.5" stroke="#FFF8E8" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -355,19 +355,19 @@ export default async function LeafmartHomePage() {
               </p>
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lm-stagger">
                 <div>
-                  <Portrait tone="sage" caption="Marcus, 38 · Recovery" />
+                  <Portrait src="/portraits/marcus.png" tone="sage" caption="Marcus, 38 · Recovery" />
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The day after a long shift</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Field Balm № 4 · Flower Powered</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
-                  <Portrait tone="warm" caption="Aanya, 31 · Calm" />
+                  <Portrait src="/portraits/aanya.png" tone="warm" caption="Aanya, 31 · Calm" />
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">Sunday afternoon, off the clock</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Stillwater Tonic · PhytoRx</div></div>
                 </div>
                 <div>
-                  <Portrait tone="butter" caption="James, 82 · Sleep" />
+                  <Portrait src="/portraits/james.png" tone="butter" caption="James, 82 · Sleep" />
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Quiet Hours Tincture · Greenleaf Co.</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
-                  <Portrait tone="lilac" caption="Eleanor, 71 · Skin" />
+                  <Portrait src="/portraits/eleanor.png" tone="lilac" caption="Eleanor, 71 · Skin" />
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">A slower morning routine</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Gold Skin Serum · Potency 710</div></div>
                 </div>
               </div>
