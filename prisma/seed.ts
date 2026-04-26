@@ -410,6 +410,10 @@ async function main() {
       categories: ["cbd", "topical", "tincture"],
       takeRatePct: 0.10,
       foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
       status: VendorStatus.pending,
     },
     {
@@ -419,6 +423,10 @@ async function main() {
       categories: ["plant_powered_wellness"],
       takeRatePct: 0.10,
       foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
       status: VendorStatus.pending,
     },
     {
@@ -429,6 +437,10 @@ async function main() {
       productLines: ["Gold Skin Serum"],
       takeRatePct: 0.10,
       foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
       status: VendorStatus.pending,
     },
   ];
