@@ -52,7 +52,7 @@ function MultiFilterRow<T extends { slug: string; name: string }>({
               className={
                 "rounded-full px-4 py-1.5 text-[12.5px] font-medium border transition-colors " +
                 (selected
-                  ? "bg-[var(--ink)] text-[#FFF8E8] border-[var(--ink)]"
+                  ? "bg-[var(--ink)] text-[var(--bg)] border-[var(--ink)]"
                   : "bg-[var(--surface)] text-[var(--ink)] border-[var(--border)] hover:border-[var(--leaf)]")
               }
             >
@@ -78,7 +78,7 @@ function NoResults({ onReset }: { onReset: () => void }) {
         <button
           type="button"
           onClick={onReset}
-          className="inline-flex items-center rounded-full font-medium bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors px-5 py-3 text-[14px]"
+          className="inline-flex items-center rounded-full font-medium bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] transition-colors px-5 py-3 text-[14px]"
         >
           Clear filters
         </button>

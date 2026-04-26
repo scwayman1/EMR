@@ -74,13 +74,13 @@ export default function CartPage() {
         <div className="flex flex-wrap gap-3">
           <Link
             href="/leafmart/shop"
-            className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
           >
             Browse the shop
           </Link>
           <Link
             href="/leafmart/quiz"
-            className="inline-flex items-center rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--ink)] hover:text-[#FFF8E8] transition-colors"
+            className="inline-flex items-center rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-colors"
           >
             Take the quiz
           </Link>
@@ -270,7 +270,7 @@ export default function CartPage() {
           </div>
           <Link
             href="/leafmart/checkout"
-            className="mt-6 block w-full text-center rounded-full bg-[var(--ink)] text-[#FFF8E8] py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            className="mt-6 block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
           >
             Continue to checkout
           </Link>

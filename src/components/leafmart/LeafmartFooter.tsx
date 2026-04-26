@@ -124,7 +124,7 @@ function NewsletterSignup() {
         <button
           type="submit"
           disabled={status === "submitting"}
-          className="rounded-full bg-[var(--ink)] text-[#FFF8E8] px-5 py-2.5 text-[13px] font-medium hover:bg-[var(--leaf)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+          className="rounded-full bg-[var(--ink)] text-[var(--bg)] px-5 py-2.5 text-[13px] font-medium hover:bg-[var(--leaf)] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {status === "submitting" ? "Joining…" : "Join"}
         </button>

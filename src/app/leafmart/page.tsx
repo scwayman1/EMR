@@ -47,8 +47,8 @@ function Pill({
       href={href}
       className={`inline-flex items-center justify-center rounded-full font-medium tracking-wide transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] ${
         primary
-          ? "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)]"
-          : "border-[1.5px] border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[#FFF8E8]"
+          ? "bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] hover:text-[var(--bg)]"
+          : "border-[1.5px] border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--bg)]"
       } ${className}`}
     >
       {children}

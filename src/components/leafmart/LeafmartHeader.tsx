@@ -46,7 +46,7 @@ function CartBadgeButton({
           Cart
         </span>
         {itemCount > 0 && (
-          <span className="bg-[var(--leaf)] text-[#FFF8E8] text-[11px] font-bold rounded-full w-[22px] h-[22px] flex items-center justify-center tabular-nums">
+          <span className="bg-[var(--leaf)] text-[var(--bg)] text-[11px] font-bold rounded-full w-[22px] h-[22px] flex items-center justify-center tabular-nums">
             {itemCount > 99 ? "99+" : itemCount}
           </span>
         )}
@@ -64,7 +64,7 @@ function CartBadgeButton({
       {itemCount > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -top-0.5 -right-0.5 bg-[var(--leaf)] text-[#FFF8E8] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center tabular-nums"
+          className="absolute -top-0.5 -right-0.5 bg-[var(--leaf)] text-[var(--bg)] text-[10px] font-bold rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center tabular-nums"
           style={{ animation: "lmFadeInUp 280ms cubic-bezier(0.2, 0, 0, 1)" }}
         >
           {itemCount > 99 ? "99+" : itemCount}
@@ -183,7 +183,7 @@ export function LeafmartHeader() {
           <CartBadgeButton />
           <Link
             href="/leafmart/quiz"
-            className="bg-[var(--ink)] text-[#FFF8E8] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            className="bg-[var(--ink)] text-[var(--bg)] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
           >
             Take the quiz
           </Link>
@@ -296,7 +296,7 @@ export function LeafmartHeader() {
           <Link
             href="/leafmart/quiz"
             onClick={() => setOpen(false)}
-            className="mt-6 inline-flex items-center justify-center bg-[var(--ink)] text-[#FFF8E8] rounded-full px-6 py-4 text-[15px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors lm-fade-in"
+            className="mt-6 inline-flex items-center justify-center bg-[var(--ink)] text-[var(--bg)] rounded-full px-6 py-4 text-[15px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors lm-fade-in"
             style={{ animationDelay: open ? "360ms" : "0ms" }}
           >
             Take the quiz →

@@ -124,7 +124,7 @@ export default async function OrderHistoryPage() {
               </p>
               <Link
                 href="/leafmart/shop"
-                className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
+                className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
               >
                 Browse the shop
               </Link>
@@ -189,7 +189,7 @@ export default async function OrderHistoryPage() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    className="inline-flex items-center rounded-full font-medium border-[1.5px] border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[#FFF8E8] transition-colors"
+                    className="inline-flex items-center rounded-full font-medium border-[1.5px] border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-colors"
                     style={{ padding: "10px 20px", fontSize: 13.5 }}
                   >
                     Reorder

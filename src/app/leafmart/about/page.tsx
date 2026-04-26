@@ -66,7 +66,7 @@ export default function AboutPage() {
           <div className="mt-6 sm:mt-8">
             <Link
               href="/leafmart/shop"
-              className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] w-full sm:w-auto"
+              className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] transition-colors px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] w-full sm:w-auto"
             >
               Browse the shelf →
             </Link>

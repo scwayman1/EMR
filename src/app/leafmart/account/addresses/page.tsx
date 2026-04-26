@@ -169,7 +169,7 @@ export default function AddressesPage() {
           <button
             type="button"
             onClick={startCreate}
-            className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
+            className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
           >
             Add address
           </button>
@@ -189,7 +189,7 @@ export default function AddressesPage() {
               </p>
               <Link
                 href="/leafmart/login?next=/leafmart/account/addresses"
-                className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors mt-3"
+                className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors mt-3"
               >
                 Sign in
               </Link>
@@ -308,7 +308,7 @@ export default function AddressesPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors disabled:opacity-50"
+                  className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors disabled:opacity-50"
                 >
                   {saving ? "Saving…" : editing ? "Save changes" : "Add address"}
                 </button>
@@ -334,7 +334,7 @@ export default function AddressesPage() {
               <button
                 type="button"
                 onClick={startCreate}
-                className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
+                className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
               >
                 Add your first address
               </button>

@@ -10,7 +10,7 @@ export function AccountAuthFallback({ mode }: { mode: "signin" | "signup" }) {
       </p>
       <Link
         href={mode === "signin" ? "/login" : "/sign-up"}
-        className="inline-flex items-center justify-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
+        className="inline-flex items-center justify-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--leaf)] transition-colors"
       >
         Continue to legacy {mode === "signin" ? "sign-in" : "sign-up"}
       </Link>

@@ -31,7 +31,7 @@ export function VariantSelector({ variants, selectedId, onSelect }: Props) {
                 disabled
                   ? "border-[var(--border)] text-[var(--muted)] line-through cursor-not-allowed"
                   : selected
-                    ? "bg-[var(--ink)] text-[#FFF8E8] border-[var(--ink)] scale-[1.02]"
+                    ? "bg-[var(--ink)] text-[var(--bg)] border-[var(--ink)] scale-[1.02]"
                     : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:border-[var(--ink)]"
               }`}
             >
