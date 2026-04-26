@@ -53,7 +53,7 @@ export default function AboutPage() {
         </h1>
         <p className="text-[17px] md:text-lg text-text-muted mt-7 max-w-2xl leading-relaxed">
           As doctors and patients, we are done with the current EMR models.
-          They&apos;re outdated, archaic, not user friendly, and intimidating.
+          They&apos;re outdated, archaic, not user-friendly, and intimidating.
           We aim to create a revolutionary new EMR from scratch.
         </p>
       </section>
@@ -126,7 +126,7 @@ export default function AboutPage() {
               exec.filled ? (
                 <div
                   key={exec.role}
-                  className="bg-surface-raised rounded-xl border border-border p-4 text-center"
+                  className="bg-surface-raised rounded-xl border border-border p-5 text-center"
                 >
                   <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2">
                     <span className="text-sm font-medium text-accent">
@@ -141,7 +141,7 @@ export default function AboutPage() {
               ) : (
                 <div
                   key={exec.role}
-                  className="bg-surface-muted rounded-xl border border-dashed border-border p-4 text-center opacity-60 hover:opacity-90 hover:border-accent/40 transition-all"
+                  className="bg-surface-muted rounded-xl border border-dashed border-border p-5 text-center opacity-60 hover:opacity-90 hover:border-accent/40 transition-all flex flex-col items-center"
                 >
                   <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center mx-auto mb-2 border border-dashed border-border">
                     <span className="text-sm text-text-subtle select-none">+</span>
@@ -162,7 +162,7 @@ export default function AboutPage() {
                 key={team.name}
                 className="flex items-start gap-3 px-4 py-3 rounded-lg bg-surface border border-border/60"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0 mt-2" />
+                <div className="w-2 h-2 rounded-full bg-accent/60 ring-4 ring-accent/10 shrink-0 mt-1.5" />
                 <div>
                   <p className="text-sm font-medium text-text">{team.name}</p>
                   <p className="text-xs text-text-muted mt-0.5 leading-relaxed">

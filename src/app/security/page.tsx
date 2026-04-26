@@ -216,11 +216,11 @@ export default function SecurityPage() {
             return (
               <div key={step.title} className="flex items-stretch flex-1 gap-2 md:gap-4">
                 <div className="flex-1 bg-surface-raised rounded-2xl border border-border p-6 shadow-sm card-hover">
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
                       <Icon className="w-5 h-5" strokeWidth={1.75} />
                     </div>
-                    <span className="font-display text-sm text-accent/40">
+                    <span className="font-display text-lg text-accent/40">
                       0{i + 1}
                     </span>
                   </div>
@@ -268,13 +268,13 @@ export default function SecurityPage() {
               key={item.right}
               className="bg-surface-raised rounded-2xl border border-border p-6 shadow-sm card-hover"
             >
-              <span className="font-display text-[28px] leading-none text-accent/25 select-none">
+              <span className="font-display text-[32px] leading-none text-accent/25 select-none block mb-4">
                 0{i + 1}
               </span>
-              <h3 className="font-display text-lg text-text tracking-tight mt-3">
+              <h3 className="font-display text-xl text-text tracking-tight leading-snug">
                 {item.right}
               </h3>
-              <p className="text-sm text-text-muted mt-2 leading-relaxed">
+              <p className="text-[15px] text-text-muted mt-2.5 leading-relaxed">
                 {item.description}
               </p>
             </div>
@@ -303,10 +303,10 @@ export default function SecurityPage() {
                     className="text-accent/60 mt-1 shrink-0"
                   />
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-text-subtle">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                       {item.label}
                     </p>
-                    <p className="text-sm text-text mt-0.5">{item.value}</p>
+                    <p className="text-sm text-text mt-1">{item.value}</p>
                   </div>
                 </div>
               ))}

@@ -35,7 +35,7 @@ type Tab = "chatcb" | "wheel" | "drugmix" | "research" | "learn";
 
 const TABS: { key: Tab; label: string; Icon: LucideIcon }[] = [
   { key: "chatcb", label: "ChatCB", Icon: Sparkles },
-  { key: "wheel", label: "Cannabis Wheel", Icon: Atom },
+  { key: "wheel", label: "Cannabinoid Profiles", Icon: Atom },
   { key: "drugmix", label: "Drug Mix", Icon: Pill },
   { key: "research", label: "Research", Icon: BookOpen },
   { key: "learn", label: "Learn", Icon: GraduationCap },
@@ -52,12 +52,12 @@ const SUGGESTED_QUESTIONS = [
 
 /* ── Cannabinoid wheel data ─────────────────────────────── */
 const CANNABINOIDS = [
-  { name: "THC", color: "bg-amber-500", effects: "Pain relief, appetite, sleep, euphoria", risks: "Anxiety at high doses, impaired cognition, dependency risk" },
-  { name: "CBD", color: "bg-emerald-500", effects: "Anxiety reduction, anti-inflammatory, seizure control", risks: "Fatigue, diarrhea, liver enzyme changes at high doses" },
-  { name: "CBN", color: "bg-purple-500", effects: "Mild sedation, potential sleep aid", risks: "Limited research, may cause drowsiness" },
-  { name: "CBG", color: "bg-blue-500", effects: "Anti-inflammatory, neuroprotective (preclinical)", risks: "Very limited clinical data" },
-  { name: "THCV", color: "bg-rose-500", effects: "Appetite suppression, energy, focus", risks: "May reduce THC effects, limited studies" },
-  { name: "CBC", color: "bg-teal-500", effects: "Anti-inflammatory, antidepressant (preclinical)", risks: "Insufficient human data" },
+  { name: "THC", color: "bg-amber-600", effects: "Pain relief, appetite, sleep, euphoria", risks: "Anxiety at high doses, impaired cognition, dependency risk" },
+  { name: "CBD", color: "bg-emerald-600", effects: "Anxiety reduction, anti-inflammatory, seizure control", risks: "Fatigue, diarrhea, liver enzyme changes at high doses" },
+  { name: "CBN", color: "bg-purple-600", effects: "Mild sedation, potential sleep aid", risks: "Limited research, may cause drowsiness" },
+  { name: "CBG", color: "bg-blue-600", effects: "Anti-inflammatory, neuroprotective (preclinical)", risks: "Very limited clinical data" },
+  { name: "THCV", color: "bg-rose-600", effects: "Appetite suppression, energy, focus", risks: "May reduce THC effects, limited studies" },
+  { name: "CBC", color: "bg-teal-600", effects: "Anti-inflammatory, antidepressant (preclinical)", risks: "Insufficient human data" },
 ];
 
 /* ── Learn topics ───────────────────────────────────────── */
@@ -341,7 +341,7 @@ function WheelTab() {
   return (
     <div className="max-w-3xl mx-auto">
       <SectionHeader
-        title="Cannabinoid Wheel"
+        title="Cannabinoid Profiles"
         subtitle="Tap a cannabinoid to learn about its effects and considerations."
       />
 
@@ -453,7 +453,7 @@ function DrugMixTab() {
             rows={5}
             className="w-full rounded-xl border border-border-strong bg-white px-4 py-3 text-base text-text focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
           />
-          <Button onClick={checkMix} disabled={!meds.trim()} className="mt-4 rounded-xl w-full">
+          <Button onClick={checkMix} disabled={!meds.trim()} className="mt-4 rounded-xl">
             Check interactions
           </Button>
         </CardContent>
@@ -675,7 +675,7 @@ function ResearchTab() {
                     <Badge className={cn("text-[10px]", ev.text)} tone="neutral">
                       {ev.label}
                     </Badge>
-                    <p className="text-[11px] text-text-subtle mt-1">
+                    <p className="text-xs font-medium text-text-subtle mt-1.5">
                       {pair.studyCount} studies
                     </p>
                   </div>

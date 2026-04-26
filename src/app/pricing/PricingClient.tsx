@@ -239,13 +239,13 @@ export function PricingClient() {
                 <span className="font-display text-5xl text-text tracking-tight">
                   {priceFor(tier, annual)}
                 </span>
-                {tier.priceMonthly && tier.priceMonthly > 0 && (
+                {tier.priceMonthly !== null && tier.priceMonthly > 0 && (
                   <span className="text-sm text-text-muted">
                     /mo {annual && <span className="text-text-subtle">· billed annually</span>}
                   </span>
                 )}
               </div>
-              {tier.priceMonthly && tier.priceMonthly > 0 && (
+              {tier.priceMonthly !== null && tier.priceMonthly > 0 && (
                 <p className="text-xs text-text-subtle mt-1">per provider</p>
               )}
 

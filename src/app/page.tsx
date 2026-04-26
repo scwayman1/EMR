@@ -117,7 +117,7 @@ export default function HomePage() {
         <Reveal>
           <div className="max-w-4xl mx-auto text-center">
             <Eyebrow className="mb-5 justify-center">The problem we couldn&apos;t ignore</Eyebrow>
-            <h2 className="font-display text-3xl md:text-5xl lg:text-6xl text-text tracking-tight leading-[1.05]">
+            <h2 className="font-display text-3xl md:text-5xl lg:text-6xl text-text tracking-tight leading-[1.15]">
               Physicians spend{" "}
               <span className="text-accent italic">2 hours</span> on their EMR
               <br className="hidden md:block" /> for every <span className="text-accent italic">1 hour</span> with a patient.
@@ -134,13 +134,15 @@ export default function HomePage() {
         </Reveal>
       </section>
 
+      <EditorialRule className="max-w-[1320px] mx-auto px-6 lg:px-12" />
+
       {/* ── Workflow showcase ──────────────────────────────── */}
-      <section className="max-w-[1320px] mx-auto px-6 lg:px-12 py-20">
+      <section className="max-w-[1320px] mx-auto px-6 lg:px-12 py-28">
         <Reveal>
           <div className="max-w-3xl mb-16">
             <Eyebrow className="mb-5">The new physician workflow</Eyebrow>
             <h2 className="font-display text-3xl md:text-5xl text-text tracking-tight leading-[1.08]">
-              From <span className="text-text-subtle line-through">25 minutes</span>{" "}
+              From <span className="text-text-subtle line-through mr-1.5">25 minutes</span>{" "}
               to <span className="text-accent">3 minutes</span>.
             </h2>
             <p className="text-[17px] text-text-muted mt-5 leading-relaxed">
@@ -217,11 +219,6 @@ export default function HomePage() {
                       : "bg-surface-raised border-border hover:border-border-strong hover:shadow-md"
                   }`}
                 >
-                  {agent.featured && (
-                    <span className="absolute top-4 right-4 text-[9px] font-semibold uppercase tracking-wider bg-accent text-accent-ink px-2 py-0.5 rounded-full">
-                      Flagship
-                    </span>
-                  )}
                   <div className="flex items-center justify-between mb-4">
                     <div
                       className={
@@ -239,6 +236,11 @@ export default function HomePage() {
                       />
                     </div>
                     <div className="flex items-center gap-2">
+                      {agent.featured && (
+                        <span className="text-[9px] font-semibold uppercase tracking-wider bg-accent text-accent-ink px-2 py-0.5 rounded-full">
+                          Flagship
+                        </span>
+                      )}
                       <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                       <span className="font-mono text-[11px] text-text-subtle">
                         #{String(i + 1).padStart(2, "0")}

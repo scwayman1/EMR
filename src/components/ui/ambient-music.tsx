@@ -77,7 +77,7 @@ export function AmbientMusicPlayer() {
   return (
     <button
       onClick={toggle}
-      className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-3 py-2 rounded-full bg-surface-raised/90 border border-border shadow-lg backdrop-blur-sm text-xs font-medium text-text-muted hover:text-text hover:border-border-strong transition-all"
+      className="hidden md:flex fixed bottom-6 right-6 z-40 items-center gap-2 px-3 py-2 rounded-full bg-surface-raised/90 border border-border shadow-lg backdrop-blur-sm text-xs font-medium text-text-muted hover:text-text hover:border-border-strong transition-all"
       aria-label={playing ? "Mute ambient music" : "Play ambient music"}
       title={playing ? "Mute ambient music" : "Play ambient music"}
     >

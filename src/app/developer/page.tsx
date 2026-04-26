@@ -253,34 +253,38 @@ export default function DeveloperPortalPage() {
           </p>
         </div>
 
-        <div className="rounded-2xl border border-border bg-surface-raised overflow-hidden shadow-sm">
-          <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border bg-surface-muted text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
-            <div className="col-span-2">Method</div>
-            <div className="col-span-5">Path</div>
-            <div className="col-span-5">Description</div>
-          </div>
-          <ul className="divide-y divide-border">
-            {ENDPOINTS.map((ep) => (
-              <li
-                key={`${ep.method}-${ep.path}`}
-                className="grid grid-cols-12 gap-4 px-6 py-3 items-center hover:bg-surface-muted/40 transition-colors"
-              >
-                <div className="col-span-2">
-                  <span
-                    className={`inline-block text-[11px] font-mono font-semibold px-2 py-1 rounded ${METHOD_TONE[ep.method]}`}
+        <div className="rounded-2xl border border-border bg-surface-raised shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <div className="min-w-[600px]">
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-border bg-surface-muted text-[11px] font-semibold uppercase tracking-wider text-text-subtle">
+                <div className="col-span-2">Method</div>
+                <div className="col-span-5">Path</div>
+                <div className="col-span-5">Description</div>
+              </div>
+              <ul className="divide-y divide-border">
+                {ENDPOINTS.map((ep) => (
+                  <li
+                    key={`${ep.method}-${ep.path}`}
+                    className="grid grid-cols-12 gap-4 px-6 py-3 items-center hover:bg-surface-muted/40 transition-colors"
                   >
-                    {ep.method}
-                  </span>
-                </div>
-                <code className="col-span-5 text-sm font-mono text-text break-all">
-                  {ep.path}
-                </code>
-                <p className="col-span-5 text-sm text-text-muted">
-                  {ep.description}
-                </p>
-              </li>
-            ))}
-          </ul>
+                    <div className="col-span-2">
+                      <span
+                        className={`inline-block text-[11px] font-mono font-semibold px-2 py-1 rounded ${METHOD_TONE[ep.method]}`}
+                      >
+                        {ep.method}
+                      </span>
+                    </div>
+                    <code className="col-span-5 text-sm font-mono text-text break-all">
+                      {ep.path}
+                    </code>
+                    <p className="col-span-5 text-sm text-text-muted">
+                      {ep.description}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6">
@@ -320,7 +324,7 @@ export default function DeveloperPortalPage() {
               throttled.
             </p>
           </div>
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-2 space-y-3 max-w-lg">
             {RATE_LIMITS.map((rl) => (
               <div
                 key={rl.scope}
@@ -422,7 +426,7 @@ export default function DeveloperPortalPage() {
 
 function CodeBlock({ label, snippet }: { label: string; snippet: string }) {
   return (
-    <div className="rounded-xl bg-[#1a1f1c] overflow-hidden border border-black/20 shadow-md">
+    <div className="rounded-xl bg-[#1a1f1c] overflow-hidden border border-black/20 shadow-md min-w-0">
       <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
         <span className="text-[11px] font-mono uppercase tracking-wider text-white/50">
           {label}
