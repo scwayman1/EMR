@@ -151,13 +151,13 @@ export default async function OrderDetailPage({
             <div className="flex flex-col gap-2">
               <Link
                 href="/leafmart/account/outcomes"
-                className="inline-flex items-center justify-center rounded-full bg-[var(--leaf)] text-[#FFF8E8] px-6 py-3 text-[14px] font-medium hover:bg-[var(--ink)] transition-colors"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--leaf)] text-[var(--bg)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--ink)] transition-colors"
               >
                 Log an outcome
               </Link>
               <Link
                 href="/leafmart/account/orders"
-                className="inline-flex items-center justify-center rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--ink)] hover:text-[#FFF8E8] transition-colors"
+                className="inline-flex items-center justify-center rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-6 py-3 text-[14px] font-medium hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-colors"
               >
                 Back to orders
               </Link>

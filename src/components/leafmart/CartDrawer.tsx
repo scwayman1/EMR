@@ -179,7 +179,7 @@ export function CartDrawer() {
               <Link
                 href="/leafmart/shop"
                 onClick={closeCart}
-                className="mt-2 inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3 text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+                className="mt-2 inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3 text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
               >
                 Browse the shop
               </Link>
@@ -202,7 +202,7 @@ export function CartDrawer() {
                       {quantity > 1 && (
                         <span
                           key={`badge-${product.slug}-${tk}`}
-                          className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[#FFF8E8] text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center tabular-nums shadow-sm lm-count-tick"
+                          className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[var(--bg)] text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center tabular-nums shadow-sm lm-count-tick"
                         >
                           {quantity}
                         </span>
@@ -279,7 +279,7 @@ export function CartDrawer() {
             <Link
               href="/leafmart/checkout"
               onClick={closeCart}
-              className="block w-full text-center rounded-full bg-[var(--ink)] text-[#FFF8E8] py-3.5 text-[13.5px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+              className="block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-3.5 text-[13.5px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
             >
               Checkout · {formatUSD(subtotal)}
             </Link>

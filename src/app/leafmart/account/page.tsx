@@ -165,7 +165,7 @@ export default async function AccountDashboardPage() {
             <div className="flex flex-col gap-3">
               <Link
                 href="/leafmart/consult"
-                className="inline-flex items-center justify-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[#FFF8E8] hover:bg-[var(--ink)] transition-colors"
+                className="inline-flex items-center justify-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[var(--bg)] hover:bg-[var(--ink)] transition-colors"
                 style={{ padding: "14px 28px", fontSize: 15 }}
               >
                 Connect to Leafjourney

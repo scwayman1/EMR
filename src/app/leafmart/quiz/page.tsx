@@ -73,13 +73,13 @@ export default function QuizPage() {
         <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row sm:flex-wrap sm:justify-center gap-3 sm:gap-3.5">
           <button
             onClick={() => { setStep(0); setAnswers([]); }}
-            className="rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] font-medium hover:bg-[var(--ink)] hover:text-[#FFF8E8] transition-colors w-full sm:w-auto"
+            className="rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] font-medium hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-colors w-full sm:w-auto"
           >
             Retake the quiz
           </button>
           <Link
             href="/leafmart/products"
-            className="rounded-full bg-[var(--ink)] text-[#FFF8E8] px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] font-medium hover:bg-[var(--leaf)] transition-colors w-full sm:w-auto inline-flex items-center justify-center"
+            className="rounded-full bg-[var(--ink)] text-[var(--bg)] px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px] font-medium hover:bg-[var(--leaf)] transition-colors w-full sm:w-auto inline-flex items-center justify-center"
           >
             Browse all products →
           </Link>
@@ -131,7 +131,7 @@ export default function QuizPage() {
         {step > 0 && (
           <button
             onClick={() => { setStep(step - 1); setAnswers(answers.slice(0, -1)); }}
-            className="mt-5 sm:mt-6 text-sm text-[rgba(255,248,232,0.6)] hover:text-[#FFF8E8] transition-colors"
+            className="mt-5 sm:mt-6 text-sm text-[rgba(255,248,232,0.6)] hover:text-[var(--bg)] transition-colors"
           >
             ← Go back
           </button>

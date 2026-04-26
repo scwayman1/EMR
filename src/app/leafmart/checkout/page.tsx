@@ -145,9 +145,9 @@ function StepIndicator({ active }: { active: StepIndex }) {
               <span
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold tabular-nums transition-all duration-300 relative z-10 ${
                   isActive
-                    ? "bg-[var(--ink)] text-[#FFF8E8] scale-110 shadow-[0_0_0_4px_var(--bg)]"
+                    ? "bg-[var(--ink)] text-[var(--bg)] scale-110 shadow-[0_0_0_4px_var(--bg)]"
                     : isDone
-                      ? "bg-[var(--leaf)] text-[#FFF8E8] shadow-[0_0_0_4px_var(--bg)]"
+                      ? "bg-[var(--leaf)] text-[var(--bg)] shadow-[0_0_0_4px_var(--bg)]"
                       : "bg-[var(--surface-muted)] text-[var(--muted)] shadow-[0_0_0_4px_var(--bg)]"
                 }`}
               >
@@ -422,7 +422,7 @@ export default function CheckoutPage() {
         </p>
         <Link
           href="/leafmart/shop"
-          className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+          className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
         >
           Browse the shop
         </Link>
@@ -512,13 +512,13 @@ export default function CheckoutPage() {
         <div className="mt-10 flex flex-wrap gap-3">
           <Link
             href="/leafmart/shop"
-            className="inline-flex items-center rounded-full bg-[var(--ink)] text-[#FFF8E8] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            className="inline-flex items-center rounded-full bg-[var(--ink)] text-[var(--bg)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
           >
             Keep shopping
           </Link>
           <Link
             href="/leafmart"
-            className="inline-flex items-center rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--ink)] hover:text-[#FFF8E8] transition-colors"
+            className="inline-flex items-center rounded-full border-[1.5px] border-[var(--ink)] text-[var(--ink)] px-7 py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-colors"
           >
             Back to home
           </Link>
@@ -833,8 +833,8 @@ export default function CheckoutPage() {
               disabled={isProcessing}
               className={`inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-[14px] font-medium tracking-wide transition-all duration-300 ${
                 isProcessing
-                  ? "bg-[var(--leaf)] text-[#FFF8E8] cursor-wait"
-                  : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)]"
+                  ? "bg-[var(--leaf)] text-[var(--bg)] cursor-wait"
+                  : "bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)]"
               }`}
             >
               {isProcessing ? (
@@ -859,7 +859,7 @@ export default function CheckoutPage() {
               <li key={product.slug} className="py-3 flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden relative">
                   <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={48} />
-                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[#FFF8E8] text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center tabular-nums">
+                  <span className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[var(--bg)] text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center tabular-nums">
                     {quantity}
                   </span>
                 </div>

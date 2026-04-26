@@ -210,7 +210,7 @@ export default function DosingGuidePage({ params }: { params: { slug: string } }
           </div>
           <Link
             href="/leafmart/account/outcomes"
-            className="inline-flex items-center justify-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[#FFF8E8] hover:bg-[var(--ink)] transition-colors whitespace-nowrap px-7 sm:px-8 py-4 text-[14.5px] sm:text-[15px] w-full lg:w-auto"
+            className="inline-flex items-center justify-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[var(--bg)] hover:bg-[var(--ink)] transition-colors whitespace-nowrap px-7 sm:px-8 py-4 text-[14.5px] sm:text-[15px] w-full lg:w-auto"
           >
             Log your outcome
           </Link>

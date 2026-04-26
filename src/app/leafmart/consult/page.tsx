@@ -72,14 +72,14 @@ export default function ConsultPage() {
             <div className="flex flex-wrap items-center gap-3 mb-8">
               <Link
                 href="/portal/schedule"
-                className="inline-flex items-center rounded-full font-medium tracking-wide bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors"
+                className="inline-flex items-center rounded-full font-medium tracking-wide bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] transition-colors"
                 style={{ padding: "16px 28px", fontSize: 15 }}
               >
                 Book a consultation
               </Link>
               <Link
                 href="#how-it-works"
-                className="inline-flex items-center rounded-full font-medium border-[1.5px] border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[#FFF8E8] transition-colors"
+                className="inline-flex items-center rounded-full font-medium border-[1.5px] border-[var(--ink)] text-[var(--ink)] hover:bg-[var(--ink)] hover:text-[var(--bg)] transition-colors"
                 style={{ padding: "16px 28px", fontSize: 15 }}
               >
                 How it works
@@ -156,7 +156,7 @@ export default function ConsultPage() {
           </div>
           <Link
             href="/portal/schedule"
-            className="inline-flex items-center justify-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[#FFF8E8] hover:bg-[var(--ink)] transition-colors whitespace-nowrap"
+            className="inline-flex items-center justify-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[var(--bg)] hover:bg-[var(--ink)] transition-colors whitespace-nowrap"
             style={{ padding: "16px 32px", fontSize: 15 }}
           >
             Book a consultation

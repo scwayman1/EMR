@@ -199,8 +199,8 @@ export function ProductDetailClient({ product, related }: Props) {
                     !inStock
                       ? "bg-[var(--border)] text-[var(--muted)] cursor-not-allowed"
                       : added
-                        ? "bg-[var(--leaf)] text-[#FFF8E8] scale-[1.02]"
-                        : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)]"
+                        ? "bg-[var(--leaf)] text-[var(--bg)] scale-[1.02]"
+                        : "bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)]"
                   }`}
                 >
                   {!inStock ? (

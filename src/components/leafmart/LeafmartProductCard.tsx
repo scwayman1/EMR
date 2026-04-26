@@ -107,8 +107,8 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
               aria-label={`Add ${p.name} to cart`}
               className={`group relative rounded-full w-[42px] h-[42px] flex items-center justify-center transition-all duration-300 ${
                 justAdded
-                  ? "bg-[var(--leaf)] text-[#FFF8E8] scale-110"
-                  : "bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] hover:scale-105"
+                  ? "bg-[var(--leaf)] text-[var(--bg)] scale-110"
+                  : "bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] hover:scale-105"
               }`}
             >
               {justAdded ? (

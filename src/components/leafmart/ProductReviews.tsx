@@ -124,7 +124,7 @@ export function ProductReviews({ reviews, averageRating, reviewCount }: Props) {
                   onClick={() => setSort(s.id)}
                   className={`px-3 py-1.5 rounded-full text-[11.5px] font-medium transition-colors ${
                     sort === s.id
-                      ? "bg-[var(--ink)] text-[#FFF8E8]"
+                      ? "bg-[var(--ink)] text-[var(--bg)]"
                       : "text-[var(--text-soft)] hover:text-[var(--ink)]"
                   }`}
                 >

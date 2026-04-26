@@ -67,7 +67,7 @@ export default async function ShopPage() {
         <div className="mt-8 sm:mt-10 text-center">
           <Link
             href="/leafmart/products"
-            className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors w-full sm:w-auto px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px]"
+            className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] transition-colors w-full sm:w-auto px-6 py-3.5 sm:py-3 text-[14.5px] sm:text-[15px]"
           >
             Browse all products →
           </Link>

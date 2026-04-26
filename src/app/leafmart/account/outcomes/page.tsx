@@ -190,7 +190,7 @@ export default function OutcomesPage() {
                           type="button"
                           onClick={() => submit(product.slug)}
                           disabled={d.rating === 0}
-                          className="inline-flex items-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[#FFF8E8] hover:bg-[var(--ink)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="inline-flex items-center rounded-full font-medium tracking-wide bg-[var(--leaf)] text-[var(--bg)] hover:bg-[var(--ink)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           style={{ padding: "10px 20px", fontSize: 13.5 }}
                         >
                           Log outcome

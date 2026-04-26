@@ -247,7 +247,7 @@ export function VendorApplicationForm() {
                 className={
                   "inline-flex items-center gap-2 cursor-pointer rounded-full px-4 py-2 text-[13px] font-medium border transition-colors " +
                   (checked
-                    ? "bg-[var(--ink)] text-[#FFF8E8] border-[var(--ink)]"
+                    ? "bg-[var(--ink)] text-[var(--bg)] border-[var(--ink)]"
                     : "bg-[var(--surface)] text-[var(--ink)] border-[var(--border)] hover:border-[var(--leaf)]")
                 }
               >
@@ -280,7 +280,7 @@ export function VendorApplicationForm() {
                 className={
                   "inline-flex items-center gap-2 cursor-pointer rounded-full px-5 py-2.5 text-[13.5px] font-medium border transition-colors " +
                   (selected
-                    ? "bg-[var(--leaf)] text-[#FFF8E8] border-[var(--leaf)]"
+                    ? "bg-[var(--leaf)] text-[var(--bg)] border-[var(--leaf)]"
                     : "bg-[var(--surface)] text-[var(--ink)] border-[var(--border)] hover:border-[var(--leaf)]")
                 }
               >
@@ -320,7 +320,7 @@ export function VendorApplicationForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
+          className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] disabled:opacity-60 disabled:cursor-not-allowed w-full sm:w-auto"
         >
           {submitting ? (
             <>
