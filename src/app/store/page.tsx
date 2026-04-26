@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 
 const PRODUCTS = [
   {
@@ -62,29 +62,7 @@ export default function StorePage() {
         }}
       />
 
-      {/* Nav */}
-      <nav className="max-w-[1280px] mx-auto flex items-center justify-between px-6 lg:px-12 h-20">
-        <Link href="/">
-          <Wordmark size="md" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/about"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/login"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Start your care</Button>
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-12 pb-10 text-center">
@@ -226,22 +204,7 @@ export default function StorePage() {
         </div>
       )}
 
-      <footer className="border-t border-border">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col gap-4">
-          <p className="text-xs italic text-text-muted leading-relaxed max-w-2xl">
-            Cannabis should be considered a medicine so please use it carefully
-            and judiciously. Do not abuse Cannabis and please respect the plant
-            and its healing properties.
-          </p>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <Wordmark size="sm" />
-            <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Leafjourney. A
-              demonstration product — not a substitute for medical advice.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

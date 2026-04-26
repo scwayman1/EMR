@@ -1,24 +1,13 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
-import { SITE_URL } from "@/lib/seo";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "About — Leafjourney",
   description:
     "Meet the founders behind Leafjourney: visionaries rebuilding healthcare from the ground up.",
-  alternates: { canonical: `${SITE_URL}/about` },
-  robots: { index: true, follow: true },
-  openGraph: {
-    title: "About — Leafjourney",
-    description:
-      "Meet the founders behind Leafjourney: visionaries rebuilding healthcare from the ground up.",
-    url: `${SITE_URL}/about`,
-    siteName: "Leafjourney",
-    type: "website",
-  },
 };
 
 const FOUNDERS = [
@@ -52,23 +41,7 @@ export default function AboutPage() {
         }}
       />
 
-      {/* Nav */}
-      <nav className="max-w-[1280px] mx-auto flex items-center justify-between px-6 lg:px-12 h-20">
-        <Link href="/">
-          <Wordmark size="md" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Start your care</Button>
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-12 pb-16">
@@ -119,13 +92,12 @@ export default function AboutPage() {
           {FOUNDERS.map((founder) => (
             <article
               key={founder.name}
-              className="relative bg-surface-raised rounded-2xl border border-border p-8 shadow-sm overflow-hidden card-hover"
+              className="relative bg-surface-raised rounded-2xl border border-border p-8 shadow-md overflow-hidden card-hover"
             >
-              {/* Avatar placeholder */}
               <div
-                className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${founder.gradient} flex items-center justify-center mb-6 shadow-md`}
+                className={`w-24 h-24 rounded-full bg-gradient-to-br ${founder.gradient} flex items-center justify-center mb-6 shadow-lg ring-4 ring-white/40`}
               >
-                <span className="font-display text-2xl text-white/90 select-none">
+                <span className="font-display text-3xl text-white/95 select-none">
                   {founder.initials}
                 </span>
               </div>
@@ -150,42 +122,53 @@ export default function AboutPage() {
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
-            {[
-              { role: "CEO", name: "Dr. Neal H. Patel", initials: "NP" },
-              { role: "CPTO", name: "Scott Wayman", initials: "SW" },
-              { role: "CMO", name: "Coming soon", initials: "—" },
-              { role: "CSO", name: "Coming soon", initials: "—" },
-              { role: "COO", name: "Coming soon", initials: "—" },
-              { role: "CFO", name: "Coming soon", initials: "—" },
-              { role: "CIO", name: "Coming soon", initials: "—" },
-              { role: "CHRO", name: "Coming soon", initials: "—" },
-            ].map((exec) => (
-              <div
-                key={exec.role}
-                className="bg-surface-raised rounded-xl border border-border p-4 text-center"
-              >
-                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2">
-                  <span className="text-sm font-medium text-accent">{exec.initials}</span>
+            {EXECS.map((exec) =>
+              exec.filled ? (
+                <div
+                  key={exec.role}
+                  className="bg-surface-raised rounded-xl border border-border p-4 text-center"
+                >
+                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2">
+                    <span className="text-sm font-medium text-accent">
+                      {exec.initials}
+                    </span>
+                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                    {exec.role}
+                  </p>
+                  <p className="text-xs text-text mt-1">{exec.name}</p>
                 </div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">{exec.role}</p>
-                <p className="text-xs text-text mt-1">{exec.name}</p>
-              </div>
-            ))}
+              ) : (
+                <div
+                  key={exec.role}
+                  className="bg-surface-muted rounded-xl border border-dashed border-border p-4 text-center opacity-60 hover:opacity-90 hover:border-accent/40 transition-all"
+                >
+                  <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center mx-auto mb-2 border border-dashed border-border">
+                    <span className="text-sm text-text-subtle select-none">+</span>
+                  </div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                    {exec.role}
+                  </p>
+                  <p className="text-xs text-text-muted mt-1">Open position</p>
+                </div>
+              )
+            )}
           </div>
 
           <Eyebrow className="mb-4">Specialized teams</Eyebrow>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-10">
-            {[
-              "Cannabis Care", "Fitness & Movement", "Spiritual Wellness",
-              "Psilocybin Research", "Veterans Affairs", "Veterinary",
-              "First Responders", "Mental Health",
-            ].map((team) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
+            {TEAMS.map((team) => (
               <div
-                key={team}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-surface border border-border/60"
+                key={team.name}
+                className="flex items-start gap-3 px-4 py-3 rounded-lg bg-surface border border-border/60"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
-                <span className="text-xs text-text">{team}</span>
+                <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0 mt-2" />
+                <div>
+                  <p className="text-sm font-medium text-text">{team.name}</p>
+                  <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+                    {team.desc}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -252,25 +235,32 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <footer className="border-t border-border">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col gap-4">
-          <p className="text-xs italic text-text-muted leading-relaxed max-w-2xl">
-            Cannabis should be considered a medicine so please use it carefully
-            and judiciously. Do not abuse Cannabis and please respect the plant
-            and its healing properties.
-          </p>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <Wordmark size="sm" />
-            <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Leafjourney. A
-              demonstration product — not a substitute for medical advice.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
+
+const EXECS: { role: string; name: string; initials: string; filled: boolean }[] = [
+  { role: "CEO", name: "Dr. Neal H. Patel", initials: "NP", filled: true },
+  { role: "CPTO", name: "Scott Wayman", initials: "SW", filled: true },
+  { role: "CMO", name: "—", initials: "—", filled: false },
+  { role: "CSO", name: "—", initials: "—", filled: false },
+  { role: "COO", name: "—", initials: "—", filled: false },
+  { role: "CFO", name: "—", initials: "—", filled: false },
+  { role: "CIO", name: "—", initials: "—", filled: false },
+  { role: "CHRO", name: "—", initials: "—", filled: false },
+];
+
+const TEAMS: { name: string; desc: string }[] = [
+  { name: "Cannabis Care", desc: "Clinical protocols, dosing, and outcome tracking for medical cannabis patients." },
+  { name: "Fitness & Movement", desc: "Movement-as-medicine programs integrated with the patient care plan." },
+  { name: "Spiritual Wellness", desc: "Mindfulness, meditation, and ritual practices that support whole-person healing." },
+  { name: "Psilocybin Research", desc: "Tracking emerging clinical evidence and protocol development for psychedelic care." },
+  { name: "Veterans Affairs", desc: "Trauma-informed cannabis and mental health workflows tailored to veteran populations." },
+  { name: "Veterinary", desc: "Cannabinoid therapeutics for companion animals — dosing, safety, and outcomes." },
+  { name: "First Responders", desc: "Specialized care pathways for first responders managing chronic pain and PTSD." },
+  { name: "Mental Health", desc: "Integrated psychiatric care, medication management, and behavioral health support." },
+];
 
 const VALUES = [
   {
