@@ -49,3 +49,8 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# Scratch test files with credentials
+test-db.js
+test-prisma.js
+src/app/Untitled-1
