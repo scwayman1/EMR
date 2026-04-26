@@ -21,6 +21,7 @@ import {
   ensureProductsForLeafmart,
 } from "@/lib/leafmart/sync";
 import { checkShippingRestriction } from "@/lib/marketplace/shipping-restrictions";
+import { recordEventAsync } from "@/lib/marketplace/event-recorder";
 
 const ItemSchema = z.object({
   slug: z.string().min(1),
@@ -203,6 +204,27 @@ export async function POST(req: Request) {
     },
     include: { items: true },
   });
+
+  // EMR-238: emit one purchase event per line item so the ranking
+  // engine attributes outcomes per product. Fire-and-forget — a
+  // recorder failure must not break checkout.
+  for (const it of body.items) {
+    const product = productMap.get(it.slug);
+    if (!product) continue;
+    recordEventAsync({
+      organizationId: org.id,
+      patientId: patient.id,
+      productId: product.id,
+      vendorId: null,
+      eventType: "purchase",
+      metadata: {
+        orderId: order.id,
+        slug: it.slug,
+        quantity: it.quantity,
+        unitPrice: it.price,
+      },
+    });
+  }
 
   return NextResponse.json({
     orderId: order.id,
