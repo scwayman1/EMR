@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import { AmbientOrb } from "@/components/ui/hero-art";
 import { HealthPlant } from "@/components/ui/health-plant";
+import { VisitActions } from "@/components/portal/visit-actions";
 import { computePlantHealth, STAGE_LABELS, type PlantHealth } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { OnboardingTour } from "@/components/ui/onboarding-tour";
@@ -167,6 +168,7 @@ export default async function PatientHome() {
             scheduledFor: true,
             modality: true,
             completedAt: true,
+            briefingContext: true,
           },
         },
         tasks: {
@@ -450,10 +452,10 @@ export default async function PatientHome() {
                     {" · "}{formatRelative(nextVisit.scheduledFor)}
                   </p>
                 )}
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm">Confirm</Button>
-                  <Button size="sm" variant="ghost">Change</Button>
-                </div>
+                <VisitActions
+                  encounterId={nextVisit.id}
+                  isConfirmed={!!(nextVisit as any).briefingContext?.patientConfirmedAt}
+                />
               </>
             ) : (
               <p className="text-sm text-text-muted">
