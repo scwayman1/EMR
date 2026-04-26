@@ -171,10 +171,12 @@ export default async function LeafmartHomePage() {
                     <h3 className="font-display text-[24px] sm:text-[28px] lg:text-[32px] font-medium tracking-tight text-[var(--ink)]">{c.name}</h3>
                     <p className="text-[13px] sm:text-[13.5px] text-[var(--text-soft)] mt-2 max-w-[200px] leading-snug">{c.sub}</p>
                   </div>
-                  {/* Category icon — tinted with the shelf's stamp colour */}
+                  {/* Category icon — tinted with the shelf's stamp colour.
+                      Uses --chip-overlay so the chip background flips dark in
+                      dark mode and the now-light stamp icons clear WCAG 1.4.11. */}
                   <div
                     className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.55)", color: c.deep }}
+                    style={{ background: "var(--chip-overlay)", color: c.deep }}
                   >
                     <CategoryIcon slug={c.slug} size={20} />
                   </div>
