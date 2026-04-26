@@ -1689,6 +1689,9 @@ model Product {
   // Trust
   labVerified    Boolean @default(false)
   coaUrl         String?
+  // EMR-242: link to the VendorDocument(documentType='coa') that
+  // covers this product. The cron auto-delists on expiry.
+  coaDocumentId  String?
   clinicianPick  Boolean @default(false)
   clinicianNote  String?
   requires21Plus Boolean @default(false)
@@ -1720,6 +1723,7 @@ model Product {
   @@index([organizationId, status])
   @@index([clinicianPick])
   @@index([featured])
+  @@index([coaDocumentId])
 }
 
 model Vendor {
@@ -1755,6 +1759,11 @@ model VendorDocument {
   vendorId       String
   documentType   VendorDocumentType
   fileUrl        String?
+  // EMR-242: COAs are public buyer-facing docs, served via publicUrl.
+  // W-9s are admin-only and only accessible via the encrypted fileUrl.
+  publicUrl      String?
+  // EMR-242: COA expiration drives auto-delist + reminder cadence.
+  expiresAt      DateTime?
   status         VendorDocumentStatus @default(missing)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
@@ -1764,6 +1773,7 @@ model VendorDocument {
 
   @@unique([vendorId, documentType])
   @@index([organizationId, status])
+  @@index([documentType, expiresAt])
 }
 
 // EMR-238: Outcome Event Recorder. Durable log of patient/product
