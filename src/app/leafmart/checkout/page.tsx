@@ -369,8 +369,12 @@ export default function CheckoutPage() {
         const data: {
           error?: string;
           blocked?: Array<{ name: string; partner: string; message?: string }>;
+          ageBlocked?: Array<{ name: string; status: string; message?: string }>;
         } = await res.json().catch(() => ({}));
-        if (data.blocked && data.blocked.length > 0) {
+        if (data.ageBlocked && data.ageBlocked.length > 0) {
+          const items = data.ageBlocked.map((b) => `• ${b.name}`).join("\n");
+          serverError = `${data.error ?? "21+ verification required."}\n\n${items}\n\nVerify your date of birth in your account or remove these items to continue.`;
+        } else if (data.blocked && data.blocked.length > 0) {
           const items = data.blocked
             .map((b) => `• ${b.name} (${b.partner})`)
             .join("\n");

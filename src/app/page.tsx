@@ -217,12 +217,7 @@ export default function HomePage() {
                       : "bg-surface-raised border-border hover:border-border-strong hover:shadow-md"
                   }`}
                 >
-                  {agent.featured && (
-                    <span className="absolute top-4 right-4 text-[9px] font-semibold uppercase tracking-wider bg-accent text-accent-ink px-2 py-0.5 rounded-full">
-                      Flagship
-                    </span>
-                  )}
-                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4">
                     <div
                       className={
                         agent.featured
@@ -239,6 +234,11 @@ export default function HomePage() {
                       />
                     </div>
                     <div className="flex items-center gap-2">
+                      {agent.featured && (
+                        <span className="text-[9px] font-semibold uppercase tracking-wider bg-accent text-accent-ink px-2 py-0.5 rounded-full">
+                          Flagship
+                        </span>
+                      )}
                       <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                       <span className="font-mono text-[11px] text-text-subtle">
                         #{String(i + 1).padStart(2, "0")}
