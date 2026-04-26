@@ -23,6 +23,7 @@ import {
 import { checkShippingRestriction } from "@/lib/marketplace/shipping-restrictions";
 import { recordEventAsync } from "@/lib/marketplace/event-recorder";
 import { resolveCartAgeGate } from "@/server/marketplace/age-gate";
+import { calculateSalesTax } from "@/lib/leafmart/taxjar/client";
 
 const ItemSchema = z.object({
   slug: z.string().min(1),
@@ -90,7 +91,26 @@ export async function POST(req: Request) {
     (s, it) => s + it.price * it.quantity,
     0,
   );
-  const computedTax = Math.round(computedSubtotal * 0.0875 * 100) / 100;
+
+  // EMR-247: authoritative sales tax via TaxJar (or stub fallback when
+  // TAXJAR_API_KEY isn't set — same flat 8.75% as the cart UI uses, so
+  // totals match dev/CI). Tax money never enters vendor payout flow —
+  // it's tracked separately on the Order ledger.
+  const taxResult = await calculateSalesTax({
+    shippingAddress: {
+      state: body.shipping.state,
+      zip: body.shipping.zip,
+      city: body.shipping.city,
+    },
+    subtotalUsd: computedSubtotal,
+    shippingUsd: 0,
+    lineItems: body.items.map((it) => ({
+      id: it.slug,
+      quantity: it.quantity,
+      unitPriceUsd: it.price,
+    })),
+  });
+  const computedTax = taxResult.totalTaxUsd;
   const computedTotal = Math.round((computedSubtotal + computedTax) * 100) / 100;
 
   // Tolerate ±1¢ rounding drift between client and server.
@@ -229,7 +249,7 @@ export async function POST(req: Request) {
         contactEmail: body.contact.email,
         contactPhone: body.contact.phone,
       },
-      notes: `gateway:${getActiveGateway()} txn:${result.transactionId}`,
+      notes: `gateway:${getActiveGateway()} txn:${result.transactionId} tax_source:${taxResult.source} tax_state:${taxResult.jurisdictions.state} tax_rate:${taxResult.rate}`,
       items: {
         create: body.items.map((it) => {
           const product = productMap.get(it.slug);
