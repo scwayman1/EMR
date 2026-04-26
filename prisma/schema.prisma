@@ -1627,6 +1627,22 @@ enum VendorStatus {
   offboarded
 }
 
+// EMR-249: vendor portal auth realm. Roles map to UI surfaces:
+// owner sees finance + 2FA-required ops; catalog_manager edits products;
+// fulfillment ships orders; finance views payouts + 2FA-required.
+enum VendorPortalRole {
+  owner
+  catalog_manager
+  fulfillment
+  finance
+}
+
+enum VendorUserStatus {
+  invited
+  active
+  suspended
+}
+
 enum VendorDocumentType {
   insurance
   w9
@@ -1749,8 +1765,50 @@ model Vendor {
 
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   documents    VendorDocument[]
+  users        VendorUser[]
 
   @@index([organizationId, status])
+}
+
+// EMR-249: vendor portal user. Distinct table from EMR User so a
+// vendor session can never authenticate to clinical routes (different
+// cookie name AND different DB lookup table). passwordHash uses
+// bcrypt; totpSecret is base32; null totpEnabledAt = 2FA not enrolled.
+model VendorUser {
+  id            String           @id @default(cuid())
+  vendorId      String
+  email         String
+  passwordHash  String
+  role          VendorPortalRole
+  status        VendorUserStatus @default(invited)
+  totpSecret    String?
+  totpEnabledAt DateTime?
+  lastLoginAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  vendor   Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  sessions VendorSession[]
+
+  @@unique([vendorId, email])
+  @@index([email])
+}
+
+// EMR-249: opaque-token session store for vendor portal. The cookie
+// holds the plaintext token; DB stores its SHA-256 so a DB leak
+// alone can't impersonate a session.
+model VendorSession {
+  id               String   @id @default(cuid())
+  vendorUserId     String
+  sessionTokenHash String   @unique
+  expiresAt        DateTime
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+
+  user VendorUser @relation(fields: [vendorUserId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
 }
 
 model VendorDocument {
