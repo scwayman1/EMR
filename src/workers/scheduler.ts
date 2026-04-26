@@ -77,8 +77,41 @@ async function main() {
     adherenceEnqueued = withActiveRegimen.length;
   }
 
+  // 4. CFO weekly briefing — Monday 06:00 UTC. Fires the cfo agent for
+  //    every organization. Writes a fresh P&L, cash flow, balance sheet,
+  //    KPI dashboard, and CFO narrative briefing.
+  let cfoEnqueued = 0;
+  const isMondayMorning =
+    new Date().getUTCDay() === 1 && utcHour === 6 && utcMinute < 15;
+  if (isMondayMorning) {
+    const orgs = await prisma.organization.findMany({ select: { id: true } });
+    for (const o of orgs) {
+      await dispatch({
+        name: "cfo.report.generate",
+        organizationId: o.id,
+        period: "weekly",
+      });
+    }
+    cfoEnqueued = orgs.length;
+  }
+
+  // 5. CFO monthly briefing — 1st of month, 07:00 UTC.
+  const isFirstOfMonth =
+    new Date().getUTCDate() === 1 && utcHour === 7 && utcMinute < 15;
+  if (isFirstOfMonth) {
+    const orgs = await prisma.organization.findMany({ select: { id: true } });
+    for (const o of orgs) {
+      await dispatch({
+        name: "cfo.report.generate",
+        organizationId: o.id,
+        period: "monthly",
+      });
+    }
+    cfoEnqueued += orgs.length;
+  }
+
   console.log(
-    `[scheduler] enqueued outcome=${patients.length} stalled=${stalled.length} adherence=${adherenceEnqueued}`,
+    `[scheduler] enqueued outcome=${patients.length} stalled=${stalled.length} adherence=${adherenceEnqueued} cfo=${cfoEnqueued}`,
   );
 }
 
