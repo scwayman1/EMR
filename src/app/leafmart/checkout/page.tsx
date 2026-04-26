@@ -218,6 +218,7 @@ export default function CheckoutPage() {
     cvc: "",
     nameOnCard: "",
   });
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const tax = useMemo(() => subtotal * TAX_RATE, [subtotal]);
@@ -314,6 +315,7 @@ export default function CheckoutPage() {
     if (!validators.expiry(payment.expiry)) e.expiry = "MM / YY";
     if (!validators.cvc(payment.cvc)) e.cvc = "3–4 digits";
     if (!validators.required(payment.nameOnCard)) e.nameOnCard = "Required";
+    if (!legalAccepted) e.legalAccepted = "Please agree to the Terms and Privacy Policy.";
     setErrors(e);
     if (Object.keys(e).length > 0) setShakeKey((k) => k + 1);
     return Object.keys(e).length === 0;
@@ -803,6 +805,39 @@ export default function CheckoutPage() {
                   />
                 </svg>
                 Demo checkout. No card is charged and no payment data is transmitted.
+              </div>
+              <div>
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={legalAccepted}
+                    onChange={(e) => {
+                      setLegalAccepted(e.target.checked);
+                      if (e.target.checked && errors.legalAccepted) {
+                        setErrors(({ legalAccepted: _omit, ...rest }) => rest);
+                      }
+                    }}
+                    aria-invalid={!!errors.legalAccepted}
+                    aria-describedby={errors.legalAccepted ? "legal-accept-error" : undefined}
+                    className="mt-0.5 w-4 h-4 rounded border-[var(--border)] text-[var(--leaf)] focus:ring-[var(--leaf)] focus:ring-offset-0"
+                  />
+                  <span className="text-[13px] text-[var(--text-soft)] leading-relaxed">
+                    I agree to the{" "}
+                    <Link href="/legal/terms" target="_blank" rel="noopener" className="text-[var(--ink)] underline underline-offset-2 hover:text-[var(--leaf)]">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/legal/privacy" target="_blank" rel="noopener" className="text-[var(--ink)] underline underline-offset-2 hover:text-[var(--leaf)]">
+                      Privacy Policy
+                    </Link>
+                    .
+                  </span>
+                </label>
+                {errors.legalAccepted && (
+                  <p id="legal-accept-error" className="text-[12px] text-[var(--danger)] mt-1.5 ml-7">
+                    {errors.legalAccepted}
+                  </p>
+                )}
               </div>
               {errors.submit && (
                 <div className="rounded-2xl border border-[var(--danger)] bg-[var(--danger)]/[0.04] px-4 py-3 text-[13px] text-[var(--danger)]">
