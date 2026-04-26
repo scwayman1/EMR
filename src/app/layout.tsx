@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="theme-leafmart" suppressHydrationWarning>
       <head>
         {/* Google Fonts — Leafmart design system typography */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

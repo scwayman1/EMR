@@ -69,12 +69,13 @@ export function LiveConsole() {
         }}
       />
 
-      {/* Main glass card — FIXED HEIGHT on mobile so the animation
-          scrolls inside the card instead of pushing page content around.
-          On desktop the card is tall enough that it never needs to scroll. */}
+      {/* Main glass card — STABLE HEIGHT prevents layout shift when
+          the insights panel appears/disappears during the animation cycle.
+          The insights panel is always rendered but visibility-toggled. */}
       <div
-        className="relative rounded-[28px] overflow-hidden border border-white/30 shadow-[0_20px_80px_-20px_rgba(30,60,45,0.25),0_0_0_1px_rgba(255,255,255,0.1)_inset] max-h-[480px] md:max-h-none flex flex-col"
+        className="relative rounded-[28px] overflow-hidden border border-white/30 shadow-[0_20px_80px_-20px_rgba(30,60,45,0.25),0_0_0_1px_rgba(255,255,255,0.1)_inset] flex flex-col"
         style={{
+          minHeight: 520,
           background:
             "linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35))",
           backdropFilter: "blur(24px) saturate(180%)",
@@ -218,52 +219,62 @@ export function LiveConsole() {
           })}
         </div>
 
-        {/* Result insights */}
-        {phase === "done" && (
-          <div
-            className="relative mx-7 mb-7 p-4 rounded-2xl border border-white/50 overflow-hidden"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3))",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              animation: "fadeSlideUp 0.6s ease-out",
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent">
-                Briefing ready
-              </span>
-              <span className="text-[10px] font-mono text-text-subtle tabular-nums">
-                2.3s · 94% confidence
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {INSIGHTS.map((insight, i) => (
-                <div
-                  key={insight.label}
-                  className="flex items-baseline justify-between px-3 py-2 rounded-lg bg-white/40 border border-white/40"
-                  style={{
-                    animation: `fadeSlideUp 0.5s ease-out ${i * 0.08}s both`,
-                  }}
-                >
-                  <span className="text-[10px] text-text-subtle">
-                    {insight.label}
-                  </span>
-                  <span
-                    className={`text-[11px] font-medium tabular-nums ${
-                      insight.tone === "warning"
-                        ? "text-[color:var(--warning)]"
-                        : "text-accent"
-                    }`}
-                  >
-                    {insight.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+        {/* Result insights — always rendered to avoid layout shift;
+            visibility is controlled via opacity + pointer-events */}
+        <div
+          className="relative mx-7 mb-7 p-4 rounded-2xl border overflow-hidden transition-all duration-500"
+          style={{
+            background:
+              phase === "done"
+                ? "linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3))"
+                : "transparent",
+            borderColor:
+              phase === "done" ? "rgba(255,255,255,0.5)" : "transparent",
+            backdropFilter: phase === "done" ? "blur(12px)" : "none",
+            WebkitBackdropFilter: phase === "done" ? "blur(12px)" : "none",
+            opacity: phase === "done" ? 1 : 0,
+            transform: phase === "done" ? "translateY(0)" : "translateY(8px)",
+            pointerEvents: phase === "done" ? "auto" : "none",
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-accent">
+              Briefing ready
+            </span>
+            <span className="text-[10px] font-mono text-text-subtle tabular-nums">
+              2.3s · 94% confidence
+            </span>
           </div>
-        )}
+          <div className="grid grid-cols-2 gap-2">
+            {INSIGHTS.map((insight, i) => (
+              <div
+                key={insight.label}
+                className="flex items-baseline justify-between px-3 py-2 rounded-lg bg-white/40 border border-white/40"
+                style={{
+                  opacity: phase === "done" ? 1 : 0,
+                  transform:
+                    phase === "done"
+                      ? "translateY(0)"
+                      : "translateY(8px)",
+                  transition: `opacity 0.5s ease-out ${i * 0.08}s, transform 0.5s ease-out ${i * 0.08}s`,
+                }}
+              >
+                <span className="text-[10px] text-text-subtle">
+                  {insight.label}
+                </span>
+                <span
+                  className={`text-[11px] font-medium tabular-nums ${
+                    insight.tone === "warning"
+                      ? "text-[color:var(--warning)]"
+                      : "text-accent"
+                  }`}
+                >
+                  {insight.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Floating glass callouts */}
