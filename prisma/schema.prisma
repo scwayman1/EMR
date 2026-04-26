@@ -1736,6 +1736,9 @@ model Vendor {
   payoutSchedule           String       @default("weekly")
   reservePct               Float?       @default(0.10)
   reserveDays              Int?         @default(14)
+  // EMR-244: USPS state codes the vendor is licensed/permitted to ship
+  // to. Empty array = not configured → all shipments blocked (fail-safe).
+  shippableStates          String[]     @default([])
   status                   VendorStatus @default(pending)
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
@@ -1761,6 +1764,39 @@ model VendorDocument {
 
   @@unique([vendorId, documentType])
   @@index([organizationId, status])
+}
+
+// EMR-238: Outcome Event Recorder. Durable log of patient/product
+// interactions that the future ranking engine (EMR-230) reads. No
+// Prisma back-relations on Organization/Patient/Product/Vendor —
+// callers query by id explicitly so this surface is independent of
+// the rest of the schema.
+enum MarketplaceEventType {
+  purchase
+  regimen_start
+  regimen_end
+  pro_submission
+  adverse_event
+  refund
+  return_initiated
+}
+
+model MarketplaceEvent {
+  id             String               @id @default(cuid())
+  organizationId String
+  patientId      String?
+  productId      String?
+  lotId          String?
+  vendorId       String?
+  eventType      MarketplaceEventType
+  outcomeScores  Json?
+  metadata       Json?
+  createdAt      DateTime             @default(now())
+
+  @@index([organizationId, eventType, createdAt])
+  @@index([productId, createdAt])
+  @@index([patientId, createdAt])
+  @@index([vendorId, createdAt])
 }
 
 model ProductVariant {

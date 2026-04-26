@@ -37,6 +37,7 @@ import { CATEGORIES, PRODUCTS } from "../src/lib/marketplace/data";
 
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { defaultShippableStatesForVendorType } from "../src/lib/marketplace/shipping-restrictions";
 
 const connectionString = `${process.env.DATABASE_URL}`;
 const pool = new Pool({
@@ -410,6 +411,10 @@ async function main() {
       categories: ["cbd", "topical", "tincture"],
       takeRatePct: 0.10,
       foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
       status: VendorStatus.pending,
     },
     {
@@ -419,6 +424,10 @@ async function main() {
       categories: ["plant_powered_wellness"],
       takeRatePct: 0.10,
       foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
       status: VendorStatus.pending,
     },
     {
@@ -429,11 +438,18 @@ async function main() {
       productLines: ["Gold Skin Serum"],
       takeRatePct: 0.10,
       foundingPartnerFlag: true,
+      foundingPartnerExpiresAt: new Date("2028-04-23"),
+      payoutSchedule: "weekly",
+      reservePct: 0.10,
+      reserveDays: 14,
       status: VendorStatus.pending,
     },
   ];
 
   for (const vendorSeed of vendorSeeds) {
+    const shippableStates = defaultShippableStatesForVendorType(
+      vendorSeed.vendorType,
+    );
     const vendor = await prisma.vendor.upsert({
       where: { slug: vendorSeed.slug },
       update: {
@@ -447,6 +463,7 @@ async function main() {
         payoutSchedule: vendorSeed.payoutSchedule ?? "weekly",
         reservePct: vendorSeed.reservePct ?? 0.10,
         reserveDays: vendorSeed.reserveDays ?? 14,
+        shippableStates,
         status: vendorSeed.status,
       },
       create: {
@@ -462,6 +479,7 @@ async function main() {
         payoutSchedule: vendorSeed.payoutSchedule ?? "weekly",
         reservePct: vendorSeed.reservePct ?? 0.10,
         reserveDays: vendorSeed.reserveDays ?? 14,
+        shippableStates,
         status: vendorSeed.status,
       },
     });

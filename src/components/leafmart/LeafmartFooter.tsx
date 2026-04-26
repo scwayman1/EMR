@@ -19,15 +19,15 @@ const COLUMNS = [
   ]},
   { title: "Help", links: [
     { label: "FAQ", href: "/leafmart/faq" },
-    { label: "Shipping", href: "/leafmart/faq#shipping" },
-    { label: "Returns", href: "/leafmart/faq#returns" },
+    { label: "Shipping", href: "/legal/shipping" },
+    { label: "Returns", href: "/legal/returns" },
     { label: "Contact", href: "/leafmart/faq#contact" },
   ]},
   { title: "Legal", links: [
-    { label: "Terms", href: "/leafmart/faq#terms" },
-    { label: "Privacy", href: "/security" },
+    { label: "Terms", href: "/legal/terms" },
+    { label: "Privacy", href: "/legal/privacy" },
+    { label: "Disputes", href: "/legal/disputes" },
     { label: "21+ Notice", href: "/leafmart/faq#age" },
-    { label: "State Availability", href: "/leafmart/faq#states" },
   ]},
 ];
 
