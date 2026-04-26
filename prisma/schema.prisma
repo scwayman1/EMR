@@ -1674,6 +1674,18 @@ model Product {
   dosageGuidance   String?
   beginnerFriendly Boolean @default(false)
 
+  // Storefront UI — pre-formatted display values for the Leafmart shelf.
+  // When null, the UI mapper falls back to category/format-derived defaults.
+  bgColor      String? // CSS color or var() for the pastel shelf background
+  deepColor    String? // CSS color for the silhouette stroke
+  displayShape String? // "bottle" | "can" | "jar" | "tin" | "serum" | "box"
+  doseLabel    String? // Pre-formatted dose, e.g. "30ml · 1500mg"
+
+  // Outcome metrics — % of patients who reported help, plus sample size.
+  // Powers the outcome chip on product cards.
+  outcomePct        Float?
+  outcomeSampleSize Int?
+
   // Trust
   labVerified    Boolean @default(false)
   coaUrl         String?

@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { ProductSilhouette } from "./ProductSilhouette";
+import { ProductImage } from "./ProductImage";
 import { LeafmartProductGrid, type LeafmartProduct } from "./LeafmartProductCard";
 import { useCart } from "@/lib/leafmart/cart-store";
+import { findGuideByFormat } from "@/lib/leafmart/dosing-guides";
 
 interface Props {
   product: LeafmartProduct;
@@ -15,6 +16,7 @@ export function ProductDetailClient({ product, related }: Props) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const dosingGuide = findGuideByFormat(product.format);
 
   const handleAdd = useCallback(() => {
     addItem(product, quantity);
@@ -40,9 +42,9 @@ export function ProductDetailClient({ product, related }: Props) {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-start">
           {/* Silhouette */}
           <div className="relative order-1">
-            <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={480} big />
+            <ProductImage src={product.imageUrl} alt={product.name} shape={product.shape} bg={product.bg} deep={product.deep} height={480} big priority />
             {product.tag && (
-              <div className="absolute top-4 left-4 sm:top-5 sm:left-5 bg-white text-[var(--ink)] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide inline-flex items-center gap-2">
+              <div className="absolute top-4 left-4 sm:top-5 sm:left-5 bg-[var(--surface)] text-[var(--ink)] px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12px] font-semibold tracking-wide inline-flex items-center gap-2">
                 <span className="w-[5px] h-[5px] rounded-full bg-[var(--leaf)]" />
                 {product.tag}
               </div>
@@ -61,9 +63,18 @@ export function ProductDetailClient({ product, related }: Props) {
 
             {/* Details */}
             <div className="space-y-3 mb-7 sm:mb-8">
-              <div className="flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-3 text-sm flex-wrap">
                 <span className="text-[var(--muted)] w-16">Format</span>
                 <span className="font-medium">{product.formatLabel}</span>
+                {dosingGuide && (
+                  <Link
+                    href={`/leafmart/dosing-guide/${dosingGuide.slug}`}
+                    className="text-[var(--leaf)] font-medium hover:underline inline-flex items-center gap-1"
+                  >
+                    See dosing guide
+                    <span aria-hidden="true">→</span>
+                  </Link>
+                )}
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-[var(--muted)] w-16">Dose</span>

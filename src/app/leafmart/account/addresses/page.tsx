@@ -45,7 +45,7 @@ const EMPTY: AddressDraft = {
 };
 
 function fieldClass() {
-  return "w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--leaf)] focus:ring-2 focus:ring-[var(--accent-soft)] transition";
+  return "w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-[14px] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--leaf)] focus:ring-2 focus:ring-[var(--accent-soft)] transition";
 }
 function labelClass() {
   return "block text-[12px] font-medium tracking-wide uppercase text-[var(--text-soft)] mb-1.5";

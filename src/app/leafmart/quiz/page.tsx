@@ -4,11 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { LeafmartProductCard } from "@/components/leafmart/LeafmartProductCard";
 import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
+import { topMatches, type QuizAnswers } from "@/lib/leafmart/recommender";
 
-const STEPS = [
-  { q: "What would you like to feel?", opts: ["Calmer in the evening", "Less pain after a long day", "Better sleep", "Clearer skin", "More focused"] },
-  { q: "Have you used cannabis for wellness before?", opts: ["Yes, regularly", "Curious, not regular", "First time exploring", "I used to, took a break"] },
-  { q: "Any restrictions we should know about?", opts: ["I prefer non-intoxicating", "Open to THC (where legal)", "Topical only", "No preference"] },
+interface Step {
+  key: keyof QuizAnswers;
+  q: string;
+  opts: string[];
+}
+
+const STEPS: Step[] = [
+  { key: "goal", q: "What would you like to feel?", opts: ["Calmer in the evening", "Less pain after a long day", "Better sleep", "Clearer skin", "More focused"] },
+  { key: "experience", q: "Have you used cannabis for wellness before?", opts: ["Yes, regularly", "Curious, not regular", "First time exploring", "I used to, took a break"] },
+  { key: "restriction", q: "Any restrictions we should know about?", opts: ["I prefer non-intoxicating", "Open to THC (where legal)", "Topical only", "No preference"] },
 ];
 
 export default function QuizPage() {
@@ -22,27 +29,46 @@ export default function QuizPage() {
     setStep(step + 1);
   }
 
-  // Simple matching — in production this would be a real recommender
-  const results = DEMO_PRODUCTS.slice(0, 3);
-
   if (done) {
+    const quizAnswers: QuizAnswers = {
+      goal: answers[0] ?? "",
+      experience: answers[1] ?? "",
+      restriction: answers[2] ?? "",
+    };
+    const matches = topMatches(quizAnswers, DEMO_PRODUCTS, 3);
+
     return (
       <div className="min-h-[80vh] px-4 sm:px-6 lg:px-14 py-12 sm:py-16 max-w-[1440px] mx-auto lm-fade-in">
         <div className="text-center mb-10 sm:mb-12">
           <p className="eyebrow text-[var(--leaf)] mb-3">Your matches</p>
           <h1 className="font-display text-[34px] sm:text-[48px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] text-[var(--ink)]">
-            Three products to <em className="font-accent not-italic text-[var(--leaf)]">consider</em>.
+            {matches.length > 0 ? (
+              <>Three products to <em className="font-accent not-italic text-[var(--leaf)]">consider</em>.</>
+            ) : (
+              <>Nothing matched <em className="font-accent not-italic text-[var(--leaf)]">exactly</em>.</>
+            )}
           </h1>
           <p className="mt-4 text-[15px] sm:text-[17px] text-[var(--text-soft)] max-w-[520px] mx-auto leading-relaxed">
-            Based on your answers, our clinical team would point you toward these. No signup required to browse.
+            {matches.length > 0
+              ? "Based on your answers, our clinical team would point you toward these. No signup required to browse."
+              : "Try retaking the quiz with broader options, or browse the full shelf."}
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-[18px] max-w-[960px] mx-auto lm-stagger">
-          {results.map((p) => (
-            <LeafmartProductCard key={p.slug} product={p} />
-          ))}
-        </div>
+        {matches.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-[18px] max-w-[960px] mx-auto lm-stagger">
+            {matches.map(({ product, reasons }) => (
+              <div key={product.slug} className="flex flex-col">
+                <LeafmartProductCard product={product} />
+                {reasons.length > 0 && (
+                  <p className="text-[12px] text-[var(--leaf)] mt-2 px-1 font-medium">
+                    Matched for: {reasons.join(" · ")}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row sm:flex-wrap sm:justify-center gap-3 sm:gap-3.5">
           <button

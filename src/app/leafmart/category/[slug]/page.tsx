@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
-import { DEMO_PRODUCTS, CATEGORIES } from "@/components/leafmart/demo-data";
+import { getCategories, getProductsByCategory } from "@/lib/leafmart/products";
 
 const CATEGORY_META: Record<string, { title: string; headline: string; accent: string; bg: string }> = {
   sleep: { title: "Sleep", headline: "For evenings that should end quietly.", accent: "before bed", bg: "var(--sage)" },
@@ -18,13 +18,15 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return { title: `${cat.title} Shelf`, description: cat.headline };
 }
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
+export default async function CategoryPage({ params }: { params: { slug: string } }) {
   const cat = CATEGORY_META[params.slug];
   if (!cat) notFound();
 
-  // In production this would filter by category — for now show all demo products
-  const products = DEMO_PRODUCTS;
-  const catInfo = CATEGORIES.find((c) => c.slug === params.slug);
+  const [products, categories] = await Promise.all([
+    getProductsByCategory(params.slug),
+    getCategories(),
+  ]);
+  const catInfo = categories.find((c) => c.slug === params.slug);
 
   return (
     <>

@@ -86,7 +86,7 @@ function StepIndicator({ active }: { active: StepIndex }) {
 }
 
 function fieldClass() {
-  return "w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3.5 text-[14.5px] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--leaf)] focus:ring-2 focus:ring-[var(--accent-soft)] transition";
+  return "w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 text-[14.5px] text-[var(--ink)] placeholder:text-[var(--muted)] focus:outline-none focus:border-[var(--leaf)] focus:ring-2 focus:ring-[var(--accent-soft)] transition";
 }
 
 function labelClass() {
@@ -354,7 +354,7 @@ export default function CheckoutPage() {
           Every Leafmart order ships discreet, with a third-party COA on file.
         </p>
 
-        <div className="rounded-3xl border border-[var(--border)] bg-white p-7">
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-7">
           <div className="flex justify-between items-center mb-5 pb-5 border-b border-[var(--border)]">
             <div>
               <p className="eyebrow text-[var(--text-soft)] mb-1">Order number</p>
@@ -424,7 +424,7 @@ export default function CheckoutPage() {
       <StepIndicator active={step} />
 
       <div className="grid lg:grid-cols-[1fr_360px] gap-10 lg:gap-14 items-start">
-        <div className="rounded-3xl border border-[var(--border)] bg-white p-7 sm:p-9">
+        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-7 sm:p-9">
           {step === 0 && (
             <div className="space-y-5">
               <div>
@@ -734,7 +734,7 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        <aside className="lg:sticky lg:top-[100px] rounded-3xl border border-[var(--border)] bg-white p-7">
+        <aside className="lg:sticky lg:top-[100px] rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-7">
           <p className="eyebrow text-[var(--text-soft)] mb-5">In your cart</p>
           <ul className="divide-y divide-[var(--border)] mb-5">
             {items.map(({ product, quantity }) => (

@@ -94,7 +94,7 @@ export function LeafmartHeader() {
     setOpen(false);
   }, [pathname]);
 
-  // Outside click + Escape
+  // Outside click + Escape + focus trap (panel + hamburger trigger).
   useEffect(() => {
     if (!open) return;
     function handlePointer(e: MouseEvent | TouchEvent) {
@@ -103,7 +103,29 @@ export function LeafmartHeader() {
       setOpen(false);
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const inPanel = panelRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled])'
+      );
+      const focusables: HTMLElement[] = [];
+      if (buttonRef.current) focusables.push(buttonRef.current);
+      inPanel.forEach((el) => focusables.push(el));
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("mousedown", handlePointer);
     document.addEventListener("touchstart", handlePointer);

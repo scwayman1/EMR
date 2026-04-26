@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
-import { CATEGORIES } from "@/components/leafmart/demo-data";
+import { getCategories } from "@/lib/leafmart/products";
 
 export const metadata: Metadata = {
   title: "Shop by what you need",
   description: "Browse clinician-curated cannabis wellness products organized by how you want to feel.",
 };
 
-export default function ShopPage() {
+export default async function ShopPage() {
+  const categories = await getCategories();
   return (
     <>
       <section className="px-4 sm:px-6 lg:px-14 pt-10 sm:pt-12 pb-6 sm:pb-8 max-w-[1440px] mx-auto lm-fade-in">
@@ -23,7 +24,7 @@ export default function ShopPage() {
 
       <section className="px-4 sm:px-6 lg:px-14 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lm-stagger">
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <Link
               key={c.slug}
               href={`/leafmart/category/${c.slug}`}

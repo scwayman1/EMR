@@ -3,13 +3,8 @@ import type { Metadata } from "next";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
 import { Portrait } from "@/components/leafmart/PortraitPlaceholder";
-import {
-  DEMO_PRODUCTS,
-  CATEGORIES,
-  PARTNERS,
-  TESTIMONIALS,
-  TRUST_STEPS,
-} from "@/components/leafmart/demo-data";
+import { TESTIMONIALS, TRUST_STEPS } from "@/components/leafmart/demo-data";
+import { getProducts, getCategories, getVendors } from "@/lib/leafmart/products";
 
 export const metadata: Metadata = {
   title: "Leafmart — Physician-curated cannabis wellness",
@@ -58,7 +53,13 @@ function Pill({
 
 /* ── Page ────────────────────────────────────────────────────── */
 
-export default function LeafmartHomePage() {
+export default async function LeafmartHomePage() {
+  const [products, categories, partners] = await Promise.all([
+    getProducts(),
+    getCategories(),
+    getVendors(),
+  ]);
+
   return (
     <>
       {/* ── HERO ─────────────────────────────────────────── */}
@@ -106,7 +107,7 @@ export default function LeafmartHomePage() {
             <ProductSilhouette shape="bottle" bg="rgba(255,255,255,0.55)" deep="var(--leaf)" height={460} big />
 
             {/* Floating clinician note */}
-            <div className="absolute -left-9 bottom-7 bg-white rounded-[20px] p-[18px_22px] max-w-[280px] shadow-[0_12px_40px_rgba(28,40,32,0.10)]">
+            <div className="absolute -left-9 bottom-7 bg-[var(--surface)] rounded-[20px] p-[18px_22px] max-w-[280px] shadow-[0_12px_40px_rgba(28,40,32,0.10)]">
               <div className="flex items-center gap-2.5 mb-2.5">
                 <div className="w-8 h-8 rounded-full bg-[var(--peach)] flex items-center justify-center font-display text-sm font-medium text-[var(--ink)]">MC</div>
                 <div>
@@ -120,7 +121,7 @@ export default function LeafmartHomePage() {
             </div>
 
             {/* Floating outcome card */}
-            <div className="absolute -right-4 top-8 bg-white rounded-[18px] px-[18px] py-[14px] shadow-[0_10px_30px_rgba(28,40,32,0.08)] flex gap-3 items-center">
+            <div className="absolute -right-4 top-8 bg-[var(--surface)] rounded-[18px] px-[18px] py-[14px] shadow-[0_10px_30px_rgba(28,40,32,0.08)] flex gap-3 items-center">
               <div className="w-11 h-11 rounded-full bg-[var(--leaf-soft)] flex items-center justify-center text-[var(--leaf)] font-display text-base font-semibold">81%</div>
               <div>
                 <div className="text-xs font-semibold text-[var(--ink)]">reported better sleep</div>
@@ -145,7 +146,7 @@ export default function LeafmartHomePage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-[18px] lm-stagger">
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <Link
               key={c.slug}
               href={`/leafmart/category/${c.slug}`}
@@ -186,7 +187,7 @@ export default function LeafmartHomePage() {
           </Link>
         </div>
         <div className="lm-stagger">
-          <LeafmartProductGrid products={DEMO_PRODUCTS} />
+          <LeafmartProductGrid products={products} />
         </div>
       </section>
 
@@ -234,7 +235,7 @@ export default function LeafmartHomePage() {
 
           {/* Mobile: horizontal scroll. sm+: grid. */}
           <div className="-mx-6 sm:mx-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lm-stagger flex sm:flex-none overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none px-6 sm:px-0 gap-4 pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {PARTNERS.map((p) => (
+            {partners.map((p) => (
               <div
                 key={p.name}
                 className="card-lift rounded-3xl p-6 flex flex-col cursor-pointer flex-shrink-0 w-[78%] sm:w-auto snap-start sm:snap-align-none"

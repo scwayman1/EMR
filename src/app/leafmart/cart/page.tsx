@@ -47,7 +47,7 @@ export default function CartPage() {
               <Link
                 key={p.slug}
                 href={`/leafmart/products/${p.slug}`}
-                className="block card-lift rounded-3xl overflow-hidden bg-white border border-[var(--border)]"
+                className="block card-lift rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
               >
                 <ProductSilhouette shape={p.shape} bg={p.bg} deep={p.deep} height={180} />
                 <div className="p-4">
@@ -153,7 +153,7 @@ export default function CartPage() {
           ))}
         </ul>
 
-        <aside className="lg:sticky lg:top-[100px] rounded-3xl border border-[var(--border)] bg-white p-7">
+        <aside className="lg:sticky lg:top-[100px] rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-7">
           <p className="eyebrow text-[var(--text-soft)] mb-5">Order summary</p>
           <dl className="space-y-3 text-[14px]">
             <div className="flex justify-between">
@@ -235,7 +235,7 @@ export default function CartPage() {
                 <Link
                   key={p.slug}
                   href={`/leafmart/products/${p.slug}`}
-                  className="block card-lift rounded-3xl overflow-hidden bg-white border border-[var(--border)]"
+                  className="block card-lift rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]"
                 >
                   <ProductSilhouette shape={p.shape} bg={p.bg} deep={p.deep} height={180} />
                   <div className="p-4">

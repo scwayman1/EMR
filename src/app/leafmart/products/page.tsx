@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
-import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
+import { getProducts } from "@/lib/leafmart/products";
 
 export const metadata: Metadata = {
   title: "All Products",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 function ProductCardSkeleton() {
   return (
-    <div className="rounded-3xl overflow-hidden bg-white border border-[var(--border)]" aria-hidden="true">
+    <div className="rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]" aria-hidden="true">
       <div className="lm-skeleton h-[260px] sm:h-[280px] w-full" />
       <div className="p-5">
         <div className="lm-skeleton h-3 w-1/2 rounded-full mb-3" />
@@ -41,7 +41,8 @@ function ProductsLoading() {
   );
 }
 
-export default function ProductsPage() {
+export default async function ProductsPage() {
+  const products = await getProducts();
   return (
     <>
       <section className="px-4 sm:px-6 lg:px-14 pt-10 sm:pt-12 pb-6 sm:pb-8 max-w-[1440px] mx-auto lm-fade-in">
@@ -52,7 +53,7 @@ export default function ProductsPage() {
               Everything on <em className="font-accent not-italic text-[var(--leaf)]">the shelf</em>.
             </h1>
             <p className="mt-3 text-[14px] sm:text-[15px] text-[var(--text-soft)]">
-              {DEMO_PRODUCTS.length} products · all clinician-reviewed · lab-verified
+              {products.length} products · all clinician-reviewed · lab-verified
             </p>
           </div>
           <Link href="/leafmart/shop" className="text-sm font-medium text-[var(--leaf)] hover:underline mt-3 sm:mt-0">
@@ -64,7 +65,7 @@ export default function ProductsPage() {
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
         <Suspense fallback={<ProductsLoading />}>
           <div className="lm-stagger">
-            <LeafmartProductGrid products={DEMO_PRODUCTS} />
+            <LeafmartProductGrid products={products} />
           </div>
         </Suspense>
       </section>

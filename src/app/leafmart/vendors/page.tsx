@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { Metadata } from "next";
+import { VendorApplicationForm } from "@/components/leafmart/VendorApplicationForm";
 
 export const metadata: Metadata = {
   title: "Sell on Leafmart",
@@ -74,18 +74,20 @@ export default function VendorsPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 pb-14 sm:pb-20 max-w-[1440px] mx-auto text-center">
-        <h2 className="font-display text-[28px] sm:text-[36px] font-normal tracking-tight text-[var(--ink)] mb-4">Ready to apply?</h2>
-        <p className="text-[14.5px] sm:text-[15px] text-[var(--text-soft)] mb-7 sm:mb-8 max-w-md mx-auto">
-          Send us your product line, current COA, and a note about why you make what you make.
-        </p>
-        <Link
-          href="mailto:partners@leafmart.com"
-          className="inline-flex items-center justify-center rounded-full font-medium bg-[var(--ink)] text-[#FFF8E8] hover:bg-[var(--leaf)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] w-full sm:w-auto max-w-sm"
-        >
-          Apply to sell on Leafmart →
-        </Link>
+      {/* APPLICATION FORM */}
+      <section id="apply" className="px-4 sm:px-6 lg:px-14 py-10 sm:py-12 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
+        <div className="max-w-[760px] mx-auto">
+          <div className="text-center mb-8 sm:mb-10">
+            <p className="eyebrow text-[var(--leaf)] mb-3">Ready to apply?</p>
+            <h2 className="font-display text-[28px] sm:text-[40px] lg:text-[44px] font-normal tracking-[-1.0px] sm:tracking-[-1.2px] leading-[1.05] text-[var(--ink)] mb-4">
+              Tell us about your <em className="font-accent not-italic text-[var(--leaf)]">brand</em>.
+            </h2>
+            <p className="text-[14.5px] sm:text-[16px] text-[var(--text-soft)] max-w-[520px] mx-auto leading-relaxed">
+              Send us your product line, current COA, and a note about why you make what you make.
+            </p>
+          </div>
+          <VendorApplicationForm />
+        </div>
       </section>
     </>
   );
