@@ -68,6 +68,14 @@
   --gold: #E8D8A0;
   --sprout: #D0E0C0;
 
+  /* Translucent overlay used for icon chips on category cards.
+     Theme-aware: white in light mode (so dark stamp icons read on it),
+     dark in dark mode (so light stamp icons read on it). Without this
+     a fixed rgba(255,255,255,0.55) only works in light mode and fails
+     WCAG 1.4.11 (≥3:1 non-text contrast) in dark — verified ratios
+     ranged 1.13–1.65 before this fix. */
+  --chip-overlay: rgba(255, 255, 255, 0.55);
+
   /* Stamp colors — strong silhouette fills that read against each pastel.
      Theme-aware so dark mode flips them light, keeping silhouettes visible. */
   --sage-stamp: #1F4D37;
@@ -508,6 +516,10 @@
   --cloud: #1F1D1B;
   --gold: #262112;
   --sprout: #1A2418;
+
+  /* Dark-mode chip overlay — near-black tint so light stamp icons clear
+     WCAG 1.4.11 against the chip background. */
+  --chip-overlay: rgba(10, 14, 12, 0.65);
 
   /* Stamp colors — brightened to read on the dim dark shelf backgrounds */
   --sage-stamp: #6FB695;

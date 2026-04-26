@@ -42,7 +42,7 @@ export default async function ShopPage() {
                 <div className="flex items-start gap-3 mb-2">
                   <div
                     className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(255,255,255,0.55)", color: c.deep }}
+                    style={{ background: "var(--chip-overlay)", color: c.deep }}
                   >
                     <CategoryIcon slug={c.slug} size={18} />
                   </div>
