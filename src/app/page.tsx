@@ -1,10 +1,40 @@
 import Link from "next/link";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Bell,
+  BookOpen,
+  Brain,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  Flower2,
+  Leaf,
+  type LucideIcon,
+  Microscope,
+  MessageCircle,
+  PenTool,
+  Phone,
+  Pill,
+  Play,
+  Sprout,
+  Stethoscope,
+  Store,
+  Target,
+  TrendingUp,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { AmbientMusicPlayer } from "@/components/ui/ambient-music";
 import { LiveConsole } from "@/components/marketing/live-console";
 import { Reveal } from "@/components/marketing/reveal";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { AnimatedCounter } from "@/components/marketing/animated-counter";
 
 // Public marketing / acquisition home page.
 // Editorial, warm, botanical — with a live agent console to sell the core value prop.
@@ -22,47 +52,7 @@ export default function HomePage() {
         }}
       />
 
-      {/* ── Top nav ─────────────────────────────────────── */}
-      <nav className="relative z-10 max-w-[1320px] mx-auto flex items-center justify-between px-6 lg:px-12 h-20">
-        <Link href="/">
-          <Wordmark size="md" />
-        </Link>
-        <div className="flex items-center gap-0.5 md:gap-1 flex-wrap justify-end">
-          <Link
-            href="/about"
-            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/security"
-            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
-          >
-            Security
-          </Link>
-          <Link
-            href="/education"
-            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
-          >
-            Education
-          </Link>
-          <Link
-            href="/leafmart"
-            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
-          >
-            Leafmart
-          </Link>
-          <Link
-            href="/login"
-            className="text-xs md:text-sm text-text-muted hover:text-text px-2 md:px-3 py-2 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Demo</Button>
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader />
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative max-w-[1320px] mx-auto px-6 lg:px-12 pt-16 pb-28">
@@ -94,24 +84,22 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* Quiet trust row */}
+            {/* Quiet trust row — animated counters on intersection */}
             <div className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4">
-              <div>
-                <p className="font-display text-2xl text-accent">13</p>
-                <p className="text-[11px] text-text-subtle uppercase tracking-wider">AI agents</p>
-              </div>
-              <div>
-                <p className="font-display text-2xl text-accent">50+</p>
-                <p className="text-[11px] text-text-subtle uppercase tracking-wider">Studies indexed</p>
-              </div>
-              <div>
-                <p className="font-display text-2xl text-accent">43</p>
-                <p className="text-[11px] text-text-subtle uppercase tracking-wider">Interactions</p>
-              </div>
-              <div>
-                <p className="font-display text-2xl text-accent">HIPAA</p>
-                <p className="text-[11px] text-text-subtle uppercase tracking-wider">Ready</p>
-              </div>
+              {TRUST_STATS.map((stat) => (
+                <div key={stat.label}>
+                  <p className="font-display text-2xl text-accent tabular-nums">
+                    <AnimatedCounter
+                      value={stat.value ?? 0}
+                      suffix={stat.suffix}
+                      staticLabel={stat.staticLabel}
+                    />
+                  </p>
+                  <p className="text-[11px] text-text-subtle uppercase tracking-wider">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -162,29 +150,40 @@ export default function HomePage() {
           </div>
         </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-          {WORKFLOW_STEPS.map((step, i) => (
-            <Reveal key={step.title} delay={i * 100}>
-              <div className="relative h-full bg-surface-raised rounded-2xl border border-border p-7 shadow-sm card-hover">
-                <div className="flex items-center gap-2 mb-5">
-                  <span className="font-display text-[11px] font-medium text-accent uppercase tracking-[0.18em]">
-                    Step {i + 1}
-                  </span>
-                  <span className="h-px flex-1 bg-border" />
-                  <span className="text-[10px] text-text-subtle tabular-nums">
-                    {step.time}
-                  </span>
-                </div>
-                <div className="text-3xl mb-4">{step.icon}</div>
-                <h3 className="font-display text-xl text-text tracking-tight">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-text-muted mt-3 leading-relaxed">
-                  {step.description}
-                </p>
-              </div>
-            </Reveal>
-          ))}
+        {/* Cards aligned along a desktop timeline rail behind the step circles */}
+        <div className="relative">
+          <div
+            aria-hidden="true"
+            className="hidden md:block absolute left-8 right-8 top-[3.05rem] h-px bg-gradient-to-r from-transparent via-border-strong to-transparent"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-5 relative">
+            {WORKFLOW_STEPS.map((step, i) => {
+              const Icon = step.icon;
+              return (
+                <Reveal key={step.title} delay={i * 100}>
+                  <div className="relative h-full bg-surface-raised rounded-2xl border border-border p-7 shadow-sm card-hover">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="w-10 h-10 rounded-full bg-accent flex items-center justify-center text-accent-ink font-display text-sm font-semibold shadow-seal">
+                        {i + 1}
+                      </div>
+                      <span className="text-[10px] text-text-subtle tabular-nums uppercase tracking-wider">
+                        {step.time}
+                      </span>
+                    </div>
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mb-5">
+                      <Icon className="w-5 h-5 text-accent" />
+                    </div>
+                    <h3 className="font-display text-xl text-text tracking-tight">
+                      {step.title}
+                    </h3>
+                    <p className="text-sm text-text-muted mt-3 leading-relaxed">
+                      {step.description}
+                    </p>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -207,35 +206,55 @@ export default function HomePage() {
         </Reveal>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {AGENTS.map((agent, i) => (
-            <Reveal key={agent.name} delay={i * 40}>
-              <div
-                className={`group relative rounded-2xl border p-6 transition-all h-full ${
-                  agent.featured
-                    ? "bg-gradient-to-br from-accent/[0.08] via-surface-raised to-transparent border-accent/30 shadow-md"
-                    : "bg-surface-raised border-border hover:border-border-strong"
-                }`}
-              >
-                {agent.featured && (
-                  <span className="absolute top-4 right-4 text-[9px] font-semibold uppercase tracking-wider bg-accent text-accent-ink px-2 py-0.5 rounded-full">
-                    Flagship
-                  </span>
-                )}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">{agent.icon}</span>
-                  <span className="font-mono text-[11px] text-text-subtle">
-                    #{String(i + 1).padStart(2, "0")}
-                  </span>
+          {AGENTS.map((agent, i) => {
+            const Icon = agent.icon;
+            return (
+              <Reveal key={agent.name} delay={i * 40}>
+                <div
+                  className={`group relative rounded-2xl border p-6 transition-all duration-300 h-full hover:-translate-y-0.5 ${
+                    agent.featured
+                      ? "bg-gradient-to-br from-accent/[0.08] via-surface-raised to-transparent border-accent/30 shadow-md hover:shadow-lg"
+                      : "bg-surface-raised border-border hover:border-border-strong hover:shadow-md"
+                  }`}
+                >
+                  {agent.featured && (
+                    <span className="absolute top-4 right-4 text-[9px] font-semibold uppercase tracking-wider bg-accent text-accent-ink px-2 py-0.5 rounded-full">
+                      Flagship
+                    </span>
+                  )}
+                  <div className="flex items-center justify-between mb-4">
+                    <div
+                      className={
+                        agent.featured
+                          ? "w-12 h-12 rounded-xl bg-gradient-to-br from-accent/30 to-accent/10 flex items-center justify-center ring-1 ring-accent/20"
+                          : "w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center"
+                      }
+                    >
+                      <Icon
+                        className={
+                          agent.featured
+                            ? "w-6 h-6 text-accent"
+                            : "w-5 h-5 text-accent"
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                      <span className="font-mono text-[11px] text-text-subtle">
+                        #{String(i + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+                  </div>
+                  <h3 className="font-display text-lg text-text tracking-tight">
+                    {agent.name}
+                  </h3>
+                  <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
+                    {agent.description}
+                  </p>
                 </div>
-                <h3 className="font-display text-lg text-text tracking-tight">
-                  {agent.name}
-                </h3>
-                <p className="text-xs text-text-muted mt-1.5 leading-relaxed">
-                  {agent.description}
-                </p>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
@@ -258,46 +277,51 @@ export default function HomePage() {
         </Reveal>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {AUDIENCES.map((audience, i) => (
-            <Reveal key={audience.label} delay={i * 120}>
-              <div className="relative bg-surface-raised rounded-3xl border border-border p-8 lg:p-10 shadow-sm card-hover overflow-hidden h-full">
-                {/* Decorative gradient */}
-                <div
-                  aria-hidden="true"
-                  className="absolute inset-0 opacity-40 pointer-events-none"
-                  style={{
-                    background: `radial-gradient(ellipse 60% 50% at 100% 0%, ${audience.glow}, transparent 70%)`,
-                  }}
-                />
-                <div className="relative">
-                  <div className="text-4xl mb-5">{audience.icon}</div>
-                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">
-                    For {audience.label}
-                  </p>
-                  <h3 className="font-display text-2xl md:text-3xl text-text tracking-tight leading-tight mt-2">
-                    {audience.headline}
-                  </h3>
-                  <p className="text-sm text-text-muted mt-4 leading-relaxed">
-                    {audience.body}
-                  </p>
-                  <ul className="mt-6 space-y-2">
-                    {audience.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-start gap-2 text-xs text-text-muted"
-                      >
-                        <LeafSprig
-                          size={12}
-                          className="text-accent/60 mt-0.5 shrink-0"
-                        />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+          {AUDIENCES.map((audience, i) => {
+            const Icon = audience.icon;
+            return (
+              <Reveal key={audience.label} delay={i * 120}>
+                <div className="relative bg-surface-raised rounded-3xl border border-border p-8 lg:p-10 shadow-sm overflow-hidden h-full hover:shadow-lg hover:-translate-y-1 hover:border-border-strong transition-all duration-300">
+                  {/* Decorative gradient */}
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 opacity-40 pointer-events-none"
+                    style={{
+                      background: `radial-gradient(ellipse 60% 50% at 100% 0%, ${audience.glow}, transparent 70%)`,
+                    }}
+                  />
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-5 ring-1 ring-accent/15">
+                      <Icon className="w-7 h-7 text-accent" />
+                    </div>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-accent">
+                      For {audience.label}
+                    </p>
+                    <h3 className="font-display text-2xl md:text-3xl text-text tracking-tight leading-tight mt-2">
+                      {audience.headline}
+                    </h3>
+                    <p className="text-sm text-text-muted mt-4 leading-relaxed">
+                      {audience.body}
+                    </p>
+                    <ul className="mt-6 space-y-2">
+                      {audience.features.map((feature) => (
+                        <li
+                          key={feature}
+                          className="flex items-start gap-2 text-xs text-text-muted"
+                        >
+                          <LeafSprig
+                            size={12}
+                            className="text-accent/60 mt-0.5 shrink-0"
+                          />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
@@ -314,23 +338,26 @@ export default function HomePage() {
         </Reveal>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {CANNABIS_FEATURES.map((feature, i) => (
-            <Reveal key={feature.title} delay={i * 80}>
-              <div className="flex items-start gap-5 bg-surface-raised rounded-2xl border border-border p-7 shadow-sm h-full">
-                <div className="shrink-0 w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center text-xl">
-                  {feature.icon}
+          {CANNABIS_FEATURES.map((feature, i) => {
+            const Icon = feature.icon;
+            return (
+              <Reveal key={feature.title} delay={i * 80}>
+                <div className="flex items-start gap-5 bg-surface-raised rounded-2xl border border-border p-7 shadow-sm h-full hover:border-border-strong hover:shadow-md transition-all duration-300">
+                  <div className="shrink-0 w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center ring-1 ring-accent/15">
+                    <Icon className="w-6 h-6 text-accent" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-lg text-text tracking-tight">
+                      {feature.title}
+                    </h3>
+                    <p className="text-sm text-text-muted mt-2 leading-relaxed">
+                      {feature.body}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display text-lg text-text tracking-tight">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-text-muted mt-2 leading-relaxed">
-                    {feature.body}
-                  </p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            );
+          })}
         </div>
       </section>
 
@@ -398,36 +425,23 @@ export default function HomePage() {
           </div>
           <div className="relative overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/[0.04] via-surface-raised to-highlight/[0.04] p-8 md:p-12">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50">
-                <span className="text-4xl block mb-3">{"\uD83C\uDF3F"}</span>
-                <h3 className="font-display text-lg text-text tracking-tight mb-2">
-                  6 Cannabinoids
-                </h3>
-                <p className="text-sm text-text-muted">
-                  THC, CBD, CBN, CBG, CBC, THCV — each with evidence-backed
-                  therapeutic profiles.
-                </p>
-              </div>
-              <div className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50">
-                <span className="text-4xl block mb-3">{"\uD83C\uDF3A"}</span>
-                <h3 className="font-display text-lg text-text tracking-tight mb-2">
-                  8 Terpenes
-                </h3>
-                <p className="text-sm text-text-muted">
-                  Myrcene, limonene, linalool, pinene, caryophyllene, and more —
-                  the aromatic compounds that shape the effect.
-                </p>
-              </div>
-              <div className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50">
-                <span className="text-4xl block mb-3">{"\uD83C\uDFAF"}</span>
-                <h3 className="font-display text-lg text-text tracking-tight mb-2">
-                  10 Condition Guides
-                </h3>
-                <p className="text-sm text-text-muted">
-                  Pain, insomnia, anxiety, PTSD, nausea, and more — matched to
-                  the best cannabinoid + terpene combinations.
-                </p>
-              </div>
+              {WELLNESS_WHEEL_PILLARS.map((pillar) => {
+                const Icon = pillar.icon;
+                return (
+                  <div
+                    key={pillar.title}
+                    className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4 ring-1 ring-accent/15">
+                      <Icon className="w-6 h-6 text-accent" />
+                    </div>
+                    <h3 className="font-display text-lg text-text tracking-tight mb-2">
+                      {pillar.title}
+                    </h3>
+                    <p className="text-sm text-text-muted">{pillar.body}</p>
+                  </div>
+                );
+              })}
             </div>
             <div className="text-center">
               <Link href="/portal/combo-wheel">
@@ -514,30 +528,7 @@ export default function HomePage() {
       {/* Ambient music player */}
       <AmbientMusicPlayer />
 
-      <footer className="border-t border-border">
-        <div className="max-w-[1320px] mx-auto px-6 lg:px-12 py-10 flex flex-col gap-6">
-          <p className="text-xs italic text-text-muted leading-relaxed max-w-2xl">
-            Cannabis should be considered a medicine so please use it carefully
-            and judiciously. Do not abuse Cannabis and please respect the plant
-            and its healing properties.
-          </p>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <Wordmark size="sm" />
-              <div className="hidden md:flex items-center gap-5 text-xs text-text-subtle">
-                <Link href="/about" className="hover:text-text transition-colors">About</Link>
-                <Link href="/security" className="hover:text-text transition-colors">Security</Link>
-                <Link href="/education" className="hover:text-text transition-colors">Education</Link>
-                <Link href="/store" className="hover:text-text transition-colors">Store</Link>
-              </div>
-            </div>
-            <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Leafjourney. A demonstration product —
-              not a substitute for medical advice.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
@@ -546,30 +537,51 @@ export default function HomePage() {
 // Data
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_STEPS = [
+type TrustStat = {
+  label: string;
+  value?: number;
+  suffix?: string;
+  staticLabel?: string;
+};
+
+const TRUST_STATS: TrustStat[] = [
+  { value: 13, label: "AI agents" },
+  { value: 50, suffix: "+", label: "Studies indexed" },
+  { value: 43, label: "Interactions" },
+  { staticLabel: "HIPAA", label: "Ready" },
+];
+
+type WorkflowStep = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  time: string;
+};
+
+const WORKFLOW_STEPS: WorkflowStep[] = [
   {
-    icon: "🧠",
+    icon: Brain,
     title: "Prepare",
     description:
       "AI agent pulls the chart, analyzes trends, surfaces risks — 2.3 seconds.",
     time: "~30s",
   },
   {
-    icon: "▶️",
+    icon: Play,
     title: "Start visit",
     description:
       "One click. Briefing flows into the scribe. Note is pre-seeded with talking points.",
     time: "~1 click",
   },
   {
-    icon: "✍️",
+    icon: PenTool,
     title: "Refine",
     description:
       "Inline AI editor per section: expand, clarify, add dosing, make it more clinical.",
     time: "~1 min",
   },
   {
-    icon: "✅",
+    icon: CheckCircle2,
     title: "Sign",
     description:
       "Coding agent suggests ICD-10 + E&M. Physician signs. Done.",
@@ -577,79 +589,95 @@ const WORKFLOW_STEPS = [
   },
 ];
 
-const AGENTS = [
+type Agent = {
+  icon: LucideIcon;
+  name: string;
+  description: string;
+  featured?: boolean;
+};
+
+const AGENTS: Agent[] = [
   {
-    icon: "🧠",
+    icon: Brain,
     name: "Pre-Visit Intelligence",
     description: "Synthesizes chart data, trends, and research into a briefing before every visit.",
     featured: true,
   },
   {
-    icon: "✍️",
+    icon: PenTool,
     name: "Scribe",
     description: "Drafts structured APSO visit notes from encounter context, pre-seeded by the briefing.",
     featured: true,
   },
   {
-    icon: "🩺",
+    icon: Stethoscope,
     name: "Coding Readiness",
     description: "Generates ICD-10 codes, E&M levels, and cannabis-specific coding suggestions.",
   },
   {
-    icon: "📚",
+    icon: BookOpen,
     name: "Research Synthesizer",
     description: "Searches 50+ peer-reviewed studies, returns evidence at the point of care.",
   },
   {
-    icon: "💊",
+    icon: Pill,
     name: "Dosing Recommender",
     description: "Suggests cannabinoid ratios and starting doses based on the research corpus.",
   },
   {
-    icon: "📄",
+    icon: FileText,
     name: "Document Organizer",
     description: "Classifies, tags, and files uploaded documents into the right chart section.",
   },
   {
-    icon: "📊",
+    icon: BarChart3,
     name: "Outcome Tracker",
     description: "Detects trends in patient check-ins and flags worsening scores for physician review.",
   },
   {
-    icon: "💬",
+    icon: MessageCircle,
     name: "Messaging Assistant",
     description: "Drafts personalized patient replies — always approval-gated by the clinician.",
   },
   {
-    icon: "📞",
+    icon: Phone,
     name: "Patient Outreach",
     description: "Generates follow-up messages after encounters with context from the visit.",
   },
   {
-    icon: "🔔",
+    icon: Bell,
     name: "Physician Nudge",
     description: "Creates follow-up tasks and reminders based on note content and patient state.",
   },
   {
-    icon: "📅",
+    icon: Calendar,
     name: "Scheduling",
     description: "Auto-creates reminder workflows 7, 2, and 1 day before upcoming appointments.",
   },
   {
-    icon: "🏥",
+    icon: Building2,
     name: "Practice Launch",
     description: "Guides operators through the practice setup checklist with AI validation.",
   },
   {
-    icon: "📋",
+    icon: ClipboardList,
     name: "Intake",
     description: "Structures patient intake answers into actionable chart data and follow-up tasks.",
   },
 ];
 
-const AUDIENCES = [
+type Audience = {
+  icon: LucideIcon;
+  label: string;
+  glow: string;
+  headline: string;
+  body: string;
+  features: string[];
+};
+
+const AUDIENCES: Audience[] = [
   {
-    icon: "🩺",
+    icon: Stethoscope,
     label: "clinicians",
     glow: "var(--accent-soft)",
     headline: "Stop charting. Start caring.",
@@ -665,7 +693,7 @@ const AUDIENCES = [
     ],
   },
   {
-    icon: "🌱",
+    icon: Sprout,
     label: "patients",
     glow: "var(--highlight-soft)",
     headline: "Your medical story, kept close.",
@@ -681,7 +709,7 @@ const AUDIENCES = [
     ],
   },
   {
-    icon: "📈",
+    icon: TrendingUp,
     label: "operators",
     glow: "var(--info-soft, var(--accent-soft))",
     headline: "A practice that runs itself.",
@@ -698,41 +726,74 @@ const AUDIENCES = [
   },
 ];
 
-const CANNABIS_FEATURES = [
+type CannabisFeature = {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+};
+
+const CANNABIS_FEATURES: CannabisFeature[] = [
   {
-    icon: "⚕️",
+    icon: Activity,
     title: "Milligram-based dosing",
     body:
       "Every prescription tracks exact mg of THC and CBD per dose, per day. Volume can change, but therapeutic dose stays consistent — so patients never guess.",
   },
   {
-    icon: "🔬",
+    icon: Microscope,
     title: "Cannabis Combo Wheel",
     body:
       "Interactive pharmacology tool. Select cannabinoids and terpenes, see combined therapeutic profile, target symptoms, benefits, risks, and evidence strength.",
   },
   {
-    icon: "🚨",
+    icon: AlertTriangle,
     title: "Drug interaction checker",
     body:
       "43 cannabis-drug interactions across red, yellow, and green severity. Real-time warnings during prescribing, acknowledged + signed before submission.",
   },
   {
-    icon: "📚",
+    icon: BookOpen,
     title: "Research corpus",
     body:
       "50+ peer-reviewed studies indexed with structured dosing data. The Research Agent surfaces evidence at the point of care — traceable to source.",
   },
   {
-    icon: "🌿",
+    icon: Leaf,
     title: "APSO note format",
     body:
       "Assessment → Plan → Subjective → Objective. Re-ordered for how clinicians actually think, not how legacy EMRs force them to document.",
   },
   {
-    icon: "🏥",
+    icon: Store,
     title: "Dispensary-ready",
     body:
       "SKU-based product catalog, dispensary locator, pharmacy pickup notes auto-sent to patients with brand, dosing, and pickup location.",
+  },
+];
+
+type WellnessWheelPillar = {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+};
+
+const WELLNESS_WHEEL_PILLARS: WellnessWheelPillar[] = [
+  {
+    icon: Leaf,
+    title: "6 Cannabinoids",
+    body:
+      "THC, CBD, CBN, CBG, CBC, THCV — each with evidence-backed therapeutic profiles.",
+  },
+  {
+    icon: Flower2,
+    title: "8 Terpenes",
+    body:
+      "Myrcene, limonene, linalool, pinene, caryophyllene, and more — the aromatic compounds that shape the effect.",
+  },
+  {
+    icon: Target,
+    title: "10 Condition Guides",
+    body:
+      "Pain, insomnia, anxiety, PTSD, nausea, and more — matched to the best cannabinoid + terpene combinations.",
   },
 ];

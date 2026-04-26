@@ -1,15 +1,25 @@
 import Link from "next/link";
+import {
+  Shield,
+  Lock,
+  KeyRound,
+  UserCheck,
+  Server,
+  Database,
+  Eye,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/ui/logo";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { Badge } from "@/components/ui/badge";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
 
 export const metadata = {
   title: "Security & Data Ownership — Leafjourney",
@@ -20,31 +30,56 @@ export const metadata = {
 const SECURITY_PILLARS = [
   {
     title: "HIPAA Compliance",
-    icon: "shield",
+    Icon: Shield,
     description:
       "Full HIPAA compliance with administrative, physical, and technical safeguards. Business Associate Agreements with all infrastructure partners. Regular security audits and risk assessments.",
     badges: ["HIPAA", "BAA", "Risk Assessment"],
   },
   {
     title: "Encryption at Rest & In Transit",
-    icon: "lock",
+    Icon: Lock,
     description:
       "All patient data is encrypted at rest using AES-256 encryption. All communications use TLS 1.3. Database connections are encrypted with SSL certificates.",
     badges: ["AES-256", "TLS 1.3", "SSL"],
   },
   {
     title: "Access Controls",
-    icon: "key",
+    Icon: KeyRound,
     description:
       "Role-based access control (RBAC) ensures users only see data relevant to their role. Every access is logged in an immutable audit trail. Multi-factor authentication available for all accounts.",
     badges: ["RBAC", "Audit Log", "MFA"],
   },
   {
     title: "Data Ownership",
-    icon: "user",
+    Icon: UserCheck,
     description:
       "Your health data is yours — not ours, not AWS's, not anyone else's. You can export your complete medical record at any time. We maintain proprietary ownership controls that ensure your data remains yours even when hosted on cloud infrastructure.",
     badges: ["Patient-owned", "Export anytime", "Portable"],
+  },
+];
+
+const TRUST_BADGES = [
+  { label: "HIPAA Ready", Icon: Shield },
+  { label: "256-bit Encryption", Icon: Lock },
+  { label: "SOC 2 Aligned", Icon: Server },
+  { label: "Audit Logged", Icon: Eye },
+];
+
+const DATA_FLOW_STEPS = [
+  {
+    Icon: UserCheck,
+    title: "You enter data",
+    body: "Encrypted in your browser before it ever leaves your device.",
+  },
+  {
+    Icon: Lock,
+    title: "We secure it",
+    body: "Stored at rest with AES-256, accessed only via scoped, audited roles.",
+  },
+  {
+    Icon: Database,
+    title: "You own it",
+    body: "Export, correct, or delete at any time — no friction, no fine print.",
   },
 ];
 
@@ -105,29 +140,7 @@ export default function SecurityPage() {
         }}
       />
 
-      {/* Nav */}
-      <nav className="max-w-[1280px] mx-auto flex items-center justify-between px-6 lg:px-12 h-20">
-        <Link href="/">
-          <Wordmark size="md" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/about"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/login"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Start your care</Button>
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-12 pb-16">
@@ -136,10 +149,21 @@ export default function SecurityPage() {
           Your data belongs to <span className="text-accent">you</span>.
         </h1>
         <p className="text-[17px] md:text-lg text-text-muted mt-7 max-w-2xl leading-relaxed">
-          We don&apos;t just protect your data — we believe you own it. Green
-          Path Health is built with security by design and patient data
+          We don&apos;t just protect your data — we believe you own it.
+          Leafjourney is built with security by design and patient data
           sovereignty at its core.
         </p>
+
+        <div className="flex flex-wrap gap-3 mt-8">
+          {TRUST_BADGES.map(({ label, Icon }) => (
+            <div
+              key={label}
+              className="inline-flex items-center gap-2 bg-accent/10 text-accent text-xs font-medium px-3 py-1.5 rounded-full border border-accent/15"
+            >
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </div>
+          ))}
+        </div>
       </section>
 
       <EditorialRule className="max-w-[1280px] mx-auto px-6 lg:px-12" />
@@ -147,28 +171,80 @@ export default function SecurityPage() {
       {/* Security Pillars */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {SECURITY_PILLARS.map((pillar) => (
-            <Card key={pillar.title} tone="raised" className="card-hover">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <LeafSprig size={16} className="text-accent" />
-                  {pillar.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-text-muted leading-relaxed mb-4">
-                  {pillar.description}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {pillar.badges.map((badge) => (
-                    <Badge key={badge} tone="accent">
-                      {badge}
-                    </Badge>
-                  ))}
+          {SECURITY_PILLARS.map((pillar) => {
+            const Icon = pillar.Icon;
+            return (
+              <Card key={pillar.title} tone="raised" className="card-hover">
+                <CardHeader>
+                  <div className="w-11 h-11 rounded-xl bg-accent/10 text-accent flex items-center justify-center mb-3">
+                    <Icon className="w-5 h-5" strokeWidth={1.75} />
+                  </div>
+                  <CardTitle>{pillar.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-text-muted leading-relaxed mb-4">
+                    {pillar.description}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {pillar.badges.map((badge) => (
+                      <Badge key={badge} tone="accent">
+                        {badge}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
+
+      <EditorialRule className="max-w-[1280px] mx-auto px-6 lg:px-12" />
+
+      {/* Data Handling Flow */}
+      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 py-20">
+        <div className="max-w-2xl mb-12">
+          <Eyebrow className="mb-4">How your data flows</Eyebrow>
+          <h2 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
+            From your hands to ours, never out of your control.
+          </h2>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-stretch gap-4 md:gap-2">
+          {DATA_FLOW_STEPS.map((step, i) => {
+            const Icon = step.Icon;
+            return (
+              <div key={step.title} className="flex items-stretch flex-1 gap-2 md:gap-4">
+                <div className="flex-1 bg-surface-raised rounded-2xl border border-border p-6 shadow-sm card-hover">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                      <Icon className="w-5 h-5" strokeWidth={1.75} />
+                    </div>
+                    <span className="font-display text-sm text-accent/40">
+                      0{i + 1}
+                    </span>
+                  </div>
+                  <h3 className="font-display text-lg text-text tracking-tight">
+                    {step.title}
+                  </h3>
+                  <p className="text-sm text-text-muted mt-2 leading-relaxed">
+                    {step.body}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+                {i < DATA_FLOW_STEPS.length - 1 && (
+                  <div
+                    aria-hidden
+                    className="flex items-center justify-center text-accent/40 shrink-0"
+                  >
+                    <ArrowRight
+                      className="w-5 h-5 hidden md:block"
+                      strokeWidth={1.5}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 
@@ -266,22 +342,7 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      <footer className="border-t border-border">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col gap-4">
-          <p className="text-xs italic text-text-muted leading-relaxed max-w-2xl">
-            Cannabis should be considered a medicine so please use it carefully
-            and judiciously. Do not abuse Cannabis and please respect the plant
-            and its healing properties.
-          </p>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <Wordmark size="sm" />
-            <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Leafjourney. A
-              demonstration product — not a substitute for medical advice.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
