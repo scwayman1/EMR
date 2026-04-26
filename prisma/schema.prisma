@@ -1736,6 +1736,9 @@ model Vendor {
   payoutSchedule           String       @default("weekly")
   reservePct               Float?       @default(0.10)
   reserveDays              Int?         @default(14)
+  // EMR-244: USPS state codes the vendor is licensed/permitted to ship
+  // to. Empty array = not configured → all shipments blocked (fail-safe).
+  shippableStates          String[]     @default([])
   status                   VendorStatus @default(pending)
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt

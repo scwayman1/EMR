@@ -366,8 +366,18 @@ export default function CheckoutPage() {
         // Not signed in — leaf-fall back to a client-only demo confirmation
         // so the UX keeps working until auth is wired.
       } else {
-        const data: { error?: string } = await res.json().catch(() => ({}));
-        serverError = data.error || `Checkout failed (${res.status}).`;
+        const data: {
+          error?: string;
+          blocked?: Array<{ name: string; partner: string; message?: string }>;
+        } = await res.json().catch(() => ({}));
+        if (data.blocked && data.blocked.length > 0) {
+          const items = data.blocked
+            .map((b) => `• ${b.name} (${b.partner})`)
+            .join("\n");
+          serverError = `${data.error ?? "Some items can't ship to that address."}\n\n${items}\n\nRemove these items or change your shipping address to continue.`;
+        } else {
+          serverError = data.error || `Checkout failed (${res.status}).`;
+        }
       }
     } catch (err) {
       serverError = (err as Error).message || "Network error during checkout.";
@@ -840,7 +850,7 @@ export default function CheckoutPage() {
                 )}
               </div>
               {errors.submit && (
-                <div className="rounded-2xl border border-[var(--danger)] bg-[var(--danger)]/[0.04] px-4 py-3 text-[13px] text-[var(--danger)]">
+                <div className="rounded-2xl border border-[var(--danger)] bg-[var(--danger)]/[0.04] px-4 py-3 text-[13px] text-[var(--danger)] whitespace-pre-line">
                   {errors.submit}
                 </div>
               )}

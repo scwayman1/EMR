@@ -20,6 +20,7 @@ import {
   ensurePatientForUser,
   ensureProductsForLeafmart,
 } from "@/lib/leafmart/sync";
+import { checkShippingRestriction } from "@/lib/marketplace/shipping-restrictions";
 
 const ItemSchema = z.object({
   slug: z.string().min(1),
@@ -97,6 +98,38 @@ export async function POST(req: Request) {
         error: "Cart totals don't match server calculation. Refresh and try again.",
         expected: computedTotal,
         received: body.total,
+      },
+      { status: 422 },
+    );
+  }
+
+  // EMR-244: state shipping restriction matrix. Look up vendors by name
+  // (until EMR-268 wires the FK) and reject the order if any cart item's
+  // vendor doesn't permit the destination state. Items whose partner
+  // doesn't resolve to a marketplace Vendor are allowed through — those
+  // are demo-catalog brands not yet onboarded; the FK bridge in EMR-268
+  // closes that loophole.
+  const partnerNames = Array.from(new Set(body.items.map((it) => it.partner)));
+  const matchedVendors = await prisma.vendor.findMany({
+    where: { name: { in: partnerNames } },
+    select: { name: true, shippableStates: true },
+  });
+  const vendorByName = new Map(matchedVendors.map((v) => [v.name, v]));
+  const blocked = body.items
+    .map((it) => {
+      const vendor = vendorByName.get(it.partner);
+      if (!vendor) return null;
+      const result = checkShippingRestriction(vendor, body.shipping.state);
+      if (result.ok) return null;
+      return { slug: it.slug, name: it.name, partner: it.partner, reason: result.reason, message: result.message };
+    })
+    .filter((b): b is NonNullable<typeof b> => b !== null);
+
+  if (blocked.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Some items in your cart can't ship to ${body.shipping.state.toUpperCase()}.`,
+        blocked,
       },
       { status: 422 },
     );
