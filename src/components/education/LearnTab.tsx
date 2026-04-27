@@ -14,54 +14,54 @@ const LEARN_TOPICS = [
     desc: "A beginner's guide to cannabidiol — the non-psychoactive cannabinoid changing medicine.", 
     href: "/portal/education",
     icon: Sparkles,
-    color: "text-emerald-500",
-    bg: "bg-emerald-50",
-    border: "border-emerald-100"
+    color: "text-leaf",
+    bg: "bg-mint",
+    border: "border-mint"
   },
   { 
     title: "How to dose cannabis", 
     desc: "Start low, go slow. Learn the principles of safe, effective cannabis dosing.", 
     href: "/portal/dosing",
     icon: Activity,
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-    border: "border-blue-100"
+    color: "text-leaf",
+    bg: "bg-sage",
+    border: "border-sage"
   },
   { 
     title: "Routes of administration", 
     desc: "Oral, sublingual, inhaled, topical — which delivery method is right for you?", 
     href: "/portal/education",
     icon: FileText,
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-    border: "border-purple-100"
+    color: "text-ink",
+    bg: "bg-lilac",
+    border: "border-lilac"
   },
   { 
     title: "Understanding terpenes", 
     desc: "The aromatic compounds that shape each strain's unique therapeutic effects.", 
     href: "/portal/education",
     icon: Sparkles,
-    color: "text-amber-500",
-    bg: "bg-amber-50",
-    border: "border-amber-100"
+    color: "text-highlight-hover",
+    bg: "bg-butter",
+    border: "border-butter"
   },
   { 
     title: "Cannabis & your medications", 
     desc: "Important drug interactions every patient and caregiver should know.", 
     href: "/portal/education",
     icon: ShieldCheck,
-    color: "text-rose-500",
-    bg: "bg-rose-50",
-    border: "border-rose-100"
+    color: "text-danger",
+    bg: "bg-rose",
+    border: "border-rose"
   },
   { 
     title: "Legal considerations", 
     desc: "State laws, federal status, and what it means for your workplace and travel.", 
     href: "/portal/qa",
     icon: HelpCircle,
-    color: "text-slate-500",
-    bg: "bg-slate-50",
-    border: "border-slate-100"
+    color: "text-text-muted",
+    bg: "bg-peach",
+    border: "border-peach"
   },
 ];
 
@@ -108,7 +108,7 @@ export function LearnTab() {
                     {topic.title}
                   </h3>
 
-                  <p className="text-sm text-slate-500 leading-relaxed font-medium flex-grow mb-6">
+                  <p className="text-sm text-text-muted leading-relaxed font-medium flex-grow mb-6">
                     {topic.desc}
                   </p>
 
@@ -124,20 +124,20 @@ export function LearnTab() {
         })}
       </div>
 
-      <Card className="rounded-3xl border-0 bg-slate-900 text-white overflow-hidden shadow-2xl mt-8">
+      <Card className="rounded-3xl border-0 bg-ink text-white overflow-hidden shadow-2xl mt-8">
         <div className="grid md:grid-cols-2 items-center">
           <div className="p-8 sm:p-10 md:p-12 order-2 md:order-1">
             <Badge className="bg-accent text-white border-0 mb-4 font-bold tracking-widest uppercase">Video Course</Badge>
             <h3 className="font-display text-2xl sm:text-3xl mb-4">Cannabis Basics 101</h3>
-            <p className="text-slate-300 mb-6 sm:mb-8 text-base sm:text-lg font-medium leading-relaxed">
+            <p className="text-text-subtle mb-6 sm:mb-8 text-base sm:text-lg font-medium leading-relaxed">
               Join Dr. Smith for a 5-part video series breaking down the endocannabinoid system, how products are made, and how to shop for medicine.
             </p>
-            <Button className="bg-white text-slate-900 hover:bg-slate-100 rounded-xl font-bold h-12 px-6 shadow-lg">
+            <Button className="bg-surface text-ink hover:bg-surface-muted rounded-xl font-bold h-12 px-6 shadow-lg">
               <Video className="w-5 h-5 mr-2" /> Start Watching Free
             </Button>
           </div>
-          <div className="h-56 sm:h-64 md:h-full bg-gradient-to-br from-slate-800 via-slate-900 to-black relative flex items-center justify-center group cursor-pointer border-t md:border-t-0 md:border-l border-slate-700 order-1 md:order-2 overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08),transparent_70%)]"></div>
+          <div className="h-56 sm:h-64 md:h-full bg-gradient-to-br from-ink via-[#0d1611] to-black relative flex items-center justify-center group cursor-pointer border-t md:border-t-0 md:border-l border-white/10 order-1 md:order-2 overflow-hidden">
+            <div className="absolute inset-0 bg-white/[0.02]"></div>
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors"></div>
             <div className="relative">
               <span className="absolute inset-0 rounded-full bg-accent/40 animate-ping opacity-75 group-hover:opacity-100"></span>
@@ -152,7 +152,7 @@ export function LearnTab() {
       
       <div className="text-center pt-8">
         <Link href="/portal/education">
-          <Button variant="secondary" size="lg" className="rounded-xl font-bold border-2 text-slate-700 hover:bg-slate-50">
+          <Button variant="secondary" size="lg" className="rounded-xl font-bold border-2 text-text hover:bg-surface-muted">
             Browse Full Library
             <ArrowRight className="w-5 h-5 ml-2" />
           </Button>

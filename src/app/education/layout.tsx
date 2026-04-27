@@ -9,13 +9,13 @@ import { SITE_URL } from "@/lib/seo";
 export const metadata: Metadata = {
   title: "Education — Leafjourney",
   description:
-    "ChatCB, the cannabinoid wheel, drug interaction checker, and curated PubMed research — all in one place. Built for clinicians and patients.",
+    "ChatCB, the Cannabis Combo Wheel, drug interaction checker, and curated PubMed research — all in one place. Built for clinicians and patients.",
   alternates: { canonical: `${SITE_URL}/education` },
   robots: { index: true, follow: true },
   openGraph: {
     title: "Education — Leafjourney",
     description:
-      "Conversational cannabis search engine with PubMed integration, terpene/cannabinoid wheel, and drug interaction checker.",
+      "Conversational cannabis search engine with PubMed integration, the Cannabis Combo Wheel, and a drug interaction checker.",
     url: `${SITE_URL}/education`,
     siteName: "Leafjourney",
     type: "website",

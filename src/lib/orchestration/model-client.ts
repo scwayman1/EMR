@@ -1,4 +1,4 @@
-import type { ModelClient } from "./types";
+import type { ModelCallOptions, ModelClient } from "./types";
 
 /**
  * A structured model error. Carries a stable `code` so the UI can render a
@@ -90,7 +90,7 @@ const STUB_UNAVAILABLE_NOTICE =
   "AI output unavailable in this environment. Set AGENT_MODEL_CLIENT=openrouter with a valid OPENROUTER_API_KEY to enable real drafting.";
 
 export class StubModelClient implements ModelClient {
-  async complete(prompt: string, _options?: { maxTokens?: number; temperature?: number }) {
+  async complete(prompt: string, _options?: ModelCallOptions) {
     if (/classify/i.test(prompt)) {
       // Classification callers expect a single-word label, not prose.
       return "other";
@@ -102,6 +102,23 @@ export class StubModelClient implements ModelClient {
       return `Draft placeholder — ${STUB_UNAVAILABLE_NOTICE}`;
     }
     return STUB_UNAVAILABLE_NOTICE;
+  }
+
+  /**
+   * Stub stream — emits the deterministic completion in word-sized chunks so
+   * downstream UIs can exercise their streaming code paths without keys.
+   */
+  async *stream(
+    prompt: string,
+    options?: ModelCallOptions
+  ): AsyncIterable<string> {
+    const full = await this.complete(prompt, options);
+    for (const word of full.split(/(\s+)/)) {
+      if (options?.signal?.aborted) return;
+      yield word;
+      // Tiny pause so token-by-token UI still feels alive in dev.
+      await new Promise((r) => setTimeout(r, 12));
+    }
   }
 }
 
@@ -164,7 +181,7 @@ export class OpenRouterModelClient implements ModelClient {
 
   async complete(
     prompt: string,
-    options?: { maxTokens?: number; temperature?: number }
+    options?: ModelCallOptions
   ): Promise<string> {
     // Try primary model first
     try {
@@ -191,11 +208,45 @@ export class OpenRouterModelClient implements ModelClient {
     }
   }
 
+  /**
+   * Streaming variant. Yields content deltas (`choices[0].delta.content`) as
+   * they arrive over SSE. Mirrors `complete`'s free-model fallback for 402/429,
+   * but only when no bytes have streamed yet — once the client has seen any
+   * token we cannot retroactively switch models without confusing the UI.
+   */
+  async *stream(
+    prompt: string,
+    options?: ModelCallOptions
+  ): AsyncIterable<string> {
+    let yielded = false;
+    try {
+      for await (const chunk of this._streamCall(this.model, prompt, options)) {
+        yielded = true;
+        yield chunk;
+      }
+    } catch (err) {
+      if (
+        !yielded &&
+        isModelError(err) &&
+        (err.code === "credit_limit" || err.code === "rate_limited")
+      ) {
+        console.warn(
+          `[OpenRouter] Primary model ${this.model} blocked (${err.code}). Streaming fallback to: ${this.freeModel}`
+        );
+        for await (const chunk of this._streamCall(this.freeModel, prompt, options)) {
+          yield chunk;
+        }
+        return;
+      }
+      throw err;
+    }
+  }
+
   /** Low-level call to a specific model. No fallback logic. */
   private async _call(
     model: string,
     prompt: string,
-    options?: { maxTokens?: number; temperature?: number }
+    options?: ModelCallOptions
   ): Promise<string> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.apiKey}`,
@@ -211,6 +262,7 @@ export class OpenRouterModelClient implements ModelClient {
       response = await fetch(this.endpoint, {
         method: "POST",
         headers,
+        signal: options?.signal,
         body: JSON.stringify({
           model,
           messages: [{ role: "user", content: prompt }],
@@ -253,6 +305,108 @@ export class OpenRouterModelClient implements ModelClient {
       });
     }
     return content;
+  }
+
+  /**
+   * Low-level streaming call to a specific model. No fallback logic.
+   * Yields content deltas extracted from OpenRouter's SSE response.
+   */
+  private async *_streamCall(
+    model: string,
+    prompt: string,
+    options?: ModelCallOptions
+  ): AsyncIterable<string> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      "X-Title": this.appName,
+    };
+    if (this.siteUrl) headers["HTTP-Referer"] = this.siteUrl;
+
+    const requestedMaxTokens = options?.maxTokens ?? 1024;
+
+    let response: Response;
+    try {
+      response = await fetch(this.endpoint, {
+        method: "POST",
+        headers,
+        signal: options?.signal,
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: requestedMaxTokens,
+          temperature: options?.temperature ?? 0.3,
+          stream: true,
+        }),
+      });
+    } catch (err) {
+      throw new ModelError({
+        code: "network",
+        friendly:
+          "Couldn't reach the AI provider. Check your connection and try again.",
+        providerBody: err instanceof Error ? err.message : String(err),
+        model,
+        requestedMaxTokens,
+      });
+    }
+
+    if (!response.ok || !response.body) {
+      const body = response.body ? await response.text().catch(() => "") : "";
+      throw classifyOpenRouterError(
+        response.status,
+        body,
+        model,
+        requestedMaxTokens,
+      );
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let sawContent = false;
+
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE framing: events separated by blank lines, each line prefixed with "data: ".
+        let nl: number;
+        while ((nl = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, nl).replace(/\r$/, "");
+          buffer = buffer.slice(nl + 1);
+          if (!line.startsWith("data:")) continue;
+          const payload = line.slice(5).trim();
+          if (!payload || payload === "[DONE]") continue;
+          try {
+            const parsed = JSON.parse(payload) as {
+              choices?: Array<{ delta?: { content?: string } }>;
+            };
+            const delta = parsed.choices?.[0]?.delta?.content;
+            if (typeof delta === "string" && delta.length > 0) {
+              sawContent = true;
+              yield delta;
+            }
+          } catch {
+            // Provider sometimes inserts comment lines (": OPENROUTER PROCESSING") — ignore.
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    if (!sawContent) {
+      throw new ModelError({
+        code: "empty_response",
+        friendly:
+          "The AI provider returned an empty stream. Try again in a moment.",
+        model,
+        requestedMaxTokens,
+      });
+    }
   }
 }
 

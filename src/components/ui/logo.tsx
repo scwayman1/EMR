@@ -17,42 +17,16 @@ export function LogoMark({
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn("text-accent", className)}
       aria-hidden="true"
     >
-      <defs>
-        <linearGradient id="logo-fill" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="var(--accent)" />
-          <stop offset="100%" stopColor="var(--accent-strong)" />
-        </linearGradient>
-      </defs>
-      {/* rounded-square seal */}
-      <rect width="32" height="32" rx="9" fill="url(#logo-fill)" />
-      {/* leaf silhouette, carved out */}
-      <path
-        d="M16 6.5
-           C 19.8 10.5, 20.4 16.8, 16 25.5
-           C 11.6 16.8, 12.2 10.5, 16 6.5 Z"
-        fill="#FEFCF6"
-      />
-      {/* central vein */}
-      <path
-        d="M16 8.5 L16 23.2"
-        stroke="var(--accent)"
-        strokeWidth="0.9"
-        strokeLinecap="round"
-      />
-      {/* small side veins */}
-      <path
-        d="M16 13 L13.6 11.8 M16 13 L18.4 11.8 M16 17 L13.2 15.6 M16 17 L18.8 15.6"
-        stroke="var(--accent)"
-        strokeWidth="0.6"
-        strokeLinecap="round"
-        opacity="0.55"
-      />
+      <path d="M 32 50 L 32 20" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"/>
+      <path d="M 32 30 Q 22 28 18 18 Q 28 18 32 28 Z" fill="currentColor"/>
+      <path d="M 32 26 Q 42 22 46 12 Q 36 12 32 22 Z" fill="currentColor"/>
+      <circle cx="32" cy="50" r="2.4" fill="currentColor"/>
     </svg>
   );
 }

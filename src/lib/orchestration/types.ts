@@ -52,9 +52,23 @@ export interface AgentLogEntry {
 // Model client (unchanged)
 // ---------------------------------------------------------------------------
 
+/** Options accepted by both `complete` and `stream`. */
+export interface ModelCallOptions {
+  maxTokens?: number;
+  temperature?: number;
+  /** Abort the underlying HTTP request when this signal fires. */
+  signal?: AbortSignal;
+}
+
 /** Minimal LLM interface. Providers implement this; agents are provider-agnostic. */
 export interface ModelClient {
-  complete(prompt: string, options?: { maxTokens?: number; temperature?: number }): Promise<string>;
+  complete(prompt: string, options?: ModelCallOptions): Promise<string>;
+  /**
+   * Optional streaming variant. Yields content deltas as they arrive from the
+   * provider. Implementations that don't natively stream may emit the full
+   * response as a single chunk.
+   */
+  stream?(prompt: string, options?: ModelCallOptions): AsyncIterable<string>;
 }
 
 // ---------------------------------------------------------------------------

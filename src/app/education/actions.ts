@@ -8,8 +8,20 @@ import {
   type CannabisConditionPair,
 } from "@/lib/domain/chatcb";
 import { searchPubMed, type PubMedSearchResult } from "@/lib/domain/pubmed";
+import {
+  getComboWheelCompounds,
+  type ComboWheelCompound,
+} from "@/lib/domain/combo-wheel";
 
 export type { PubMedSearchResult };
+
+/**
+ * Server action returning the active Combo Wheel catalog.
+ * Wraps `getComboWheelCompounds` so client components can fetch on mount.
+ */
+export async function fetchComboWheelCompounds(): Promise<ComboWheelCompound[]> {
+  return getComboWheelCompounds();
+}
 
 export interface ChatCBResponse {
   answer: string;

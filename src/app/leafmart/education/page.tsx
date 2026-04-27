@@ -10,9 +10,11 @@ import { EducationTabs, type TabKey } from "@/components/education/EducationTabs
 import { ComboWheel } from "@/components/education/ComboWheel";
 import { ResearchTab } from "@/components/education/ResearchTab";
 import { LearnTab } from "@/components/education/LearnTab";
+import { DiscussCombination } from "@/components/education/DiscussCombination";
 
 export default function LeafmartEducationPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("wheel");
+  const [wheelSelection, setWheelSelection] = useState<string[]>([]);
 
   return (
     <div className="pb-12">
@@ -33,7 +35,12 @@ export default function LeafmartEducationPage() {
         key={activeTab}
         className="max-w-[1320px] mx-auto px-6 lg:px-12 py-16 animate-in fade-in duration-500"
       >
-        {activeTab === "wheel" && <ComboWheel />}
+        {activeTab === "wheel" && (
+          <>
+            <ComboWheel context="leafmart" onSelect={setWheelSelection} />
+            <DiscussCombination selectedIds={wheelSelection} />
+          </>
+        )}
         {activeTab === "research" && <ResearchTab />}
         {activeTab === "community" && <LearnTab />}
         {activeTab === "chatcb" && (
@@ -95,7 +102,7 @@ function ChatCBClinicalGate({ onExploreWheel }: { onExploreWheel: () => void }) 
               className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-white px-7 py-3 text-sm font-semibold text-text transition-all hover:border-accent/40 hover:bg-white hover:-translate-y-0.5"
             >
               <Atom className="h-4 w-4" strokeWidth={2.5} />
-              Explore the Cannabinoid Wheel
+              Explore the Combo Wheel
             </button>
           </div>
 
