@@ -1,17 +1,24 @@
 "use client";
 import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { MiniGarden } from "@/components/ui/mini-garden";
 import {
   LIFESTYLE_DOMAINS,
   LIFESTYLE_TIPS,
   type LifestyleDomain,
   type LifestyleTip,
 } from "@/lib/domain/lifestyle";
+
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+};
+const STORAGE_KEY = () => `leafjourney:lifestyle-daily-checks:${todayKey()}`;
 
 /* ---------- Difficulty badge tone mapping ---------- */
 
@@ -151,6 +158,146 @@ function DomainCard({ domain }: { domain: LifestyleDomain }) {
   );
 }
 
+/* ---------- Daily check-in (drives the MiniGarden) ---------- */
+
+function DailyLifestyleCheckin() {
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY());
+      if (raw) {
+        const parsed = JSON.parse(raw) as { ids?: string[] };
+        const map: Record<string, boolean> = {};
+        for (const id of parsed.ids ?? []) map[id] = true;
+        setChecked(map);
+      }
+    } catch {
+      // ignore corrupt entries
+    }
+    setHydrated(true);
+  }, []);
+
+  const toggle = (id: string) => {
+    setChecked((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        const ids = Object.keys(next).filter((k) => next[k]);
+        localStorage.setItem(STORAGE_KEY(), JSON.stringify({ ids }));
+      } catch {
+        // storage quota / disabled — silently degrade
+      }
+      return next;
+    });
+  };
+
+  const grown = hydrated
+    ? LIFESTYLE_DOMAINS.filter((d) => checked[d.id]).length
+    : 0;
+  const total = LIFESTYLE_DOMAINS.length;
+  const flowering = grown === total;
+
+  return (
+    <Card tone="raised" className="mb-10 overflow-hidden">
+      <CardContent className="p-0">
+        <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-0">
+          <div className="bg-gradient-to-b from-accent-soft/40 to-surface-muted/60 flex items-center justify-center p-4 md:p-2">
+            <MiniGarden grown={grown} total={total} className="max-w-[180px]" />
+          </div>
+          <div className="p-6 md:p-7">
+            <Eyebrow className="mb-2">Today&apos;s lifestyle check-in</Eyebrow>
+            <h2 className="font-display text-xl md:text-2xl text-text tracking-tight mb-1">
+              {flowering
+                ? "Look at your garden bloom \u{1F33C}"
+                : grown === 0
+                  ? "Tend a leaf today"
+                  : `${grown} of ${total} leaves grown`}
+            </h2>
+            <p className="text-sm text-text-muted leading-relaxed mb-5 max-w-md">
+              Tap a domain when you take care of it today. Each tap grows a leaf
+              on your garden — small, daily wins, made visible.
+            </p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              {LIFESTYLE_DOMAINS.map((d) => {
+                const isChecked = !!checked[d.id];
+                return (
+                  <label
+                    key={d.id}
+                    className={
+                      "group flex items-center gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer select-none " +
+                      "transition-all duration-200 active:scale-[0.98] " +
+                      (isChecked
+                        ? "bg-accent-soft border-accent/40 shadow-sm"
+                        : "bg-surface border-border hover:border-accent/30 hover:bg-surface-muted/60")
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggle(d.id)}
+                      aria-label={`${d.label}: ${isChecked ? "checked" : "unchecked"}`}
+                      className="sr-only peer"
+                    />
+                    <span
+                      aria-hidden
+                      className={
+                        "flex items-center justify-center w-7 h-7 rounded-full text-base shrink-0 " +
+                        "transition-transform duration-300 " +
+                        (isChecked ? "scale-110" : "scale-100")
+                      }
+                      style={{
+                        backgroundColor: `color-mix(in srgb, ${d.color} ${isChecked ? 22 : 10}%, transparent)`,
+                      }}
+                    >
+                      {d.icon}
+                    </span>
+                    <span
+                      className={
+                        "text-sm font-medium tracking-tight truncate " +
+                        (isChecked ? "text-accent" : "text-text")
+                      }
+                    >
+                      {d.label}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={
+                        "ml-auto h-4 w-4 rounded-full border transition-colors " +
+                        (isChecked
+                          ? "bg-accent border-accent"
+                          : "border-border-strong/60")
+                      }
+                    >
+                      {isChecked && (
+                        <svg viewBox="0 0 16 16" className="w-full h-full text-white">
+                          <path
+                            d="M4 8.5l2.5 2.5L12 5.5"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            fill="none"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <p className="text-[11px] text-text-subtle mt-4">
+              Resets automatically every morning.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ---------- Domain icon pill (hero toolbar) ---------- */
 
 function DomainPill({
@@ -209,6 +356,10 @@ export default function LifestylePage() {
   return (
     <PageShell maxWidth="max-w-[960px]">
       <PatientSectionNav section="journey" />
+
+      {/* ==================== Daily check-in (drives MiniGarden) ==================== */}
+      <DailyLifestyleCheckin />
+
       {/* ==================== Hero ==================== */}
       <Card tone="ambient" className="mb-10 grain">
         <div className="relative z-10 px-6 md:px-10 py-10 md:py-14">

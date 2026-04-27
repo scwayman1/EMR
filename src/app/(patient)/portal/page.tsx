@@ -13,6 +13,7 @@ import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import { AmbientOrb } from "@/components/ui/hero-art";
 import { HealthPlant } from "@/components/ui/health-plant";
 import { VisitActions } from "@/components/portal/visit-actions";
+import { SortableDashboard } from "@/components/portal/sortable-dashboard";
 import { computePlantHealth, STAGE_LABELS, type PlantHealth } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { OnboardingTour } from "@/components/ui/onboarding-tour";
@@ -374,8 +375,12 @@ export default async function PatientHome() {
       </div>
 
       {/* ── Second row: Cannabis module + Next visit + Mood ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
-        {/* Cannabis Module */}
+      {/* Sortable: patients can drag to reorder this row in edit mode. */}
+      <SortableDashboard
+        storageKey="leafjourney:portal:row2-order"
+        className="mb-6 md:mb-8"
+        items={[
+          { id: "cannabis", label: "Cannabis intake", node: (
         <Card tone="raised">
           <CardContent className="py-6">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-4 flex items-center gap-1.5">
@@ -419,8 +424,8 @@ export default async function PatientHome() {
             )}
           </CardContent>
         </Card>
-
-        {/* Next Visit */}
+          ) },
+          { id: "next-visit", label: "Next visit", node: (
         <Card tone="raised">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -464,8 +469,8 @@ export default async function PatientHome() {
             )}
           </CardContent>
         </Card>
-
-        {/* Chart readiness + Mood */}
+          ) },
+          { id: "readiness", label: "Chart readiness", node: (
         <Card tone="raised">
           <CardContent className="py-6 space-y-5">
             {/* Chart readiness */}
@@ -513,7 +518,9 @@ export default async function PatientHome() {
             </div>
           </CardContent>
         </Card>
-      </div>
+          ) },
+        ]}
+      />
 
       {/* ── Third row: Metrics sparklines ─────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 md:mb-8">

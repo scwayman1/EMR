@@ -1,5 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { NativeBridge } from "@/components/shell/NativeBridge";
+import { ProjectorMode } from "@/components/shell/ProjectorMode";
 
 export const metadata: Metadata = {
   title: {
@@ -9,6 +11,31 @@ export const metadata: Metadata = {
   description:
     "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",
   robots: { index: false, follow: false }, // private by default in V1
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Leafjourney",
+  },
+  applicationName: "Leafjourney",
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+// Viewport export (EMR-031 / EMR-051) — controls the mobile/tablet
+// rendering scale and respects iOS safe-area insets so the EMR works
+// on phones, tablets, foldables, projector outputs, and the eventual
+// Capacitor/React Native native wrappers without a layout regression.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFCF7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F1410" },
+  ],
 };
 
 // ClerkProvider was removed from the hot boot path to unblock Render deploys.
@@ -48,6 +75,8 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        <NativeBridge />
+        <ProjectorMode />
         {children}
       </body>
     </html>

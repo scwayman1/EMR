@@ -1,0 +1,227 @@
+// EMR-077 — In-memory pharmaceutical catalog seed.
+//
+// Hand-curated subset of the most frequently prescribed medications in
+// the US (top 50 by Rx volume). Real production will replace this with
+// an RxNorm/FDA NDC ingestion pipeline; this seed lets the rest of the
+// EMAR UI get built and tested without that dependency.
+
+import type {
+  PharmaceuticalDrug,
+  PharmaceuticalFormulation,
+  PharmacyNetwork,
+} from "./types";
+
+export const PHARMACY_NETWORKS: PharmacyNetwork[] = [
+  { id: "pn_cvs", name: "CVS Pharmacy", code: "CVS", ncpdpId: "01999999" },
+  { id: "pn_walgreens", name: "Walgreens", code: "WALG", ncpdpId: "01999998" },
+  { id: "pn_rite_aid", name: "Rite Aid", code: "RITE", ncpdpId: "01999997" },
+  { id: "pn_kroger", name: "Kroger Pharmacy", code: "KROG", ncpdpId: "01999996" },
+  { id: "pn_costco", name: "Costco Pharmacy", code: "COST", ncpdpId: "01999995" },
+  { id: "pn_indep", name: "Independent / community pharmacy", code: "INDEP" },
+];
+
+export const PHARMACEUTICAL_DRUGS: PharmaceuticalDrug[] = [
+  {
+    id: "drug_atorvastatin",
+    name: "Atorvastatin",
+    genericName: "atorvastatin",
+    brandNames: ["Lipitor"],
+    rxnorm: "83367",
+    drugClass: "HMG-CoA reductase inhibitor (statin)",
+    manufacturers: ["Pfizer", "Teva", "Mylan"],
+    indications: ["Hyperlipidemia", "ASCVD risk reduction"],
+    warnings: ["Myopathy", "Liver enzyme elevation"],
+    hardContraindications: ["Active liver disease", "Pregnancy"],
+  },
+  {
+    id: "drug_lisinopril",
+    name: "Lisinopril",
+    genericName: "lisinopril",
+    brandNames: ["Prinivil", "Zestril"],
+    rxnorm: "29046",
+    drugClass: "ACE inhibitor",
+    manufacturers: ["Lupin", "Sandoz", "Merck"],
+    indications: ["Hypertension", "Heart failure"],
+    warnings: ["Cough", "Hyperkalemia", "Angioedema"],
+    hardContraindications: ["History of angioedema with ACEi", "Pregnancy"],
+  },
+  {
+    id: "drug_metformin",
+    name: "Metformin",
+    genericName: "metformin",
+    brandNames: ["Glucophage", "Fortamet"],
+    rxnorm: "6809",
+    drugClass: "Biguanide",
+    manufacturers: ["Bristol-Myers Squibb", "Teva"],
+    indications: ["Type 2 diabetes", "Prediabetes"],
+    warnings: ["GI upset", "B12 deficiency"],
+    hardContraindications: ["eGFR < 30"],
+  },
+  {
+    id: "drug_amlodipine",
+    name: "Amlodipine",
+    genericName: "amlodipine",
+    brandNames: ["Norvasc"],
+    rxnorm: "17767",
+    drugClass: "Calcium channel blocker",
+    manufacturers: ["Pfizer", "Teva"],
+    indications: ["Hypertension", "Angina"],
+    warnings: ["Peripheral edema"],
+  },
+  {
+    id: "drug_metoprolol",
+    name: "Metoprolol",
+    genericName: "metoprolol",
+    brandNames: ["Lopressor", "Toprol-XL"],
+    rxnorm: "6918",
+    drugClass: "Beta blocker",
+    manufacturers: ["AstraZeneca", "Mylan"],
+    indications: ["Hypertension", "Heart failure", "Atrial fibrillation"],
+    warnings: ["Bradycardia", "Bronchospasm in asthma"],
+  },
+  {
+    id: "drug_levothyroxine",
+    name: "Levothyroxine",
+    genericName: "levothyroxine",
+    brandNames: ["Synthroid", "Levoxyl"],
+    rxnorm: "10582",
+    drugClass: "Thyroid hormone replacement",
+    manufacturers: ["AbbVie", "Mylan"],
+    indications: ["Hypothyroidism"],
+    warnings: ["Take on empty stomach"],
+  },
+  {
+    id: "drug_omeprazole",
+    name: "Omeprazole",
+    genericName: "omeprazole",
+    brandNames: ["Prilosec"],
+    rxnorm: "7646",
+    drugClass: "Proton pump inhibitor",
+    manufacturers: ["AstraZeneca", "Dr. Reddy's"],
+    indications: ["GERD", "Peptic ulcer"],
+    warnings: ["Long-term: B12, magnesium, fracture risk"],
+  },
+  {
+    id: "drug_sertraline",
+    name: "Sertraline",
+    genericName: "sertraline",
+    brandNames: ["Zoloft"],
+    rxnorm: "36437",
+    drugClass: "SSRI",
+    manufacturers: ["Pfizer", "Teva"],
+    indications: ["Major depressive disorder", "GAD", "PTSD"],
+    warnings: ["Suicidality (BBW in young adults)", "Serotonin syndrome"],
+    hardContraindications: ["MAOI use within 14 days"],
+  },
+  {
+    id: "drug_escitalopram",
+    name: "Escitalopram",
+    genericName: "escitalopram",
+    brandNames: ["Lexapro"],
+    rxnorm: "321988",
+    drugClass: "SSRI",
+    manufacturers: ["AbbVie", "Teva"],
+    indications: ["Major depressive disorder", "GAD"],
+    warnings: ["QT prolongation", "Serotonin syndrome"],
+    hardContraindications: ["MAOI use within 14 days"],
+  },
+  {
+    id: "drug_alprazolam",
+    name: "Alprazolam",
+    genericName: "alprazolam",
+    brandNames: ["Xanax"],
+    rxnorm: "596",
+    drugClass: "Benzodiazepine",
+    schedule: "schedule_4",
+    manufacturers: ["Pfizer", "Mylan"],
+    indications: ["Anxiety disorders", "Panic disorder"],
+    warnings: ["Dependence", "Sedation", "Respiratory depression with opioids"],
+    hardContraindications: ["Concomitant strong opioids without monitoring"],
+  },
+  {
+    id: "drug_gabapentin",
+    name: "Gabapentin",
+    genericName: "gabapentin",
+    brandNames: ["Neurontin", "Gralise"],
+    rxnorm: "25480",
+    drugClass: "Anticonvulsant / GABA analog",
+    manufacturers: ["Pfizer", "Sandoz"],
+    indications: ["Neuropathic pain", "Postherpetic neuralgia", "Seizures"],
+    warnings: ["Sedation", "Respiratory depression with opioids"],
+  },
+  {
+    id: "drug_albuterol",
+    name: "Albuterol",
+    genericName: "albuterol",
+    brandNames: ["ProAir", "Ventolin", "Proventil"],
+    rxnorm: "435",
+    drugClass: "Short-acting beta-2 agonist",
+    manufacturers: ["Teva", "GSK"],
+    indications: ["Asthma rescue", "COPD"],
+    warnings: ["Tachycardia", "Tremor"],
+  },
+  {
+    id: "drug_warfarin",
+    name: "Warfarin",
+    genericName: "warfarin",
+    brandNames: ["Coumadin", "Jantoven"],
+    rxnorm: "11289",
+    drugClass: "Vitamin K antagonist",
+    manufacturers: ["Bristol-Myers Squibb", "Teva"],
+    indications: ["Atrial fibrillation", "DVT/PE", "Mechanical valve"],
+    warnings: ["Bleeding", "Drug interactions", "INR monitoring required"],
+    hardContraindications: ["Active major bleeding", "Pregnancy"],
+  },
+];
+
+export const PHARMACEUTICAL_FORMULATIONS: PharmaceuticalFormulation[] = [
+  // Atorvastatin
+  { id: "form_atorvastatin_10", drugId: "drug_atorvastatin", strength: "10 mg", strengthValue: 10, strengthUnit: "mg", form: "tablet" },
+  { id: "form_atorvastatin_20", drugId: "drug_atorvastatin", strength: "20 mg", strengthValue: 20, strengthUnit: "mg", form: "tablet" },
+  { id: "form_atorvastatin_40", drugId: "drug_atorvastatin", strength: "40 mg", strengthValue: 40, strengthUnit: "mg", form: "tablet" },
+  { id: "form_atorvastatin_80", drugId: "drug_atorvastatin", strength: "80 mg", strengthValue: 80, strengthUnit: "mg", form: "tablet" },
+  // Lisinopril
+  { id: "form_lisinopril_5", drugId: "drug_lisinopril", strength: "5 mg", strengthValue: 5, strengthUnit: "mg", form: "tablet" },
+  { id: "form_lisinopril_10", drugId: "drug_lisinopril", strength: "10 mg", strengthValue: 10, strengthUnit: "mg", form: "tablet" },
+  { id: "form_lisinopril_20", drugId: "drug_lisinopril", strength: "20 mg", strengthValue: 20, strengthUnit: "mg", form: "tablet" },
+  { id: "form_lisinopril_40", drugId: "drug_lisinopril", strength: "40 mg", strengthValue: 40, strengthUnit: "mg", form: "tablet" },
+  // Metformin
+  { id: "form_metformin_500", drugId: "drug_metformin", strength: "500 mg", strengthValue: 500, strengthUnit: "mg", form: "tablet" },
+  { id: "form_metformin_1000", drugId: "drug_metformin", strength: "1000 mg", strengthValue: 1000, strengthUnit: "mg", form: "tablet" },
+  { id: "form_metformin_er_500", drugId: "drug_metformin", strength: "500 mg ER", strengthValue: 500, strengthUnit: "mg", form: "tablet" },
+  // Amlodipine
+  { id: "form_amlodipine_5", drugId: "drug_amlodipine", strength: "5 mg", strengthValue: 5, strengthUnit: "mg", form: "tablet" },
+  { id: "form_amlodipine_10", drugId: "drug_amlodipine", strength: "10 mg", strengthValue: 10, strengthUnit: "mg", form: "tablet" },
+  // Metoprolol
+  { id: "form_metoprolol_25", drugId: "drug_metoprolol", strength: "25 mg succinate", strengthValue: 25, strengthUnit: "mg", form: "tablet" },
+  { id: "form_metoprolol_50", drugId: "drug_metoprolol", strength: "50 mg succinate", strengthValue: 50, strengthUnit: "mg", form: "tablet" },
+  // Levothyroxine
+  { id: "form_levothyroxine_50", drugId: "drug_levothyroxine", strength: "50 mcg", strengthValue: 50, strengthUnit: "mcg", form: "tablet" },
+  { id: "form_levothyroxine_75", drugId: "drug_levothyroxine", strength: "75 mcg", strengthValue: 75, strengthUnit: "mcg", form: "tablet" },
+  { id: "form_levothyroxine_100", drugId: "drug_levothyroxine", strength: "100 mcg", strengthValue: 100, strengthUnit: "mcg", form: "tablet" },
+  // Omeprazole
+  { id: "form_omeprazole_20", drugId: "drug_omeprazole", strength: "20 mg", strengthValue: 20, strengthUnit: "mg", form: "capsule" },
+  { id: "form_omeprazole_40", drugId: "drug_omeprazole", strength: "40 mg", strengthValue: 40, strengthUnit: "mg", form: "capsule" },
+  // Sertraline
+  { id: "form_sertraline_25", drugId: "drug_sertraline", strength: "25 mg", strengthValue: 25, strengthUnit: "mg", form: "tablet" },
+  { id: "form_sertraline_50", drugId: "drug_sertraline", strength: "50 mg", strengthValue: 50, strengthUnit: "mg", form: "tablet" },
+  { id: "form_sertraline_100", drugId: "drug_sertraline", strength: "100 mg", strengthValue: 100, strengthUnit: "mg", form: "tablet" },
+  // Escitalopram
+  { id: "form_escitalopram_5", drugId: "drug_escitalopram", strength: "5 mg", strengthValue: 5, strengthUnit: "mg", form: "tablet" },
+  { id: "form_escitalopram_10", drugId: "drug_escitalopram", strength: "10 mg", strengthValue: 10, strengthUnit: "mg", form: "tablet" },
+  { id: "form_escitalopram_20", drugId: "drug_escitalopram", strength: "20 mg", strengthValue: 20, strengthUnit: "mg", form: "tablet" },
+  // Alprazolam
+  { id: "form_alprazolam_025", drugId: "drug_alprazolam", strength: "0.25 mg", strengthValue: 0.25, strengthUnit: "mg", form: "tablet" },
+  { id: "form_alprazolam_05", drugId: "drug_alprazolam", strength: "0.5 mg", strengthValue: 0.5, strengthUnit: "mg", form: "tablet" },
+  { id: "form_alprazolam_1", drugId: "drug_alprazolam", strength: "1 mg", strengthValue: 1, strengthUnit: "mg", form: "tablet" },
+  // Gabapentin
+  { id: "form_gabapentin_100", drugId: "drug_gabapentin", strength: "100 mg", strengthValue: 100, strengthUnit: "mg", form: "capsule" },
+  { id: "form_gabapentin_300", drugId: "drug_gabapentin", strength: "300 mg", strengthValue: 300, strengthUnit: "mg", form: "capsule" },
+  { id: "form_gabapentin_600", drugId: "drug_gabapentin", strength: "600 mg", strengthValue: 600, strengthUnit: "mg", form: "tablet" },
+  // Albuterol
+  { id: "form_albuterol_hfa", drugId: "drug_albuterol", strength: "90 mcg/actuation", strengthValue: 90, strengthUnit: "mcg", form: "inhaler" },
+  { id: "form_albuterol_neb", drugId: "drug_albuterol", strength: "2.5 mg / 3 mL", strengthValue: 2.5, strengthUnit: "mg", form: "liquid" },
+  // Warfarin
+  { id: "form_warfarin_2", drugId: "drug_warfarin", strength: "2 mg", strengthValue: 2, strengthUnit: "mg", form: "tablet", requiresMonitoring: true },
+  { id: "form_warfarin_5", drugId: "drug_warfarin", strength: "5 mg", strengthValue: 5, strengthUnit: "mg", form: "tablet", requiresMonitoring: true },
+];

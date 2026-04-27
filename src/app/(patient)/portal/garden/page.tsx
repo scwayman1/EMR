@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, EditorialRule } from "@/components/ui/ornament";
 import { HealthPlant } from "@/components/ui/health-plant";
+import { PlantShareCard } from "@/components/portal/plant-share-card";
 import {
   computePlantHealth,
   STAGE_LABELS,
@@ -84,6 +85,23 @@ export default async function GardenPage() {
             {STAGE_ENCOURAGEMENT[health.stage]}
           </p>
         </div>
+      </section>
+
+      {/* ---- Share card ---- */}
+      <section className="mb-10">
+        <h2 className="font-display text-xl text-text tracking-tight mb-2">
+          Share your garden
+        </h2>
+        <p className="text-sm text-text-muted mb-5 max-w-md">
+          Save the moment. Download a shareable card or post it directly from
+          your phone.
+        </p>
+        <PlantShareCard
+          firstName={patient.firstName ?? ""}
+          score={health.score}
+          leafCount={health.leafCount}
+          stageLabel={STAGE_LABELS[health.stage]}
+        />
       </section>
 
       <EditorialRule className="mb-10" />

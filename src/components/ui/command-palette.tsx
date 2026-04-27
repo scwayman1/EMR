@@ -171,6 +171,34 @@ const CLINICIAN_COMMANDS: CommandDef[] = [
     roles: ["clinician"],
     keywords: ["handout", "education", "patient", "print"],
   },
+  {
+    id: "c-projector",
+    label: "Toggle projector mode",
+    hint: "⌘⇧P · ultra-wide scaling for HDMI / conference rooms",
+    group: "Display",
+    roles: ["clinician"],
+    keywords: ["projector", "hdmi", "present", "zoom", "scale", "external"],
+    run: () => {
+      if (typeof document === "undefined") return;
+      const root = document.documentElement;
+      const on = root.getAttribute("data-mode") === "projector";
+      if (on) {
+        root.removeAttribute("data-mode");
+        try {
+          window.localStorage.setItem("leafjourney:projector-mode:v1", "0");
+        } catch {
+          // ignore
+        }
+      } else {
+        root.setAttribute("data-mode", "projector");
+        try {
+          window.localStorage.setItem("leafjourney:projector-mode:v1", "1");
+        } catch {
+          // ignore
+        }
+      }
+    },
+  },
 ];
 
 // ───────────────────────────────────────── Operator

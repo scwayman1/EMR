@@ -69,7 +69,15 @@ export type DomainEvent =
   | { name: "claim.financial.closed"; claimId: string; closureType: string; totalCollectedCents: number; daysCycleTime: number; humanTouches: number; organizationId: string }
   | { name: "human.review.required"; sourceAgent: string; category: string; claimId?: string; patientId?: string; summary: string; suggestedAction: string; tier: number; organizationId: string }
   | { name: "compliance.flag.raised"; claimId: string; flagType: string; severity: "warning" | "block"; detail: string; organizationId: string }
-  | { name: "write_off.requested"; claimId: string; amountCents: number; reason: string; requestedBy: string; organizationId: string };
+  | { name: "write_off.requested"; claimId: string; amountCents: number; reason: string; requestedBy: string; organizationId: string }
+  // Note billing pipeline (EMR-045) — multi-agent coding + compliance pass
+  | { name: "note.billing.review.requested"; noteId: string; encounterId: string; patientId: string; organizationId: string }
+  | { name: "note.coding.complete"; noteId: string; organizationId: string; coding: import("../agents/billing/note-coding-agent").NoteCodingResult }
+  | { name: "note.compliance.complete"; noteId: string; organizationId: string; passes: boolean; blockingCount: number; warningCount: number }
+  // Medication prior-auth appeal (EMR-076) — clinician triggers AI Appeal,
+  // a background AgentJob drafts the appeal letter for review.
+  | { name: "medication.prior_auth.denied"; priorAuthId: string; patientId: string; organizationId: string; payerName: string; denialReason: string }
+  | { name: "medication.pa.appeal.requested"; priorAuthId: string; organizationId: string; requestedById: string };
 
 export type EventName = DomainEvent["name"];
 export type EventOf<N extends EventName> = Extract<DomainEvent, { name: N }>;

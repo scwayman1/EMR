@@ -1,0 +1,50 @@
+{
+  "name": "Leafjourney — Cannabis Care",
+  "short_name": "Leafjourney",
+  "description": "AI-native EMR + patient portal for modern cannabis medicine.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1F4D37",
+  "background_color": "#FFFCF7",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["medical", "health", "productivity"],
+  "id": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today",
+      "short_name": "Today",
+      "url": "/clinic",
+      "description": "Today's clinic dashboard"
+    },
+    {
+      "name": "Patient Portal",
+      "short_name": "Portal",
+      "url": "/portal",
+      "description": "Patient home"
+    },
+    {
+      "name": "Workspace",
+      "short_name": "Workspace",
+      "url": "/clinic/workspace",
+      "description": "Multi-pane clinical workspace"
+    }
+  ],
+  "prefer_related_applications": false
+}

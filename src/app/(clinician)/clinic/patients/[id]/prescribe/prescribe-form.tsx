@@ -90,14 +90,19 @@ const DIAGNOSIS_OPTIONS: DiagnosisOption[] = [
   { code: "R45.7", label: "State of emotional shock and stress" },
 ];
 
-/* iOS-inspired select — 48px height, xl radius, larger text */
+/* EMR-059 — single-viewport dense mode.
+   Compact selects (32px) so dose/freq/quantity rows pack into one band. */
 const SELECT_CLASS =
-  "flex w-full rounded-xl border border-border-strong bg-white px-4 h-12 text-base text-text " +
+  "flex w-full rounded-md border border-border-strong bg-white px-2 h-8 text-sm text-text " +
+  "transition-colors duration-150 ease-smooth " +
   "focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 " +
-  "disabled:opacity-50 disabled:cursor-not-allowed shadow-sm";
+  "disabled:opacity-50 disabled:cursor-not-allowed";
 
-const SECTION_LABEL = "text-[11px] font-semibold uppercase tracking-[0.14em] text-text-subtle mb-3";
-const CARD_CLASS = "rounded-2xl shadow-sm bg-white border-border/60";
+const SECTION_LABEL =
+  "text-[10px] font-semibold uppercase tracking-[0.14em] text-text-subtle mb-1";
+const CARD_CLASS =
+  "rounded-xl shadow-sm bg-white border border-border/60 px-3 py-3 flex flex-col min-h-0";
+const FIELD_LABEL = "text-[10px] uppercase tracking-wider text-text-subtle mb-1";
 
 /* ── Submit button ──────────────────────────────────────────── */
 
@@ -106,11 +111,11 @@ function SubmitButton({ disabled }: { disabled?: boolean }) {
   return (
     <Button
       type="submit"
-      size="lg"
-      className="w-full rounded-xl h-14 text-base font-semibold shadow-sm"
+      size="md"
+      className="rounded-lg h-10 px-6 text-sm font-semibold"
       disabled={pending || disabled}
     >
-      {pending ? "Signing & sending..." : "Sign & send ℞"}
+      {pending ? "Signing…" : "Sign & send ℞"}
     </Button>
   );
 }
@@ -313,7 +318,10 @@ export function PrescribeForm({
       : "Not set";
 
   return (
-    <form action={formAction}>
+    <form
+      action={formAction}
+      className="grid grid-cols-12 gap-3 lg:max-h-[calc(100vh-9rem)] lg:overflow-hidden"
+    >
       <input type="hidden" name="patientId" value={patientId} />
       <input type="hidden" name="diagnosisCodes" value={diagnosisCodesJson} />
       {interactionAcknowledged && (
@@ -343,9 +351,10 @@ export function PrescribeForm({
       {contraindicationMatches.length > 0 && (
         <Card
           className={
-            hasBlockingContraindication
+            "col-span-12 " +
+            (hasBlockingContraindication
               ? "border-l-4 border-l-danger bg-danger/[0.04]"
-              : "border-l-4 border-l-[color:var(--warning)] bg-[color:var(--warning)]/[0.04]"
+              : "border-l-4 border-l-[color:var(--warning)] bg-[color:var(--warning)]/[0.04]")
           }
         >
           <CardHeader>
@@ -433,31 +442,29 @@ export function PrescribeForm({
       )}
 
       {/* ── Superscription — Rx header ────────────────────────── */}
-      <Card className={CARD_CLASS}>
-        <CardContent className="pt-6 pb-4">
-          <div className="flex items-center justify-between mb-1">
-            <div>
-              <p className={SECTION_LABEL}>Patient</p>
-              <p className="text-xl font-semibold text-text tracking-tight">{patientName}</p>
+      <Card className={CARD_CLASS + " col-span-12 !py-2.5"}>
+        <CardContent className="!p-0 flex items-center justify-between">
+          <div className="flex items-baseline gap-3 min-w-0">
+            <span className="text-3xl font-light text-accent/40 select-none leading-none">℞</span>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.14em] text-text-subtle">Patient</p>
+              <p className="text-base font-semibold text-text tracking-tight truncate">
+                {patientName}
+              </p>
             </div>
-            <span className="text-5xl font-light text-accent/30 select-none">℞</span>
           </div>
-          <p className="text-sm text-text-muted">
-            Date of issue: {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
+          <p className="text-xs text-text-muted shrink-0">
+            {new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
           </p>
         </CardContent>
       </Card>
 
-      {/* ── Inscription — Medication ─────────────────────────── */}
-      <Card className={CARD_CLASS}>
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Medication</CardTitle>
-          <CardDescription>
-            Select from your organization&apos;s formulary or enter a custom
-            medication.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {/* ── Inscription — Medication (left column) ──────────────── */}
+      <Card className={CARD_CLASS + " col-span-12 lg:col-span-4 lg:row-span-2 min-h-0"}>
+        <div className="mb-2">
+          <p className={SECTION_LABEL}>Medication</p>
+        </div>
+        <div className="space-y-2 flex-1 min-h-0 flex flex-col">
           {/* Search / filter */}
           <FieldGroup label="Search products" htmlFor="productSearch">
             <Input
@@ -468,13 +475,13 @@ export function PrescribeForm({
             />
           </FieldGroup>
 
-          {/* Product list */}
+          {/* Product list — packed dense */}
           {filteredProducts.length > 0 ? (
-            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+            <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
               {filteredProducts.map((p) => (
                 <label
                   key={p.id}
-                  className={`flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer ${
+                  className={`flex items-center gap-2 p-2 rounded-lg border transition-colors cursor-pointer ${
                     selectedProductId === p.id
                       ? "border-accent bg-accent-soft/50"
                       : "border-border hover:border-accent/40 hover:bg-accent-soft/30"
@@ -489,23 +496,20 @@ export function PrescribeForm({
                       setSelectedProductId(p.id);
                       setCustomProductName("");
                     }}
-                    className="h-4 w-4 text-accent border-border-strong focus:ring-accent/20"
+                    className="h-3.5 w-3.5 text-accent border-border-strong focus:ring-accent/20"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-text">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-text truncate">
                         {p.name}
                       </span>
-                      <Badge tone="neutral">
-                        {p.productType.replace("_", " ")}
-                      </Badge>
                       {p.thcCbdRatio && (
-                        <Badge tone="highlight">
-                          THC:CBD {p.thcCbdRatio}
+                        <Badge tone="highlight" className="!text-[9px] !px-1">
+                          {p.thcCbdRatio}
                         </Badge>
                       )}
                     </div>
-                    <div className="text-xs text-text-muted mt-1">
+                    <div className="text-[10px] text-text-muted truncate">
                       {p.brand && `${p.brand} \u00B7 `}
                       {p.thcConcentration !== null &&
                         `THC ${p.thcConcentration} ${p.concentrationUnit}`}
@@ -531,64 +535,54 @@ export function PrescribeForm({
             </p>
           )}
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 py-2">
-            <div className="flex-1 border-t border-border" />
-            <span className="text-xs text-text-subtle font-medium uppercase tracking-wider">
-              or enter manually
-            </span>
-            <div className="flex-1 border-t border-border" />
+          {/* Custom + type packed in one row */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/60">
+            <div>
+              <p className={FIELD_LABEL}>Custom name</p>
+              <Input
+                id="customProductName"
+                name="customProductName"
+                className="h-8 text-xs px-2"
+                value={customProductName}
+                onChange={(e) => {
+                  setCustomProductName(e.target.value);
+                  if (e.target.value.trim()) {
+                    setSelectedProductId("");
+                  }
+                }}
+                placeholder="Off-formulary…"
+              />
+            </div>
+            <div>
+              <p className={FIELD_LABEL}>Type</p>
+              <select
+                id="productType"
+                name="productType"
+                required
+                value={productType}
+                onChange={(e) => setProductType(e.target.value)}
+                className={SELECT_CLASS}
+              >
+                <option value="">Select…</option>
+                {PRODUCT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-
-          {/* Custom product name */}
-          <FieldGroup label="Custom medication name" htmlFor="customProductName">
-            <Input
-              id="customProductName"
-              name="customProductName"
-              value={customProductName}
-              onChange={(e) => {
-                setCustomProductName(e.target.value);
-                if (e.target.value.trim()) {
-                  setSelectedProductId("");
-                }
-              }}
-              placeholder="Enter medication name..."
-            />
-          </FieldGroup>
-
-          {/* Product type */}
-          <FieldGroup label="Type" htmlFor="productType">
-            <select
-              id="productType"
-              name="productType"
-              required
-              value={productType}
-              onChange={(e) => setProductType(e.target.value)}
-              className={SELECT_CLASS}
-            >
-              <option value="">Select type...</option>
-              {PRODUCT_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </FieldGroup>
-        </CardContent>
+        </div>
       </Card>
 
-      {/* ── Subscription & Signa — Dosing ──────────────────────── */}
-      <Card tone="raised">
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Dosing &amp; directions</CardTitle>
-          <CardDescription>
-            Set the dose, frequency, supply duration, and quantity.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Dose + unit */}
-          <div className="grid grid-cols-2 gap-4">
-            <FieldGroup label="Dose (amount per dose)" htmlFor="volumePerDose">
+      {/* ── Subscription & Signa — Dosing (center column) ──────── */}
+      <Card className={CARD_CLASS + " col-span-12 lg:col-span-4"}>
+        <p className={SECTION_LABEL}>Dose &amp; sig</p>
+        <div className="space-y-2">
+          {/* Dose / unit / freq packed in 3 columns */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className={FIELD_LABEL}>Dose</p>
               <Input
                 id="volumePerDose"
                 name="volumePerDose"
@@ -596,12 +590,14 @@ export function PrescribeForm({
                 step="0.01"
                 min="0.01"
                 required
+                className="h-8 text-sm px-2"
                 value={volumePerDose}
                 onChange={(e) => setVolumePerDose(e.target.value)}
-                placeholder="e.g. 10"
+                placeholder="10"
               />
-            </FieldGroup>
-            <FieldGroup label="Unit" htmlFor="volumeUnit">
+            </div>
+            <div>
+              <p className={FIELD_LABEL}>Unit</p>
               <select
                 id="volumeUnit"
                 name="volumeUnit"
@@ -616,30 +612,30 @@ export function PrescribeForm({
                   </option>
                 ))}
               </select>
-            </FieldGroup>
+            </div>
+            <div>
+              <p className={FIELD_LABEL}>Freq/day</p>
+              <select
+                id="frequencyPerDay"
+                name="frequencyPerDay"
+                required
+                value={frequencyPerDay}
+                onChange={(e) => setFrequencyPerDay(e.target.value)}
+                className={SELECT_CLASS}
+              >
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    {n}x
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {/* Frequency */}
-          <FieldGroup label="Times per day" htmlFor="frequencyPerDay">
-            <select
-              id="frequencyPerDay"
-              name="frequencyPerDay"
-              required
-              value={frequencyPerDay}
-              onChange={(e) => setFrequencyPerDay(e.target.value)}
-              className={SELECT_CLASS}
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  {n} {n === 1 ? "time" : "times"} per day
-                </option>
-              ))}
-            </select>
-          </FieldGroup>
-
-          {/* Days supply, quantity, refills */}
-          <div className="grid grid-cols-3 gap-4">
-            <FieldGroup label="Days supply" htmlFor="daysSupply">
+          {/* Days / quantity / refills */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className={FIELD_LABEL}>Days</p>
               <Input
                 id="daysSupply"
                 name="daysSupply"
@@ -647,20 +643,16 @@ export function PrescribeForm({
                 min="1"
                 max="365"
                 required
+                className="h-8 text-sm px-2"
                 value={daysSupply}
                 onChange={(e) => setDaysSupply(e.target.value)}
                 placeholder="30"
               />
-            </FieldGroup>
-            <FieldGroup
-              label="Quantity"
-              htmlFor="quantity"
-              hint={
-                !quantityManual
-                  ? "Auto-calculated"
-                  : "Manually set"
-              }
-            >
+            </div>
+            <div>
+              <p className={FIELD_LABEL}>
+                Qty {!quantityManual ? "(auto)" : ""}
+              </p>
               <Input
                 id="quantity"
                 name="quantity"
@@ -668,6 +660,7 @@ export function PrescribeForm({
                 step="0.01"
                 min="0.01"
                 required
+                className="h-8 text-sm px-2"
                 value={quantity}
                 onChange={(e) => {
                   setQuantity(e.target.value);
@@ -675,8 +668,9 @@ export function PrescribeForm({
                 }}
                 placeholder="Auto"
               />
-            </FieldGroup>
-            <FieldGroup label="Refills" htmlFor="refills">
+            </div>
+            <div>
+              <p className={FIELD_LABEL}>Refills</p>
               <select
                 id="refills"
                 name="refills"
@@ -690,126 +684,91 @@ export function PrescribeForm({
                   </option>
                 ))}
               </select>
-            </FieldGroup>
+            </div>
           </div>
 
           {/* Timing instructions */}
-          <FieldGroup
-            label="Timing instructions"
-            htmlFor="timingInstructions"
-            hint='e.g. "Morning and 1 hour before bed"'
-          >
+          <div>
+            <p className={FIELD_LABEL}>Timing</p>
             <Input
               id="timingInstructions"
               name="timingInstructions"
+              className="h-8 text-xs px-2"
               value={timingInstructions}
               onChange={(e) => setTimingInstructions(e.target.value)}
-              placeholder="Morning and 1 hour before bed"
+              placeholder='e.g. "Morning and 1 hour before bed"'
             />
-          </FieldGroup>
-        </CardContent>
+          </div>
+        </div>
       </Card>
 
-      {/* ── Section 3: Drug Interaction Check ──────────────────── */}
-      <Card tone="raised">
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Safety check</CardTitle>
-          <CardDescription>
+      {/* ── Section 3: Safety / Interactions (right column top) ── */}
+      <Card className={CARD_CLASS + " col-span-12 lg:col-span-4"}>
+        <p className={SECTION_LABEL}>
+          Safety check
+          <span className="ml-2 normal-case tracking-normal text-text-muted text-[10px]">
             {medications.length === 0
-              ? "No medications on file for this patient."
-              : `Checking against ${medications.length} medication${medications.length !== 1 ? "s" : ""} on file.`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+              ? "No meds on file"
+              : `${medications.length} med${medications.length !== 1 ? "s" : ""}`}
+          </span>
+        </p>
+        <div className="space-y-2">
           {!selectedProductId && (
-            <p className="text-sm text-text-subtle italic">
-              Select a product from the formulary to run the interaction check.
+            <p className="text-xs text-text-subtle italic">
+              Select a product to run the interaction check.
             </p>
           )}
 
           {selectedProductId && medications.length === 0 && (
-            <p className="text-sm text-text-subtle italic">
-              No conventional medications on file. No interactions to check.
+            <p className="text-xs text-text-subtle italic">
+              No conventional meds on file. Nothing to check.
             </p>
           )}
 
           {selectedProductId && medications.length > 0 && interactions.length === 0 && (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-accent-soft/50 border border-[color:var(--success)]/20">
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-accent-soft/50 border border-[color:var(--success)]/20">
               <InteractionBadge severity="green" />
-              <span className="text-sm text-text">
-                No known drug interactions detected.
-              </span>
+              <span className="text-xs text-text">No known interactions.</span>
             </div>
           )}
 
           {interactions.length > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
               {interactions.map((interaction, idx) => (
                 <InteractionRow key={idx} interaction={interaction} />
               ))}
-
-              {/* Warning card for red/yellow interactions */}
-              {hasRedYellow && (
-                <div className="mt-4 p-4 rounded-xl border-2 border-[color:var(--danger)] bg-red-50">
-                  <div className="flex items-start gap-3">
-                    <svg
-                      className="h-6 w-6 text-danger shrink-0 mt-0.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                      />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-danger">
-                        Drug interaction warning
-                      </p>
-                      <p className="text-sm text-text-muted mt-1">
-                        {interactions.filter((i) => i.severity === "red").length > 0 &&
-                          `${interactions.filter((i) => i.severity === "red").length} contraindicated interaction${interactions.filter((i) => i.severity === "red").length !== 1 ? "s" : ""}. `}
-                        {interactions.filter((i) => i.severity === "yellow").length > 0 &&
-                          `${interactions.filter((i) => i.severity === "yellow").length} caution interaction${interactions.filter((i) => i.severity === "yellow").length !== 1 ? "s" : ""}. `}
-                        You must acknowledge these interactions before proceeding.
-                      </p>
-                      <label className="flex items-center gap-2 mt-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={interactionAcknowledged}
-                          onChange={(e) =>
-                            setInteractionAcknowledged(e.target.checked)
-                          }
-                          className="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent/20"
-                        />
-                        <span className="text-sm font-medium text-text">
-                          I have reviewed the drug interactions and accept the
-                          risks
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
-        </CardContent>
+
+          {hasRedYellow && (
+            <div className="p-2 rounded-lg border-2 border-[color:var(--danger)] bg-red-50">
+              <p className="text-xs font-medium text-danger leading-snug">
+                ⚠ Interaction warning — must acknowledge
+              </p>
+              <label className="flex items-center gap-1.5 mt-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={interactionAcknowledged}
+                  onChange={(e) =>
+                    setInteractionAcknowledged(e.target.checked)
+                  }
+                  className="h-3.5 w-3.5 rounded border-border-strong text-accent focus:ring-accent/20"
+                />
+                <span className="text-[11px] font-medium text-text">
+                  Reviewed &amp; accept risks
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
       </Card>
 
-      {/* ── Section 4: Diagnosis Linking ───────────────────────── */}
-      <Card tone="raised">
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Diagnosis</CardTitle>
-          <CardDescription>
-            Link relevant ICD-10 diagnosis codes to this prescription.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Common ICD-10 codes */}
-          <div className="space-y-2">
+      {/* ── Section 4: Diagnosis (bottom-left) ─────────────────── */}
+      <Card className={CARD_CLASS + " col-span-12 lg:col-span-6 min-h-0"}>
+        <p className={SECTION_LABEL}>Diagnoses (ICD-10)</p>
+        <div className="space-y-2 flex-1 min-h-0 flex flex-col">
+          {/* Common ICD-10 codes — packed dense */}
+          <div className="space-y-1 flex-1 min-h-0 overflow-y-auto pr-1">
             {DIAGNOSIS_OPTIONS.map((dx) => {
               const isSelected = selectedDiagnoses.some(
                 (d) => d.code === dx.code
@@ -817,7 +776,7 @@ export function PrescribeForm({
               return (
                 <label
                   key={dx.code}
-                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                  className={`flex items-center gap-2 p-1.5 rounded border transition-colors cursor-pointer ${
                     isSelected
                       ? "border-accent bg-accent-soft/50"
                       : "border-border hover:border-accent/40 hover:bg-accent-soft/20"
@@ -827,9 +786,9 @@ export function PrescribeForm({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggleDiagnosis(dx)}
-                    className="h-4 w-4 rounded border-border-strong text-accent focus:ring-accent/20"
+                    className="h-3.5 w-3.5 rounded border-border-strong text-accent focus:ring-accent/20"
                   />
-                  <span className="text-sm text-text">
+                  <span className="text-xs text-text truncate">
                     <span className="font-mono font-medium text-accent">
                       {dx.code}
                     </span>
@@ -841,28 +800,28 @@ export function PrescribeForm({
             })}
           </div>
 
-          {/* Custom ICD-10 input */}
-          <div className="flex items-end gap-2">
+          {/* Custom ICD-10 input + Add button */}
+          <div className="flex items-end gap-2 pt-1 border-t border-border/60">
             <div className="flex-1">
-              <FieldGroup label="Other ICD-10 code" htmlFor="customIcd10">
-                <Input
-                  id="customIcd10"
-                  value={customIcd10}
-                  onChange={(e) => setCustomIcd10(e.target.value)}
-                  placeholder="e.g. M54.5"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addCustomIcd10();
-                    }
-                  }}
-                />
-              </FieldGroup>
+              <p className={FIELD_LABEL}>Other ICD-10</p>
+              <Input
+                id="customIcd10"
+                className="h-8 text-xs px-2"
+                value={customIcd10}
+                onChange={(e) => setCustomIcd10(e.target.value)}
+                placeholder="e.g. M54.5"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomIcd10();
+                  }
+                }}
+              />
             </div>
             <Button
               type="button"
               variant="secondary"
-              size="md"
+              size="sm"
               onClick={addCustomIcd10}
             >
               Add
@@ -871,186 +830,139 @@ export function PrescribeForm({
 
           {/* Selected diagnoses as badges */}
           {selectedDiagnoses.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="flex flex-wrap gap-1.5">
               {selectedDiagnoses.map((dx) => (
                 <Badge
                   key={dx.code}
                   tone="accent"
-                  className="cursor-pointer gap-1.5 pr-1.5"
+                  className="cursor-pointer gap-1 pr-1 !text-[10px]"
                   onClick={() => removeCustomDiagnosis(dx.code)}
                 >
                   {dx.code}
-                  <svg
-                    className="h-3 w-3 opacity-60 hover:opacity-100"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                  <span aria-hidden="true" className="opacity-60 hover:opacity-100">
+                    ×
+                  </span>
                 </Badge>
               ))}
             </div>
           )}
-        </CardContent>
+        </div>
       </Card>
 
-      {/* ── Section 5: Notes ───────────────────────────────────── */}
-      <Card tone="raised">
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Notes</CardTitle>
-          <CardDescription>
-            Patient-facing and pharmacy notes for this prescription.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <FieldGroup
-            label="Note to patient"
-            htmlFor="noteToPatient"
-            hint="Shown to the patient on their medications page"
-          >
+      {/* ── Section 5: Notes (bottom-right) ────────────────────── */}
+      <Card className={CARD_CLASS + " col-span-12 lg:col-span-6"}>
+        <p className={SECTION_LABEL}>Notes</p>
+        <div className="space-y-2">
+          <div>
+            <p className={FIELD_LABEL}>To patient</p>
             <Textarea
               id="noteToPatient"
               name="noteToPatient"
-              rows={3}
+              rows={2}
+              className="text-xs px-2 py-1.5"
               value={noteToPatient}
               onChange={(e) => setNoteToPatient(e.target.value)}
               placeholder="Take with food. Avoid driving for 2 hours after dose."
             />
-          </FieldGroup>
-          <FieldGroup
-            label="Note to pharmacy"
-            htmlFor="noteToPharmacy"
-            hint="Internal only - not shown to patient"
-          >
+          </div>
+          <div>
+            <p className={FIELD_LABEL}>To pharmacy (internal)</p>
             <Textarea
               id="noteToPharmacy"
               name="noteToPharmacy"
               rows={2}
+              className="text-xs px-2 py-1.5"
               value={noteToPharmacy}
               onChange={(e) => setNoteToPharmacy(e.target.value)}
               placeholder="Brand medically necessary. Do not substitute."
             />
-          </FieldGroup>
-        </CardContent>
+          </div>
+        </div>
       </Card>
 
-      {/* ── Section 6: Review & Submit ─────────────────────────── */}
-      <Card tone="ambient">
-        <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Review &amp; sign</CardTitle>
-          <CardDescription>
-            Review the prescription details before creating.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-xl bg-surface/80 border border-border p-5 space-y-4">
-            {/* Summary grid */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <SummaryRow label="Medication" value={medicationName} />
-              <SummaryRow
-                label="Type"
-                value={
-                  PRODUCT_TYPES.find((t) => t.value === productType)?.label ||
-                  productType ||
-                  "Not set"
-                }
-              />
-              <SummaryRow label="Sig" value={sigSummary} />
-              <SummaryRow
-                label="Days supply"
-                value={daysSupply ? `${daysSupply} days` : "Not set"}
-              />
-              <SummaryRow
-                label="Quantity"
-                value={quantity || "Not set"}
-              />
-              <SummaryRow
-                label="Refills"
-                value={refills}
-              />
-            </div>
-
-            {/* Timing */}
-            {timingInstructions && (
-              <div className="pt-2 border-t border-border/60">
-                <SummaryRow label="Timing" value={timingInstructions} />
-              </div>
-            )}
-
-            {/* Diagnoses */}
-            {selectedDiagnoses.length > 0 && (
-              <div className="pt-2 border-t border-border/60">
-                <p className="text-xs font-medium text-text-muted mb-2">
-                  Linked diagnoses
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedDiagnoses.map((dx) => (
-                    <Badge key={dx.code} tone="accent">
-                      {dx.code}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Interaction status */}
+      {/* ── Section 6: Review & Submit (full-width footer band) ─ */}
+      <Card className={CARD_CLASS + " col-span-12 !py-3 ambient"}>
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <p className={SECTION_LABEL + " !mb-0"}>Review &amp; sign</p>
+          <div className="flex items-center gap-2 flex-wrap text-[11px]">
             {selectedProductId && medications.length > 0 && (
-              <div className="pt-2 border-t border-border/60">
-                <p className="text-xs font-medium text-text-muted mb-2">
-                  Interaction status
-                </p>
-                {interactions.length === 0 ? (
-                  <InteractionBadge severity="green" />
-                ) : (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {interactions.some((i) => i.severity === "red") && (
-                      <InteractionBadge severity="red" />
-                    )}
-                    {interactions.some((i) => i.severity === "yellow") && (
-                      <InteractionBadge severity="yellow" />
-                    )}
-                    {interactions.some((i) => i.severity === "green") && (
-                      <InteractionBadge severity="green" />
-                    )}
-                    {interactionAcknowledged && hasRedYellow && (
-                      <span className="text-xs text-text-muted ml-1">
-                        (acknowledged)
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
+              interactions.length === 0 ? (
+                <InteractionBadge severity="green" />
+              ) : (
+                <>
+                  {interactions.some((i) => i.severity === "red") && (
+                    <InteractionBadge severity="red" />
+                  )}
+                  {interactions.some((i) => i.severity === "yellow") && (
+                    <InteractionBadge severity="yellow" />
+                  )}
+                  {interactions.some((i) => i.severity === "green") && (
+                    <InteractionBadge severity="green" />
+                  )}
+                  {interactionAcknowledged && hasRedYellow && (
+                    <span className="text-text-muted">(ack)</span>
+                  )}
+                </>
+              )
             )}
           </div>
+        </div>
 
-          {/* ── E-Prescribe: Pharmacy Selection (EMR-169) ─── */}
-          <div className="mt-8">
+        {/* Compact summary grid — 6 fields in one row */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 px-3 py-2 rounded-lg bg-surface/80 border border-border">
+          <SummaryRow label="Med" value={medicationName} />
+          <SummaryRow
+            label="Type"
+            value={
+              PRODUCT_TYPES.find((t) => t.value === productType)?.label ||
+              productType ||
+              "—"
+            }
+          />
+          <SummaryRow label="Sig" value={sigSummary} />
+          <SummaryRow
+            label="Days"
+            value={daysSupply || "—"}
+          />
+          <SummaryRow label="Qty" value={quantity || "—"} />
+          <SummaryRow label="Refills" value={refills} />
+        </div>
+
+        {/* Pharmacy + preview/sign action band */}
+        <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2">
+          <div className="flex-1 min-w-0">
             <PharmacySelector
               selectedId={selectedPharmacy?.id ?? null}
               onSelect={(pharm) => setSelectedPharmacy(pharm)}
             />
           </div>
 
-          {/* ── E-Prescribe: Preview & Sign (EMR-169) ──────── */}
           {hasProduct && volumePerDose && daysSupply && (
-            <div className="mt-6">
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={() => setShowPreview(!showPreview)}
-              >
-                {showPreview ? "Hide preview" : "Preview prescription"}
-              </Button>
-              {showPreview && (
-                <div className="mt-4">
-                  <RxPreview
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowPreview(!showPreview)}
+            >
+              {showPreview ? "Hide preview" : "Preview"}
+            </Button>
+          )}
+
+          {state?.ok === false && (
+            <p className="text-xs text-danger">{state.error}</p>
+          )}
+
+          <Link href={`/clinic/patients/${patientId}?tab=rx`}>
+            <Button type="button" variant="ghost" size="sm">
+              Cancel
+            </Button>
+          </Link>
+          <SubmitButton disabled={mustAcknowledge} />
+        </div>
+
+        {showPreview && hasProduct && volumePerDose && daysSupply && (
+          <div className="mt-3 max-h-72 overflow-y-auto">
+            <RxPreview
                     patientName={patientName}
                     productName={selectedProduct?.name ?? customProductName}
                     productType={productType}
@@ -1081,26 +993,8 @@ export function PrescribeForm({
                     signing={signing}
                     signed={signed}
                   />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Error display */}
-          {state?.ok === false && (
-            <p className="text-sm text-danger mt-4">{state.error}</p>
-          )}
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-between gap-4 mt-6">
-            <Link href={`/clinic/patients/${patientId}?tab=rx`}>
-              <Button type="button" variant="ghost">
-                Cancel
-              </Button>
-            </Link>
-            <SubmitButton disabled={mustAcknowledge} />
           </div>
-        </CardContent>
+        )}
       </Card>
     </form>
   );
@@ -1117,32 +1011,32 @@ function InteractionRow({ interaction }: { interaction: DrugInteraction }) {
         : "bg-accent-soft/30 border-[color:var(--success)]/20";
 
   return (
-    <div className={`p-4 rounded-xl border ${bgClass}`}>
-      <div className="flex items-center gap-2 mb-1.5">
+    <div className={`p-2 rounded border ${bgClass}`}>
+      <div className="flex items-center gap-1.5">
         <InteractionBadge severity={interaction.severity} />
-        <span className="text-sm font-medium text-text">
+        <span className="text-xs font-medium text-text truncate">
           {interaction.drug}
         </span>
-        <span className="text-xs text-text-muted">
+        <span className="text-[10px] text-text-muted">
           + {interaction.cannabinoid}
         </span>
       </div>
-      <p className="text-sm text-text-muted">{interaction.mechanism}</p>
-      <p className="text-xs text-text-subtle mt-1">
-        <span className="font-medium">Recommendation:</span>{" "}
-        {interaction.recommendation}
+      <p className="text-[11px] text-text-muted leading-snug mt-0.5">
+        {interaction.mechanism}
       </p>
     </div>
   );
 }
 
-/* ── Summary row ────────────────────────────────────────────── */
+/* ── Summary row — compact label/value pair for footer band ── */
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs font-medium text-text-muted">{label}</p>
-      <p className="text-sm text-text mt-0.5">{value}</p>
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wider font-medium text-text-subtle">
+        {label}
+      </p>
+      <p className="text-xs text-text font-medium truncate">{value}</p>
     </div>
   );
 }

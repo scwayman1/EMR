@@ -4,6 +4,7 @@ import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { agentList } from "@/lib/agents";
 import { MissionControlClient } from "./mission-control-client";
+import { AuditPdfButton } from "./audit-pdf-button";
 
 export const metadata = { title: "Mission Control" };
 
@@ -83,6 +84,7 @@ export default async function MissionControlPage({
         eyebrow="Mission control"
         title="Agent orchestration"
         description="The nervous system. Every workflow, every job, every decision — in one place."
+        actions={<AuditPdfButton />}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">

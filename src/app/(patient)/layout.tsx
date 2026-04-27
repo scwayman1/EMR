@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
 import { ROLE_HOME } from "@/lib/rbac/roles";
-import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
+import { MotivationalQuoteToast } from "@/components/ui/motivational-quote-toast";
+import { MusicWidget } from "@/components/ui/music-widget";
 import { CommandPalette } from "@/components/ui/command-palette";
 
 const PATIENT_SECTIONS: NavSection[] = [
@@ -59,9 +60,10 @@ export default async function PatientLayout({
       sections={PATIENT_SECTIONS}
       roleLabel="Patient portal"
     >
-      <QuoteWelcomeModal userName={user.firstName} />
+      <MotivationalQuoteToast userName={user.firstName} />
       <CommandPalette role="patient" />
       {children}
+      <MusicWidget />
     </AppShell>
   );
 }

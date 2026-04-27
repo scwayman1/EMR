@@ -147,7 +147,10 @@ export function AppShell({
         )}
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-border bg-surface">
+          <header
+            data-native-hide="true"
+            className="md:hidden flex items-center justify-between px-4 h-16 border-b border-border bg-surface"
+          >
             <Link href={homeHref} className="flex items-center gap-2">
               <Wordmark size="sm" />
             </Link>

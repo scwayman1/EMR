@@ -402,6 +402,43 @@
                0 4px 16px rgba(184, 120, 47, 0.06);
   }
 
+  /* EMR-015 — Justin Kander UI feedback pass.
+     Generic "this thing is interactive" treatment for any element that
+     isn't a Button but should still feel clickable: tabs, nav items,
+     bare <button>s, table rows, toolbar icons. Pairs with a subtle
+     amber underline cue on hover for keyboard discoverability. */
+  .interactive {
+    transition: transform 180ms cubic-bezier(0.2, 0, 0, 1),
+                background-color 180ms cubic-bezier(0.2, 0, 0, 1),
+                color 180ms cubic-bezier(0.2, 0, 0, 1),
+                box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .interactive:hover {
+    background-color: var(--surface-muted);
+    color: var(--text);
+  }
+  .interactive:active {
+    transform: scale(0.98);
+  }
+
+  /* Row-level hover for table rows / list items that route on click. */
+  .row-clickable {
+    cursor: pointer;
+    transition: background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .row-clickable:hover {
+    background-color: var(--surface-muted);
+  }
+  .row-clickable:active {
+    background-color: var(--accent-soft);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .interactive,
+    .row-clickable { transition: none; }
+    .interactive:active { transform: none; }
+  }
+
   /* Trust chip — rounded pill with Leaf Soft bg */
   .trust-chip {
     display: inline-flex;
@@ -581,4 +618,122 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ==========================================================================
+   EMR-031 — Responsive cross-device polish
+   Phones → tablets → desktops → ultra-wide. Plus iOS safe-area + native-app
+   bridging hooks (EMR-051).
+   ========================================================================== */
+html, body {
+  /* Stop runaway horizontal scroll on small viewports — long medication
+     names, untruncated table cells, and fixed-width charts otherwise blow
+     the layout out past 100vw on phones. */
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* iOS safe-area awareness — needed for the eventual Capacitor wrapper so
+   notched devices don't clip the top nav or bottom mobile nav bar. */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Touch targets — 44pt minimum on coarse pointers (Apple HIG). Tightens
+   only on touch devices so desktop density is preserved. */
+@media (pointer: coarse) {
+  button, a[role="button"], [role="menuitem"], input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+  }
+  /* Make small icon-only chrome breathe on tablets / phones. */
+  .ui-tap-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* Tablet & small-laptop tightening — the chrome is desktop-first and a
+   little roomy on 768–1024 viewports. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --shell-pad-x: 1rem;
+  }
+}
+
+/* Avoid orphaned columns on phone-sized viewports — long roster tables
+   and metric grids should stack instead of horizontal-scrolling. */
+@media (max-width: 639px) {
+  .grid-cols-2, .grid-cols-3, .grid-cols-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sm\:grid-cols-2, .md\:grid-cols-3, .lg\:grid-cols-4 {
+    /* keep responsive utilities working — only touch the unprefixed
+       defaults so authored breakpoints still apply. */
+  }
+}
+
+/* ==========================================================================
+   EMR-057 — Projector / HDMI presentation mode
+   Activated by setting `data-mode="projector"` on the <html> or <body>.
+   Use the <ProjectorModeToggle /> component, or:
+     document.documentElement.setAttribute("data-mode", "projector")
+   Forces ultra-wide zoomed scaling so charts, vitals, and education slides
+   read from the back of a conference room or operating theater.
+   ========================================================================== */
+:root[data-mode="projector"],
+:root[data-mode="projector"] body {
+  font-size: 22px;
+  line-height: 1.55;
+}
+:root[data-mode="projector"] h1 { font-size: 3rem; line-height: 1.1; }
+:root[data-mode="projector"] h2 { font-size: 2.25rem; line-height: 1.15; }
+:root[data-mode="projector"] h3 { font-size: 1.75rem; line-height: 1.2; }
+:root[data-mode="projector"] {
+  --shell-pad-x: 2.5rem;
+}
+:root[data-mode="projector"] * {
+  /* Boost minimum tap-target sizes so a clinician using a presentation
+     remote can hit buttons reliably from across the room. */
+  letter-spacing: 0.005em;
+}
+:root[data-mode="projector"] button,
+:root[data-mode="projector"] a[role="button"] {
+  min-height: 56px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+:root[data-mode="projector"] .text-xs { font-size: 1rem; }
+:root[data-mode="projector"] .text-sm { font-size: 1.125rem; }
+:root[data-mode="projector"] .text-base { font-size: 1.25rem; }
+:root[data-mode="projector"] table {
+  font-size: 1.125rem;
+}
+/* High-contrast borders — projectors blow out subtle hairlines. */
+:root[data-mode="projector"] {
+  --border: #C7B98A;
+  --border-strong: #8E7A3E;
+}
+
+/* ==========================================================================
+   EMR-051 — Native app readiness (Capacitor / React Native WebView)
+   Activated by setting `data-app-shell="native"` on <html>. The native
+   wrapper sets this on boot via its inject-script hook so the EMR knows
+   to hide redundant browser chrome (top bar, mobile menu) — the native
+   wrapper supplies its own.
+   ========================================================================== */
+:root[data-app-shell="native"] [data-native-hide="true"] {
+  display: none !important;
+}
+:root[data-app-shell="native"] {
+  /* Native shells already provide their own status-bar handling; avoid
+     double-padding the safe area. */
+  --native-safe-top: 0px;
+}
+:root[data-app-shell="native"] body {
+  padding-top: 0;
+  padding-bottom: env(safe-area-inset-bottom);
 }

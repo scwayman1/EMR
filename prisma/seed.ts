@@ -34,6 +34,8 @@ import {
 } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { CATEGORIES, PRODUCTS } from "../src/lib/marketplace/data";
+import { PHARMACEUTICAL_DRUGS, PHARMACEUTICAL_FORMULATIONS, PHARMACY_NETWORKS } from "../src/lib/emar/catalog";
+import { MOCK_DISPENSARIES } from "../src/lib/dispensary/mock-locations";
 
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -169,6 +171,11 @@ async function cleanIdempotent() {
   await prisma.marketplaceCategory.deleteMany({
     where: { slug: { in: CATEGORIES.map((c) => c.slug) } },
   });
+
+  // EMAR
+  await prisma.pharmaceuticalFormulation.deleteMany({});
+  await prisma.pharmaceuticalDrug.deleteMany({});
+  await prisma.pharmacyNetwork.deleteMany({});
 }
 
 // ---------------------------------------------------------------------------
@@ -350,6 +357,34 @@ async function seedMarketplace(organizationId: string) {
   );
 }
 
+async function seedEmar() {
+  console.log("Seeding EMAR catalog...");
+  
+  for (const pn of PHARMACY_NETWORKS) {
+    await prisma.pharmacyNetwork.upsert({
+      where: { id: pn.id },
+      update: pn,
+      create: pn,
+    });
+  }
+
+  for (const pd of PHARMACEUTICAL_DRUGS) {
+    await prisma.pharmaceuticalDrug.upsert({
+      where: { id: pd.id },
+      update: pd,
+      create: pd,
+    });
+  }
+
+  for (const pf of PHARMACEUTICAL_FORMULATIONS) {
+    await prisma.pharmaceuticalFormulation.upsert({
+      where: { id: pf.id },
+      update: pf,
+      create: pf,
+    });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -359,6 +394,7 @@ async function main() {
   await cleanIdempotent();
 
   console.log("Seeding demo organization...");
+  await seedEmar();
 
   // ------------------------------------------------------------------
   // Organization
@@ -446,6 +482,19 @@ async function main() {
     },
   ];
 
+  // Add the MOCK_DISPENSARIES to vendorSeeds as well!
+  for (const mock of MOCK_DISPENSARIES) {
+    vendorSeeds.push({
+      slug: mock.id,
+      name: mock.name,
+      vendorType: VendorType.licensed_dispensary,
+      categories: ["flower", "vape", "edible"],
+      takeRatePct: 0.10,
+      foundingPartnerFlag: false,
+      status: VendorStatus.active,
+    });
+  }
+
   for (const vendorSeed of vendorSeeds) {
     const shippableStates = defaultShippableStatesForVendorType(
       vendorSeed.vendorType,
@@ -483,6 +532,21 @@ async function main() {
         status: vendorSeed.status,
       },
     });
+
+    // Populate geo fields for mock dispensaries
+    const matchedMock = MOCK_DISPENSARIES.find((m) => m.id === vendor.slug);
+    if (matchedMock) {
+      await prisma.vendor.update({
+        where: { id: vendor.id },
+        data: {
+          addressLine1: matchedMock.address,
+          city: "Los Angeles", // naive extraction
+          state: "CA",
+          latitude: matchedMock.location.lat,
+          longitude: matchedMock.location.lng,
+        },
+      });
+    }
 
     const requiredDocuments: VendorDocumentType[] = [
       VendorDocumentType.insurance,

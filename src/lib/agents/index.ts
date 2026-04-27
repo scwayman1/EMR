@@ -44,6 +44,9 @@ import { appealsGenerationAgent } from "./billing/appeals-generation-agent";
 import { denialResolutionAgent } from "./billing/denial-resolution-agent";
 import { eligibilityBenefitsAgent } from "./billing/eligibility-benefits-agent";
 import { complianceAuditAgent } from "./billing/compliance-audit-agent";
+import { noteCodingAgent } from "./billing/note-coding-agent";
+import { noteComplianceAuditAgent } from "./billing/note-compliance-audit-agent";
+import { medicationPaAppealAgent } from "./billing/medication-pa-appeal-agent";
 import { priorAuthAgent } from "./billing/prior-auth-agent";
 import { clearinghouseSubmissionAgent } from "./billing/clearinghouse-submission-agent";
 import { staleClaimMonitorAgent } from "./billing/stale-claim-monitor-agent";
@@ -161,6 +164,9 @@ export const agentRegistry = {
   denialResolution: denialResolutionAgent,
   eligibilityBenefits: eligibilityBenefitsAgent,
   complianceAudit: complianceAuditAgent,
+  noteCoding: noteCodingAgent,
+  noteComplianceAudit: noteComplianceAuditAgent,
+  medicationPaAppeal: medicationPaAppealAgent,
   priorAuthVerification: priorAuthAgent,
   clearinghouseSubmission: clearinghouseSubmissionAgent,
   staleClaimMonitor: staleClaimMonitorAgent,
@@ -295,6 +301,9 @@ export const BILLING_AGENT_NAMES: AgentName[] = [
   "denialResolution",
   "eligibilityBenefits",
   "complianceAudit",
+  "noteCoding",
+  "noteComplianceAudit",
+  "medicationPaAppeal",
   "priorAuthVerification",
   "clearinghouseSubmission",
   "chargeIntegrity",

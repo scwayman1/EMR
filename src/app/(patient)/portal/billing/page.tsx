@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { getPatientFinancialSummary, formatMoney } from "@/lib/domain/billing";
+import { ExplainBillButton } from "./ExplainBillButton";
 
 export const metadata = { title: "Billing" };
 
@@ -223,6 +224,11 @@ export default async function PortalBillingPage() {
                           </div>
                         </div>
                       </div>
+                    )}
+
+                    {/* "Explain this bill like I'm in 3rd grade" — AI button */}
+                    {!statement.plainLanguageSummary && (
+                      <ExplainBillButton statementId={statement.id} />
                     )}
 
                     {/* Line items breakdown */}

@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils/cn";
 
 const BASE =
   "flex w-full rounded-md border border-border-strong bg-surface px-3 text-text placeholder:text-text-subtle " +
-  "transition-colors duration-200 ease-smooth focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 " +
+  "transition-[border-color,box-shadow,background-color] duration-200 ease-smooth " +
+  "hover:border-border-strong/100 hover:bg-surface-raised " +
+  "focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 focus:bg-surface " +
   "disabled:opacity-50 disabled:cursor-not-allowed";
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(

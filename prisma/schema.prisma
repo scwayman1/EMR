@@ -42,38 +42,39 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  memberships       Membership[]
-  patients          Patient[]
-  providers         Provider[]
-  encounters        Encounter[]
-  documents         Document[]
-  labResults        LabResult[]
-  refillRequests    RefillRequest[]
-  auditLogs         AuditLog[]
-  agentJobs         AgentJob[]
-  agentFeedback     AgentFeedback[]
-  escalationCases   EscalationCase[]
-  launchStatus      PracticeLaunchStatus?
-  cannabisProducts  CannabisProduct[]
-  claims            Claim[]
-  feeSchedule       FeeScheduleEntry[]
-  referrals         Referral[]
-  complianceForms   StateComplianceForm[]
-  intakeTemplates   IntakeFormTemplate[]
-  products          Product[]
-  orders            Order[]
-  vendors           Vendor[]
-  vendorDocuments   VendorDocument[]
+  memberships          Membership[]
+  patients             Patient[]
+  providers            Provider[]
+  encounters           Encounter[]
+  documents            Document[]
+  labResults           LabResult[]
+  refillRequests       RefillRequest[]
+  medicationPriorAuths MedicationPriorAuth[]
+  auditLogs            AuditLog[]
+  agentJobs            AgentJob[]
+  agentFeedback        AgentFeedback[]
+  escalationCases      EscalationCase[]
+  launchStatus         PracticeLaunchStatus?
+  cannabisProducts     CannabisProduct[]
+  claims               Claim[]
+  feeSchedule          FeeScheduleEntry[]
+  referrals            Referral[]
+  complianceForms      StateComplianceForm[]
+  intakeTemplates      IntakeFormTemplate[]
+  products             Product[]
+  orders               Order[]
+  vendors              Vendor[]
+  vendorDocuments      VendorDocument[]
   // CFO / Controller surface
-  expenses          Expense[]
-  recurringExpenses RecurringExpense[]
-  bankAccounts      BankAccount[]
-  cashFlowEntries   CashFlowEntry[]
-  fixedAssets       FixedAsset[]
-  liabilities       Liability[]
-  equityEntries     EquityEntry[]
-  financialReports  FinancialReport[]
-  financialGoals    FinancialGoal[]
+  expenses             Expense[]
+  recurringExpenses    RecurringExpense[]
+  bankAccounts         BankAccount[]
+  cashFlowEntries      CashFlowEntry[]
+  fixedAssets          FixedAsset[]
+  liabilities          Liability[]
+  equityEntries        EquityEntry[]
+  financialReports     FinancialReport[]
+  financialGoals       FinancialGoal[]
 }
 
 model User {
@@ -172,6 +173,7 @@ model Patient {
   documents            Document[]
   labResults           LabResult[]
   refillRequests       RefillRequest[]
+  medicationPriorAuths MedicationPriorAuth[]
   assessmentResponses  AssessmentResponse[]
   outcomeLogs          OutcomeLog[]
   messageThreads       MessageThread[]
@@ -1560,8 +1562,9 @@ model PatientMedication {
   notes       String?
   createdAt   DateTime       @default(now())
 
-  patient        Patient         @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient        Patient               @relation(fields: [patientId], references: [id], onDelete: Cascade)
   refillRequests RefillRequest[]
+  priorAuths     MedicationPriorAuth[]
 
   @@index([patientId, active])
 }
@@ -1770,6 +1773,16 @@ model Vendor {
   // to. Empty array = not configured → all shipments blocked (fail-safe).
   shippableStates          String[]     @default([])
   status                   VendorStatus @default(pending)
+
+  // EMR-017 / EMR-002: Geolocation fields for dispensary locator
+  addressLine1             String?
+  addressLine2             String?
+  city                     String?
+  state                    String?
+  postalCode               String?
+  latitude                 Float?
+  longitude                Float?
+
   createdAt                DateTime     @default(now())
   updatedAt                DateTime     @updatedAt
 
@@ -2315,6 +2328,54 @@ model RefillRequest {
 }
 
 // --------------------------------------------------------------
+// Medication Prior Authorization (EMR-076)
+// --------------------------------------------------------------
+// Tracks prior authorization status for prescribed medications. When a
+// payer denies a PA, the AI Appeal flow drafts an appeal letter via a
+// background AgentJob and surfaces it for clinician review.
+// --------------------------------------------------------------
+
+enum MedicationPriorAuthStatus {
+  pending // submitted, awaiting payer response
+  approved // payer approved
+  denied // payer denied — eligible for AI Appeal
+  appealed // appeal drafted / submitted
+  abandoned // not pursued (low value, alternative chosen, etc.)
+}
+
+model MedicationPriorAuth {
+  id              String                    @id @default(cuid())
+  organizationId  String
+  patientId       String
+  medicationId    String
+  payerName       String
+  payerPolicyId   String? // payer's PA policy reference, if known
+  rxcui           String? // RxNorm CUI for the drug, if available
+  diagnosisCodes  String[]                  @default([]) // ICD-10 codes that justify medical necessity
+  status          MedicationPriorAuthStatus @default(pending)
+  submittedAt     DateTime?
+  decisionAt      DateTime?
+  denialReason    String? // free-form payer reason / denial code
+  denialCarc      String? // CARC-style code if the payer returned one
+  // AI Appeal output — populated when the appeal agent runs
+  appealLetterMd  String? // markdown letter generated by the agent
+  appealJobId     String? // AgentJob.id of the background job that drafted it
+  appealStatus    String?                   @default("none") // "none" | "queued" | "drafted" | "reviewed" | "submitted" | "overturned" | "upheld"
+  appealDraftedAt DateTime?
+  // Lifecycle
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  patient      Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  medication   PatientMedication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([patientId, status])
+  @@index([medicationId])
+}
+
+// --------------------------------------------------------------
 // CFO / Controller — Books, Reports, Cash, Expenses, Equity
 // --------------------------------------------------------------
 // The CFO agent reads everything below to produce real-time P&L,
@@ -2721,4 +2782,175 @@ model EducationCompound {
 
   @@unique([type, sortOrder])
   @@index([type, active, sortOrder])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// EMR-077 — Modular EMAR (Electronic Medication Administration Record)
+// ─────────────────────────────────────────────────────────────────────────
+// Layered so each piece can be replaced as we light up real partners:
+//   PharmaceuticalDrug    — canonical drug entity (RxNorm-backed)
+//   PharmaceuticalForm    — strength + form for a drug
+//   PharmacyNetwork       — chain or independent that dispenses
+//   FormulationAvailability — partner-reported in-stock + price
+//   EmarAdministration    — actual dose given (append-only)
+//
+// All catalogs are global (no organizationId) — the same drug
+// "atorvastatin 40 mg tablet" is the same row for every tenant.
+// EmarAdministration is per-tenant via patient.organizationId.
+
+enum DrugScheduleClass {
+  schedule_1
+  schedule_2
+  schedule_3
+  schedule_4
+  schedule_5
+  otc
+}
+
+enum PharmaceuticalForm {
+  tablet
+  capsule
+  liquid
+  injection
+  topical
+  patch
+  inhaler
+  suppository
+  drops
+  spray
+  gummy
+  tincture
+  vape
+  flower
+  other
+}
+
+enum AdministrationRoute {
+  oral
+  sublingual
+  buccal
+  topical
+  intramuscular
+  subcutaneous
+  intravenous
+  intranasal
+  rectal
+  ophthalmic
+  otic
+  inhalation
+}
+
+enum EmarAdminSite {
+  clinic
+  home_self
+  home_caregiver
+  pharmacy
+  facility
+}
+
+enum EmarAdminStatus {
+  given
+  refused
+  held
+  missed
+  wasted
+}
+
+model PharmaceuticalDrug {
+  id                    String             @id // stable slug, e.g. "atorvastatin"
+  name                  String
+  genericName           String?
+  brandNames            String[]           @default([])
+  rxnorm                String?
+  ndc                   String?
+  drugClass             String
+  schedule              DrugScheduleClass?
+  manufacturers         String[]           @default([])
+  indications           String[]           @default([])
+  warnings              String[]           @default([])
+  hardContraindications String[]           @default([])
+  active                Boolean            @default(true)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  formulations PharmaceuticalFormulation[]
+
+  @@index([active, name])
+  @@index([rxnorm])
+}
+
+model PharmaceuticalFormulation {
+  id                 String             @id @default(cuid())
+  drugId             String
+  strength           String
+  strengthValue      Float
+  strengthUnit       String
+  form               PharmaceuticalForm
+  packSize           String?
+  requiresMonitoring Boolean            @default(false)
+  active             Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  drug            PharmaceuticalDrug        @relation(fields: [drugId], references: [id], onDelete: Cascade)
+  availability    FormulationAvailability[]
+  administrations EmarAdministration[]
+
+  @@index([drugId, active])
+}
+
+model PharmacyNetwork {
+  id        String   @id // stable slug, e.g. "cvs"
+  name      String
+  code      String   @unique // CVS, WALG, RITE, KROG, COST, INDEP
+  ncpdpId   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  availability FormulationAvailability[]
+}
+
+model FormulationAvailability {
+  id                     String   @id @default(cuid())
+  formulationId          String
+  pharmacyNetworkId      String
+  inStock                Boolean  @default(true)
+  estimatedFillTimeHours Int?
+  cashPriceCents         Int?
+  insuranceTier          Int?
+  lastCheckedAt          DateTime @default(now())
+
+  formulation     PharmaceuticalFormulation @relation(fields: [formulationId], references: [id], onDelete: Cascade)
+  pharmacyNetwork PharmacyNetwork           @relation(fields: [pharmacyNetworkId], references: [id], onDelete: Cascade)
+
+  @@unique([formulationId, pharmacyNetworkId])
+  @@index([pharmacyNetworkId, inStock])
+}
+
+// Append-only administration record. Corrections are NEW rows that
+// reference the prior bad entry via correctsAdministrationId — never
+// edits in place. This preserves the legal audit trail.
+model EmarAdministration {
+  id                       String              @id @default(cuid())
+  organizationId           String
+  patientId                String
+  formulationId            String
+  doseAmount               Float
+  doseUnit                 String
+  route                    AdministrationRoute
+  site                     EmarAdminSite
+  administeredAt           DateTime
+  administeredById         String?
+  status                   EmarAdminStatus
+  reasonCode               String?
+  notes                    String?
+  regimenId                String?
+  correctsAdministrationId String?
+  createdAt                DateTime            @default(now())
+
+  formulation PharmaceuticalFormulation @relation(fields: [formulationId], references: [id])
+
+  @@index([patientId, administeredAt])
+  @@index([organizationId, administeredAt])
+  @@index([correctsAdministrationId])
 }

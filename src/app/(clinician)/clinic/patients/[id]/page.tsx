@@ -29,6 +29,7 @@ import { CDSPanel } from "./cds-panel";
 import { TagManager } from "./tag-manager";
 import { ClinicianUploadForm } from "./documents/clinician-upload-form";
 import { DicomViewer } from "./dicom-viewer";
+import { VitalsSnapshot } from "@/components/ui/vitals-snapshot";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -453,6 +454,14 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Vitals snapshot (EMR-060: zero-click vitals) ────
+          Surfaces BP/HR/Temp/RR/SpO₂/Wt/Ht right under the dossier
+          header so the clinician sees vitals without drilling into
+          labs or notes (was buried 3 clicks deep). */}
+      <div className="mb-6">
+        <VitalsSnapshot intakeAnswers={patient.intakeAnswers} />
+      </div>
 
       {/* ── Open tasks panel (EMR-180) ─────────────────────── */}
       {openTasks.length > 0 && (

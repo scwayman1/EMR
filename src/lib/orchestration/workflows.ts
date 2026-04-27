@@ -415,6 +415,60 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  // ─────────────────────────────────────────────────────────────────
+  // Medication PA Appeal (EMR-076) — clinician hits "AI Appeal" on a
+  // denied medication PA, the dispatcher enqueues the appeal agent into
+  // the AgentJob queue. The agent runs in the background and writes its
+  // letter back to MedicationPriorAuth.appealLetterMd.
+  // ─────────────────────────────────────────────────────────────────
+  {
+    name: "medication-pa-appeal-draft",
+    on: ["medication.pa.appeal.requested"],
+    steps: [
+      {
+        agent: "medicationPaAppeal",
+        input: (e) => ({
+          priorAuthId: (e as any).priorAuthId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  // ─────────────────────────────────────────────────────────────────
+  // Note → Billing pipeline (EMR-045) — passes a clinical note through
+  // the noteCoding agent, then through the noteComplianceAudit agent.
+  // Triggered by note.billing.review.requested OR note.finalized.
+  // The workflow runner enqueues both jobs; orchestration glue lives in
+  // src/lib/orchestration/note-billing-pipeline.ts for callers that
+  // want a synchronous run.
+  // ─────────────────────────────────────────────────────────────────
+  {
+    name: "note-billing-coding",
+    on: ["note.billing.review.requested"],
+    steps: [
+      {
+        agent: "noteCoding",
+        input: (e) => ({
+          noteId: (e as any).noteId,
+          organizationId: (e as any).organizationId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "note-billing-compliance",
+    on: ["note.coding.complete"],
+    steps: [
+      {
+        agent: "noteComplianceAudit",
+        input: (e) => ({
+          noteId: (e as any).noteId,
+          organizationId: (e as any).organizationId,
+          coding: (e as any).coding,
+        }),
+      },
+    ],
+  },
   {
     name: "prescription-safety-check",
     on: ["dosing.regimen.created"],
