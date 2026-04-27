@@ -12,7 +12,7 @@ const COLUMNS = [
       { label: "Patient Portal", href: "/login" },
       { label: "Operator Dashboard", href: "/login" },
       { label: "Leafmart", href: "/leafmart" },
-      { label: "Cannabis Wheel", href: "/portal/combo-wheel" },
+      { label: "Cannabinoid Wheel", href: "/portal/combo-wheel" },
     ],
   },
   {

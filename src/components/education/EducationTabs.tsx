@@ -8,7 +8,7 @@ export type TabKey = "community" | "wheel" | "chatcb" | "research";
 
 export const EDUCATION_TABS: { key: TabKey; label: string; Icon: React.ElementType }[] = [
   { key: "community", label: "Community", Icon: Users },
-  { key: "wheel", label: "Cannabis Wheel", Icon: Atom },
+  { key: "wheel", label: "Cannabinoid Wheel", Icon: Atom },
   { key: "chatcb", label: "ChatCB", Icon: Sparkles },
   { key: "research", label: "Research", Icon: BookOpen },
 ];
