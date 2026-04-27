@@ -2679,3 +2679,46 @@ model FinancialGoal {
 
   @@index([organizationId, active])
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Education — Cannabis Combo Wheel compounds
+// Global educational catalog (cannabinoids + terpenes) powering the
+// interactive Combo Wheel on the public Education tab. Not patient/PHI data.
+// ─────────────────────────────────────────────────────────────────────────
+
+enum CompoundType {
+  cannabinoid
+  terpene
+}
+
+enum CompoundEvidenceLevel {
+  strong
+  moderate
+  emerging
+}
+
+/// Single compound entry on the Cannabis Combo Wheel. The wheel is purely
+/// educational — there is no organization scope, no PHI, and rows are
+/// publicly readable. Content authored/edited by the curation team.
+model EducationCompound {
+  id          String                @id // stable slug, e.g. "thc", "myrcene"
+  name        String // display name, e.g. "THC", "Myrcene"
+  type        CompoundType
+  color       String // hex color for the wheel segment, e.g. "#3A8560"
+  evidence    CompoundEvidenceLevel
+  description String // 1–2 sentence pharmacology summary
+  symptoms    String[] // conditions this compound may target
+  benefits    String[] // therapeutic benefits
+  risks       String[] // cautions / side effects
+  // Wheel display ordering. Lower values render first within their ring.
+  // Uniqueness is enforced per (type, sortOrder) so cannabinoid and terpene
+  // rings each have their own sequence starting at 0.
+  sortOrder   Int                   @default(0)
+  // Soft-disable without deleting the row (preserves history / FKs).
+  active      Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@unique([type, sortOrder])
+  @@index([type, active, sortOrder])
+}

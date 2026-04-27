@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Search, ArrowRight, Sparkles, Users } from "lucide-react";
+import { Search, ArrowRight, Sparkles } from "lucide-react";
 import { Eyebrow } from "@/components/ui/ornament";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 import { askChatCB } from "./actions";
@@ -22,6 +20,8 @@ import {
 } from "@/components/education/EducationTabs";
 import { ComboWheel } from "@/components/education/ComboWheel";
 import { ResearchTab } from "@/components/education/ResearchTab";
+import { CommunityTab } from "@/components/education/CommunityTab";
+import { DiscussCombination } from "@/components/education/DiscussCombination";
 
 const SUGGESTED_QUESTIONS = [
   "Is CBD good for anxiety?",
@@ -34,6 +34,7 @@ const SUGGESTED_QUESTIONS = [
 
 export default function EducationPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("chatcb");
+  const [wheelSelection, setWheelSelection] = useState<string[]>([]);
 
   return (
     <div className="min-h-screen bg-bg">
@@ -70,7 +71,12 @@ export default function EducationPage() {
             >
               {tab.key === "community" && <CommunityTab />}
               {tab.key === "chatcb" && <ChatCBTab />}
-              {tab.key === "wheel" && <ComboWheel />}
+              {tab.key === "wheel" && (
+                <>
+                  <ComboWheel onSelect={setWheelSelection} />
+                  <DiscussCombination selectedIds={wheelSelection} />
+                </>
+              )}
               {tab.key === "research" && <ResearchTab />}
             </div>
           );
@@ -78,32 +84,6 @@ export default function EducationPage() {
       </div>
 
       <SiteFooter />
-    </div>
-  );
-}
-
-function CommunityTab() {
-  return (
-    <div className="max-w-4xl mx-auto text-center space-y-8">
-      <div className="w-24 h-24 bg-accent/10 text-accent rounded-full flex items-center justify-center mx-auto mb-6">
-        <Users className="w-12 h-12" />
-      </div>
-      <h2 className="font-display text-4xl tracking-tight text-text">Join the Conversation</h2>
-      <p className="text-lg text-text-muted max-w-2xl mx-auto leading-relaxed">
-        Connect with patients, share your experiences, and learn from others in our secure, moderated community forum.
-      </p>
-      
-      <Card className="rounded-3xl border-2 border-slate-200 bg-slate-50 mt-10 shadow-inner">
-        <CardContent className="p-12">
-          <h3 className="font-display text-2xl mb-4 text-slate-800">Coming Soon to Leafjourney</h3>
-          <p className="text-slate-600 mb-8 max-w-lg mx-auto">
-            We are building a beautiful space for you to connect. Stay tuned for patient-led cohort groups and community threads.
-          </p>
-          <Button size="lg" className="rounded-xl font-bold shadow-md h-14 px-8 text-lg">
-            Notify Me When Live
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

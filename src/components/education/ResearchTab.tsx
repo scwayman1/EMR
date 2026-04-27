@@ -158,9 +158,9 @@ export function ResearchTab() {
               </div>
 
               {pubmedResults.articles.length === 0 ? (
-                <div className="bg-slate-50 rounded-2xl p-10 text-center border border-dashed border-slate-200">
-                  <FileSearch className="w-10 h-10 text-slate-300 mx-auto mb-3" strokeWidth={1.5} />
-                  <p className="text-base text-slate-600 font-semibold">
+                <div className="bg-[var(--surface-muted)] rounded-2xl p-10 text-center border border-[var(--border)]">
+                  <FileSearch className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" strokeWidth={1.5} />
+                  <p className="text-base text-[var(--ink)] font-semibold">
                     No articles found
                   </p>
                   <p className="text-sm text-slate-400 mt-1">
@@ -351,9 +351,9 @@ export function ResearchTab() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="bg-slate-50 rounded-2xl p-12 text-center border border-dashed border-slate-200">
-            <FlaskConical className="w-10 h-10 text-slate-300 mx-auto mb-3" strokeWidth={1.5} />
-            <p className="text-base text-slate-600 font-semibold">No evidence pairs match your filters</p>
+          <div className="bg-[var(--surface-muted)] rounded-2xl p-12 text-center border border-[var(--border)]">
+            <FlaskConical className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" strokeWidth={1.5} />
+            <p className="text-base text-[var(--ink)] font-semibold">No evidence pairs match your filters</p>
             <p className="text-sm text-slate-400 mt-1">Try widening your search by clearing one of the filters above.</p>
           </div>
         ) : (

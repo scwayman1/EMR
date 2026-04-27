@@ -41,7 +41,7 @@ const SECTIONS: Record<string, { title: string; tabs: TabDef[] }> = {
     title: "My Journey",
     tabs: [
       { label: "Lifestyle", href: "/portal/lifestyle" },
-      { label: "Cannabis Wheel", href: "/portal/combo-wheel" },
+      { label: "Cannabis Combo Wheel", href: "/portal/combo-wheel" },
       { label: "My Garden", href: "/portal/garden" },
       { label: "Storybook", href: "/portal/storybook" },
       { label: "Roadmap", href: "/portal/roadmap" },

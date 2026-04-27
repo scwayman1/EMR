@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "@/lib/leafmart/cart-store";
 import { ThemeToggle } from "@/components/leafmart/ThemeToggle";
 import { AccountUserMenu } from "@/components/leafmart/AccountUserMenu";
+import { LogoMark } from "@/components/ui/logo";
 
 const NAV_LINKS = [
   { label: "Sleep", href: "/leafmart/category/sleep" },
@@ -152,15 +153,19 @@ export function LeafmartHeader() {
   return (
     <header className="sticky top-0 z-30 bg-[var(--bg)]/90 backdrop-blur border-b border-[var(--border)]">
       <nav aria-label="Main" className="max-w-[1440px] mx-auto flex items-center justify-between px-5 sm:px-6 lg:px-14 h-[64px] md:h-[72px]">
-        {/* Logo */}
-        <Link href="/leafmart" className="flex items-center gap-2.5 group" aria-label="Leafmart home">
-          <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" className="md:w-8 md:h-8">
-            <circle cx="16" cy="16" r="15" fill="var(--leaf)" />
-            <path d="M11 17.5 L14.5 21 L21.5 12.5" stroke="#F5E6B8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
-          <span className="font-display text-[21px] md:text-2xl font-medium tracking-tight text-[var(--ink)] group-hover:text-[var(--leaf)] transition-colors">
-            Leafmart
-          </span>
+        {/* Co-Branded Logo Lockup */}
+        <Link href="/leafmart" className="flex items-center gap-3 group" aria-label="Leafmart home">
+          <LogoMark size={30} className="text-[var(--ink)] group-hover:text-[var(--leaf)] transition-colors" />
+          <span className="text-[var(--border-strong)]">|</span>
+          <div className="flex items-center gap-2.5">
+            <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true" className="md:w-8 md:h-8">
+              <circle cx="16" cy="16" r="15" fill="var(--leaf)" />
+              <path d="M11 17.5 L14.5 21 L21.5 12.5" stroke="#F5E6B8" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
+            <span className="font-display text-[21px] md:text-2xl font-medium tracking-tight text-[var(--ink)] group-hover:text-[var(--leaf)] transition-colors">
+              Leafmart
+            </span>
+          </div>
         </Link>
 
         {/* Desktop category nav */}

@@ -28,6 +28,7 @@ import { generateCDSAlerts } from "@/lib/domain/clinical-decision-support";
 import { CDSPanel } from "./cds-panel";
 import { TagManager } from "./tag-manager";
 import { ClinicianUploadForm } from "./documents/clinician-upload-form";
+import { DicomViewer } from "./dicom-viewer";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -1032,38 +1033,18 @@ function ImagesTab({ documents, patientId }: { documents: any[]; patientId: stri
         </CardContent>
       </Card>
 
-      {/* DICOM banner */}
-      <Card tone="outlined" className="mt-6">
-        <CardContent className="pt-5 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent-soft flex items-center justify-center shrink-0">
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                className="text-accent"
-              >
-                <path
-                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-text">
-                DICOM viewer coming soon
-              </p>
-              <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
-                Images will be viewable directly in the chart without a separate PACS system.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* DICOM viewer scaffold (EMR-014) */}
+      <div className="mt-6">
+        <div className="flex items-baseline justify-between mb-3">
+          <h3 className="font-display text-lg text-text tracking-tight">
+            DICOM Viewer
+          </h3>
+          <span className="text-[11px] text-text-subtle">
+            Scaffold · synthetic frames
+          </span>
+        </div>
+        <DicomViewer />
+      </div>
     </div>
   );
 }
