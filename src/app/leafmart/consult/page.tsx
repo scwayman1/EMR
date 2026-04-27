@@ -95,7 +95,7 @@ export default function ConsultPage() {
 
           <div className="hidden lg:flex justify-end">
             <div className="w-full max-w-[360px] bg-white/40 rounded-[32px] p-3">
-              <Portrait tone="sage" caption="Dr. Patel · Internal medicine" />
+              <Portrait tone="sage" caption="Dr. Patel · Family medicine" />
             </div>
           </div>
         </div>
