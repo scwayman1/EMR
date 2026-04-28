@@ -29,6 +29,12 @@ import { CDSPanel } from "./cds-panel";
 import { TagManager } from "./tag-manager";
 import { ClinicianUploadForm } from "./documents/clinician-upload-form";
 import { DicomViewer } from "./dicom-viewer";
+import { AgeBandBadge } from "@/components/clinical/age-band-badge";
+import { PediatricModule } from "@/components/clinical/pediatric-module";
+import {
+  getAgeBand,
+  isPediatric,
+} from "@/lib/utils/patient-age";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -577,6 +583,8 @@ function DemographicsTab({
         (Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
       )
     : null;
+  const ageBand = getAgeBand(dob);
+  const showPediatricOverlay = isPediatric(dob);
 
   const intake = (patient.intakeAnswers ?? {}) as Record<string, any>;
   const sex = intake.sex ?? intake.gender ?? "Not recorded";
@@ -590,12 +598,27 @@ function DemographicsTab({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
         <h2 className="font-display text-xl text-text tracking-tight">
           Demographics
         </h2>
-        <Badge tone="accent">Medical Life Profile</Badge>
+        <div className="flex items-center gap-2">
+          <AgeBandBadge band={ageBand} age={age} />
+          <Badge tone="accent">Medical Life Profile</Badge>
+        </div>
       </div>
+
+      {/* EMR-083 / EMR-109: pediatric overlay surfaces above demographics
+          for any patient under 18. Higher-band overlays (geriatric, etc.)
+          can be added here following the same pattern. */}
+      {showPediatricOverlay && (
+        <PediatricModule
+          patientId={patient.id}
+          patientFirstName={patient.firstName}
+          band={ageBand}
+          age={age}
+        />
+      )}
 
       {/* Identity & Personal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

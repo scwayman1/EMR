@@ -90,9 +90,14 @@ export default async function RecordsPage({
         title="Your documents"
         description="Upload notes, labs, and letters. We organize them so your care team is ready for your visit."
         actions={
-          <Link href="/portal/records?upload=1">
-            <Button>Upload a file</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/portal/records/release">
+              <Button variant="secondary">Send to another doctor</Button>
+            </Link>
+            <Link href="/portal/records?upload=1">
+              <Button>Upload a file</Button>
+            </Link>
+          </div>
         }
       />
 
