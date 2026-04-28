@@ -326,6 +326,7 @@ Create a SOAP note but in the order of: Assessment, Plan, Subjective, Objective 
 ### EMR-021: AI-Recommended Initial Treatment Plan
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create an AI-prompted and recommended initial care plan that physicians can use as a starting point, modify, and then sign off on before giving to patient. The AI uses research corpus + patient data + outcomes to generate evidence-based recommendations. Physician has final authority.
 
@@ -336,6 +337,7 @@ Create an AI-prompted and recommended initial care plan that physicians can use 
 ### EMR-022: Cannabis Plant Health Companion
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a virtual cannabis plant that GROWS or DIES based on how well the patient takes care of their health:
 - Exercise done 2x/week = new leaves
@@ -353,6 +355,7 @@ This is the gamification of health. Visual, interactive, emotional.
 ### EMR-023: Gamify Health (Apple Rings Style)
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Gamify health metrics like Apple's activity rings:
 - Exercise workouts completed
@@ -367,6 +370,7 @@ Gamify health metrics like Apple's activity rings:
 ### EMR-024: Positive Input Requirement
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 For every "problem" a patient inputs (poor sleep, pain, stress, digestive issues), prompt that they MUST input one POSITIVE thing about their life/health — family, finance, weather, gratitude, etc.
 "They don't have problems, this is a process."
@@ -379,6 +383,7 @@ Patients should focus on both challenges AND positives.
 ### EMR-025: Cannabis-Themed Design Palette
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Design updates:
 - Cannabis plants in light shade in background
@@ -392,6 +397,7 @@ Design updates:
 ### EMR-026: Cannabis Emojis
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create custom cannabis emojis for use in messaging, notes, and the UI:
 stems, leaves, plant, fire, tincture drop, pain icon, sleep icon, anxiety icon, depression icon, cancer ribbon
@@ -401,6 +407,7 @@ stems, leaves, plant, fire, tincture drop, pain icon, sleep icon, anxiety icon, 
 ### EMR-027: Platform Disclaimer
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a disclaimer at the bottom of the platform:
 "Cannabis should be considered a medicine so please use it carefully and judiciously. Do not abuse Cannabis and please respect the plant and its healing properties."
@@ -412,6 +419,7 @@ Create a disclaimer at the bottom of the platform:
 ### EMR-028: Split Window / Multi-Tab View
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create split window ability WITHIN the EMR so up to 3 MAX tabs can be open at the same time. Makes it easier to maneuver instead of clicking back and forth. Think Bloomberg Terminal or VS Code split panes — but for clinical workflows.
 
@@ -420,6 +428,7 @@ Create split window ability WITHIN the EMR so up to 3 MAX tabs can be open at th
 ### EMR-029: ADA Compliance
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Maintain American Disability Act (ADA) friendly website:
 - WCAG 2.1 AA compliance
@@ -435,6 +444,7 @@ Maintain American Disability Act (ADA) friendly website:
 ### EMR-030: Multi-Language Support
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create language conversions for:
 English, Spanish, Vietnamese, Gujarati, Hindi, and more.
@@ -445,6 +455,7 @@ i18n framework with per-page translations. AI-assisted translation for dynamic c
 ### EMR-031: Responsive Cross-Device Experience
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 "We want the EMR seamless from desktop, phone to iPad."
 Full responsive audit and optimization across all breakpoints. Touch-friendly interactions on mobile. Consider PWA or native app wrapper.
@@ -454,6 +465,7 @@ Full responsive audit and optimization across all breakpoints. Touch-friendly in
 ### EMR-032: Patient Lab/Document Email & Print
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Allow patients to EMAIL labs, notes, chart documents AND print right from the portal in OCR PDF format. Clean, professional document formatting.
 
@@ -464,6 +476,7 @@ Allow patients to EMAIL labs, notes, chart documents AND print right from the po
 ### EMR-033: Physician-to-Physician Secure Portal
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create two communication portals:
 1. Patient ↔ Physician portal (already exists — enhance it)
@@ -474,6 +487,7 @@ Create two communication portals:
 ### EMR-034: Phone & Video Capability in Messaging
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create phone and video capability + icons within the messaging/inbox tab. Click-to-call, video visit launch, call logging.
 
@@ -484,6 +498,7 @@ Create phone and video capability + icons within the messaging/inbox tab. Click-
 ### EMR-035: Backend Data Extrapolation Dashboard
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Backend data extrapolation with BOTH identifying and de-identifying information. Allow backend user to click on all applicable fields (DOB, name, age, sex, etc.) to build custom reports and research datasets. Support for de-identified exports for research purposes.
 
@@ -494,6 +509,7 @@ Backend data extrapolation with BOTH identifying and de-identifying information.
 ### EMR-036: Justin Kander's Book & Free Resources
 **Priority:** 4 — Low
 **Source:** Justin Kander
+**Status:** in_progress
 **Description:**
 Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a free resource. It's the largest integration of human cases and research demonstrating how cannabis fights cancer. Good resource for patients and providers, even though dosing isn't well-characterized in all cases.
 
@@ -547,6 +563,7 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 ### EMR-037: End-to-End Communications Overlay
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - E2E encrypted text messaging with transcription
 - HIPAA-compliant video calls
@@ -560,6 +577,7 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 ### EMR-038: Cannabis & Cancer Book Integration
 **Priority:** 3 — Normal
 **Source:** Dr. Patel / Justin Kander
+**Status:** in_progress
 **Description:**
 Integrate Justin's book (Cannabis and Cancer) into the backend as a reference guide and data source. Parse and index for the Research Agent and educational library. Source: Dropbox link provided.
 
@@ -568,6 +586,7 @@ Integrate Justin's book (Cannabis and Cancer) into the backend as a reference gu
 ### EMR-039: Product Store with Affiliate Links
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create "Store" button on top right. Include affiliate links for product selections:
 - phytorx.co
@@ -581,6 +600,7 @@ Full Amazon-style store framework for cannabis products. Joint decision language
 ### EMR-040: Cannabis Plant 101 — Front Page Feature
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a 101-word paragraph on the front page about the beauty, power, healing properties, and sacredness of the cannabis plant. Include that all who use the website shall respect the plant and use it with intention. Highlighted section with beautiful background and typography.
 
@@ -589,6 +609,7 @@ Create a 101-word paragraph on the front page about the beauty, power, healing p
 ### EMR-041: Ambient Classical Music on Front Page
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Front page plays beautiful, relaxing classical music (no words) at low volume with a small mute icon. Subtle, non-intrusive. Consider autoplay policies.
 
@@ -597,6 +618,7 @@ Front page plays beautiful, relaxing classical music (no words) at low volume wi
 ### EMR-042: MIPS Data Extrapolation
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 AI functionality to extrapolate data from chart notes and messages to obtain MIPS (Merit-based Incentive Payment System) data. Meet all CMS data requirements. Upload entire MIPS requirements and CMS rules around cannabis as Schedule 3.
 
@@ -605,6 +627,7 @@ AI functionality to extrapolate data from chart notes and messages to obtain MIP
 ### EMR-043: Animated Plant Companion (Enhanced)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 The health plant needs MOTION — live cartoon feel:
 - Positive actions: container pops up and pours water on plant, sun shines
@@ -617,6 +640,7 @@ The health plant needs MOTION — live cartoon feel:
 ### EMR-044: Modular Licensable EMR Framework
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Make the entire EMR built on a fully licensable, modular framework:
 - Clients can buy individual modules
@@ -630,6 +654,7 @@ Make the entire EMR built on a fully licensable, modular framework:
 ### EMR-045: Insurance Billing AI Agent System
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Build intricate backend insurance/coding/charting system with SEPARATE AI agents that communicate with each other to ensure highest possible billing amount correlating to proper documentation and coding. Maximize reimbursement rates from each major US insurance company.
 
@@ -638,6 +663,7 @@ Build intricate backend insurance/coding/charting system with SEPARATE AI agents
 ### EMR-046: Insurance Eligibility Checker
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Built-in eligibility software to determine if patient's insurance or conditions qualify them for insurance-reimbursed cannabis products or a state medical cannabis card. Document and note in chart if eligible.
 
@@ -646,6 +672,7 @@ Built-in eligibility software to determine if patient's insurance or conditions 
 ### EMR-047: Medicare CBD Reimbursement Framework
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create entire framework for the upcoming CMS program allowing Medicare recipients to purchase up to $500 of CBD with proper reimbursement. Track eligibility, purchases, and reimbursement status.
 
@@ -654,6 +681,7 @@ Create entire framework for the upcoming CMS program allowing Medicare recipient
 ### EMR-048: About Page — Founders & Mission
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create "About" section showing:
 - Scott Wayman — AI genius, successful entrepreneur, EMR savant (pull bio from LinkedIn)
@@ -666,6 +694,7 @@ Create "About" section showing:
 ### EMR-049: Pricing & Subscription Tiers Page
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create links or side website that breaks down EMR pricing and tiers of subscription options based on client needs. Modular pricing aligned with EMR-044's module structure.
 
@@ -674,6 +703,7 @@ Create links or side website that breaks down EMR pricing and tiers of subscript
 ### EMR-050: EMR Slogan
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a slogan for the EMR, max 10 words. Ideas to incorporate: "Personalized cannabis care at your fingertips from an EMR and providers who have heart and soul."
 

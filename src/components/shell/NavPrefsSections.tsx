@@ -217,8 +217,12 @@ export function NavPrefsSections({ sections }: { sections: NavSection[] }) {
     [pins, sections],
   );
   const visibleRecents = React.useMemo(
-    () => recents.filter((r) => belongsToSections(r.href, sections)),
-    [recents, sections],
+    () =>
+      recents.filter((r) => {
+        const isCurrent = pathname === r.href || pathname.startsWith(r.href + "/");
+        return belongsToSections(r.href, sections) && !isCurrent;
+      }),
+    [recents, sections, pathname],
   );
 
   if (!prefs) return null;
