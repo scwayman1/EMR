@@ -111,7 +111,7 @@ export function ModelConfigPanel() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
                 Model
@@ -127,23 +127,10 @@ export function ModelConfigPanel() {
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-                Raw cost
-              </p>
-              <p className="text-sm font-medium text-text">
-                ~${estimatedMonthlyCost}/mo
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-                Leafjourney price
+                Estimated cost
               </p>
               <p className="text-sm font-medium text-accent">
-                ${leafjourneyPrice.toFixed(2)}/mo
-              </p>
-              <p className="text-[10px] text-text-subtle mt-0.5">
-                {priceBasis === "floor"
-                  ? `$${LEAFJOURNEY_PRICE_FLOOR_USD} platform minimum`
-                  : "Keystone (2x pass-through)"}
+                ~${leafjourneyPrice.toFixed(2)}/mo
               </p>
             </div>
           </div>
@@ -377,31 +364,17 @@ export function ModelConfigPanel() {
       {/* Cost estimate + Save */}
       <Card tone="raised">
         <CardContent className="py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 gap-8">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-                Raw model cost
+                Estimated cost
               </p>
-              <p className="text-lg font-display text-text tabular-nums">
-                ~${estimatedMonthlyCost}
+              <p className="text-lg font-display text-accent tabular-nums">
+                ~${leafjourneyPrice.toFixed(2)}
                 <span className="text-sm text-text-muted font-sans">/mo</span>
               </p>
               <p className="text-xs text-text-subtle mt-0.5">
                 ~2M tokens/month
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">
-                Leafjourney price
-              </p>
-              <p className="text-lg font-display text-accent tabular-nums">
-                ${leafjourneyPrice.toFixed(2)}
-                <span className="text-sm text-text-muted font-sans">/mo</span>
-              </p>
-              <p className="text-xs text-text-subtle mt-0.5">
-                {priceBasis === "floor"
-                  ? `$${LEAFJOURNEY_PRICE_FLOOR_USD} floor`
-                  : "2x pass-through"}
               </p>
             </div>
           </div>
