@@ -227,6 +227,7 @@ export function mapProductToLeafmart(p: ProductWithJoins): LeafmartProduct {
       verified: r.verified,
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     })),
+    requiresAgeVerification: (p.thcContent ?? 0) > 0,
   };
 }
 

@@ -1,15 +1,25 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
+import { useAgeConfirmation } from "@/lib/leafmart/age-confirmation";
 import { ProductSilhouette } from "./ProductSilhouette";
+import { AgeGateModal } from "./AgeGateModal";
 
 const FREE_SHIPPING_THRESHOLD = 75;
 const REMOVE_ANIM_MS = 240;
 
 export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateQuantity, subtotal, itemCount } = useCart();
+  const router = useRouter();
+  const { isConfirmed, isDenied } = useAgeConfirmation();
+  const [ageGateOpen, setAgeGateOpen] = useState(false);
+
+  // True when the cart has at least one regulated item (THC > 0). The gate
+  // only fires for these — non-regulated wellness products checkout freely.
+  const cartRequiresAge = items.some((i) => i.product.requiresAgeVerification);
   const dialogRef = useRef<HTMLElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -276,13 +286,31 @@ export function CartDrawer() {
             <p className="text-[11.5px] text-[var(--muted)] mb-3.5 leading-relaxed">
               Shipping &amp; tax calculated at checkout. Typically ships in 1–2 business days.
             </p>
-            <Link
-              href="/leafmart/checkout"
-              onClick={closeCart}
-              className="block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-3.5 text-[13.5px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
-            >
-              Checkout · {formatUSD(subtotal)}
-            </Link>
+            {cartRequiresAge && !isConfirmed ? (
+              <button
+                type="button"
+                onClick={() => setAgeGateOpen(true)}
+                className="block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-3.5 text-[13.5px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+                aria-haspopup="dialog"
+              >
+                Checkout · {formatUSD(subtotal)}
+              </button>
+            ) : (
+              <Link
+                href="/leafmart/checkout"
+                onClick={closeCart}
+                aria-disabled={cartRequiresAge && isDenied}
+                onClickCapture={(e) => {
+                  if (cartRequiresAge && isDenied) {
+                    e.preventDefault();
+                    setAgeGateOpen(true);
+                  }
+                }}
+                className="block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-3.5 text-[13.5px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+              >
+                Checkout · {formatUSD(subtotal)}
+              </Link>
+            )}
             <Link
               href="/leafmart/cart"
               onClick={closeCart}
@@ -293,6 +321,15 @@ export function CartDrawer() {
           </footer>
         )}
       </aside>
+
+      <AgeGateModal
+        open={ageGateOpen}
+        onClose={() => setAgeGateOpen(false)}
+        onConfirmed={() => {
+          closeCart();
+          router.push("/leafmart/checkout");
+        }}
+      />
     </>
   );
 }
