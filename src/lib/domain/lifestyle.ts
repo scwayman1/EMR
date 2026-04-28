@@ -79,10 +79,14 @@ export const LIFESTYLE_TIPS: Record<string, LifestyleTip[]> = {
     { domain: "social", title: "Volunteer once a month", body: "Helping others is one of the most evidence-backed ways to improve your own wellbeing.", difficulty: "moderate", timeCommitment: "2 hrs/month" },
   ],
   spiritual: [
+    { domain: "spiritual", title: "Higher-power connection", body: "Five minutes of prayer, faith practice, or simply sitting in awe. Whatever 'higher power' means for you — connect with it once a day.", difficulty: "easy", timeCommitment: "5 min/day" },
     { domain: "spiritual", title: "Morning gratitude", body: "Write 3 things you're grateful for before looking at your phone. Takes 2 minutes. Reframes the entire day.", difficulty: "easy", timeCommitment: "2 min/day" },
     { domain: "spiritual", title: "Purpose journaling", body: "Once a week, write about what gives your life meaning. Purpose is protective — it reduces inflammation and improves outcomes.", difficulty: "moderate", timeCommitment: "15 min/week" },
     { domain: "spiritual", title: "Acts of kindness", body: "Do one intentional act of kindness per day. It doesn't have to be big. The act of giving activates the same reward pathways as receiving.", difficulty: "easy", timeCommitment: "5 min/day" },
-    { domain: "spiritual", title: "Nature connection", body: "Spend 20 minutes in nature without your phone. Forest bathing (shinrin-yoku) has measurable effects on cortisol and blood pressure.", difficulty: "easy", timeCommitment: "20 min" },
+    { domain: "spiritual", title: "Charity & service", body: "Give time, money, or skill to a cause you care about — at least once a month. Service is the most evidence-backed wellbeing intervention there is.", difficulty: "moderate", timeCommitment: "2 hrs/month" },
+    { domain: "spiritual", title: "Family & friends time", body: "Block intentional time with the people who matter — at least 30 protected minutes, two times per week. Loneliness is a clinical risk factor.", difficulty: "easy", timeCommitment: "60 min/week" },
+    { domain: "spiritual", title: "Meditation or prayer", body: "Ten minutes of quiet, every day. Meditation, prayer, contemplation — pick the one that fits you. Consistency matters more than tradition.", difficulty: "moderate", timeCommitment: "10 min/day" },
+    { domain: "spiritual", title: "Nature & outdoor time", body: "Spend 20 minutes outdoors without your phone. Forest bathing (shinrin-yoku) has measurable effects on cortisol and blood pressure.", difficulty: "easy", timeCommitment: "20 min/day" },
   ],
   mindfulness: [
     { domain: "mindfulness", title: "5-minute meditation", body: "Sit quietly, eyes closed, focus on your breath. When your mind wanders, gently return. Start with 5 minutes. The practice is the returning.", difficulty: "easy", timeCommitment: "5 min/day" },
