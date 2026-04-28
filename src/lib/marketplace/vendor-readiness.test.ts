@@ -21,13 +21,6 @@ function makeVendor(overrides: Partial<Vendor> = {}): Vendor {
     status: "pending",
     createdAt: new Date(),
     updatedAt: new Date(),
-    addressLine1: null,
-    addressLine2: null,
-    city: null,
-    state: null,
-    postalCode: null,
-    latitude: null,
-    longitude: null,
     ...overrides,
   };
 }
