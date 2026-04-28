@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
+import { useAgeConfirmation } from "@/lib/leafmart/age-confirmation";
+import { AgeGateModal } from "@/components/leafmart/AgeGateModal";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 
 const TAX_RATE = 0.0875;
@@ -195,6 +197,21 @@ function labelClass() {
 
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
+  const ageConfirmation = useAgeConfirmation();
+  const cartRequiresAge = items.some((i) => i.product.requiresAgeVerification);
+  const ageGateBlocking =
+    cartRequiresAge &&
+    ageConfirmation.hydrated &&
+    !ageConfirmation.isConfirmed;
+  const [ageGateOpen, setAgeGateOpen] = useState(false);
+
+  // Defensive guard: if a user lands on /leafmart/checkout directly (deep
+  // link, refresh) with regulated items in cart but no confirmation yet,
+  // open the gate before letting them fill in payment info.
+  useEffect(() => {
+    if (ageGateBlocking) setAgeGateOpen(true);
+  }, [ageGateBlocking]);
+
   const [step, setStep] = useState<StepIndex>(0);
   // Direction drives the slide-in animation when stepping forward vs back.
   const [direction, setDirection] = useState<Direction>("forward");
@@ -545,7 +562,16 @@ export default function CheckoutPage() {
 
   // ── Steps 0–2 ──────────────────────────────────────────────────
   return (
-    <section className="max-w-[1100px] mx-auto px-6 lg:px-10 py-12 lg:py-16">
+    <section
+      className="max-w-[1100px] mx-auto px-6 lg:px-10 py-12 lg:py-16"
+      aria-busy={ageGateBlocking}
+    >
+      <AgeGateModal
+        open={ageGateOpen}
+        onClose={() => setAgeGateOpen(false)}
+        onConfirmed={() => setAgeGateOpen(false)}
+      />
+
       <div className="text-center mb-3">
         <p className="eyebrow text-[var(--text-soft)]">Secure checkout</p>
       </div>

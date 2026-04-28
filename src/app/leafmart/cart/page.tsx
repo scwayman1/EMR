@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
+import { useAgeConfirmation } from "@/lib/leafmart/age-confirmation";
+import { AgeGateModal } from "@/components/leafmart/AgeGateModal";
 import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
 
 const TAX_RATE = 0.0875;
@@ -12,6 +15,10 @@ const REMOVE_ANIM_MS = 260;
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, subtotal } = useCart();
+  const router = useRouter();
+  const { isConfirmed, isDenied } = useAgeConfirmation();
+  const [ageGateOpen, setAgeGateOpen] = useState(false);
+  const cartRequiresAge = items.some((i) => i.product.requiresAgeVerification);
 
   const tax = useMemo(() => subtotal * TAX_RATE, [subtotal]);
   const total = subtotal + tax;
@@ -268,12 +275,29 @@ export default function CartPage() {
               {formatUSD(total)}
             </span>
           </div>
-          <Link
-            href="/leafmart/checkout"
-            className="mt-6 block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
-          >
-            Continue to checkout
-          </Link>
+          {cartRequiresAge && (!isConfirmed || isDenied) ? (
+            <button
+              type="button"
+              onClick={() => setAgeGateOpen(true)}
+              aria-haspopup="dialog"
+              className="mt-6 block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            >
+              Continue to checkout
+            </button>
+          ) : (
+            <Link
+              href="/leafmart/checkout"
+              className="mt-6 block w-full text-center rounded-full bg-[var(--ink)] text-[var(--bg)] py-4 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            >
+              Continue to checkout
+            </Link>
+          )}
+
+          <AgeGateModal
+            open={ageGateOpen}
+            onClose={() => setAgeGateOpen(false)}
+            onConfirmed={() => router.push("/leafmart/checkout")}
+          />
 
           {/* Trust signal stack */}
           <ul className="mt-5 space-y-3 text-[12px] text-[var(--text-soft)] leading-relaxed">

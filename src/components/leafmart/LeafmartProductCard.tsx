@@ -52,6 +52,12 @@ export interface LeafmartProduct {
   clinicianNote?: string | null;
   variants?: LeafmartVariant[];
   reviews?: LeafmartReview[];
+
+  // True when the product is regulated and requires the customer to confirm
+  // they are 21 or older before purchase. Derived server-side from THC content
+  // (any non-zero THC flips this on); other regulated categories can extend
+  // this rule in `mapProductToLeafmart`.
+  requiresAgeVerification?: boolean;
 }
 
 export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
