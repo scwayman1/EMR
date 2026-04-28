@@ -135,17 +135,13 @@ export function AgentFleetPanel() {
             Assign a different model to each of the {AGENT_CATALOG.length} agents in the fleet. Agents without
             an override use the practice default ({defaultModel?.name ?? "—"}). Disable any agent you don&apos;t use.
           </p>
-          <p className="text-xs text-text-subtle mt-2">
-            Pricing is keystone: practices pay <strong>max(${LEAFJOURNEY_PRICE_FLOOR_USD}/mo, 2x raw cost)</strong>.
-            Below ~${LEAFJOURNEY_PRICE_FLOOR_USD / 2} in raw cost the floor applies; above that we pass cost through and double it as margin.
-          </p>
         </CardContent>
       </Card>
 
       {/* Fleet totals */}
       <Card tone="raised">
         <CardContent className="py-5">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 items-end">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 items-end">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">Active agents</p>
               <p className="text-2xl font-display text-text tabular-nums">
@@ -153,20 +149,9 @@ export function AgentFleetPanel() {
               </p>
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">Raw fleet cost</p>
-              <p className="text-2xl font-display text-text tabular-nums">
-                ${fleetTotals.rawMonthly.toFixed(2)}<span className="text-sm text-text-muted font-sans">/mo</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">Leafjourney price</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-text-subtle mb-1">Estimated cost</p>
               <p className="text-2xl font-display text-accent tabular-nums">
                 ${fleetTotals.leafjourney.toFixed(2)}<span className="text-sm text-text-muted font-sans">/mo</span>
-              </p>
-              <p className="text-[11px] text-text-subtle mt-0.5">
-                {fleetTotals.basis === "floor"
-                  ? `$${LEAFJOURNEY_PRICE_FLOOR_USD} platform minimum`
-                  : "Keystone (2x pass-through)"}
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -344,10 +329,7 @@ function AgentRow({
 
       {/* Cost */}
       <div className="col-span-4 md:col-span-2 text-right">
-        <p className="text-sm font-medium text-text tabular-nums">${rawMonthly.toFixed(2)}</p>
-        <p className="text-[10px] text-text-subtle tabular-nums">
-          billed ${leafjourney.toFixed(2)}/mo
-        </p>
+        <p className="text-sm font-medium text-text tabular-nums">${leafjourney.toFixed(2)}/mo</p>
       </div>
     </div>
   );

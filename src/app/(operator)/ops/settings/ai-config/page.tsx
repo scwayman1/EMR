@@ -12,7 +12,7 @@ export default async function AiConfigPage() {
       <PageHeader
         eyebrow="Settings"
         title="AI model configuration"
-        description="Pick a practice-wide default, then tune any agent in the fleet. Pricing is keystone — practices pay max($20/mo, 2x raw model cost)."
+        description="Pick a practice-wide default, then tune any agent in the fleet."
       />
 
       <AiConfigTabs />
