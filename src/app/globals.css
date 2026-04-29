@@ -572,6 +572,18 @@
 }
 
 /* ==========================================================================
+   Utility — invisible scrollbar (used by horizontal sub-tab nav, etc.)
+   The bar still scrolls; we just hide its chrome to keep the row clean.
+   ========================================================================== */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==========================================================================
    ADA — Reduced motion: disable ALL transitions and animations globally
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {
