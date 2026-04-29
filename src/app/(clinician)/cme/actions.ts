@@ -36,7 +36,7 @@ export async function recordLessonStarted(
 ): Promise<LearnerProgress> {
   const next = applyLessonEvent(getOrCreate(learnerId), lessonId, "started");
   PROGRESS_BY_LEARNER.set(learnerId, next);
-  revalidatePath("/education");
+  revalidatePath("/cme");
   return next;
 }
 
@@ -49,6 +49,6 @@ export async function recordLessonCompleted(
     assessmentScore,
   });
   PROGRESS_BY_LEARNER.set(learnerId, next);
-  revalidatePath("/education");
+  revalidatePath("/cme");
   return next;
 }

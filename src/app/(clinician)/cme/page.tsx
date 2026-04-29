@@ -83,7 +83,7 @@ export default async function CurriculumHomePage() {
                 return (
                   <Link
                     key={m.id}
-                    href={`/education/${encodeURIComponent(m.id)}`}
+                    href={`/cme/${encodeURIComponent(m.id)}`}
                     className="block bg-white border border-slate-200 rounded-2xl p-6 hover:border-accent hover:-translate-y-0.5 transition-all shadow-sm"
                   >
                     <p className="text-[10px] uppercase tracking-widest text-text-muted font-bold mb-2">

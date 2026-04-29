@@ -52,6 +52,10 @@ export function awardedCmeMinutes(
 ): number {
   let mins = 0;
   for (const m of modules) {
+    const assessmentLessons = m.lessons.filter(l => l.assessment && l.assessment.length > 0);
+    const hasFailedAssessment = assessmentLessons.some(l => !isLessonComplete(l, progress.lessons[l.id]));
+    if (hasFailedAssessment) continue;
+
     for (const l of m.lessons) {
       if (isLessonComplete(l, progress.lessons[l.id])) {
         mins += l.durationMinutes;

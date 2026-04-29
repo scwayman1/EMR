@@ -20,7 +20,7 @@ export default async function LessonPage({ params }: PageProps) {
   return (
     <div className="max-w-[820px] mx-auto px-6 lg:px-12 py-12">
       <Link
-        href={`/education/${encodeURIComponent(mod.id)}`}
+        href={`/cme/${encodeURIComponent(mod.id)}`}
         className="text-sm text-accent font-semibold hover:underline"
       >
         ← {mod.title}

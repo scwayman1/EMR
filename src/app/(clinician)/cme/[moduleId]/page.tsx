@@ -22,7 +22,7 @@ export default async function ModulePage({ params }: PageProps) {
   return (
     <div className="max-w-[900px] mx-auto px-6 lg:px-12 py-12">
       <Link
-        href="/education"
+        href="/cme"
         className="text-sm text-accent font-semibold hover:underline"
       >
         ← All modules
@@ -50,7 +50,7 @@ export default async function ModulePage({ params }: PageProps) {
           return (
             <li key={l.id}>
               <Link
-                href={`/education/${encodeURIComponent(mod.id)}/${encodeURIComponent(l.id)}`}
+                href={`/cme/${encodeURIComponent(mod.id)}/${encodeURIComponent(l.id)}`}
                 className="flex items-start gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:border-accent transition-all shadow-sm"
               >
                 <div className="flex-shrink-0 h-8 w-8 rounded-full bg-accent/10 text-accent text-sm font-bold flex items-center justify-center">
