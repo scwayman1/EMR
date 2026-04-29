@@ -1271,13 +1271,13 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 086 | Community Resource Connector | High | **done** |
-| 087 | Legislative Advocacy Portal | Normal | backlog |
-| 088 | Cannabis Contraindication Override | Urgent | **done** |
-| 089 | Cannabis-Infused Recipe Library | Normal | backlog |
-| 090 | ER Admission Notification + Inpatient EMR | Urgent | backlog |
-| 091 | Medical Cannabis Dispensary Module | Urgent | backlog |
-| 092 | Dual Treatment Protocols (Western + Eastern) | High | backlog |
+| 086 | Community Resource Connector | High | in_progress |
+| 087 | Legislative Advocacy Portal | Normal | in_progress |
+| 088 | Cannabis Contraindication Override | Urgent | in_progress |
+| 089 | Cannabis-Infused Recipe Library | Normal | in_progress |
+| 090 | ER Admission Notification + Inpatient EMR | Urgent | in_progress |
+| 091 | Medical Cannabis Dispensary Module | Urgent | in_progress |
+| 092 | Dual Treatment Protocols (Western + Eastern) | High | in_progress |
 
 **Grand total: 92 tickets. ~50 shipped, 42 remaining.**
 
@@ -1313,11 +1313,11 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 | 078 | Referral Module + AI Packet | High | backlog |
 | 079 | Dementia Screening + Mindspan | Normal | backlog |
 | 080 | Cannabis Education Library | Normal | backlog |
-| 081 | OCR Scan & Auto-Populate | High | backlog |
-| 082 | Electronic Record Release | High | backlog |
-| 083 | Pediatric Module | High | backlog |
-| 084 | Military Encryption + Legal Framework | Urgent | backlog |
-| 085 | iCal / Google Calendar Export | Normal | **done** |
+| 081 | OCR Scan & Auto-Populate | High | in_progress |
+| 082 | Electronic Record Release | High | in_progress |
+| 083 | Pediatric Module | High | in_progress |
+| 084 | Military Encryption + Legal Framework | Urgent | in_progress |
+| 085 | iCal / Google Calendar Export | Normal | in_progress |
 
 **Grand total: 85 tickets. 44 shipped, 41 remaining.**
 
@@ -1958,6 +1958,7 @@ Beautiful, colorful, one-page patient education sheets auto-generated for every 
 ### EMR-111: Cannabis Education Database
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Proprietary cannabis education database with beautiful illustrations and simple terminology covering:
 - Terpenes (profiles, effects, aromatherapy)
@@ -1973,6 +1974,7 @@ Fully searchable directory. Builds on the existing Research Corpus (50+ studies 
 ### EMR-112: Medication Wallet Card (Printable)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Credit-card-sized printable card with the patient's current medications (cannabis + conventional + supplements). Auto-updates when meds change. Contains: name, strength, frequency. Portable so patients can carry it in their wallet. Downloadable PDF formatted for wallet dimensions.
 
@@ -1981,6 +1983,7 @@ Credit-card-sized printable card with the patient's current medications (cannabi
 ### EMR-113: Allergies + Contraindications in Profile Tab
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Add a dedicated Allergies section and a Major Contraindications section to the Demographics/Profile tab. Currently the contraindication check runs on prescribe but the data isn't surfaced on the main chart. Make it a prominent top-of-chart alert that's visible from the first page load.
 
@@ -1989,6 +1992,7 @@ Add a dedicated Allergies section and a Major Contraindications section to the D
 ### EMR-114: Credit Card + ACH Payment Storage
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Secure tokenized storage of patient credit card and ACH details so they can pay bills directly from the portal. Receipts auto-generated with date, invoice number. Patient sees their credit balance (if any) or amount owed right on the billing tab. **Status: partially done — StoredPaymentMethod model exists; Payabli integration is scaffolded.**
 
@@ -1997,6 +2001,7 @@ Secure tokenized storage of patient credit card and ACH details so they can pay 
 ### EMR-115: EOB Into Patient + Doctor Portal
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 When an EOB arrives from a payer, parse it and display it both in the patient portal (billing tab) AND the doctor's chart view. AI-summarized in plain language for patients. Shows what was billed, what was paid, what was adjusted, and what the patient owes.
 
@@ -2005,6 +2010,7 @@ When an EOB arrives from a payer, parse it and display it both in the patient po
 ### EMR-116: International Multi-Country Billing Framework
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Modular billing system that adapts to every country's rules, regulations, and coding system. Integrated with major insurance carriers per country. Optimized for maximum reimbursement within local compliance. Starts with US, UK, Canada, Germany, Australia.
 
@@ -2013,6 +2019,7 @@ Modular billing system that adapts to every country's rules, regulations, and co
 ### EMR-117: iOS App Portrait Mode Nav Fix
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 The native iOS app currently only shows the side nav options in landscape mode. Make all side options available in portrait mode as well, either via a collapsible drawer or a bottom tab bar that surfaces the most common destinations.
 
@@ -2021,6 +2028,7 @@ The native iOS app currently only shows the side nav options in landscape mode. 
 ### EMR-118: Active Nav Tab Highlighting
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 When a user clicks a side nav tab, highlight it in a different color so they know what section of the chart they're on. Simple polish. **Status: done in Wave 17.**
 
@@ -2029,6 +2037,7 @@ When a user clicks a side nav tab, highlight it in a different color so they kno
 ### EMR-119: Tab Consolidation — Reduce Patient Chart Tabs
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 The patient chart is accumulating tabs (Demographics, Records, Images, Labs, Notes, Correspondence, Cannabis Rx, Billing — and more coming). Too many tabs is overwhelming for providers and patients. Think through which tabs can be consolidated, grouped, or moved to secondary navigation.
 
@@ -2044,6 +2053,7 @@ Proposed grouping:
 ### EMR-120: Medicare RPM Program Integration
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Integrate Medicare RPM (Remote Patient Monitoring) programs for diabetes, hypertension, and weight monitoring. Features:
 - Pull RPM data from device partners (Omron, Dexcom, etc.)
@@ -2058,6 +2068,7 @@ Integrate Medicare RPM (Remote Patient Monitoring) programs for diabetes, hypert
 ### EMR-121: Master Access Log + Click Analytics
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Immutable master log recording every single chart access:
 - Who logged in
@@ -2074,6 +2085,7 @@ Builds on the existing AuditLog model. Export as PDF for HIPAA audits.
 ### EMR-122: In-App Translation + Live Video Captions
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Translation layer for the entire platform:
 - Messaging: auto-translate incoming/outgoing messages per patient language preference
@@ -2086,6 +2098,7 @@ Translation layer for the entire platform:
 ### EMR-123: Researcher / Scientist Portal with De-identified Data
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Entirely new authentication role: "researcher / scientist." Features:
 - Access to de-identified patient data (no names, but keep DOB, race, sex, socioeconomic status, smoking/drug history, etc.)
@@ -2106,6 +2119,7 @@ This is the research ecosystem layer that turns Leafjourney into a longitudinal 
 ### EMR-124: Nav Tab Reduction Proposal (UX audit)
 **Priority:** 2 — High
 **Source:** Dr. Patel (duplicate of EMR-119 for tracking)
+**Status:** in_progress
 **Description:** See EMR-119.
 
 ---
@@ -2113,6 +2127,7 @@ This is the research ecosystem layer that turns Leafjourney into a longitudinal 
 ### EMR-125: Volunteer & Donation Module with Geographic Registry
 **Priority:** 1 — Urgent (Constitutional Article VII)
 **Source:** Scott Wayman (Constitution pledge)
+**Status:** in_progress
 **Description:**
 The beating heart of Leafjourney's community commitment. A full volunteer and donation tracking system baked into both the patient and provider portals.
 
@@ -2142,6 +2157,7 @@ This is Article VII of the Constitution in code form. Must ship before the Patie
 ### EMR-126: Provider CME Credits via Medical Research Searches
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Automatically award CME (Continuing Medical Education) credits to providers when they conduct cannabis-related medical research inside Leafjourney — literature searches, study reviews, research corpus queries, de-identified data exploration.
 
@@ -2160,6 +2176,7 @@ This turns every minute a provider spends researching cannabis medicine inside L
 ### EMR-127: Leafjourney Charitable Fund + Transparent Ledger
 **Priority:** 2 — High (Constitutional Article VII, §5)
 **Source:** Scott Wayman (Constitution pledge)
+**Status:** in_progress
 **Description:**
 Leafjourney operates its **own** charitable fund. A portion of platform revenue, volunteer-offset donations, and voluntary contributions flow into the fund, which distributes to reputable cannabis advocacy organizations and medical charities globally.
 
@@ -2182,6 +2199,7 @@ This is how we prove — not claim — that we are not an extraction engine. The
 ### EMR-128: Universal Feedback Icon with Visual Annotation
 **Priority:** 2 — High
 **Source:** Scott Wayman
+**Status:** in_progress
 **Description:**
 A small, ever-present feedback icon fixed in a corner of every single page of the application — portal-wide, role-wide. One click opens a feedback capture flow that includes:
 
@@ -2208,6 +2226,7 @@ We are trying to build something no one has built before. The people who use thi
 ### EMR-193: Patient Portal Home → "Log Check-in" + Keep Symptom Graphs
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Rename the patient portal Home primary action to "Log Check-in." Keep the pain, sleep, anxiety, and mood graphs visible so patients see trend lines the moment they open the portal.
 
@@ -2221,6 +2240,7 @@ Rename the patient portal Home primary action to "Log Check-in." Keep the pain, 
 ### EMR-194: Log Dose Tab — Remove Ribbon, Show All Cannabis Products (Active/Inactive Filter)
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Remove all secondary ribbon tabs on Log Dose (My Results, Meds, Dosing Plan, Care Plan, Labs, Assessments, Outcomes, Care Guide, Learn). Replace with a single product list showing EVERY cannabis product tied to the patient — bought, scanned, or prescribed — with an All / Active / Inactive filter.
 
@@ -2235,6 +2255,7 @@ Remove all secondary ribbon tabs on Log Dose (My Results, Meds, Dosing Plan, Car
 ### EMR-195: Rename "My Health Records" → "My Records" + Two-Row Collapsible Ribbon
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Rename "My Health Records" to "My Records." Add TWO collapsible ribbons at the top:
 - Row 1: All, Notes, Labs, Imaging, Letters, Other
@@ -2250,6 +2271,7 @@ Rename "My Health Records" to "My Records." Add TWO collapsible ribbons at the t
 ### EMR-196: Rename "My Journey" → "My Garden" + Top Ribbon
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Rename "My Journey" to "My Garden." Keep a top ribbon: Lifestyle • My Garden • Storybook • Roadmap. (Cannabis Wheel moves to Chat & Learn per EMR-200.)
 
@@ -2263,6 +2285,7 @@ Rename "My Journey" to "My Garden." Keep a top ribbon: Lifestyle • My Garden �
 ### EMR-197: Messages — Highlight + Inline Expand with Video/Phone + Text Box
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 When a patient clicks a message, highlight the row and expand inline to show full thread, reply text box, and video/phone call buttons.
 
@@ -2276,6 +2299,7 @@ When a patient clicks a message, highlight the row and expand inline to show ful
 ### EMR-198: Q/A Tab — Remove All Ribbon Tabs
 **Priority:** 3 — Normal
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Strip all secondary ribbon tabs from the Q/A page. One clean feed.
 
@@ -2288,6 +2312,7 @@ Strip all secondary ribbon tabs from the Q/A page. One clean feed.
 ### EMR-199: Account Ribbon — Fit One Row, Remove Community
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Fit the Account ribbon on ONE row: Profile • Billing • Intake • Settings. Remove "Community" (moves to Chat & Learn per EMR-200).
 
@@ -2301,6 +2326,7 @@ Fit the Account ribbon on ONE row: Profile • Billing • Intake • Settings. 
 ### EMR-200: Chat & Learn — Consolidate Ribbon + Reddit-Style Community Threads
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
 **Description:**
 Chat & Learn becomes the social + education hub. Top ribbon: Community • Cannabis Wheel • ChatCB • Research.
 
@@ -2317,6 +2343,7 @@ Clicking a Community post opens a Reddit-style thread: message/question at top, 
 ### EMR-201: Cannabis Combo Wheel — Colors POP + Larger Wheel & Letters
 **Priority:** 2 — High
 **Source:** Dr. Patel (whiteboard)
+**Status:** in_progress
 **Description:**
 Visual tune: saturate baseline colors so they pop (vs. current muted tones), and increase wheel diameter + label type size for mobile + tablet readability.
 
@@ -2330,6 +2357,7 @@ Visual tune: saturate baseline colors so they pop (vs. current muted tones), and
 ### EMR-202: Education Page — Justin Kander Research PDF Under "Research" Tab
 **Priority:** 3 — Normal
 **Source:** Dr. Patel (whiteboard)
+**Status:** in_progress
 **Description:**
 On the public Education page, add Justin Kander's research PDF as a downloadable resource under the "Research" tab, positioned below the "Search PubMed" text box.
 
@@ -2343,6 +2371,7 @@ On the public Education page, add Justin Kander's research PDF as a downloadable
 ### EMR-203: LeafJourney Trifold Reference Guide (Cannabinoids + Terpenes + Bioavailability + Family Tree)
 **Priority:** 2 — High
 **Source:** Dr. Patel (pamphlet prompt, derived from TheAmazingFlower 2024 Pocket Guide)
+**Status:** in_progress
 **Description:**
 Three-fold reference pamphlet in the LeafJourney aesthetic — cream background, LeafJourney green accent, Apple-grade type hierarchy — usable by both providers and patients. Copy must be readable at a 3rd-grade level while remaining clinically useful. Emoji-first, color-banded, no dense tables.
 
@@ -2371,6 +2400,7 @@ Three-fold reference pamphlet in the LeafJourney aesthetic — cream background,
 ### EMR-204: Landing Page — Fix "POTENCY 710" Label + Remove Unconfirmed Partner Brands
 **Priority:** 3 — Normal
 **Source:** Dr. Patel (leafjourney.com screenshot annotation)
+**Status:** in_progress
 **Description:**
 Two marketing polish items on the public landing page:
 1. The category label "POTENCY 710 · SKINCARE" above Gold Skin Serum reads like an internal SKU — replace with a human-readable category label such as "CBD SKINCARE."
@@ -2386,7 +2416,7 @@ Two marketing polish items on the public landing page:
 ### EMR-205: P1 BUG — Patient Portal Stuck on Loading Skeleton (`/portal`)
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel (live demo environment, 2026-04-20)
-**Status:** open, needs investigation on deployed build
+**Status:** in_progress
 
 **Symptom:**
 Hitting `/portal` (and `/clinic` per Dr. Patel) shows the shell + sidebar + authed user correctly, but the main content area is stuck on the skeleton placeholders from `src/app/(patient)/portal/loading.tsx`. Nav items do not click — hydration never completes, so client-side Link clicks are no-ops.
@@ -2424,24 +2454,24 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 093 | Four Pillars Bar Graph | High | backlog |
-| 094 | Mental Health Security Overlay | Urgent | backlog |
-| 095 | Spiritual Wellness Category | Normal | backlog |
-| 096 | Double-Blind Study Module | Normal | backlog |
-| 097 | Data Research & Reports Module | High | backlog |
-| 098 | AI Coach (gentle/moderate/tough) | High | backlog |
-| 099 | Endocannabinoid Labwork | High | backlog |
-| 100 | AI Tutorial Videos | Normal | backlog |
-| 101 | Full CPT/ICD-10 Code Book + Superbills | Urgent | backlog |
-| 102 | Novel Cannabis ICD-10 Code Proposal | High | backlog |
-| 103 | Practice Analytics Deep Dive | High | backlog |
-| 104 | Click Counter / Workflow Efficiency | Normal | backlog |
-| 105 | Philanthropy / Donations Module | Low | backlog |
-| 106 | Hospital System Integration | High | backlog |
-| 107 | Expected Reimbursement Rate | High | backlog |
-| 108 | Full Revenue Cycle System | High | partial |
-| 109 | Age-Based Chart Overlays | High | backlog |
-| 110 | AI Patient Education Sheets | High | backlog |
+| 093 | Four Pillars Bar Graph | High | in_progress |
+| 094 | Mental Health Security Overlay | Urgent | in_progress |
+| 095 | Spiritual Wellness Category | Normal | in_progress |
+| 096 | Double-Blind Study Module | Normal | in_progress |
+| 097 | Data Research & Reports Module | High | in_progress |
+| 098 | AI Coach (gentle/moderate/tough) | High | in_progress |
+| 099 | Endocannabinoid Labwork | High | in_progress |
+| 100 | AI Tutorial Videos | Normal | in_progress |
+| 101 | Full CPT/ICD-10 Code Book + Superbills | Urgent | in_progress |
+| 102 | Novel Cannabis ICD-10 Code Proposal | High | in_progress |
+| 103 | Practice Analytics Deep Dive | High | in_progress |
+| 104 | Click Counter / Workflow Efficiency | Normal | in_progress |
+| 105 | Philanthropy / Donations Module | Low | in_progress |
+| 106 | Hospital System Integration | High | in_progress |
+| 107 | Expected Reimbursement Rate | High | in_progress |
+| 108 | Full Revenue Cycle System | High | in_progress |
+| 109 | Age-Based Chart Overlays | High | in_progress |
+| 110 | AI Patient Education Sheets | High | in_progress |
 | 111 | Cannabis Education Database | Normal | backlog |
 | 112 | Medication Wallet Card | High | backlog |
 | 113 | Allergies + Contraindications Profile | High | backlog |
