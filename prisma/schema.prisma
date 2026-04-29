@@ -42,6 +42,14 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // EMR-220 — Production billing identifiers
+  // taxId stored encrypted at the application layer; the DB column is the
+  // ciphertext blob (base64 of iv||tag||ct). Never the plaintext EIN.
+  billingNpi       String? // 10-digit type-2 organizational NPI used as the billing provider on 837P loop 2010AA
+  taxId            String? // EIN ciphertext — decrypt via decryptTaxId() before use
+  billingAddress   Json? // { line1, line2?, city, state, postalCode } — pay-from address on the claim
+  payToAddress     Json? // optional override for 2010AB pay-to address when different from billingAddress
+
   memberships       Membership[]
   patients          Patient[]
   providers         Provider[]
@@ -82,6 +90,8 @@ model Organization {
   appealOutcomes      AppealOutcome[]
   rcmDailyClose       RcmDailyClose[]
   nsfEvents           NsfEvent[]
+  // Track 3 — EDI & Claim Generation (EMR-218 payer rules registry)
+  payerRules          PayerRule[]
 }
 
 model User {
@@ -250,6 +260,9 @@ model Provider {
   specialties    String[] @default([])
   bio            String?
   active         Boolean  @default(true)
+  // EMR-220 — Production billing identifiers
+  npi            String? // 10-digit type-1 individual NPI; CMS-Luhn validated on write
+  taxonomyCode   String? // 10-char Healthcare Provider Taxonomy code (e.g. "207RI0008X")
   createdAt      DateTime @default(now())
 
   user         User          @relation("ProviderUser", fields: [userId], references: [id], onDelete: Cascade)
@@ -610,15 +623,23 @@ model ClearinghouseSubmission {
   clearinghouseName String // "Availity", "Waystar", etc.
   submittedAt       DateTime                 @default(now())
   ediPayload        String? // 837P payload (stored for audit)
+  ediResponse       String? // raw response body (999/277CA/JSON envelope) — EMR-217 audit trail
   responseStatus    SubmissionResponseStatus @default(pending)
   responseCode      String?
   responseMessage   String?
   respondedAt       DateTime?
   retryCount        Int                      @default(0)
+  // EMR-219 — secondary submission tracking
+  // When non-null, this row is the secondary 837P built from a paid primary;
+  // references the primary AdjudicationResult so we can audit the CAS-segment
+  // construction back to its source ERA.
+  primaryAdjudicationId String?
+  isSecondary           Boolean              @default(false)
 
   claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
   @@index([claimId, submittedAt])
+  @@index([primaryAdjudicationId])
 }
 
 enum AdjudicationClaimStatus {
@@ -3076,4 +3097,152 @@ model NsfEvent {
 
   @@index([organizationId, occurredAt])
   @@index([paymentId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Track 3 — EDI & Claim Generation
+// EMR-216 generator + EMR-217 gateway adapter + EMR-218 payer rules DB
+// + EMR-219 secondary claims + EMR-220 NPI/TaxID + EMR-222 NCCI/MUE
+// ─────────────────────────────────────────────────────────────────────────
+
+enum PayerClass {
+  commercial
+  government
+  medicare_advantage
+  medicaid_managed
+  workers_comp
+  self_pay
+  other
+}
+
+enum CorrectedClaimFrequency {
+  c7        // standard replacement
+  c6        // adjustment
+  c8_then_1 // void + rebill
+}
+
+/// EMR-218 — DB-backed payer rules. Mirrors the in-code shape from
+/// src/lib/billing/payer-rules.ts. resolvePayerRuleAsync() prefers DB
+/// rows when present, falls through to the in-code PAYER_RULES array.
+model PayerRule {
+  id                           String                  @id // EDI payer id or slug
+  organizationId               String? // null = global default; non-null = org-specific override
+  displayName                  String
+  aliases                      String[]                @default([])
+  class                        PayerClass
+  timelyFilingDays             Int
+  correctedTimelyFilingDays    Int
+  appealLevel1Days             Int
+  appealLevel2Days             Int
+  appealExternalReviewDays     Int? // null when payer has no external review path
+  ackSlaDays                   Int
+  adjudicationSlaDays          Int
+  eligibilityTtlHours          Int
+  correctedClaimFrequency      CorrectedClaimFrequency
+  honorsMod25OnZ71             Boolean
+  requiresPriorAuthForCannabis Boolean
+  excludesCannabis             Boolean
+  cannabisPolicyCitation       String?
+  supportsElectronicSubmission Boolean                 @default(true)
+  attachmentChannels           String[]                @default([]) // {pwk_electronic, fax, mail, portal}
+  /// Drives the "rule out of date" banner when > 6 months old.
+  lastReviewedAt               DateTime                @default(now())
+  createdAt                    DateTime                @default(now())
+  updatedAt                    DateTime                @updatedAt
+
+  organization Organization?       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  auditLogs    PayerRuleAuditLog[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId])
+}
+
+/// Append-only edit log for PayerRule. Captures full before/after JSON
+/// snapshots so an admin can reconstruct any prior rule state.
+model PayerRuleAuditLog {
+  id             String   @id @default(cuid())
+  payerRuleId    String
+  organizationId String?
+  editedById     String?
+  editedAt       DateTime @default(now())
+  before         Json
+  after          Json
+  changedFields  String[] @default([])
+  reason         String?
+
+  payerRule PayerRule @relation(fields: [payerRuleId], references: [id], onDelete: Cascade)
+
+  @@index([payerRuleId, editedAt])
+}
+
+/// EMR-222 — NCCI Procedure-to-Procedure (PTP) edit pair. CMS publishes
+/// quarterly. Tagged with the quarter version string so an admin can
+/// answer "which quarter adjudicated this claim?".
+model NcciEdit {
+  id                String    @id @default(cuid())
+  column1Code       String
+  column2Code       String
+  modifierIndicator Int // 0=no override, 1=override allowed, 9=N/A
+  rationale         String?
+  effectiveDate     DateTime
+  deletionDate      DateTime?
+  quarter           String // "2026Q2"
+  loadedAt          DateTime  @default(now())
+
+  @@unique([column1Code, column2Code, quarter])
+  @@index([column1Code])
+  @@index([quarter])
+}
+
+/// EMR-222 — Medically Unlikely Edit. Maximum units of service CMS
+/// expects on a single date of service for a given HCPCS code.
+model MueLimit {
+  id            String   @id @default(cuid())
+  hcpcsCode     String
+  mueValue      Int
+  adjudication  Int // 1=line, 2=date-of-service, 3=clinical
+  rationale     String?
+  effectiveDate DateTime
+  quarter       String
+  loadedAt      DateTime @default(now())
+
+  @@unique([hcpcsCode, quarter])
+  @@index([hcpcsCode])
+  @@index([quarter])
+}
+
+/// Tracks the most-recently loaded NCCI/MUE quarter so the scrub engine
+/// can surface "loaded quarter" + the admin UI can show staleness.
+model NcciMueLoadStatus {
+  id         String   @id @default(cuid())
+  table      String   @unique // "ncci" | "mue"
+  quarter    String
+  rowCount   Int
+  source     String?
+  loadedAt   DateTime @default(now())
+  loadedById String?
+}
+
+/// EMR-217 — Permanent-failure submissions. Auth that won't recover,
+/// malformed gateway response, or rate-limit exhaustion across N attempts.
+/// Operators investigate from /ops/billing/dead-letter and resolve.
+model ClearinghouseDeadLetter {
+  id              String    @id @default(cuid())
+  submissionId    String?
+  claimId         String?
+  organizationId  String
+  gatewayName     String // "availity" | "waystar" | etc.
+  failureCategory String // "network" | "timeout" | "malformed_response" | "auth" | "rate_limit_exhausted" | "permanent_rejection"
+  errorMessage    String
+  requestPayload  String? // EDI payload at the moment of failure
+  responseBody    String?
+  attemptCount    Int       @default(1)
+  firstFailedAt   DateTime  @default(now())
+  lastFailedAt    DateTime  @default(now())
+  resolvedAt      DateTime?
+  resolvedById    String?
+  resolutionNote  String?
+
+  @@index([organizationId, resolvedAt])
+  @@index([claimId])
 }
