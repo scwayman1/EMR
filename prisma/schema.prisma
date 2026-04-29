@@ -74,6 +74,14 @@ model Organization {
   equityEntries     EquityEntry[]
   financialReports  FinancialReport[]
   financialGoals    FinancialGoal[]
+  // Track 7 — Financial Operations & Lockbox
+  eraFiles            EraFile[]
+  payerContracts      PayerContract[]
+  bankDeposits        BankDeposit[]
+  priorAuthorizations PriorAuthorization[]
+  appealOutcomes      AppealOutcome[]
+  rcmDailyClose       RcmDailyClose[]
+  nsfEvents           NsfEvent[]
 }
 
 model User {
@@ -201,6 +209,7 @@ model Patient {
   productReviews       ProductReview[]
   cart                 Cart?
   shippingAddresses    ShippingAddress[]
+  priorAuthorizations  PriorAuthorization[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -474,6 +483,8 @@ model Claim {
   denialEvents    DenialEvent[]
   appealPackets   AppealPacket[]
   adjustments     Adjustment[]
+  appealOutcomes  AppealOutcome[]
+  nsfEvents       NsfEvent[]
 
   @@index([organizationId, status, serviceDate])
   @@index([patientId, serviceDate])
@@ -496,7 +507,9 @@ model Payment {
   reference   String? // check #, EFT trace, last4 of card
   notes       String?
 
-  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim              Claim              @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  bankDepositMatches BankDepositMatch[]
+  nsfEvents          NsfEvent[]
 
   @@index([claimId, paymentDate])
 }
@@ -627,11 +640,14 @@ model AdjudicationResult {
   claimStatus           AdjudicationClaimStatus
   lineDetails           Json                    @default("[]") // per-line: paid, allowed, CARC/RARC
   rawEra                String? // full 835 segment for audit
+  eraFileId             String? // backlink to ERA payload (Track 7 — EMR-221)
   parsedAt              DateTime                @default(now())
 
-  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  claim   Claim    @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  eraFile EraFile? @relation(fields: [eraFileId], references: [id], onDelete: SetNull)
 
   @@index([claimId])
+  @@index([eraFileId])
 }
 
 enum DenialResolution {
@@ -691,8 +707,9 @@ model AppealPacket {
   reviewedBy        String? // user id (if human-reviewed)
   createdAt         DateTime     @default(now())
 
-  claim       Claim       @relation(fields: [claimId], references: [id], onDelete: Cascade)
-  denialEvent DenialEvent @relation(fields: [denialEventId], references: [id], onDelete: Cascade)
+  claim       Claim          @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  denialEvent DenialEvent    @relation(fields: [denialEventId], references: [id], onDelete: Cascade)
+  outcome     AppealOutcome?
 
   @@index([claimId])
   @@index([status])
@@ -2454,6 +2471,7 @@ model BankAccount {
   expenses          Expense[]
   recurringExpenses RecurringExpense[]
   cashFlowEntries   CashFlowEntry[]
+  bankDeposits      BankDeposit[]
 
   @@index([organizationId, isActive])
 }
@@ -2721,4 +2739,341 @@ model EducationCompound {
 
   @@unique([type, sortOrder])
   @@index([type, active, sortOrder])
+}
+
+// --------------------------------------------------------------
+// Track 7 — Financial Operations & Lockbox
+// EMR-221  ERA / 835 ingestion pipeline
+// EMR-223  Per-payer contract allowables
+// EMR-224  Lockbox / bank deposit matching
+// EMR-225  Patient statement generator (uses existing Statement model)
+// EMR-227  NSF / chargeback handler
+// EMR-228  Appeal tracker + outcome learning
+// EMR-229  Prior-auth workflow
+// EMR-230  RCM daily-close report
+// --------------------------------------------------------------
+
+enum EraFileStatus {
+  received  // payload stored, not yet parsed
+  parsed    // 835 parsed into AdjudicationResult rows
+  posted    // financial events written, claim balances updated
+  failed    // parse error — see parseError
+  duplicate // already ingested under a different bankReference (deduped)
+}
+
+/// Raw ERA / 835 payload from the clearinghouse. One row per check / EFT
+/// trace from the payer; one ERA can carry payment for many claims.
+model EraFile {
+  id               String        @id @default(cuid())
+  organizationId   String
+  payerName        String
+  payerId          String?
+  /// EFT trace number, paper check number, or "EFT-<date>" for synthetic.
+  /// Combined with payerId is the dedupe key — a retried delivery from
+  /// the clearinghouse never double-posts.
+  checkNumber      String
+  checkDate        DateTime
+  paymentMethod    String        @default("ach") // ach | check | vcc | fedwire
+  totalAmountCents Int
+  /// Full payload — raw EDI 835 text or the gateway's pre-parsed JSON
+  /// envelope. Stored verbatim for audit and re-parsing.
+  rawPayload       String
+  /// sha256 of the normalized payload. Second-line dedupe defence so
+  /// payloads that arrive without a stable check# still dedupe.
+  contentHash      String
+  status           EraFileStatus @default(received)
+  parseError       String?
+  parsedAt         DateTime?
+  postedAt         DateTime?
+  receivedAt       DateTime      @default(now())
+
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  adjudications      AdjudicationResult[]
+  bankDepositMatches BankDepositMatch[]
+
+  @@unique([organizationId, payerId, checkNumber])
+  @@unique([organizationId, contentHash])
+  @@index([organizationId, receivedAt])
+  @@index([status])
+}
+
+/// A negotiated payer contract — owns the per-CPT allowables the
+/// underpayment detector compares against. Effective-date ranged so a
+/// new contract for the same payer supersedes the old one cleanly.
+model PayerContract {
+  id             String    @id @default(cuid())
+  organizationId String
+  payerId        String
+  payerName      String
+  contractName   String
+  effectiveStart DateTime
+  effectiveEnd   DateTime?
+  notes          String?
+  active         Boolean   @default(true)
+  /// Source filename / hash of the imported contract document, for audit.
+  sourceRef      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rates        PayerContractRate[]
+
+  @@unique([organizationId, payerId, effectiveStart])
+  @@index([organizationId, payerId, active])
+}
+
+/// One row per (CPT × modifier) on a contract. Modifier null = base rate.
+/// Composite uniqueness lets a contract carry both base + modified rates
+/// for the same CPT (e.g. 99214 base $130, 99214-95 telehealth $115).
+model PayerContractRate {
+  id           String  @id @default(cuid())
+  contractId   String
+  cptCode      String
+  modifier     String?
+  allowedCents Int
+  notes        String?
+
+  contract PayerContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, cptCode, modifier])
+  @@index([cptCode])
+}
+
+enum BankDepositStatus {
+  pending           // not yet attempted to match
+  matched           // matched to ERA(s) / payment(s) — sum equals deposit
+  partially_matched // matched some but not all
+  unmatched         // tried, found no candidates
+  variance          // matched but sums don't reconcile within tolerance
+}
+
+/// A real-world deposit on the practice's bank statement. Lockbox
+/// reconciliation matches each deposit to one or more ERAs / patient
+/// payments. Drives EMR-224 + EMR-230 daily close.
+model BankDeposit {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  bankAccountId      String?
+  depositDate        DateTime
+  amountCents        Int
+  /// Bank-side trace identifier (deposit slip id, IAT trace, lockbox
+  /// reference). Globally unique within the org to dedupe on re-import.
+  bankReference      String
+  source             String            @default("lockbox") // lockbox | ach | wire | branch | other
+  /// Original line as it appeared in the bank statement (CSV row,
+  /// BAI2 record, or OFX <STMTTRN>).
+  rawLine            String?
+  status             BankDepositStatus @default(pending)
+  matchedAmountCents Int               @default(0)
+  /// matched_total - amount; non-zero when partially_matched / variance.
+  varianceCents      Int?
+  notes              String?
+  createdAt          DateTime          @default(now())
+  reconciledAt       DateTime?
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bankAccount  BankAccount?       @relation(fields: [bankAccountId], references: [id], onDelete: SetNull)
+  matches      BankDepositMatch[]
+
+  @@unique([organizationId, bankReference])
+  @@index([organizationId, depositDate])
+  @@index([status])
+}
+
+/// Edge between a BankDeposit and the underlying ERA(s) / Payment(s)
+/// that make up the deposit total. A many-to-many join with amount,
+/// because one deposit can split across several ERAs and one ERA can
+/// (rarely) hit two deposits.
+model BankDepositMatch {
+  id          String   @id @default(cuid())
+  depositId   String
+  eraFileId   String?
+  paymentId   String?
+  amountCents Int
+  matchedAt   DateTime @default(now())
+  /// "auto" for the matcher; otherwise the user id that confirmed the
+  /// match manually.
+  matchedBy   String
+
+  deposit BankDeposit @relation(fields: [depositId], references: [id], onDelete: Cascade)
+  eraFile EraFile?    @relation(fields: [eraFileId], references: [id], onDelete: SetNull)
+  payment Payment?    @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([depositId])
+  @@index([eraFileId])
+  @@index([paymentId])
+}
+
+enum AppealResult {
+  pending
+  overturned   // payer reversed the denial — money recovered
+  upheld       // payer kept the denial — no recovery
+  partial      // partial recovery
+  withdrawn    // we pulled the appeal
+  no_response  // payer never replied within the SLA
+}
+
+/// Outcome of an appeal — feeds the learning loop. Each overturned
+/// outcome writes a `BillingMemory` row for the (payer, CARC, argument)
+/// combination so future appeals lead with the winning argument.
+model AppealOutcome {
+  id             String       @id @default(cuid())
+  organizationId String
+  appealPacketId String       @unique
+  claimId        String
+  payerId        String?
+  payerName      String
+  /// CARC the appeal was responding to — primary signal for the
+  /// learning loop.
+  carcCode       String?
+  rarcCode       String?
+  /// Tags identifying the argument(s) used in the appeal letter.
+  /// e.g. ["medical_necessity", "modifier_correction", "policy_citation"].
+  /// Used by the learning loop to score which argument types win for
+  /// which (payer, CARC) combination.
+  argumentTags   String[]     @default([])
+  decisionDate   DateTime?
+  recoveredCents Int          @default(0)
+  result         AppealResult @default(pending)
+  notes          String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  appealPacket AppealPacket @relation(fields: [appealPacketId], references: [id], onDelete: Cascade)
+  claim        Claim        @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, payerName, result])
+  @@index([carcCode, result])
+}
+
+enum PriorAuthStatus {
+  draft       // assembled, not yet submitted
+  submitted   // sent to payer / portal
+  approved    // payer approved — has approvalNumber + expiresAt
+  denied      // payer denied
+  expired     // approval lapsed before service rendered
+  withdrawn   // we pulled the request
+}
+
+/// Prior authorization workflow. Cannabis services trigger PA on most
+/// commercial payers; the claim-construction agent gates submission on
+/// a valid PA where required (per `payer-rules.requiresPriorAuthForCannabis`).
+model PriorAuthorization {
+  id             String          @id @default(cuid())
+  organizationId String
+  patientId      String
+  payerName      String
+  payerId        String?
+  /// CPT codes covered by the request. The whole request is a single PA
+  /// even when it covers multiple codes, since payers issue one
+  /// approvalNumber per request.
+  cptCodes       String[]        @default([])
+  icd10Codes     String[]        @default([])
+  unitsRequested Int             @default(1)
+  status         PriorAuthStatus @default(draft)
+  submittedAt    DateTime?
+  approvalNumber String?
+  approvedUnits  Int?
+  expiresAt      DateTime?
+  /// The full assembled packet — DSM-5 severity, treatment plan, prior
+  /// failures. Kept on the row so the same packet can be replayed for
+  /// appeals (EMR-228 reads it for medical-necessity arguments).
+  packetPayload  Json?
+  /// Adapter that submitted the packet ("availity-pa", "carecentrix",
+  /// "manual_fax", etc.). Null when still in draft.
+  portalAdapter  String?
+  /// Payer-side reference id (their case number or PA id). Distinct
+  /// from approvalNumber, which only exists when status=approved.
+  externalRef    String?
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([patientId, status])
+  @@index([expiresAt])
+}
+
+/// Per-day rollup of every metric the practice owner needs in one view.
+/// Generated by the daily-close job at 23:59 local; mailed out the next
+/// morning. The dashboard query reads the latest row + computes deltas.
+model RcmDailyClose {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  closeDate          DateTime @db.Date
+  // -- Counts --------------------------------------------------------
+  claimsCreated      Int      @default(0)
+  claimsSubmitted    Int      @default(0)
+  claimsAccepted     Int      @default(0)
+  claimsRejected     Int      @default(0)
+  claimsPaid         Int      @default(0)
+  claimsDenied       Int      @default(0)
+  claimsAppealed     Int      @default(0)
+  claimsWrittenOff   Int      @default(0)
+  // -- Dollars (cents) ----------------------------------------------
+  billedCents        Int      @default(0)
+  allowedCents       Int      @default(0)
+  paidCents          Int      @default(0)
+  adjustmentCents    Int      @default(0)
+  patientRespCents   Int      @default(0)
+  outstandingArCents Int      @default(0)
+  arBucket0to30      Int      @default(0)
+  arBucket31to60     Int      @default(0)
+  arBucket61to90     Int      @default(0)
+  arBucket91to120    Int      @default(0)
+  arBucket120plus    Int      @default(0)
+  // -- Exception counters (full lists computed live) ----------------
+  staleClaims        Int      @default(0)
+  unbalancedBatches  Int      @default(0)
+  pendingTakebacks   Int      @default(0)
+  unmatchedDeposits  Int      @default(0)
+  overdueAppeals     Int      @default(0)
+  // -- Delivery -----------------------------------------------------
+  emailedAt  DateTime?
+  exportedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, closeDate])
+  @@index([closeDate])
+}
+
+enum NsfEventType {
+  nsf         // patient card / ACH bounced
+  chargeback  // disputed and clawed back by issuer
+  reversal    // clearinghouse-initiated reversal (rare)
+}
+
+/// Negative-payment event: a card NSF, an issuer chargeback, or a
+/// clearinghouse reversal. Reverses the original FinancialEvent and
+/// re-opens the claim balance for collections, with NSF-specific tone.
+model NsfEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  paymentId      String
+  claimId        String?
+  type           NsfEventType
+  occurredAt     DateTime
+  /// Always positive — the magnitude of the reversed amount. The
+  /// matching FinancialEvent will be written as a negative entry.
+  amountCents    Int
+  bankFeeCents   Int          @default(0)
+  /// Bank-provided reason ("R01 NSF", "fraud", "cancelled by consumer").
+  reason         String?
+  resolved       Boolean      @default(false)
+  resolvedAt     DateTime?
+  notes          String?
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  claim        Claim?       @relation(fields: [claimId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, occurredAt])
+  @@index([paymentId])
 }
