@@ -130,7 +130,7 @@ export function buildClaimEdi(ctx: ClaimContext): {
     };
 
     if (ctx.secondary) {
-      const lineDetails = ((ctx.secondary.primaryAdjudication.lineDetails ?? []) as Array<{
+      const lineDetails = ((ctx.secondary.primaryAdjudication.lineDetails ?? []) as unknown as Array<{
         sequence: number;
         allowedCents: number;
         paidCents: number;
