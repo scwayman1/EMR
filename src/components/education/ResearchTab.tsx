@@ -23,6 +23,12 @@ import {
 } from "@/lib/domain/chatcb";
 import { searchPubMedArticles, type PubMedSearchResult } from "@/app/education/actions";
 
+// Kander book links — single source of truth so the URLs can be swapped to
+// our hosted PDF / mirrored web copy without hunting through the JSX.
+const KANDER_PDF_URL =
+  "https://archive.org/download/cannabis-and-cannabinoids-in-cancer-treatment/CannabisAndCancer-JustinKander.pdf";
+const KANDER_WEB_URL = "https://www.cannabisandcancer.com/";
+
 export function ResearchTab() {
   const [cannabinoidFilter, setCannabinoidFilter] = useState("");
   const [conditionFilter, setConditionFilter] = useState("");
@@ -237,8 +243,12 @@ export function ResearchTab() {
               By Justin Kander. A comprehensive compilation of human cases and research demonstrating the interaction between cannabinoids and cancer.
             </p>
             <div className="flex flex-wrap gap-3 justify-center md:justify-start">
-              <button
-                type="button"
+              <a
+                href={KANDER_PDF_URL}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Download Cannabis and Cancer PDF"
                 className={cn(
                   "inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl",
                   "bg-white text-indigo-700 font-semibold text-sm shadow-lg shadow-indigo-900/30",
@@ -249,9 +259,12 @@ export function ResearchTab() {
               >
                 <Download className="w-4 h-4" strokeWidth={2.5} />
                 Download PDF
-              </button>
-              <button
-                type="button"
+              </a>
+              <a
+                href={KANDER_WEB_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Read Cannabis and Cancer web version (opens in new tab)"
                 className={cn(
                   "inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl",
                   "bg-white/10 text-white font-semibold text-sm border border-white/40 backdrop-blur-md",
@@ -262,7 +275,7 @@ export function ResearchTab() {
               >
                 <ExternalLink className="w-4 h-4" strokeWidth={2.5} />
                 Read Web Version
-              </button>
+              </a>
             </div>
           </div>
         </CardContent>
