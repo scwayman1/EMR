@@ -28,6 +28,7 @@ const schema = z.object({
   contraindicationAcknowledged: z.string().optional(),
   contraindicationOverrideReason: z.string().max(2000).optional(),
   contraindicationIds: z.string().optional(), // JSON array of ids
+  contraindicationCoSignerUserId: z.string().optional(),
 });
 
 export type PrescribeResult = { ok: true } | { ok: false; error: string };
@@ -54,6 +55,13 @@ export async function createPrescriptionAction(
     noteToPatient: formData.get("noteToPatient") || undefined,
     noteToPharmacy: formData.get("noteToPharmacy") || undefined,
     interactionAcknowledged: formData.get("interactionAcknowledged") || undefined,
+    contraindicationAcknowledged:
+      formData.get("contraindicationAcknowledged") || undefined,
+    contraindicationOverrideReason:
+      formData.get("contraindicationOverrideReason") || undefined,
+    contraindicationIds: formData.get("contraindicationIds") || undefined,
+    contraindicationCoSignerUserId:
+      formData.get("contraindicationCoSignerUserId") || undefined,
   });
 
   if (!parsed.success) {
@@ -211,11 +219,35 @@ export async function createPrescriptionAction(
     } catch {
       ids = [];
     }
+    // Optional dual sign-off: validate the co-signer is a real provider in
+    // the same org and is not the prescriber themselves. We only attach the
+    // co-signer when both checks pass — silently dropping an invalid id is
+    // fine because dual sign-off is optional.
+    let coSigner: { userId: string; cosignedAt: string } | null = null;
+    const coSignerId = parsed.data.contraindicationCoSignerUserId?.trim();
+    if (coSignerId && coSignerId !== user.id) {
+      const cosigner = await prisma.user.findFirst({
+        where: {
+          id: coSignerId,
+          memberships: {
+            some: {
+              organizationId: user.organizationId!,
+              role: "clinician",
+            },
+          },
+        },
+        select: { id: true },
+      });
+      if (cosigner) {
+        coSigner = { userId: cosigner.id, cosignedAt: new Date().toISOString() };
+      }
+    }
     contraindicationOverride = {
       contraindicationIds: ids,
       reason,
       overriddenByUserId: user.id,
       overriddenAt: new Date().toISOString(),
+      ...(coSigner ? { coSigner } : {}),
     };
   }
 

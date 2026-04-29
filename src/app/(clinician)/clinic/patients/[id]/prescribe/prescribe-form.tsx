@@ -126,18 +126,25 @@ interface ContraindicationMatch {
   matchedOn: string;
 }
 
+interface CoSignerOption {
+  id: string;
+  label: string;
+}
+
 export function PrescribeForm({
   patientId,
   patientName,
   products,
   medications,
   contraindicationMatches = [],
+  eligibleCoSigners = [],
 }: {
   patientId: string;
   patientName: string;
   products: Product[];
   medications: Medication[];
   contraindicationMatches?: ContraindicationMatch[];
+  eligibleCoSigners?: CoSignerOption[];
 }) {
   const [state, formAction] = useFormState<PrescribeResult | null, FormData>(
     createPrescriptionAction,
@@ -169,8 +176,12 @@ export function PrescribeForm({
     (m) => m.requiresOverride,
   );
   const hasBlockingContraindication = blockingContraindications.length > 0;
+  const hasAbsoluteContraindication = contraindicationMatches.some(
+    (m) => m.severity === "absolute",
+  );
   const [contraindicationOverrideReason, setContraindicationOverrideReason] = useState("");
   const [contraindicationAcknowledged, setContraindicationAcknowledged] = useState(false);
+  const [contraindicationCoSignerUserId, setContraindicationCoSignerUserId] = useState("");
 
   // --- Diagnoses ---
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<DiagnosisOption[]>(
@@ -336,6 +347,13 @@ export function PrescribeForm({
             name="contraindicationIds"
             value={JSON.stringify(blockingContraindications.map((c) => c.id))}
           />
+          {contraindicationCoSignerUserId && (
+            <input
+              type="hidden"
+              name="contraindicationCoSignerUserId"
+              value={contraindicationCoSignerUserId}
+            />
+          )}
         </>
       )}
 
@@ -426,6 +444,35 @@ export function PrescribeForm({
                     I take clinical responsibility for this override
                   </label>
                 </div>
+
+                {hasAbsoluteContraindication && eligibleCoSigners.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border/60">
+                    <label
+                      htmlFor="contraindicationCoSigner"
+                      className="block text-xs font-medium uppercase tracking-wider text-text-subtle mb-2"
+                    >
+                      Optional dual sign-off (recommended for absolute contraindications)
+                    </label>
+                    <select
+                      id="contraindicationCoSigner"
+                      value={contraindicationCoSignerUserId}
+                      onChange={(e) =>
+                        setContraindicationCoSignerUserId(e.target.value)
+                      }
+                      className={SELECT_CLASS}
+                    >
+                      <option value="">No co-signer</option>
+                      {eligibleCoSigners.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-text-subtle mt-1.5">
+                      A second clinician's name will be recorded alongside the override in the audit log.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
