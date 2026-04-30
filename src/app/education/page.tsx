@@ -212,15 +212,36 @@ function ChatCBTab() {
                     <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Verified Sources</p>
                     {msg.citations.map((c) => {
                       const ev = EVIDENCE_COLORS[c.evidenceLevel];
+                      // EMR-179 — every citation deep-links to a real
+                      // article view. Prefer PubMed by PMID, then
+                      // doi.org by DOI, then a PubMed search by title
+                      // when the citation is a synthesized KB entry.
+                      const href = c.pmid
+                        ? `https://pubmed.ncbi.nlm.nih.gov/${c.pmid}/`
+                        : c.doi
+                          ? `https://doi.org/${c.doi}`
+                          : `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(c.title)}`;
                       return (
-                        <div key={c.id} className={cn("rounded-2xl px-4 py-3 border border-transparent hover:border-accent/20 transition-colors", ev.bg)}>
+                        <a
+                          key={c.id}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`Open ${c.title} in PubMed (new tab)`}
+                          className={cn(
+                            "block rounded-2xl px-4 py-3 border border-transparent hover:border-accent/40 hover:shadow-sm transition-all group/citation",
+                            ev.bg
+                          )}
+                        >
                           <div className="flex items-center gap-2 mb-2">
                             <span className={cn("font-bold", ev.text)}>{ev.emoji}</span>
-                            <span className="font-bold text-slate-800 text-sm">{c.title}</span>
+                            <span className="font-bold text-slate-800 text-sm group-hover/citation:underline">
+                              {c.title} ↗
+                            </span>
                             <Badge className="text-[9px] ml-auto font-bold" tone="neutral">{ev.label}</Badge>
                           </div>
                           <p className="text-slate-600 mt-1 leading-relaxed text-xs font-medium">{c.summary.slice(0, 150)}...</p>
-                        </div>
+                        </a>
                       );
                     })}
                   </div>
