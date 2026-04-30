@@ -11,6 +11,7 @@ import {
   type ModelErrorCode,
 } from "@/lib/orchestration/model-client";
 import { z } from "zod";
+import { freezeNoteSnapshot } from "@/lib/agents/guardrails/note-guardrails";
 
 const blockSchema = z.object({
   heading: z.string(),
@@ -165,6 +166,11 @@ export async function saveAndFinalizeNote(
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  // EMR-131: Freeze a snapshot of the AI draft + transcript at sign
+  // time. Hashes go to AuditLog so we can prove provenance later
+  // (defense against "the AI made that up" complaints).
+  const snapshot = buildSnapshotFromNoteBlocks(note.blocks, blocks);
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
@@ -174,6 +180,19 @@ export async function saveAndFinalizeNote(
       authorUserId: user.id,
     },
   });
+
+  if (snapshot) {
+    await prisma.auditLog.create({
+      data: {
+        organizationId: user.organizationId!,
+        actorUserId: user.id,
+        action: "note.finalized.snapshot",
+        subjectType: "Note",
+        subjectId: noteId,
+        metadata: snapshot as any,
+      },
+    });
+  }
 
   // Also mark the encounter as complete
   await prisma.encounter.update({
@@ -207,6 +226,41 @@ export async function saveAndFinalizeNote(
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
   return { ok: true, status: "finalized" };
+}
+
+/**
+ * Pull the guardrails block off the original AI draft (planted by
+ * processTranscript) and freeze a snapshot pairing the original draft
+ * blocks with the clinician-edited blocks the user is signing.
+ */
+function buildSnapshotFromNoteBlocks(
+  storedBlocks: unknown,
+  signedBlocks: { heading: string; body: string }[],
+) {
+  if (!Array.isArray(storedBlocks)) return null;
+  const guardrailsBlock = storedBlocks.find(
+    (b: any) => b && b.heading === "_guardrails",
+  ) as any;
+  if (!guardrailsBlock?.metadata?.guardrails) return null;
+  const draftBlocks = (storedBlocks as any[])
+    .filter((b: any) => b && b.heading !== "_guardrails")
+    .map((b: any) => ({ type: b.type ?? "block", body: b.body ?? "" }));
+  const transcript = guardrailsBlock.metadata.transcriptPreview ?? "";
+  const guardrails = guardrailsBlock.metadata.guardrails;
+  return {
+    ...freezeNoteSnapshot({
+      draftBlocks,
+      transcript,
+      hallucinationConfidence: guardrails.hallucinationConfidence ?? 1,
+      redactionCounts: guardrails.redactionCounts ?? {
+        phone: 0, ssn: 0, email: 0, mrn: 0, dob: 0, name: 0,
+      },
+      flaggedSpans: guardrails.flaggedSpans ?? [],
+    }),
+    // Track whether the clinician edited the AI draft before signing.
+    blockCountDraft: draftBlocks.length,
+    blockCountSigned: signedBlocks.length,
+  };
 }
 
 // ---------------------------------------------------------------------------

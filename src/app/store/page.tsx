@@ -5,28 +5,60 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
+import {
+  AFFILIATE_PARTNERS,
+  decorateAffiliateUrl,
+  type AffiliatePartnerInfo,
+} from "@/lib/affiliate/partners";
 
-const PRODUCTS = [
-  {
-    name: "Pain and Recovery Formula",
-    brand: "PhytoRx",
-    category: "Beverages",
-    description:
-      "CBD + CBG beverage concentrate for pain and recovery. Physician-formulated, fast-absorbing emulsion technology.",
-    price: "$89.99",
-    url: "https://phytorx.co/products/cbd-cbg-beverage-concentrate",
-    badge: "Best seller",
-  },
-  {
-    name: "CBD Wellness Products",
-    brand: "Flower Powered Products",
-    category: "Topicals",
-    description:
-      "Full line of CBD-only wellness products. Topicals, balms, and creams. Third-party tested, physician-recommended.",
-    price: "From $34.99",
-    url: "https://flowerpoweredproductsllc.com/shop",
-    badge: null,
-  },
+// EMR-039 — store cards now mirror the AffiliatePartner registry so
+// the partner list, disclaimer copy, and joint-decision note can be
+// updated in one place. Local product entries (Gold Skin Serum, etc.)
+// stay inline because they aren't part of the partner program.
+
+interface StoreCard {
+  name: string;
+  brand: string;
+  category: string;
+  description: string;
+  price: string;
+  url: string;
+  badge: string | null;
+  partnerSlug?: string;
+  disclaimerText?: string;
+  jointDecisionNote?: string;
+}
+
+const ACTIVE_PARTNERS = AFFILIATE_PARTNERS.filter((p) => p.status === "active").sort(
+  (a, b) => a.sortOrder - b.sortOrder,
+);
+
+const PARTNER_CARDS: StoreCard[] = ACTIVE_PARTNERS.map((p: AffiliatePartnerInfo) => ({
+  name:
+    p.slug === "phytorx"
+      ? "Pain and Recovery Formula"
+      : p.slug === "flower-powered-products"
+        ? "CBD Wellness Products"
+        : p.slug === "aulv"
+          ? "Plant-Based Wellness Collective"
+          : p.name,
+  brand: p.name,
+  category: p.category,
+  description: p.description,
+  price:
+    p.slug === "phytorx"
+      ? "$89.99"
+      : p.slug === "flower-powered-products"
+        ? "From $34.99"
+        : "Visit site for pricing",
+  url: decorateAffiliateUrl(p),
+  badge: p.slug === "phytorx" ? "Best seller" : p.slug === "aulv" ? "New" : null,
+  partnerSlug: p.slug,
+  disclaimerText: p.disclaimerText,
+  jointDecisionNote: p.jointDecisionNote,
+}));
+
+const LOCAL_CARDS: StoreCard[] = [
   {
     name: "Gold Skin Serum",
     brand: "CBD",
@@ -35,15 +67,20 @@ const PRODUCTS = [
       "Luxurious CBD-infused skin serum with 24K gold flakes. Designed for anti-aging, hydration, and radiance. Lab-tested, clean ingredients.",
     price: "$89.99",
     url: "https://www.potency710.com/product/gold-skin-serum/",
-    badge: "New",
+    badge: null,
   },
 ];
 
-const CATEGORIES = ["All", "Beverages", "Topicals", "Skincare"];
+const PRODUCTS: StoreCard[] = [...PARTNER_CARDS, ...LOCAL_CARDS];
+
+const CATEGORIES = Array.from(
+  new Set<string>(["All", ...PRODUCTS.map((p) => p.category)]),
+);
 
 export default function StorePage() {
   const [category, setCategory] = useState("All");
-  const [disclaimerUrl, setDisclaimerUrl] = useState<string | null>(null);
+  const [disclaimerCard, setDisclaimerCard] = useState<StoreCard | null>(null);
+  const disclaimerUrl = disclaimerCard?.url ?? null;
 
   const filtered =
     category === "All"
@@ -131,7 +168,7 @@ export default function StorePage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => setDisclaimerUrl(product.url)}
+                  onClick={() => setDisclaimerCard(product)}
                 >
                   View product
                 </Button>
@@ -160,8 +197,10 @@ export default function StorePage() {
         </div>
       </section>
 
-      {/* Disclaimer modal */}
-      {disclaimerUrl && (
+      {/* Disclaimer modal — copy is partner-specific when the card carries
+          a registered AffiliatePartner; falls back to default disclaimer
+          for local cards (e.g. Gold Skin Serum). */}
+      {disclaimerCard && disclaimerUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-surface-raised rounded-2xl border border-border shadow-xl p-8 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
@@ -172,28 +211,30 @@ export default function StorePage() {
                 Before you go
               </h3>
             </div>
-            <p className="text-sm text-text-muted leading-relaxed mb-6">
-              You are leaving Leafjourney to visit a partner website.
-              Please consult your healthcare provider before considering
-              these products. Cannabis products are not FDA-approved
-              medications and individual results may vary. This is a joint
-              decision between you and your care team.
+            <p className="text-sm text-text-muted leading-relaxed mb-4">
+              {disclaimerCard.disclaimerText ??
+                "You are leaving Leafjourney to visit a partner website. Please consult your healthcare provider before considering these products. Cannabis products are not FDA-approved medications and individual results may vary. This is a joint decision between you and your care team."}
             </p>
+            {disclaimerCard.jointDecisionNote && (
+              <p className="text-xs text-text-subtle leading-relaxed mb-6 border-l-2 border-accent/30 pl-3">
+                {disclaimerCard.jointDecisionNote}
+              </p>
+            )}
             <div className="flex gap-3">
               <Button
                 variant="secondary"
                 size="md"
                 className="flex-1"
-                onClick={() => setDisclaimerUrl(null)}
+                onClick={() => setDisclaimerCard(null)}
               >
                 Go back
               </Button>
               <a
                 href={disclaimerUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener noreferrer sponsored"
                 className="flex-1"
-                onClick={() => setDisclaimerUrl(null)}
+                onClick={() => setDisclaimerCard(null)}
               >
                 <Button size="md" className="w-full">
                   Continue to site

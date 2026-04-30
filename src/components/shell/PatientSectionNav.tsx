@@ -32,7 +32,10 @@ const SECTIONS: Record<string, { title: string; tabs: TabDef[] }> = {
       { label: "Labs", href: "/portal/labs" },
       { label: "Assessments", href: "/portal/assessments" },
       { label: "Log check-in", href: "/portal/outcomes" },
-      { label: "Care plan", href: "/portal/care-plan" },
+      // EMR-159: "Care plan" tab merged. Encounters live on the
+      // dashboard's next-visit card; tasks live in the home to-do
+      // strip; the dosing + medications tabs cover the rest. The
+      // route still resolves so old direct links don't 404.
       { label: "Care guide", href: "/portal/education" },
       { label: "Learn", href: "/portal/learn" },
     ],

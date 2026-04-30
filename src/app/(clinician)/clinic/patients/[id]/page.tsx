@@ -201,6 +201,27 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     take: 8,
   });
 
+  // EMR-132: most recent in-progress encounter, used to anchor the
+  // ChartingTimer to wall time across page navigations.
+  const activeEncounter = patient.encounters.find(
+    (e: any) => e.status === "in_progress" && e.startedAt,
+  );
+
+  // EMR-132: trailing org charting-time benchmark (median seconds from
+  // startedAt → chartingCompletedAt over the last 60 finalized
+  // encounters). Cheap aggregate; null when there isn't enough history.
+  const recentCharted = await prisma.encounter.findMany({
+    where: {
+      organizationId: user.organizationId!,
+      startedAt: { not: null },
+      chartingCompletedAt: { not: null },
+    },
+    orderBy: { chartingCompletedAt: "desc" },
+    take: 60,
+    select: { startedAt: true, chartingCompletedAt: true },
+  });
+  const benchmarkSeconds = computeMedianChartingSeconds(recentCharted);
+
   const openObservationCount = clinicalObservations.filter(
     (o: any) => !o.acknowledgedAt,
   ).length;
@@ -377,7 +398,10 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
                 <Eyebrow>Patient chart</Eyebrow>
-                <ChartingTimer />
+                <ChartingTimer
+                  startedAtIso={activeEncounter?.startedAt?.toISOString() ?? null}
+                  benchmarkSeconds={benchmarkSeconds}
+                />
               </div>
               <h1 className="font-display text-3xl text-text tracking-tight leading-tight">
                 {patient.firstName} {patient.lastName}
@@ -1929,4 +1953,26 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * EMR-132: Median seconds from Encounter.startedAt → chartingCompletedAt
+ * across the trailing 60 finalized encounters in the org. Returns null
+ * when there isn't enough history to anchor a meaningful benchmark
+ * (the timer falls back to the industry-average 15-min comparison).
+ */
+function computeMedianChartingSeconds(
+  rows: { startedAt: Date | null; chartingCompletedAt: Date | null }[],
+): number | null {
+  const durations: number[] = [];
+  for (const row of rows) {
+    if (!row.startedAt || !row.chartingCompletedAt) continue;
+    const sec = Math.round(
+      (row.chartingCompletedAt.getTime() - row.startedAt.getTime()) / 1000,
+    );
+    if (sec > 30 && sec < 4 * 60 * 60) durations.push(sec);
+  }
+  if (durations.length < 5) return null;
+  durations.sort((a, b) => a - b);
+  return durations[Math.floor(durations.length / 2)];
 }
