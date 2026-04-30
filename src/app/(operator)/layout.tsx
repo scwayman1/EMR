@@ -143,6 +143,7 @@ export default async function OperatorLayout({
         { label: "Agents", href: "/ops/billing-agents" },
         { label: "Revenue", href: "/ops/revenue" },
         { label: "Eligibility", href: "/ops/eligibility" },
+        { label: "Mail / Fax OCR", href: "/ops/mail-fax" },
       ],
     },
     {

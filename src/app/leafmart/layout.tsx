@@ -3,6 +3,7 @@ import { LeafmartHeader } from "@/components/leafmart/LeafmartHeader";
 import { LeafmartFooter } from "@/components/leafmart/LeafmartFooter";
 import { CartProvider } from "@/lib/leafmart/cart-store";
 import { CartDrawer } from "@/components/leafmart/CartDrawer";
+import { LeafmartAgeGate } from "@/components/leafmart/LeafmartAgeGate";
 import { JsonLd } from "@/components/leafmart/JsonLd";
 import { SITE_URL, organizationLd, websiteLd } from "@/lib/leafmart/seo";
 
@@ -65,6 +66,7 @@ export default function LeafmartLayout({
         <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
         <LeafmartFooter />
         <CartDrawer />
+        <LeafmartAgeGate />
       </div>
     </CartProvider>
   );

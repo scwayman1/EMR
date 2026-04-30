@@ -45,53 +45,57 @@ model Organization {
   // EMR-220 — Production billing identifiers
   // taxId stored encrypted at the application layer; the DB column is the
   // ciphertext blob (base64 of iv||tag||ct). Never the plaintext EIN.
-  billingNpi       String? // 10-digit type-2 organizational NPI used as the billing provider on 837P loop 2010AA
-  taxId            String? // EIN ciphertext — decrypt via decryptTaxId() before use
-  billingAddress   Json? // { line1, line2?, city, state, postalCode } — pay-from address on the claim
-  payToAddress     Json? // optional override for 2010AB pay-to address when different from billingAddress
+  billingNpi     String? // 10-digit type-2 organizational NPI used as the billing provider on 837P loop 2010AA
+  taxId          String? // EIN ciphertext — decrypt via decryptTaxId() before use
+  billingAddress Json? // { line1, line2?, city, state, postalCode } — pay-from address on the claim
+  payToAddress   Json? // optional override for 2010AB pay-to address when different from billingAddress
 
-  memberships       Membership[]
-  patients          Patient[]
-  providers         Provider[]
-  encounters        Encounter[]
-  documents         Document[]
-  labResults        LabResult[]
-  refillRequests    RefillRequest[]
-  auditLogs         AuditLog[]
-  agentJobs         AgentJob[]
-  agentFeedback     AgentFeedback[]
-  escalationCases   EscalationCase[]
-  launchStatus      PracticeLaunchStatus?
-  cannabisProducts  CannabisProduct[]
-  claims            Claim[]
-  feeSchedule       FeeScheduleEntry[]
-  referrals         Referral[]
-  complianceForms   StateComplianceForm[]
-  intakeTemplates   IntakeFormTemplate[]
-  products          Product[]
-  orders            Order[]
-  vendors           Vendor[]
-  vendorDocuments   VendorDocument[]
+  memberships              Membership[]
+  patients                 Patient[]
+  providers                Provider[]
+  encounters               Encounter[]
+  documents                Document[]
+  labResults               LabResult[]
+  refillRequests           RefillRequest[]
+  auditLogs                AuditLog[]
+  agentJobs                AgentJob[]
+  agentFeedback            AgentFeedback[]
+  escalationCases          EscalationCase[]
+  launchStatus             PracticeLaunchStatus?
+  cannabisProducts         CannabisProduct[]
+  claims                   Claim[]
+  feeSchedule              FeeScheduleEntry[]
+  referrals                Referral[]
+  complianceForms          StateComplianceForm[]
+  intakeTemplates          IntakeFormTemplate[]
+  products                 Product[]
+  orders                   Order[]
+  vendors                  Vendor[]
+  vendorDocuments          VendorDocument[]
   // CFO / Controller surface
-  expenses          Expense[]
-  recurringExpenses RecurringExpense[]
-  bankAccounts      BankAccount[]
-  cashFlowEntries   CashFlowEntry[]
-  fixedAssets       FixedAsset[]
-  liabilities       Liability[]
-  equityEntries     EquityEntry[]
-  financialReports  FinancialReport[]
-  financialGoals    FinancialGoal[]
+  expenses                 Expense[]
+  recurringExpenses        RecurringExpense[]
+  bankAccounts             BankAccount[]
+  cashFlowEntries          CashFlowEntry[]
+  fixedAssets              FixedAsset[]
+  liabilities              Liability[]
+  equityEntries            EquityEntry[]
+  financialReports         FinancialReport[]
+  financialGoals           FinancialGoal[]
   // Track 7 — Financial Operations & Lockbox
-  eraFiles            EraFile[]
-  payerContracts      PayerContract[]
-  bankDeposits        BankDeposit[]
-  priorAuthorizations PriorAuthorization[]
-  appealOutcomes      AppealOutcome[]
-  rcmDailyClose       RcmDailyClose[]
-  nsfEvents           NsfEvent[]
+  eraFiles                 EraFile[]
+  payerContracts           PayerContract[]
+  bankDeposits             BankDeposit[]
+  priorAuthorizations      PriorAuthorization[]
+  appealOutcomes           AppealOutcome[]
+  rcmDailyClose            RcmDailyClose[]
+  nsfEvents                NsfEvent[]
   // Track 3 — EDI & Claim Generation (EMR-218 payer rules registry)
-  payerRules          PayerRule[]
+  payerRules               PayerRule[]
+  // Phase 8 Track 3 — Pharmacology & Commerce
+  dispensaries             Dispensary[]
+  supplyProducts           SupplyProduct[]
+  dispensaryReimbursements DispensaryReimbursement[]
 }
 
 model User {
@@ -183,43 +187,45 @@ model Patient {
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
 
-  user                 User?                 @relation("PatientUser", fields: [userId], references: [id])
-  organization         Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  chartSummary         ChartSummary?
-  encounters           Encounter[]
-  documents            Document[]
-  labResults           LabResult[]
-  refillRequests       RefillRequest[]
-  assessmentResponses  AssessmentResponse[]
-  outcomeLogs          OutcomeLog[]
-  messageThreads       MessageThread[]
-  appointments         Appointment[]
-  tasks                Task[]
-  dosingRegimens       DosingRegimen[]
-  doseLogs             DoseLog[]
-  medications          PatientMedication[]
-  claims               Claim[]
-  financialEvents      FinancialEvent[]
-  statements           Statement[]
-  paymentPlans         PaymentPlan[]
-  coverages            PatientCoverage[]
-  paymentMethods       StoredPaymentMethod[]
-  charges              Charge[]
-  eligibilitySnapshots EligibilitySnapshot[]
+  user                     User?                     @relation("PatientUser", fields: [userId], references: [id])
+  organization             Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  chartSummary             ChartSummary?
+  encounters               Encounter[]
+  documents                Document[]
+  labResults               LabResult[]
+  refillRequests           RefillRequest[]
+  assessmentResponses      AssessmentResponse[]
+  outcomeLogs              OutcomeLog[]
+  messageThreads           MessageThread[]
+  appointments             Appointment[]
+  tasks                    Task[]
+  dosingRegimens           DosingRegimen[]
+  doseLogs                 DoseLog[]
+  medications              PatientMedication[]
+  claims                   Claim[]
+  financialEvents          FinancialEvent[]
+  statements               Statement[]
+  paymentPlans             PaymentPlan[]
+  coverages                PatientCoverage[]
+  paymentMethods           StoredPaymentMethod[]
+  charges                  Charge[]
+  eligibilitySnapshots     EligibilitySnapshot[]
   // Agentic memory harness
-  memories             PatientMemory[]
-  observations         ClinicalObservation[]
-  referrals            Referral[]
-  signedConsents       SignedConsent[]
-  complianceForms      StateComplianceForm[]
-  caregiverInvites     CaregiverInvite[]
-  surveySubmissions    SurveySubmission[]
+  memories                 PatientMemory[]
+  observations             ClinicalObservation[]
+  referrals                Referral[]
+  signedConsents           SignedConsent[]
+  complianceForms          StateComplianceForm[]
+  caregiverInvites         CaregiverInvite[]
+  surveySubmissions        SurveySubmission[]
   // Marketplace
-  orders               Order[]
-  productReviews       ProductReview[]
-  cart                 Cart?
-  shippingAddresses    ShippingAddress[]
-  priorAuthorizations  PriorAuthorization[]
+  orders                   Order[]
+  productReviews           ProductReview[]
+  cart                     Cart?
+  shippingAddresses        ShippingAddress[]
+  priorAuthorizations      PriorAuthorization[]
+  // Phase 8 Track 3 — Pharmacology & Commerce
+  dispensaryReimbursements DispensaryReimbursement[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -617,24 +623,24 @@ enum SubmissionResponseStatus {
 }
 
 model ClearinghouseSubmission {
-  id                String                   @id @default(cuid())
-  claimId           String
-  organizationId    String
-  clearinghouseName String // "Availity", "Waystar", etc.
-  submittedAt       DateTime                 @default(now())
-  ediPayload        String? // 837P payload (stored for audit)
-  ediResponse       String? // raw response body (999/277CA/JSON envelope) — EMR-217 audit trail
-  responseStatus    SubmissionResponseStatus @default(pending)
-  responseCode      String?
-  responseMessage   String?
-  respondedAt       DateTime?
-  retryCount        Int                      @default(0)
+  id                    String                   @id @default(cuid())
+  claimId               String
+  organizationId        String
+  clearinghouseName     String // "Availity", "Waystar", etc.
+  submittedAt           DateTime                 @default(now())
+  ediPayload            String? // 837P payload (stored for audit)
+  ediResponse           String? // raw response body (999/277CA/JSON envelope) — EMR-217 audit trail
+  responseStatus        SubmissionResponseStatus @default(pending)
+  responseCode          String?
+  responseMessage       String?
+  respondedAt           DateTime?
+  retryCount            Int                      @default(0)
   // EMR-219 — secondary submission tracking
   // When non-null, this row is the secondary 837P built from a paid primary;
   // references the primary AdjudicationResult so we can audit the CAS-segment
   // construction back to its source ERA.
   primaryAdjudicationId String?
-  isSecondary           Boolean              @default(false)
+  isSecondary           Boolean                  @default(false)
 
   claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
 
@@ -2775,10 +2781,10 @@ model EducationCompound {
 // --------------------------------------------------------------
 
 enum EraFileStatus {
-  received  // payload stored, not yet parsed
-  parsed    // 835 parsed into AdjudicationResult rows
-  posted    // financial events written, claim balances updated
-  failed    // parse error — see parseError
+  received // payload stored, not yet parsed
+  parsed // 835 parsed into AdjudicationResult rows
+  posted // financial events written, claim balances updated
+  failed // parse error — see parseError
   duplicate // already ingested under a different bankReference (deduped)
 }
 
@@ -2861,11 +2867,11 @@ model PayerContractRate {
 }
 
 enum BankDepositStatus {
-  pending           // not yet attempted to match
-  matched           // matched to ERA(s) / payment(s) — sum equals deposit
+  pending // not yet attempted to match
+  matched // matched to ERA(s) / payment(s) — sum equals deposit
   partially_matched // matched some but not all
-  unmatched         // tried, found no candidates
-  variance          // matched but sums don't reconcile within tolerance
+  unmatched // tried, found no candidates
+  variance // matched but sums don't reconcile within tolerance
 }
 
 /// A real-world deposit on the practice's bank statement. Lockbox
@@ -2927,11 +2933,11 @@ model BankDepositMatch {
 
 enum AppealResult {
   pending
-  overturned   // payer reversed the denial — money recovered
-  upheld       // payer kept the denial — no recovery
-  partial      // partial recovery
-  withdrawn    // we pulled the appeal
-  no_response  // payer never replied within the SLA
+  overturned // payer reversed the denial — money recovered
+  upheld // payer kept the denial — no recovery
+  partial // partial recovery
+  withdrawn // we pulled the appeal
+  no_response // payer never replied within the SLA
 }
 
 /// Outcome of an appeal — feeds the learning loop. Each overturned
@@ -2969,12 +2975,12 @@ model AppealOutcome {
 }
 
 enum PriorAuthStatus {
-  draft       // assembled, not yet submitted
-  submitted   // sent to payer / portal
-  approved    // payer approved — has approvalNumber + expiresAt
-  denied      // payer denied
-  expired     // approval lapsed before service rendered
-  withdrawn   // we pulled the request
+  draft // assembled, not yet submitted
+  submitted // sent to payer / portal
+  approved // payer approved — has approvalNumber + expiresAt
+  denied // payer denied
+  expired // approval lapsed before service rendered
+  withdrawn // we pulled the request
 }
 
 /// Prior authorization workflow. Cannabis services trigger PA on most
@@ -3023,40 +3029,40 @@ model PriorAuthorization {
 /// Generated by the daily-close job at 23:59 local; mailed out the next
 /// morning. The dashboard query reads the latest row + computes deltas.
 model RcmDailyClose {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   organizationId     String
-  closeDate          DateTime @db.Date
+  closeDate          DateTime  @db.Date
   // -- Counts --------------------------------------------------------
-  claimsCreated      Int      @default(0)
-  claimsSubmitted    Int      @default(0)
-  claimsAccepted     Int      @default(0)
-  claimsRejected     Int      @default(0)
-  claimsPaid         Int      @default(0)
-  claimsDenied       Int      @default(0)
-  claimsAppealed     Int      @default(0)
-  claimsWrittenOff   Int      @default(0)
+  claimsCreated      Int       @default(0)
+  claimsSubmitted    Int       @default(0)
+  claimsAccepted     Int       @default(0)
+  claimsRejected     Int       @default(0)
+  claimsPaid         Int       @default(0)
+  claimsDenied       Int       @default(0)
+  claimsAppealed     Int       @default(0)
+  claimsWrittenOff   Int       @default(0)
   // -- Dollars (cents) ----------------------------------------------
-  billedCents        Int      @default(0)
-  allowedCents       Int      @default(0)
-  paidCents          Int      @default(0)
-  adjustmentCents    Int      @default(0)
-  patientRespCents   Int      @default(0)
-  outstandingArCents Int      @default(0)
-  arBucket0to30      Int      @default(0)
-  arBucket31to60     Int      @default(0)
-  arBucket61to90     Int      @default(0)
-  arBucket91to120    Int      @default(0)
-  arBucket120plus    Int      @default(0)
+  billedCents        Int       @default(0)
+  allowedCents       Int       @default(0)
+  paidCents          Int       @default(0)
+  adjustmentCents    Int       @default(0)
+  patientRespCents   Int       @default(0)
+  outstandingArCents Int       @default(0)
+  arBucket0to30      Int       @default(0)
+  arBucket31to60     Int       @default(0)
+  arBucket61to90     Int       @default(0)
+  arBucket91to120    Int       @default(0)
+  arBucket120plus    Int       @default(0)
   // -- Exception counters (full lists computed live) ----------------
-  staleClaims        Int      @default(0)
-  unbalancedBatches  Int      @default(0)
-  pendingTakebacks   Int      @default(0)
-  unmatchedDeposits  Int      @default(0)
-  overdueAppeals     Int      @default(0)
+  staleClaims        Int       @default(0)
+  unbalancedBatches  Int       @default(0)
+  pendingTakebacks   Int       @default(0)
+  unmatchedDeposits  Int       @default(0)
+  overdueAppeals     Int       @default(0)
   // -- Delivery -----------------------------------------------------
-  emailedAt  DateTime?
-  exportedAt DateTime?
-  createdAt  DateTime  @default(now())
+  emailedAt          DateTime?
+  exportedAt         DateTime?
+  createdAt          DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -3065,9 +3071,9 @@ model RcmDailyClose {
 }
 
 enum NsfEventType {
-  nsf         // patient card / ACH bounced
-  chargeback  // disputed and clawed back by issuer
-  reversal    // clearinghouse-initiated reversal (rare)
+  nsf // patient card / ACH bounced
+  chargeback // disputed and clawed back by issuer
+  reversal // clearinghouse-initiated reversal (rare)
 }
 
 /// Negative-payment event: a card NSF, an issuer chargeback, or a
@@ -3116,8 +3122,8 @@ enum PayerClass {
 }
 
 enum CorrectedClaimFrequency {
-  c7        // standard replacement
-  c6        // adjustment
+  c7 // standard replacement
+  c6 // adjustment
   c8_then_1 // void + rebill
 }
 
@@ -3245,4 +3251,311 @@ model ClearinghouseDeadLetter {
 
   @@index([organizationId, resolvedAt])
   @@index([claimId])
+}
+
+// =============================================================
+// Phase 8 — Track 3: Pharmacology & Commerce
+// EMR-002 dispensary integration + SKU scanning
+// EMR-007 AI supply store
+// EMR-017 dispensary locator
+// EMR-018 strain database
+// EMR-039 affiliate partners
+// EMR-145 dispensary CMS reimbursement
+// EMR-151 symptom/supplement combo wheel
+// EMR-188 marketplace ecosystem
+// =============================================================
+
+enum DispensaryFormatDb {
+  flower
+  preroll
+  vape
+  concentrate
+  edible
+  tincture
+  topical
+  capsule
+  beverage
+  other
+}
+
+enum DispensaryStatus {
+  active
+  pending
+  inactive
+}
+
+enum StrainClassification {
+  indica
+  sativa
+  hybrid
+  cbd
+  na
+}
+
+enum AffiliatePartnerStatus {
+  active
+  paused
+  archived
+}
+
+enum SupplyProductCategory {
+  cough_cold
+  sleep
+  pain
+  digestive
+  vitamins_supplements
+  dme
+  topical
+  oral_care
+  mental_health
+  womens_health
+  general_wellness
+}
+
+enum DispensaryReimbursementStatus {
+  draft
+  submitted
+  approved
+  paid
+  denied
+}
+
+enum SupplementCompoundEvidence {
+  strong
+  moderate
+  emerging
+}
+
+/// EMR-002 / EMR-017 — A licensed cannabis dispensary the practice has
+/// integrated with. Distinct from `Vendor` (which models hemp-brand
+/// marketplace sellers) because cannabis dispensaries carry state-specific
+/// licensure, geographic constraints, and a SKU sync surface. A dispensary
+/// MAY also be a Vendor when it lists hemp-derived products in Leafmart;
+/// when that's the case `vendorId` links the two.
+model Dispensary {
+  id             String           @id @default(cuid())
+  organizationId String
+  vendorId       String?          @unique
+  name           String
+  slug           String           @unique
+  licenseNumber  String?
+  licenseState   String // 2-letter USPS state code
+  status         DispensaryStatus @default(active)
+
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  state        String
+  postalCode   String
+  latitude     Float
+  longitude    Float
+  phone        String?
+  websiteUrl   String?
+  hoursLine    String?
+
+  lastSyncedAt DateTime?
+  syncSource   String? // "treez" | "dutchie" | "manual"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  skus           DispensarySku[]
+  reimbursements DispensaryReimbursement[]
+
+  @@index([organizationId, status])
+  @@index([licenseState])
+}
+
+/// EMR-002 — Stock-keeping unit owned by a Dispensary. Synced from POS
+/// or inventory system; matched to `Strain` when classification is
+/// known. Cents-based price storage avoids float drift on tax math.
+model DispensarySku {
+  id           String               @id @default(cuid())
+  dispensaryId String
+  sku          String
+  upc          String?
+  name         String
+  brand        String?
+  format       DispensaryFormatDb
+  strainType   StrainClassification @default(na)
+  strainId     String?
+
+  thcMgPerUnit Float?
+  cbdMgPerUnit Float?
+  thcPercent   Float?
+  cbdPercent   Float?
+  packSize     String?
+
+  priceCents     Int
+  inStock        Boolean @default(true)
+  inventoryCount Int?
+  imageUrl       String?
+  coaUrl         String?
+  description    String?
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dispensary Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  strain     Strain?    @relation(fields: [strainId], references: [id])
+
+  @@unique([dispensaryId, sku])
+  @@index([dispensaryId, active, inStock])
+  @@index([format])
+  @@index([strainId])
+}
+
+/// EMR-018 — Strain reference table. Models the Leafly-style strain
+/// catalog: cannabinoid + terpene profile, common effects, target
+/// symptoms. Strains are practice-agnostic (no organizationId) so the
+/// catalog seeds globally.
+model Strain {
+  id             String               @id @default(cuid())
+  slug           String               @unique
+  name           String
+  classification StrainClassification
+
+  thcPercent Float?
+  cbdPercent Float?
+  cbgPercent Float?
+  cbnPercent Float?
+
+  dominantTerpene String?
+  terpeneProfile  Json? // { myrcene: 0.4, limonene: 0.2, ... }
+
+  symptoms String[] @default([])
+  effects  String[] @default([])
+  flavors  String[] @default([])
+
+  description   String?
+  origin        String?
+  parentStrains String[] @default([])
+  leaflyId      String?
+
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skus DispensarySku[]
+
+  @@index([classification, active])
+  @@index([leaflyId])
+}
+
+/// EMR-007 — Catalog backing the AI Supply Store. Distinct from the
+/// cannabis `Product` table because supply items are OTC, DME, or
+/// vitamins/supplements that don't carry a cannabinoid profile.
+model SupplyProduct {
+  id               String                @id @default(cuid())
+  organizationId   String
+  slug             String                @unique
+  name             String
+  brand            String?
+  category         SupplyProductCategory
+  description      String
+  shortDescription String?
+  imageUrl         String?
+  priceCents       Int
+
+  symptoms          String[] @default([])
+  conditions        String[] @default([])
+  contraindications String[] @default([])
+
+  isOTC       Boolean @default(true)
+  requiresRx  Boolean @default(false)
+  fsaEligible Boolean @default(false)
+
+  externalUrl     String?
+  externalPartner String?
+
+  active    Boolean  @default(true)
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, active])
+  @@index([category, active])
+}
+
+/// EMR-039 — Affiliate partner brands surfaced in the public store.
+/// Each row drives a card on /store with a disclaimer modal that gates
+/// the redirect. `disclaimerText` lets us tune copy per partner without
+/// a code deploy.
+model AffiliatePartner {
+  id                String                 @id @default(cuid())
+  slug              String                 @unique
+  name              String
+  domain            String
+  websiteUrl        String
+  description       String
+  category          String
+  logoUrl           String?
+  status            AffiliatePartnerStatus @default(active)
+  disclaimerText    String?
+  jointDecisionNote String?
+  utmSource         String?
+  sortOrder         Int                    @default(0)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([status, sortOrder])
+}
+
+/// EMR-145 — Cannabis Dispensary Billing + CMS $500 Reimbursement.
+/// Records the practice's monthly reimbursement-eligible spend per
+/// patient. The federal program does not currently reimburse cannabis
+/// directly; the row documents what would qualify under the
+/// per-patient annual cap if the rule changes.
+model DispensaryReimbursement {
+  id                   String                        @id @default(cuid())
+  organizationId       String
+  dispensaryId         String
+  patientId            String
+  serviceMonth         DateTime
+  documentedSpendCents Int
+  reimbursableCents    Int
+  capCents             Int                           @default(50000)
+  notes                String?
+  status               DispensaryReimbursementStatus @default(draft)
+  submittedAt          DateTime?
+  paidAt               DateTime?
+  paymentReference     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  dispensary   Dispensary   @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  patient      Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, serviceMonth])
+  @@index([organizationId, status])
+  @@index([dispensaryId, serviceMonth])
+}
+
+/// EMR-151 — Companion to `EducationCompound`, but for non-cannabis
+/// supplements (magnesium, omega-3, melatonin, ashwagandha, etc.) used
+/// in the Symptom/Diagnosis Supplement Combo Wheel. Same structure as
+/// the cannabis wheel so the UI primitives can be reused.
+model SupplementCompound {
+  id                  String                     @id
+  name                String
+  category            String
+  color               String
+  evidence            SupplementCompoundEvidence
+  description         String
+  symptoms            String[]
+  benefits            String[]
+  risks               String[]
+  cannabisInteraction String?
+  sortOrder           Int                        @default(0)
+  active              Boolean                    @default(true)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  @@index([category, active, sortOrder])
 }

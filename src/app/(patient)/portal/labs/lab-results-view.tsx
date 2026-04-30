@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
+import { LabTooltip } from "@/components/ui/lab-tooltip";
 
 const panels = generateDemoLabPanels();
 
@@ -153,7 +154,9 @@ export function LabResultsView() {
                             }
                           >
                             <td className="px-6 py-3 font-medium text-text">
-                              {result.name}
+                              <LabTooltip name={result.name} value={result.value}>
+                                {result.name}
+                              </LabTooltip>
                             </td>
                             <td
                               className={cn(
