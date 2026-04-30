@@ -9,6 +9,12 @@ import {
   type TranscriptSegment,
 } from "@/lib/domain/voice-chart";
 import type { NoteBlockType } from "@/lib/domain/notes";
+import {
+  redactPii,
+  scanForHallucinations,
+  freezeNoteSnapshot,
+  type NoteSnapshot,
+} from "@/lib/agents/guardrails/note-guardrails";
 
 // ── Result types ───────────────────────────────────────────────
 
@@ -117,9 +123,24 @@ CHART SUMMARY:
 ${summaryMd}
 `.trim();
 
-    // Call model with the extraction prompt
+    // EMR-131: Pre-model PII redaction. Strip names, phone, SSN, email,
+    // MRN-shaped tokens, and DOBs from the transcript before the model
+    // sees it. The structured note that comes back can still reference
+    // the patient (the chart UI re-hydrates the name from the patient
+    // row), so the model never needs the literal PII.
+    const knownNames = [
+      patient.firstName,
+      patient.lastName,
+      `${patient.firstName} ${patient.lastName}`,
+    ].filter((n): n is string => Boolean(n && n.length > 1));
+    const { redacted: scrubbedTranscript, counts: redactionCounts } = redactPii(
+      transcript,
+      knownNames,
+    );
+
+    // Call model with the extraction prompt (against the scrubbed transcript)
     const model = resolveModelClient();
-    const prompt = buildExtractionPrompt(transcript, patientContext);
+    const prompt = buildExtractionPrompt(scrubbedTranscript, patientContext);
 
     const modelResponse = await model.complete(prompt, {
       maxTokens: 1024,
@@ -216,14 +237,34 @@ ${summaryMd}
       ];
     }
 
-    // Persist the draft note
+    // EMR-131: Hallucination scan over the draft. Conservative — flags
+    // sentences whose content has no overlap with the redacted
+    // transcript or chart context. Surfaced inline in the editor.
+    const hallucination = scanForHallucinations(
+      blocks,
+      scrubbedTranscript,
+      patientContext,
+    );
+    const guardrails = {
+      redactionCounts,
+      hallucinationConfidence: hallucination.confidence,
+      flaggedSpans: hallucination.flags,
+    };
+
+    // Persist the draft note with guardrail metadata baked in so the
+    // editor and the snapshot freeze on finalize can read it back.
     const note = await prisma.note.create({
       data: {
         encounterId,
         status: "draft",
         aiDrafted: true,
-        aiConfidence: confidence,
-        blocks: blocks as any,
+        aiConfidence: Math.min(confidence, hallucination.confidence),
+        blocks: [...blocks, {
+          type: "metadata" as any,
+          heading: "_guardrails",
+          body: "",
+          metadata: { guardrails, transcriptPreview: scrubbedTranscript.slice(0, 4000) },
+        }] as any,
       },
     });
 
@@ -231,7 +272,7 @@ ${summaryMd}
       ok: true,
       noteId: note.id,
       blocks,
-      confidence,
+      confidence: Math.min(confidence, hallucination.confidence),
     };
   } catch (err) {
     console.error("[processTranscript]", err);

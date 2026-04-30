@@ -1,0 +1,262 @@
+"use client";
+
+// EMR-151 — Symptom/Diagnosis Supplement Combo Wheel.
+//
+// Rather than rebuild a second SVG annular ring, this wheel uses a
+// radial chip layout: supplements arranged by category, tap to add
+// to the combo, with the same symptom-overlap insight panel as the
+// cannabis wheel. Keeps implementation tight while still giving
+// patients a "wheel" feel.
+
+import { useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
+import {
+  symptomOverlap,
+  type SupplementCompoundView,
+} from "@/lib/domain/supplement-wheel";
+
+interface Props {
+  compounds: SupplementCompoundView[];
+}
+
+export function SupplementWheel({ compounds }: Props) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectedRows = useMemo(
+    () => compounds.filter((c) => selected.has(c.id)),
+    [compounds, selected],
+  );
+
+  const overlaps = useMemo(() => symptomOverlap(selectedRows), [selectedRows]);
+
+  const allBenefits = useMemo(
+    () => Array.from(new Set(selectedRows.flatMap((c) => c.benefits))),
+    [selectedRows],
+  );
+  const allRisks = useMemo(
+    () => Array.from(new Set(selectedRows.flatMap((c) => c.risks))),
+    [selectedRows],
+  );
+
+  const categories = useMemo(() => {
+    const map = new Map<string, SupplementCompoundView[]>();
+    for (const c of compounds) {
+      const arr = map.get(c.category) ?? [];
+      arr.push(c);
+      map.set(c.category, arr);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [compounds]);
+
+  const evidenceLevel: "Strong" | "Moderate" | "Emerging" = useMemo(() => {
+    if (selectedRows.some((c) => c.evidence === "strong")) return "Strong";
+    if (selectedRows.some((c) => c.evidence === "moderate")) return "Moderate";
+    return "Emerging";
+  }, [selectedRows]);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8">
+      <Card tone="raised" className="p-5 sm:p-7">
+        <div className="space-y-5">
+          {categories.map(([cat, items]) => (
+            <div key={cat}>
+              <Eyebrow className="mb-2">{cat}</Eyebrow>
+              <div className="flex flex-wrap gap-2">
+                {items.map((c) => {
+                  const isOn = selected.has(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => toggle(c.id)}
+                      aria-pressed={isOn}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised"
+                      style={{
+                        backgroundColor: isOn ? c.color : "transparent",
+                        color: isOn ? "#fff" : "var(--text)",
+                        border: `1.5px solid ${c.color}`,
+                        boxShadow: isOn ? `0 4px 14px -4px ${c.color}66` : undefined,
+                      }}
+                    >
+                      <span
+                        className="h-1.5 w-1.5 rounded-full"
+                        aria-hidden
+                        style={{ backgroundColor: isOn ? "rgba(255,255,255,0.7)" : c.color }}
+                      />
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <div className="space-y-4">
+        <Card tone="raised">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <LeafSprig size={14} className="text-accent" />
+              Your stack
+            </CardTitle>
+            <CardDescription>
+              {selectedRows.length === 0
+                ? "Tap a supplement to start a stack — add a second to see overlap."
+                : `${selectedRows.length} supplement${selectedRows.length === 1 ? "" : "s"} in this stack`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {selectedRows.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border bg-surface/60 px-4 py-5 text-center">
+                <p className="text-sm text-text">Pick a starting supplement.</p>
+                <p className="text-xs text-text-muted mt-1">
+                  Add a second to see shared targets.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedRows.map((c) => (
+                  <Badge key={c.id} tone="accent">
+                    {c.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {selectedRows.length > 0 && (
+          <>
+            <Card tone="raised">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <CardTitle className="text-base">Target symptoms</CardTitle>
+                    <CardDescription>
+                      Conditions this combination may help with
+                    </CardDescription>
+                  </div>
+                  <Badge
+                    tone={
+                      evidenceLevel === "Strong"
+                        ? "success"
+                        : evidenceLevel === "Moderate"
+                          ? "accent"
+                          : "warning"
+                    }
+                  >
+                    {evidenceLevel} evidence
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {overlaps.map(({ symptom, count }) => (
+                    <Badge key={symptom} tone={count >= 2 ? "success" : "accent"}>
+                      {symptom}
+                      {count >= 2 && (
+                        <span className="ml-1 text-[10px] font-semibold opacity-80">
+                          {count}x
+                        </span>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+                {selectedRows.length >= 2 && overlaps.some((s) => s.count >= 2) && (
+                  <p className="text-[11px] text-text-subtle mt-3 flex items-start gap-1.5">
+                    <Sparkles className="w-3 h-3 mt-0.5 text-accent shrink-0" aria-hidden />
+                    Symptoms marked 2x+ are reinforced by multiple supplements in your stack.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card tone="raised">
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-sm text-success">Benefits</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-1.5">
+                    {allBenefits.map((b) => (
+                      <li
+                        key={b}
+                        className="text-xs text-text-muted flex items-start gap-1.5 leading-relaxed"
+                      >
+                        <span className="text-success mt-0.5 shrink-0">+</span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+
+              <Card tone="raised">
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-sm text-[color:var(--warning)]">
+                    Considerations
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-1.5">
+                    {allRisks.map((r) => (
+                      <li
+                        key={r}
+                        className="text-xs text-text-muted flex items-start gap-1.5 leading-relaxed"
+                      >
+                        <span className="text-[color:var(--warning)] mt-0.5 shrink-0">!</span>
+                        {r}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+
+            {selectedRows.some((c) => c.cannabisInteraction) && (
+              <Card tone="raised" className="border-accent/30">
+                <CardHeader className="pb-1">
+                  <CardTitle className="text-sm text-accent">
+                    Cannabis interactions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-1.5">
+                    {selectedRows
+                      .filter((c) => c.cannabisInteraction)
+                      .map((c) => (
+                        <li key={c.id} className="text-xs text-text-muted leading-relaxed">
+                          <span className="font-medium text-text">{c.name}:</span>{" "}
+                          {c.cannabisInteraction}
+                        </li>
+                      ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
