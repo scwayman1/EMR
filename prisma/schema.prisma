@@ -92,6 +92,13 @@ model Organization {
   nsfEvents           NsfEvent[]
   // Track 3 — EDI & Claim Generation (EMR-218 payer rules registry)
   payerRules          PayerRule[]
+  // Communications track
+  providerThreads        ProviderMessageThread[]
+  callLogs               CallLog[]
+  callTranscripts        CallTranscript[]
+  faxRecords             FaxRecord[]
+  outreachCampaigns      OutreachCampaign[]
+  voicemails             Voicemail[]
 }
 
 model User {
@@ -116,6 +123,17 @@ model User {
   signedLabResults        LabResult[]              @relation("LabResultSigner")
   approvedLabOutreach     LabOutreach[]            @relation("LabOutreachApprover")
   signedRefills           RefillRequest[]          @relation("RefillSigner")
+  // Communications track
+  providerThreadsCreated     ProviderMessageThread[]    @relation("ProviderThreadCreator")
+  providerThreadParticipant  ProviderThreadParticipant[] @relation("ProviderThreadParticipant")
+  providerMessagesSent       ProviderMessage[]          @relation("ProviderMessageSender")
+  callsInitiated             CallLog[]                  @relation("CallInitiator")
+  callCounterpartyAs         CallLog[]                  @relation("CallCounterpartyProvider")
+  transcriptsReviewed        CallTranscript[]           @relation("TranscriptReviewer")
+  faxesInitiated             FaxRecord[]                @relation("FaxInitiator")
+  outreachCampaignsCreated   OutreachCampaign[]         @relation("OutreachCreator")
+  voicemailsAssigned         Voicemail[]                @relation("VoicemailAssignee")
+  voicemailsListened         Voicemail[]                @relation("VoicemailListener")
 }
 
 model Membership {
@@ -220,6 +238,12 @@ model Patient {
   cart                 Cart?
   shippingAddresses    ShippingAddress[]
   priorAuthorizations  PriorAuthorization[]
+  // Communications track
+  providerThreads      ProviderMessageThread[]
+  callLogs             CallLog[]
+  faxRecords           FaxRecord[]
+  outreachRecipients   OutreachRecipient[]
+  voicemails           Voicemail[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -1111,6 +1135,7 @@ model MessageThread {
 
   patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   messages Message[]
+  callLogs CallLog[]
 
   @@index([patientId, lastMessageAt])
   @@index([triageUrgency])
@@ -1137,6 +1162,338 @@ model Message {
   sender User?         @relation("MessageSender", fields: [senderUserId], references: [id])
 
   @@index([threadId, createdAt])
+}
+
+// --------------------------------------------------------------
+// Provider-to-Provider Secure Portal (EMR-033)
+//
+// HIPAA-compliant internal channel for clinicians within the same
+// organization to discuss patient care. Distinct from MessageThread
+// (patient-facing). Bodies are stored as ciphertext envelopes — see
+// `lib/communications/crypto.ts` for the at-rest encryption layer.
+// --------------------------------------------------------------
+
+model ProviderMessageThread {
+  id             String   @id @default(cuid())
+  organizationId String
+  subject        String
+  // Optional patient context — links the conversation to a specific
+  // chart so case discussions stay attributable for the audit log.
+  patientId      String?
+  createdById    String
+  lastMessageAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient?                  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  createdBy    User                      @relation("ProviderThreadCreator", fields: [createdById], references: [id])
+  participants ProviderThreadParticipant[]
+  messages     ProviderMessage[]
+  callLogs     CallLog[]                 @relation("CallProviderThread")
+
+  @@index([organizationId, lastMessageAt])
+  @@index([patientId])
+}
+
+model ProviderThreadParticipant {
+  id         String    @id @default(cuid())
+  threadId   String
+  userId     String
+  joinedAt   DateTime  @default(now())
+  lastReadAt DateTime?
+
+  thread ProviderMessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User                  @relation("ProviderThreadParticipant", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([userId, threadId])
+}
+
+model ProviderMessage {
+  id           String   @id @default(cuid())
+  threadId     String
+  senderUserId String
+  // Stored as a ciphertext envelope (base64 of iv||tag||ct) — never plaintext.
+  bodyCipher   String
+  // Plaintext-equivalent length kept for UI previews (no PHI).
+  bodyLength   Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  thread ProviderMessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender User                  @relation("ProviderMessageSender", fields: [senderUserId], references: [id])
+
+  @@index([threadId, createdAt])
+}
+
+// --------------------------------------------------------------
+// Communications Overlay — call/video/fax (EMR-034, EMR-037)
+// --------------------------------------------------------------
+
+enum CommChannel {
+  phone
+  video
+  fax
+  sms
+}
+
+enum CallDirection {
+  inbound
+  outbound
+}
+
+enum CallStatus {
+  initiated
+  ringing
+  in_progress
+  completed
+  missed
+  failed
+  cancelled
+}
+
+model CallLog {
+  id              String        @id @default(cuid())
+  organizationId  String
+  channel         CommChannel
+  direction       CallDirection
+  status          CallStatus    @default(initiated)
+  initiatorUserId String?
+  // Targets — exactly one of patientId / providerUserId / externalNumber is set.
+  patientId       String?
+  providerUserId  String?
+  externalNumber  String?
+  // Optional thread linkage (when a call is launched from a message thread).
+  messageThreadId         String?
+  providerMessageThreadId String?
+  startedAt       DateTime      @default(now())
+  endedAt         DateTime?
+  durationSeconds Int?
+  // Twilio / WebRTC reference — opaque session identifier.
+  externalSessionId String?
+  // EMR-143 — HIPAA-compliant Zoom meeting metadata.
+  // The HIPAA-config Zoom account creates meetings with end-to-end
+  // encryption, waiting rooms, and disabled cloud recording. The
+  // passcode is encrypted at rest via the same MESSAGE_ENCRYPTION_KEY
+  // envelope used for provider-to-provider message bodies.
+  zoomMeetingId       String?  @unique
+  zoomTopic           String?
+  zoomJoinUrl         String?
+  zoomHostJoinUrl     String?
+  zoomPasscodeCipher  String?
+  zoomScheduledAt     DateTime?
+  zoomDurationMinutes Int?
+  notes             String?
+
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  initiator             User?                  @relation("CallInitiator", fields: [initiatorUserId], references: [id])
+  patient               Patient?               @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  providerUser          User?                  @relation("CallCounterpartyProvider", fields: [providerUserId], references: [id])
+  messageThread         MessageThread?         @relation(fields: [messageThreadId], references: [id], onDelete: SetNull)
+  providerMessageThread ProviderMessageThread? @relation("CallProviderThread", fields: [providerMessageThreadId], references: [id], onDelete: SetNull)
+  transcript            CallTranscript?
+  voicemail             Voicemail?
+
+  @@index([organizationId, startedAt])
+  @@index([patientId, startedAt])
+  @@index([initiatorUserId, startedAt])
+  @@index([organizationId, zoomScheduledAt])
+}
+
+// --------------------------------------------------------------
+// AI call transcription (EMR-037 / EMR-146)
+//
+// Transcripts capture **only pertinent medical info** — personal
+// identifiers, addresses, payment data and small-talk are stripped
+// by the redaction pass before persistence. Each transcript lands
+// in the review queue (status = pending_review) so a clinician can
+// confirm what gets attached to the chart.
+// --------------------------------------------------------------
+
+enum TranscriptStatus {
+  pending_review
+  approved
+  rejected
+}
+
+model CallTranscript {
+  id                   String           @id @default(cuid())
+  callLogId            String           @unique
+  organizationId       String
+  // Pertinent-info-only summary, ready for clinician review.
+  pertinentSummary     String
+  // Discrete bullet list of clinical extractions (symptoms, meds, plan).
+  clinicalBullets      String[]         @default([])
+  // What the redactor stripped (count + categories) for transparency.
+  redactedCategories   String[]         @default([])
+  status               TranscriptStatus @default(pending_review)
+  reviewedByUserId     String?
+  reviewedAt           DateTime?
+  reviewerNote         String?
+  // Whether the approved transcript was attached to the patient chart.
+  attachedToEncounterId String?
+  createdAt            DateTime         @default(now())
+
+  call         CallLog       @relation(fields: [callLogId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reviewedBy   User?         @relation("TranscriptReviewer", fields: [reviewedByUserId], references: [id])
+
+  @@index([organizationId, status, createdAt])
+}
+
+// --------------------------------------------------------------
+// Fax records (send + receive) — EMR-037
+// --------------------------------------------------------------
+
+enum FaxDirection {
+  inbound
+  outbound
+}
+
+enum FaxStatus {
+  queued
+  sending
+  delivered
+  failed
+  received
+}
+
+model FaxRecord {
+  id              String       @id @default(cuid())
+  organizationId  String
+  direction       FaxDirection
+  status          FaxStatus    @default(queued)
+  fromNumber      String
+  toNumber        String
+  pageCount       Int?
+  documentStorageKey String?   // pointer to the rendered PDF in object storage
+  patientId       String?
+  initiatorUserId String?
+  externalRef     String?      // provider-side fax reference (e.g. Phaxio job id)
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient?     @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  initiator    User?        @relation("FaxInitiator", fields: [initiatorUserId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([patientId, createdAt])
+}
+
+// --------------------------------------------------------------
+// Outreach campaigns — practice-level SMS/email broadcast (EMR-143)
+//
+// A campaign targets a cohort (e.g. all active patients on a given
+// product) and dispatches a templated SMS or email. Each recipient
+// row tracks delivery state for the campaign report.
+// --------------------------------------------------------------
+
+enum OutreachChannel {
+  sms
+  email
+}
+
+enum OutreachStatus {
+  draft
+  scheduled
+  sending
+  completed
+  cancelled
+  failed
+}
+
+enum OutreachRecipientStatus {
+  pending
+  sent
+  delivered
+  failed
+  unsubscribed
+}
+
+model OutreachCampaign {
+  id              String          @id @default(cuid())
+  organizationId  String
+  name            String
+  channel         OutreachChannel
+  // Plain template body — supports `{{firstName}}` interpolation.
+  bodyTemplate    String
+  // Saved cohort filter — JSON describing which patients to target.
+  audienceFilter  Json?
+  status          OutreachStatus  @default(draft)
+  scheduledFor    DateTime?
+  createdById     String
+  createdAt       DateTime        @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User                @relation("OutreachCreator", fields: [createdById], references: [id])
+  recipients   OutreachRecipient[]
+
+  @@index([organizationId, status, createdAt])
+}
+
+model OutreachRecipient {
+  id          String                  @id @default(cuid())
+  campaignId  String
+  patientId   String
+  status      OutreachRecipientStatus @default(pending)
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  errorMessage String?
+
+  campaign OutreachCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  patient  Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, patientId])
+  @@index([campaignId, status])
+}
+
+// --------------------------------------------------------------
+// HIPAA voicemail with transcript (EMR-146)
+//
+// Voicemails sit on top of an inbound CallLog (channel='phone',
+// status='missed'). The recording reference points at object storage;
+// the raw transcript is encrypted at rest with the same envelope used
+// for provider-to-provider message bodies. Only the redacted summary
+// + clinical bullets are stored in plaintext for review-pane preview.
+// --------------------------------------------------------------
+
+enum VoicemailStatus {
+  new
+  listened
+  archived
+}
+
+model Voicemail {
+  id                  String          @id @default(cuid())
+  callLogId           String          @unique
+  organizationId      String
+  fromNumber          String
+  patientId           String?
+  audioStorageKey     String?
+  durationSeconds     Int?
+  // AES-256-GCM envelope of the raw transcript text.
+  rawTranscriptCipher String?
+  pertinentSummary    String          @default("")
+  clinicalBullets     String[]        @default([])
+  redactedCategories  String[]        @default([])
+  status              VoicemailStatus @default(new)
+  assignedToUserId    String?
+  listenedByUserId    String?
+  listenedAt          DateTime?
+  createdAt           DateTime        @default(now())
+
+  call         CallLog       @relation(fields: [callLogId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient      Patient?      @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  assignedTo   User?         @relation("VoicemailAssignee", fields: [assignedToUserId], references: [id])
+  listenedBy   User?         @relation("VoicemailListener", fields: [listenedByUserId], references: [id])
+
+  @@index([organizationId, status, createdAt])
+  @@index([assignedToUserId, status])
+  @@index([patientId, createdAt])
 }
 
 // --------------------------------------------------------------
