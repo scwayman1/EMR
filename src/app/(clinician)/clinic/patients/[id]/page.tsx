@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
@@ -19,7 +19,6 @@ import { TrackPatientView } from "@/components/shell/recent-patients";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { MemoryTab } from "./memory-tab";
-import { ClinicalBillingSummary } from "./clinical-billing-tab";
 import { ChartingTimer } from "./charting-timer";
 import { startVisit } from "./actions";
 import { checkInteractions, getSeverityLabel, type DrugInteraction } from "@/lib/domain/drug-interactions";
@@ -50,6 +49,14 @@ interface PageProps {
 export default async function PatientChartPage({ params, searchParams }: PageProps) {
   const user = await requireUser();
   const tab = (searchParams.tab as TabKey) || "demographics";
+
+  // EMR-178 — `?tab=billing` is a legacy entry point. The billing
+  // experience now lives on the dedicated /billing route (Financial
+  // Cockpit). Redirect direct/bookmarked hits so they don't render
+  // the truncated inline summary.
+  if (tab === "billing") {
+    redirect(`/clinic/patients/${params.id}/billing`);
+  }
 
   /* ── Parallel data fetch ──────────────────────────────────── */
   const [
@@ -296,7 +303,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       // rounded to the nearest dollar — we're not trying to be a ledger.
       title: `${c.payerName ?? "Claim"} · $${Math.round(c.billedAmountCents / 100)}`,
       meta: `${c.status} · ${formatRelative(c.serviceDate)}`,
-      href: `/clinic/patients/${params.id}?tab=billing`,
+      href: `/clinic/patients/${params.id}/billing`,
     })),
   };
 
@@ -578,13 +585,9 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           patientId={params.id}
         />
       )}
-      {tab === "billing" && (
-        <ClinicalBillingSummary
-          claims={patientClaims}
-          patientFirstName={patient.firstName}
-          patientId={params.id}
-        />
-      )}
+      {/* tab === "billing" is intercepted by the redirect at the top of
+          the page (EMR-178). The standalone Financial Cockpit owns
+          billing rendering. */}
       </ChartFrame>
     </PageShell>
   );

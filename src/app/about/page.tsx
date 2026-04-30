@@ -117,18 +117,23 @@ export default function AboutPage() {
         {/* C-Suite + Teams — EMR-170 */}
         <div className="mt-16 max-w-4xl">
           <Eyebrow className="mb-4">Leadership</Eyebrow>
-          <h2 className="font-display text-2xl text-text tracking-tight mb-8">
+          <h2 className="font-display text-2xl text-text tracking-tight mb-3">
             The people building Leafjourney
           </h2>
+          <p className="text-sm text-text-muted leading-relaxed mb-8 max-w-2xl">
+            Two founders, eight C-suite seats, and a half-dozen specialized
+            teams. We hire slowly and deliberately — every role here will help
+            shape how cannabis medicine is practiced for the next decade.
+          </p>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             {EXECS.map((exec) =>
               exec.filled ? (
                 <div
                   key={exec.role}
-                  className="bg-surface-raised rounded-xl border border-border p-4 text-center"
+                  className="bg-surface-raised rounded-xl border border-border p-4"
                 >
-                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-2">
+                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-3">
                     <span className="text-sm font-medium text-accent">
                       {exec.initials}
                     </span>
@@ -136,23 +141,58 @@ export default function AboutPage() {
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
                     {exec.role}
                   </p>
-                  <p className="text-xs text-text mt-1">{exec.name}</p>
+                  <p className="text-xs font-medium text-text mt-1">
+                    {exec.name}
+                  </p>
+                  <p className="text-[11px] text-text-subtle mt-0.5">
+                    {exec.title}
+                  </p>
+                  <p className="text-[11px] text-text-muted leading-relaxed mt-2">
+                    {exec.focus}
+                  </p>
                 </div>
               ) : (
-                <div
+                <Link
                   key={exec.role}
-                  className="bg-surface-muted rounded-xl border border-dashed border-border p-4 text-center opacity-60 hover:opacity-90 hover:border-accent/40 transition-all"
+                  href={`/contact?role=${encodeURIComponent(exec.role)}`}
+                  className="block bg-surface-muted rounded-xl border border-dashed border-border p-4 hover:border-accent/60 hover:bg-surface transition-all group"
                 >
-                  <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center mx-auto mb-2 border border-dashed border-border">
-                    <span className="text-sm text-text-subtle select-none">+</span>
+                  <div className="w-12 h-12 rounded-full bg-surface flex items-center justify-center mb-3 border border-dashed border-border group-hover:border-accent/40">
+                    <span className="text-sm text-text-subtle select-none group-hover:text-accent">
+                      +
+                    </span>
                   </div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-accent">
                     {exec.role}
                   </p>
-                  <p className="text-xs text-text-muted mt-1">Open position</p>
-                </div>
+                  <p className="text-xs font-medium text-text-muted mt-1">
+                    Open seat
+                  </p>
+                  <p className="text-[11px] text-text-subtle mt-0.5">
+                    {exec.title}
+                  </p>
+                  <p className="text-[11px] text-text-muted leading-relaxed mt-2">
+                    {exec.focus}
+                  </p>
+                  <p className="text-[10px] font-medium text-accent uppercase tracking-wider mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Apply →
+                  </p>
+                </Link>
               )
             )}
+          </div>
+
+          <div className="rounded-xl border border-border bg-surface px-5 py-4 mb-12 text-xs text-text-muted leading-relaxed">
+            Interested in a leadership seat? We&apos;re looking for clinicians,
+            scientists, and operators who&apos;ve already done the thing once
+            and want to do it again — better. Reach out via{" "}
+            <Link
+              href="/contact"
+              className="text-accent hover:underline font-medium"
+            >
+              contact
+            </Link>{" "}
+            with your story.
           </div>
 
           <Eyebrow className="mb-4">Specialized teams</Eyebrow>
@@ -240,15 +280,78 @@ export default function AboutPage() {
   );
 }
 
-const EXECS: { role: string; name: string; initials: string; filled: boolean }[] = [
-  { role: "CEO", name: "Dr. Neal H. Patel", initials: "NP", filled: true },
-  { role: "CPTO", name: "Scott Wayman", initials: "SW", filled: true },
-  { role: "CMO", name: "—", initials: "—", filled: false },
-  { role: "CSO", name: "—", initials: "—", filled: false },
-  { role: "COO", name: "—", initials: "—", filled: false },
-  { role: "CFO", name: "—", initials: "—", filled: false },
-  { role: "CIO", name: "—", initials: "—", filled: false },
-  { role: "CHRO", name: "—", initials: "—", filled: false },
+const EXECS: {
+  role: string;
+  title: string;
+  name: string;
+  initials: string;
+  filled: boolean;
+  focus: string;
+}[] = [
+  {
+    role: "CEO",
+    title: "Chief Executive Officer",
+    name: "Dr. Neal H. Patel",
+    initials: "NP",
+    filled: true,
+    focus: "Clinical vision, partnerships, and patient-centered strategy.",
+  },
+  {
+    role: "CPTO",
+    title: "Chief Product & Technology Officer",
+    name: "Scott Wayman",
+    initials: "SW",
+    filled: true,
+    focus: "AI architecture, platform engineering, and product velocity.",
+  },
+  {
+    role: "CMO",
+    title: "Chief Medical Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus: "Clinical governance, evidence reviews, and physician network.",
+  },
+  {
+    role: "CSO",
+    title: "Chief Scientific Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus: "Cannabis research corpus, real-world-evidence pipelines, IRB strategy.",
+  },
+  {
+    role: "COO",
+    title: "Chief Operating Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus: "Practice operations, revenue cycle, and clinic onboarding.",
+  },
+  {
+    role: "CFO",
+    title: "Chief Financial Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus: "Financial planning, payer contracts, and capital strategy.",
+  },
+  {
+    role: "CIO",
+    title: "Chief Information Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus: "HIPAA compliance, security posture, and infrastructure resilience.",
+  },
+  {
+    role: "CHRO",
+    title: "Chief Human Resources Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus: "Talent, culture, and clinician retention.",
+  },
 ];
 
 const TEAMS: { name: string; desc: string }[] = [
