@@ -18,8 +18,14 @@ export default async function NoteDetailPage({ params }: PageProps) {
     where: { id: params.noteId },
     include: {
       encounter: {
-        include: {
-          patient: { select: { id: true, firstName: true, lastName: true, organizationId: true } },
+        select: {
+          id: true,
+          patientId: true,
+          modality: true,
+          briefingContext: true,
+          patient: {
+            select: { id: true, firstName: true, lastName: true, organizationId: true },
+          },
         },
       },
       codingSuggestion: true,
@@ -68,6 +74,13 @@ export default async function NoteDetailPage({ params }: PageProps) {
         aiDrafted={note.aiDrafted}
         aiConfidence={note.aiConfidence}
         codingSuggestion={codingSuggestion}
+        initialDemeanor={
+          note.encounter.briefingContext &&
+          typeof note.encounter.briefingContext === "object" &&
+          "patientDemeanor" in (note.encounter.briefingContext as Record<string, unknown>)
+            ? ((note.encounter.briefingContext as Record<string, unknown>).patientDemeanor as any)
+            : null
+        }
       />
     </PageShell>
   );
