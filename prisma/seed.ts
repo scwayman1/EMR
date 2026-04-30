@@ -351,6 +351,908 @@ async function seedMarketplace(organizationId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Phase 8 Track 3 — Pharmacology & Commerce seed data
+//
+// Seeds:
+//   - Strain reference catalog (EMR-018)
+//   - Dispensaries + SKUs in the SF Bay area (EMR-002 / EMR-017)
+//   - Affiliate partner registry (EMR-039)
+//   - Supply Store catalog (EMR-007)
+//   - Supplement compounds for the Symptom/Diagnosis wheel (EMR-151)
+//   - One reimbursement record per demo patient (EMR-145)
+// ---------------------------------------------------------------------------
+
+async function seedTrack8Data(organizationId: string, patientIds: string[]) {
+  // ----- Strains (EMR-018) -------------------------------------------------
+  const strainSeeds: Array<{
+    slug: string;
+    name: string;
+    classification: "indica" | "sativa" | "hybrid" | "cbd";
+    thcPercent: number;
+    cbdPercent: number;
+    dominantTerpene: string;
+    symptoms: string[];
+    effects: string[];
+    flavors: string[];
+    description: string;
+  }> = [
+    {
+      slug: "northern-lights",
+      name: "Northern Lights",
+      classification: "indica",
+      thcPercent: 18,
+      cbdPercent: 0.5,
+      dominantTerpene: "Myrcene",
+      symptoms: ["insomnia", "pain", "anxiety", "stress"],
+      effects: ["relaxed", "sleepy", "happy"],
+      flavors: ["earthy", "sweet", "pine"],
+      description:
+        "Classic indica beloved for deeply sedating relaxation. A go-to for nighttime pain and sleep onset.",
+    },
+    {
+      slug: "granddaddy-purple",
+      name: "Granddaddy Purple",
+      classification: "indica",
+      thcPercent: 17,
+      cbdPercent: 0.4,
+      dominantTerpene: "Myrcene",
+      symptoms: ["insomnia", "pain", "stress", "appetite"],
+      effects: ["relaxed", "sleepy", "euphoric"],
+      flavors: ["grape", "berry"],
+      description:
+        "Famous purple indica with a sweet grape profile. Heavy body relaxation; appetite-supportive.",
+    },
+    {
+      slug: "blue-dream",
+      name: "Blue Dream",
+      classification: "hybrid",
+      thcPercent: 19,
+      cbdPercent: 0.4,
+      dominantTerpene: "Myrcene",
+      symptoms: ["depression", "pain", "stress", "fatigue"],
+      effects: ["uplifted", "relaxed", "creative"],
+      flavors: ["berry", "sweet"],
+      description:
+        "Sativa-leaning hybrid with gentle full-body relaxation paired with a clear-headed cerebral lift.",
+    },
+    {
+      slug: "sour-diesel",
+      name: "Sour Diesel",
+      classification: "sativa",
+      thcPercent: 22,
+      cbdPercent: 0.2,
+      dominantTerpene: "Caryophyllene",
+      symptoms: ["depression", "fatigue", "stress", "focus"],
+      effects: ["energetic", "uplifted", "focus"],
+      flavors: ["diesel", "pungent"],
+      description:
+        "Energizing sativa with a quick uplifting onset. Daytime use for fatigue and low mood.",
+    },
+    {
+      slug: "girl-scout-cookies",
+      name: "Girl Scout Cookies",
+      classification: "hybrid",
+      thcPercent: 22,
+      cbdPercent: 0.3,
+      dominantTerpene: "Caryophyllene",
+      symptoms: ["pain", "appetite", "nausea", "stress"],
+      effects: ["euphoric", "relaxed", "happy"],
+      flavors: ["sweet", "earthy", "mint"],
+      description:
+        "Potent hybrid favored for chronic pain and nausea. Euphoric body relaxation without total sedation.",
+    },
+    {
+      slug: "harlequin",
+      name: "Harlequin",
+      classification: "cbd",
+      thcPercent: 7,
+      cbdPercent: 9,
+      dominantTerpene: "Myrcene",
+      symptoms: ["anxiety", "pain", "inflammation"],
+      effects: ["clear-headed", "relaxed", "alert"],
+      flavors: ["earthy", "musk"],
+      description:
+        "Reliable 1:1 THC:CBD strain. Clear-headed relief for anxious patients who need to function.",
+    },
+    {
+      slug: "acdc",
+      name: "ACDC",
+      classification: "cbd",
+      thcPercent: 1,
+      cbdPercent: 14,
+      dominantTerpene: "Myrcene",
+      symptoms: ["anxiety", "pain", "seizures", "inflammation"],
+      effects: ["clear-headed", "relaxed", "focus"],
+      flavors: ["earthy", "wood"],
+      description:
+        "High-CBD, low-THC strain. Therapeutic with minimal psychoactive effect — common starting point.",
+    },
+    {
+      slug: "jack-herer",
+      name: "Jack Herer",
+      classification: "sativa",
+      thcPercent: 19,
+      cbdPercent: 0.3,
+      dominantTerpene: "Terpinolene",
+      symptoms: ["depression", "fatigue", "focus", "stress"],
+      effects: ["energetic", "creative", "focus"],
+      flavors: ["pine", "wood"],
+      description:
+        "Bright, focused sativa. Often a first try for daytime mood and concentration support.",
+    },
+    {
+      slug: "wedding-cake",
+      name: "Wedding Cake",
+      classification: "hybrid",
+      thcPercent: 23,
+      cbdPercent: 0.3,
+      dominantTerpene: "Limonene",
+      symptoms: ["pain", "insomnia", "appetite"],
+      effects: ["relaxed", "euphoric", "happy"],
+      flavors: ["sweet", "vanilla"],
+      description:
+        "Indica-leaning hybrid known for full-body calm and a creamy vanilla profile.",
+    },
+    {
+      slug: "cannatonic",
+      name: "Cannatonic",
+      classification: "cbd",
+      thcPercent: 6,
+      cbdPercent: 12,
+      dominantTerpene: "Myrcene",
+      symptoms: ["anxiety", "muscle spasm", "pain"],
+      effects: ["relaxed", "clear-headed"],
+      flavors: ["earthy", "citrus"],
+      description:
+        "High-CBD strain with mild THC. Useful for anxiety and muscle spasms without strong intoxication.",
+    },
+  ];
+
+  const strainIdBySlug = new Map<string, string>();
+  for (const s of strainSeeds) {
+    const row = await prisma.strain.upsert({
+      where: { slug: s.slug },
+      update: {
+        name: s.name,
+        classification: s.classification,
+        thcPercent: s.thcPercent,
+        cbdPercent: s.cbdPercent,
+        dominantTerpene: s.dominantTerpene,
+        symptoms: s.symptoms,
+        effects: s.effects,
+        flavors: s.flavors,
+        description: s.description,
+        active: true,
+      },
+      create: {
+        slug: s.slug,
+        name: s.name,
+        classification: s.classification,
+        thcPercent: s.thcPercent,
+        cbdPercent: s.cbdPercent,
+        dominantTerpene: s.dominantTerpene,
+        symptoms: s.symptoms,
+        effects: s.effects,
+        flavors: s.flavors,
+        description: s.description,
+        active: true,
+      },
+    });
+    strainIdBySlug.set(s.slug, row.id);
+  }
+
+  // ----- Dispensaries (EMR-002 / EMR-017) ---------------------------------
+  const dispensarySeeds: Array<{
+    slug: string;
+    name: string;
+    addressLine1: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    latitude: number;
+    longitude: number;
+    phone: string;
+    websiteUrl: string;
+    hoursLine: string;
+    licenseNumber: string;
+    licenseState: string;
+  }> = [
+    {
+      slug: "leafly-collective-sf",
+      name: "Leafly Collective — SF",
+      addressLine1: "415 Valencia St",
+      city: "San Francisco",
+      state: "CA",
+      postalCode: "94103",
+      latitude: 37.7659,
+      longitude: -122.4222,
+      phone: "+1 415 555 0182",
+      websiteUrl: "https://example.com/leafly-collective",
+      hoursLine: "Mon–Sat 9a–9p · Sun 10a–6p",
+      licenseNumber: "C10-0000123-LIC",
+      licenseState: "CA",
+    },
+    {
+      slug: "oakland-green-room",
+      name: "Oakland Green Room",
+      addressLine1: "1860 Broadway",
+      city: "Oakland",
+      state: "CA",
+      postalCode: "94612",
+      latitude: 37.8084,
+      longitude: -122.2683,
+      phone: "+1 510 555 0144",
+      websiteUrl: "https://example.com/green-room",
+      hoursLine: "Daily 8a–10p",
+      licenseNumber: "C10-0000456-LIC",
+      licenseState: "CA",
+    },
+    {
+      slug: "berkeley-patient-care",
+      name: "Berkeley Patient Care",
+      addressLine1: "2366 Telegraph Ave",
+      city: "Berkeley",
+      state: "CA",
+      postalCode: "94704",
+      latitude: 37.8625,
+      longitude: -122.2585,
+      phone: "+1 510 555 0167",
+      websiteUrl: "https://example.com/bpc",
+      hoursLine: "Mon–Fri 10a–8p",
+      licenseNumber: "C10-0000789-LIC",
+      licenseState: "CA",
+    },
+  ];
+
+  const dispensaryIdBySlug = new Map<string, string>();
+  for (const d of dispensarySeeds) {
+    const row = await prisma.dispensary.upsert({
+      where: { slug: d.slug },
+      update: {
+        name: d.name,
+        addressLine1: d.addressLine1,
+        city: d.city,
+        state: d.state,
+        postalCode: d.postalCode,
+        latitude: d.latitude,
+        longitude: d.longitude,
+        phone: d.phone,
+        websiteUrl: d.websiteUrl,
+        hoursLine: d.hoursLine,
+        status: "active",
+        lastSyncedAt: new Date(),
+      },
+      create: {
+        organizationId,
+        slug: d.slug,
+        name: d.name,
+        addressLine1: d.addressLine1,
+        city: d.city,
+        state: d.state,
+        postalCode: d.postalCode,
+        latitude: d.latitude,
+        longitude: d.longitude,
+        phone: d.phone,
+        websiteUrl: d.websiteUrl,
+        hoursLine: d.hoursLine,
+        licenseNumber: d.licenseNumber,
+        licenseState: d.licenseState,
+        status: "active",
+        syncSource: "manual",
+        lastSyncedAt: new Date(),
+      },
+    });
+    dispensaryIdBySlug.set(d.slug, row.id);
+  }
+
+  // SKU seeds — a handful per dispensary covering the regimen targets in
+  // the demo charts (sleep, pain, anxiety) so the locator's "matches your
+  // regimen" view has something to surface.
+  const skuSeeds: Array<{
+    dispensarySlug: string;
+    sku: string;
+    name: string;
+    brand: string;
+    format:
+      | "flower"
+      | "tincture"
+      | "capsule"
+      | "vape"
+      | "preroll"
+      | "edible"
+      | "topical"
+      | "concentrate";
+    strainSlug?: string;
+    thcMgPerUnit?: number;
+    cbdMgPerUnit?: number;
+    thcPercent?: number;
+    cbdPercent?: number;
+    priceCents: number;
+    inStock: boolean;
+  }> = [
+    {
+      dispensarySlug: "leafly-collective-sf",
+      sku: "LC-NL-3.5",
+      name: "Northern Lights 3.5g",
+      brand: "Sunset Cannabis Co.",
+      format: "flower",
+      strainSlug: "northern-lights",
+      thcPercent: 18,
+      cbdPercent: 0.5,
+      priceCents: 4500,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "leafly-collective-sf",
+      sku: "LC-NF-30",
+      name: "Nightfall Tincture 30mL — 1:1",
+      brand: "Solace Botanica",
+      format: "tincture",
+      strainSlug: "harlequin",
+      thcMgPerUnit: 5,
+      cbdMgPerUnit: 5,
+      priceCents: 5800,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "leafly-collective-sf",
+      sku: "LC-CBD-25",
+      name: "CBD Isolate Capsule 25mg (30ct)",
+      brand: "Canopy Clinical",
+      format: "capsule",
+      strainSlug: "acdc",
+      thcMgPerUnit: 0,
+      cbdMgPerUnit: 25,
+      priceCents: 4200,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "oakland-green-room",
+      sku: "OGR-GDP-3.5",
+      name: "Granddaddy Purple 3.5g",
+      brand: "Sunset Cannabis Co.",
+      format: "flower",
+      strainSlug: "granddaddy-purple",
+      thcPercent: 17,
+      cbdPercent: 0.4,
+      priceCents: 4200,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "oakland-green-room",
+      sku: "OGR-BD-VP",
+      name: "Blue Dream Live Resin Vape 0.5g",
+      brand: "Garden Path",
+      format: "vape",
+      strainSlug: "blue-dream",
+      thcPercent: 78,
+      cbdPercent: 0.3,
+      priceCents: 4800,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "oakland-green-room",
+      sku: "OGR-HRL-30",
+      name: "Harlequin Tincture 30mL — 1:1",
+      brand: "Solace Botanica",
+      format: "tincture",
+      strainSlug: "harlequin",
+      thcMgPerUnit: 5,
+      cbdMgPerUnit: 5,
+      priceCents: 5500,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "berkeley-patient-care",
+      sku: "BPC-ACDC-30",
+      name: "ACDC High-CBD Tincture 30mL",
+      brand: "Canopy Clinical",
+      format: "tincture",
+      strainSlug: "acdc",
+      thcMgPerUnit: 1,
+      cbdMgPerUnit: 20,
+      priceCents: 6800,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "berkeley-patient-care",
+      sku: "BPC-CT-CAP",
+      name: "Cannatonic Capsules 10mg (30ct)",
+      brand: "Canopy Clinical",
+      format: "capsule",
+      strainSlug: "cannatonic",
+      thcMgPerUnit: 2,
+      cbdMgPerUnit: 10,
+      priceCents: 4800,
+      inStock: true,
+    },
+    {
+      dispensarySlug: "berkeley-patient-care",
+      sku: "BPC-WC-PR",
+      name: "Wedding Cake Pre-Roll 1g",
+      brand: "Garden Path",
+      format: "preroll",
+      strainSlug: "wedding-cake",
+      thcPercent: 23,
+      cbdPercent: 0.3,
+      priceCents: 1500,
+      inStock: false,
+    },
+  ];
+
+  for (const sku of skuSeeds) {
+    const dispensaryId = dispensaryIdBySlug.get(sku.dispensarySlug);
+    if (!dispensaryId) continue;
+    const strainId = sku.strainSlug ? strainIdBySlug.get(sku.strainSlug) : null;
+    const strainType = sku.strainSlug
+      ? (strainSeeds.find((s) => s.slug === sku.strainSlug)?.classification ?? "na")
+      : "na";
+    await prisma.dispensarySku.upsert({
+      where: { dispensaryId_sku: { dispensaryId, sku: sku.sku } },
+      update: {
+        name: sku.name,
+        brand: sku.brand,
+        format: sku.format,
+        strainType,
+        strainId: strainId ?? null,
+        thcMgPerUnit: sku.thcMgPerUnit,
+        cbdMgPerUnit: sku.cbdMgPerUnit,
+        thcPercent: sku.thcPercent,
+        cbdPercent: sku.cbdPercent,
+        priceCents: sku.priceCents,
+        inStock: sku.inStock,
+        active: true,
+      },
+      create: {
+        dispensaryId,
+        sku: sku.sku,
+        name: sku.name,
+        brand: sku.brand,
+        format: sku.format,
+        strainType,
+        strainId: strainId ?? null,
+        thcMgPerUnit: sku.thcMgPerUnit,
+        cbdMgPerUnit: sku.cbdMgPerUnit,
+        thcPercent: sku.thcPercent,
+        cbdPercent: sku.cbdPercent,
+        priceCents: sku.priceCents,
+        inStock: sku.inStock,
+      },
+    });
+  }
+
+  // ----- Affiliate partners (EMR-039) -------------------------------------
+  const affiliateSeeds: Array<{
+    slug: string;
+    name: string;
+    domain: string;
+    websiteUrl: string;
+    description: string;
+    category: string;
+    sortOrder: number;
+  }> = [
+    {
+      slug: "phytorx",
+      name: "PhytoRx",
+      domain: "phytorx.co",
+      websiteUrl: "https://phytorx.co/products/cbd-cbg-beverage-concentrate",
+      description:
+        "Physician-formulated CBD + CBG beverage concentrates for pain and recovery. Fast-absorbing emulsion technology developed with clinical input.",
+      category: "Beverages",
+      sortOrder: 10,
+    },
+    {
+      slug: "flower-powered-products",
+      name: "Flower Powered Products",
+      domain: "flowerpoweredproductsllc.com",
+      websiteUrl: "https://flowerpoweredproductsllc.com/shop",
+      description:
+        "Full line of CBD-only wellness products. Topicals, balms, and creams. Third-party tested, physician-recommended.",
+      category: "Topicals",
+      sortOrder: 20,
+    },
+    {
+      slug: "aulv",
+      name: "AULV Wellness",
+      domain: "aulv.org",
+      websiteUrl: "https://aulv.org",
+      description:
+        "Wellness collective focused on plant-based therapies, education, and community-supported research. Curated alongside our care team.",
+      category: "Wellness",
+      sortOrder: 30,
+    },
+  ];
+  const DEFAULT_DISCLAIMER =
+    "You are leaving Leafjourney to visit a partner website. Please consult your healthcare provider before considering these products. Cannabis products are not FDA-approved medications and individual results may vary. This is a joint decision between you and your care team.";
+  const JOINT_DECISION_NOTE =
+    "Adding any product to your regimen is a joint decision between you and your care team. Bring this product up at your next visit so we can document it and watch for interactions.";
+  for (const p of affiliateSeeds) {
+    await prisma.affiliatePartner.upsert({
+      where: { slug: p.slug },
+      update: {
+        name: p.name,
+        domain: p.domain,
+        websiteUrl: p.websiteUrl,
+        description: p.description,
+        category: p.category,
+        status: "active",
+        disclaimerText: DEFAULT_DISCLAIMER,
+        jointDecisionNote: JOINT_DECISION_NOTE,
+        utmSource: "leafjourney",
+        sortOrder: p.sortOrder,
+      },
+      create: {
+        slug: p.slug,
+        name: p.name,
+        domain: p.domain,
+        websiteUrl: p.websiteUrl,
+        description: p.description,
+        category: p.category,
+        status: "active",
+        disclaimerText: DEFAULT_DISCLAIMER,
+        jointDecisionNote: JOINT_DECISION_NOTE,
+        utmSource: "leafjourney",
+        sortOrder: p.sortOrder,
+      },
+    });
+  }
+
+  // ----- Supply Store (EMR-007) -------------------------------------------
+  const supplySeeds: Array<{
+    slug: string;
+    name: string;
+    brand: string;
+    category:
+      | "cough_cold"
+      | "sleep"
+      | "pain"
+      | "digestive"
+      | "vitamins_supplements"
+      | "dme"
+      | "topical"
+      | "oral_care"
+      | "mental_health"
+      | "general_wellness";
+    description: string;
+    shortDescription: string;
+    priceCents: number;
+    symptoms: string[];
+    conditions: string[];
+    contraindications: string[];
+    fsaEligible: boolean;
+    featured: boolean;
+  }> = [
+    {
+      slug: "magnesium-glycinate-200mg",
+      name: "Magnesium Glycinate 200mg",
+      brand: "Pure Roots",
+      category: "sleep",
+      description:
+        "Highly bioavailable magnesium glycinate. 200mg per capsule, 90 count. Calms the nervous system and supports sleep.",
+      shortDescription: "Sleep + muscle support · 90ct",
+      priceCents: 2299,
+      symptoms: ["insomnia", "sleep", "muscle tension", "anxiety"],
+      conditions: ["insomnia", "anxiety"],
+      contraindications: ["kidney disease"],
+      fsaEligible: true,
+      featured: true,
+    },
+    {
+      slug: "low-dose-melatonin-0_5mg",
+      name: "Low-Dose Melatonin 0.5mg",
+      brand: "Pure Roots",
+      category: "sleep",
+      description:
+        "Sublingual melatonin at the physiologic dose (0.5mg). Stacks safely with bedtime CBN. 60 count.",
+      shortDescription: "Sublingual · 60ct · 0.5mg",
+      priceCents: 1499,
+      symptoms: ["insomnia", "jet lag", "shift work"],
+      conditions: ["insomnia"],
+      contraindications: ["pregnant"],
+      fsaEligible: true,
+      featured: false,
+    },
+    {
+      slug: "elderberry-zinc-throat-spray",
+      name: "Elderberry + Zinc Throat Spray",
+      brand: "Pure Roots",
+      category: "cough_cold",
+      description:
+        "Elderberry, zinc, and propolis throat spray for early cough and sore throat. 30mL.",
+      shortDescription: "Cough + sore throat · 30mL",
+      priceCents: 1299,
+      symptoms: ["cough", "sore throat"],
+      conditions: ["common cold"],
+      contraindications: [],
+      fsaEligible: false,
+      featured: false,
+    },
+    {
+      slug: "omega-3-1000mg",
+      name: "Omega-3 EPA/DHA 1000mg",
+      brand: "Pure Roots",
+      category: "vitamins_supplements",
+      description:
+        "Triple-strength fish oil. 600mg EPA + 400mg DHA per softgel. Supports anti-inflammatory and cognitive pathways.",
+      shortDescription: "Anti-inflammatory · 90ct softgels",
+      priceCents: 2799,
+      symptoms: ["inflammation", "joint pain", "mood", "cognition"],
+      conditions: ["chronic inflammation"],
+      contraindications: ["warfarin"],
+      fsaEligible: true,
+      featured: true,
+    },
+    {
+      slug: "ashwagandha-600mg",
+      name: "Ashwagandha KSM-66 600mg",
+      brand: "Pure Roots",
+      category: "mental_health",
+      description:
+        "KSM-66 standardized ashwagandha extract. 600mg per capsule. Adaptogen for stress and HPA axis support.",
+      shortDescription: "Stress + cortisol · 60ct",
+      priceCents: 2499,
+      symptoms: ["stress", "anxiety", "fatigue"],
+      conditions: ["anxiety"],
+      contraindications: ["thyroid disease"],
+      fsaEligible: false,
+      featured: false,
+    },
+    {
+      slug: "compression-knee-sleeve",
+      name: "Compression Knee Sleeve",
+      brand: "MoveWell",
+      category: "dme",
+      description:
+        "Medical-grade compression sleeve for knee pain and post-exercise recovery. Sized S/M/L/XL.",
+      shortDescription: "Joint support · medical-grade",
+      priceCents: 3499,
+      symptoms: ["joint pain", "knee pain"],
+      conditions: ["osteoarthritis"],
+      contraindications: [],
+      fsaEligible: true,
+      featured: false,
+    },
+    {
+      slug: "vitamin-d3-k2-5000iu",
+      name: "Vitamin D3 + K2 5000IU",
+      brand: "Pure Roots",
+      category: "vitamins_supplements",
+      description:
+        "Vitamin D3 with cofactor K2 (MK-7). 5000IU per softgel. Mood, immune, and bone support.",
+      shortDescription: "Mood + immune · 90ct softgels",
+      priceCents: 1899,
+      symptoms: ["fatigue", "mood", "immunity"],
+      conditions: ["vitamin d deficiency"],
+      contraindications: [],
+      fsaEligible: true,
+      featured: false,
+    },
+    {
+      slug: "menthol-arnica-pain-rub",
+      name: "Menthol + Arnica Pain Rub",
+      brand: "MoveWell",
+      category: "topical",
+      description:
+        "Cooling menthol topical with arnica extract. For sore muscles and minor joint pain. 4oz tube.",
+      shortDescription: "Cooling topical · 4oz",
+      priceCents: 1599,
+      symptoms: ["muscle pain", "joint pain", "soreness"],
+      conditions: ["myalgia"],
+      contraindications: ["broken skin"],
+      fsaEligible: true,
+      featured: false,
+    },
+  ];
+  for (const s of supplySeeds) {
+    await prisma.supplyProduct.upsert({
+      where: { slug: s.slug },
+      update: {
+        name: s.name,
+        brand: s.brand,
+        category: s.category,
+        description: s.description,
+        shortDescription: s.shortDescription,
+        priceCents: s.priceCents,
+        symptoms: s.symptoms,
+        conditions: s.conditions,
+        contraindications: s.contraindications,
+        isOTC: true,
+        fsaEligible: s.fsaEligible,
+        featured: s.featured,
+        active: true,
+      },
+      create: {
+        organizationId,
+        slug: s.slug,
+        name: s.name,
+        brand: s.brand,
+        category: s.category,
+        description: s.description,
+        shortDescription: s.shortDescription,
+        priceCents: s.priceCents,
+        symptoms: s.symptoms,
+        conditions: s.conditions,
+        contraindications: s.contraindications,
+        isOTC: true,
+        fsaEligible: s.fsaEligible,
+        featured: s.featured,
+      },
+    });
+  }
+
+  // ----- Supplement compounds (EMR-151) -----------------------------------
+  // Mirrors the BUILTIN_SUPPLEMENTS list in src/lib/domain/supplement-wheel.ts
+  // so the wheel renders the same content with or without DB connectivity.
+  const supplementSeeds: Array<{
+    id: string;
+    name: string;
+    category: string;
+    color: string;
+    evidence: "strong" | "moderate" | "emerging";
+    description: string;
+    symptoms: string[];
+    benefits: string[];
+    risks: string[];
+    cannabisInteraction: string;
+    sortOrder: number;
+  }> = [
+    {
+      id: "magnesium-glycinate",
+      name: "Magnesium Glycinate",
+      category: "Mineral",
+      color: "#7C9F8C",
+      evidence: "strong",
+      description: "Highly bioavailable form of magnesium with calming effects.",
+      symptoms: ["sleep", "muscle tension", "anxiety"],
+      benefits: ["Improves sleep onset", "Reduces nighttime cramps", "Calms nervous system"],
+      risks: ["Loose stools at high doses"],
+      cannabisInteraction: "Generally synergistic with CBD for sleep and muscle relaxation.",
+      sortOrder: 10,
+    },
+    {
+      id: "melatonin",
+      name: "Melatonin",
+      category: "Hormone",
+      color: "#5B6F8E",
+      evidence: "strong",
+      description: "Endogenous sleep-onset hormone; useful for shifted circadian rhythms.",
+      symptoms: ["sleep", "jet lag", "shift work"],
+      benefits: ["Shortens sleep latency", "Stabilizes sleep timing"],
+      risks: ["Morning grogginess at >1 mg", "Vivid dreams"],
+      cannabisInteraction: "Stack low-dose melatonin (0.3–1 mg) with bedtime CBN for sleep.",
+      sortOrder: 20,
+    },
+    {
+      id: "omega-3",
+      name: "Omega-3 (EPA/DHA)",
+      category: "Essential Fatty Acid",
+      color: "#3F7D8A",
+      evidence: "strong",
+      description: "EPA + DHA fish oil; supports anti-inflammatory and cognitive pathways.",
+      symptoms: ["inflammation", "joint pain", "mood", "cognition"],
+      benefits: ["Reduces systemic inflammation", "Supports mood stability"],
+      risks: ["Mild blood-thinning at high doses"],
+      cannabisInteraction: "Complements CBD's anti-inflammatory action.",
+      sortOrder: 30,
+    },
+    {
+      id: "ashwagandha",
+      name: "Ashwagandha",
+      category: "Adaptogen",
+      color: "#9C7C5A",
+      evidence: "moderate",
+      description: "Ayurvedic adaptogen; shown to lower cortisol and support resilience.",
+      symptoms: ["stress", "anxiety", "fatigue"],
+      benefits: ["Lowers cortisol", "Improves stress resilience"],
+      risks: ["Avoid with thyroid medications without supervision"],
+      cannabisInteraction: "Pairs well with mid-day microdose CBD for stress without sedation.",
+      sortOrder: 40,
+    },
+    {
+      id: "l-theanine",
+      name: "L-Theanine",
+      category: "Amino",
+      color: "#6FA89A",
+      evidence: "strong",
+      description: "Amino acid from green tea; promotes alpha brainwaves and calm focus.",
+      symptoms: ["anxiety", "focus", "stress"],
+      benefits: ["Calm without sedation", "Smooths caffeine"],
+      risks: ["Generally well-tolerated"],
+      cannabisInteraction: "Can offset THC-induced anxiety; safe to combine.",
+      sortOrder: 50,
+    },
+    {
+      id: "vitamin-d3",
+      name: "Vitamin D3",
+      category: "Vitamin",
+      color: "#D4A04E",
+      evidence: "strong",
+      description: "Sun-derived vitamin; deficiency linked to mood and immune issues.",
+      symptoms: ["fatigue", "mood", "immunity"],
+      benefits: ["Mood support", "Immune function"],
+      risks: ["Toxic at very high doses without K2 cofactor"],
+      cannabisInteraction: "No notable interaction; foundational stack.",
+      sortOrder: 60,
+    },
+  ];
+  for (const s of supplementSeeds) {
+    await prisma.supplementCompound.upsert({
+      where: { id: s.id },
+      update: {
+        name: s.name,
+        category: s.category,
+        color: s.color,
+        evidence: s.evidence,
+        description: s.description,
+        symptoms: s.symptoms,
+        benefits: s.benefits,
+        risks: s.risks,
+        cannabisInteraction: s.cannabisInteraction,
+        sortOrder: s.sortOrder,
+        active: true,
+      },
+      create: {
+        id: s.id,
+        name: s.name,
+        category: s.category,
+        color: s.color,
+        evidence: s.evidence,
+        description: s.description,
+        symptoms: s.symptoms,
+        benefits: s.benefits,
+        risks: s.risks,
+        cannabisInteraction: s.cannabisInteraction,
+        sortOrder: s.sortOrder,
+        active: true,
+      },
+    });
+  }
+
+  // ----- Reimbursement records (EMR-145) ----------------------------------
+  // Each demo patient gets one prior-month record so the operator
+  // dashboard renders meaningful data on first load.
+  const now = new Date();
+  const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const dispensariesArr = Array.from(dispensaryIdBySlug.values());
+  const reimbursementRows: Array<{
+    patientId: string;
+    dispensaryId: string;
+    documentedSpendCents: number;
+    reimbursableCents: number;
+    status: "draft" | "submitted" | "approved";
+  }> = patientIds.map((pid, i) => ({
+    patientId: pid,
+    dispensaryId: dispensariesArr[i % dispensariesArr.length],
+    documentedSpendCents: 18_000 + i * 6_000,
+    reimbursableCents: Math.min(50_000, 18_000 + i * 6_000),
+    status: i === 0 ? "approved" : i === 1 ? "submitted" : "draft",
+  }));
+  for (const r of reimbursementRows) {
+    await prisma.dispensaryReimbursement.upsert({
+      where: { patientId_serviceMonth: { patientId: r.patientId, serviceMonth: lastMonth } },
+      update: {
+        documentedSpendCents: r.documentedSpendCents,
+        reimbursableCents: r.reimbursableCents,
+        status: r.status,
+      },
+      create: {
+        organizationId,
+        dispensaryId: r.dispensaryId,
+        patientId: r.patientId,
+        serviceMonth: lastMonth,
+        documentedSpendCents: r.documentedSpendCents,
+        reimbursableCents: r.reimbursableCents,
+        status: r.status,
+      },
+    });
+  }
+
+  console.log(
+    `  Track 8: ${strainSeeds.length} strains, ${dispensarySeeds.length} dispensaries, ${skuSeeds.length} SKUs, ${affiliateSeeds.length} affiliates, ${supplySeeds.length} supply items, ${supplementSeeds.length} supplement compounds, ${reimbursementRows.length} reimbursement rows.`,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -3474,6 +4376,12 @@ async function main() {
   // ------------------------------------------------------------------
   console.log("Seeding marketplace catalog...");
   await seedMarketplace(org.id);
+
+  // ------------------------------------------------------------------
+  // Phase 8 Track 3 — Pharmacology & Commerce
+  // ------------------------------------------------------------------
+  console.log("Seeding Track 8 pharmacology + commerce data...");
+  await seedTrack8Data(org.id, [maya.id, james.id, sarah.id]);
 
   // ------------------------------------------------------------------
   // Done
