@@ -16,6 +16,12 @@ import {
   STAGE_DESCRIPTIONS,
   STAGE_ENCOURAGEMENT,
 } from "@/lib/domain/plant-health";
+import {
+  GROW_GUIDE_STAGES,
+  GROW_COMMUNITY_THREADS,
+  type GrowGuideStage,
+  type GrowCommunityThread,
+} from "@/lib/domain/grow-guide";
 
 export const metadata = { title: "My Garden" };
 
@@ -45,6 +51,7 @@ export default async function GardenPage() {
 
   return (
     <PageShell maxWidth="max-w-[860px]">
+      <PatientSectionNav section="journey" />
       {/* ---- Hero section ---- */}
       <section className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised ambient mb-10">
         <div className="relative flex flex-col items-center text-center px-8 py-14 md:py-20">
@@ -52,7 +59,6 @@ export default async function GardenPage() {
 
           <HealthPlant health={health} size="lg" />
 
-      <PatientSectionNav section="journey" />
           <h1 className="font-display text-3xl md:text-4xl leading-[1.1] tracking-tight text-text mt-8">
             {STAGE_LABELS[health.stage]}
           </h1>
@@ -158,6 +164,48 @@ export default async function GardenPage() {
         </div>
       </section>
 
+      <EditorialRule className="mb-10" />
+
+      {/* ---- Cannabis grow guide (EMR-130) ---- */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Grow your own</Eyebrow>
+        <h2 className="font-display text-xl text-text tracking-tight mb-2">
+          Cannabis grow guide
+        </h2>
+        <p className="text-sm text-text-muted leading-relaxed mb-6 max-w-xl">
+          Many patients save money and tailor their dose by growing at home where
+          legal. Each stage below shows what your plant needs that week.
+        </p>
+        <div className="grid gap-3">
+          {GROW_GUIDE_STAGES.map((stage) => (
+            <GrowStageCard key={stage.id} stage={stage} />
+          ))}
+        </div>
+      </section>
+
+      <EditorialRule className="mb-10" />
+
+      {/* ---- Grower community (EMR-130) ---- */}
+      <section className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl text-text tracking-tight">
+            Grower community
+          </h2>
+          <Link href="/portal/community" className="text-xs text-accent hover:underline">
+            See all threads
+          </Link>
+        </div>
+        <p className="text-sm text-text-muted leading-relaxed mb-5">
+          Other patients sharing what worked, what failed, and what they wish they
+          knew earlier.
+        </p>
+        <div className="grid gap-3">
+          {GROW_COMMUNITY_THREADS.map((thread) => (
+            <CommunityThreadRow key={thread.id} thread={thread} />
+          ))}
+        </div>
+      </section>
+
       {/* ---- Back to portal ---- */}
       <div className="flex justify-center">
         <Link href="/portal">
@@ -165,6 +213,88 @@ export default async function GardenPage() {
         </Link>
       </div>
     </PageShell>
+  );
+}
+
+function GrowStageCard({ stage }: { stage: GrowGuideStage }) {
+  return (
+    <details className="group rounded-xl border border-border bg-surface-raised shadow-sm overflow-hidden">
+      <summary className="flex items-center gap-4 px-4 py-3 cursor-pointer list-none">
+        <span
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-soft text-xl"
+          aria-hidden="true"
+        >
+          {stage.emoji}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-medium text-text">{stage.label}</p>
+            <Badge tone="neutral" className="text-[10px]">
+              {stage.durationDays}
+            </Badge>
+          </div>
+          <p className="text-xs text-text-muted mt-0.5 line-clamp-1">
+            {stage.blurb}
+          </p>
+        </div>
+        <span
+          className="text-text-subtle text-xs transition-transform group-open:rotate-90"
+          aria-hidden="true"
+        >
+          {"▶"}
+        </span>
+      </summary>
+      <div className="px-5 pb-5 pt-1 text-sm text-text-muted leading-relaxed space-y-3 border-t border-border/60">
+        <GrowDetail label="Watering" body={stage.watering} />
+        <GrowDetail label="Light" body={stage.light} />
+        <GrowDetail label="Feeding" body={stage.feeding} />
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+            Watch for
+          </p>
+          <ul className="list-disc list-inside space-y-0.5">
+            {stage.watchFor.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function GrowDetail({ label, body }: { label: string; body: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-1">
+        {label}
+      </p>
+      <p>{body}</p>
+    </div>
+  );
+}
+
+function CommunityThreadRow({ thread }: { thread: GrowCommunityThread }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <p className="text-sm font-medium text-text">{thread.title}</p>
+        <Badge tone={thread.tag === "general" ? "neutral" : "accent"} className="text-[10px] shrink-0">
+          {thread.tag}
+        </Badge>
+      </div>
+      <p className="text-xs text-text-muted mb-2 line-clamp-2">
+        {thread.preview}
+      </p>
+      <div className="flex items-center justify-between text-[11px] text-text-subtle">
+        <span>
+          {thread.author} <span className="text-accent">·</span> {thread.authorBadge}
+        </span>
+        <span>
+          {thread.replies} replies <span className="text-accent">·</span> {thread.lastActive}
+        </span>
+      </div>
+    </div>
   );
 }
 
