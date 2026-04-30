@@ -2,7 +2,7 @@ import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
-import { PageHeader, PageShell } from "@/components/shell/PageHeader";
+import { PageShell } from "@/components/shell/PageHeader";
 import {
   Card,
   CardContent,
@@ -47,37 +47,32 @@ export default async function OutcomesPage() {
     .slice(0, 20);
 
   return (
-    <PageShell maxWidth="max-w-[960px]">
+    <PageShell maxWidth="max-w-[1100px]">
       <PatientSectionNav section="health" />
-      <PageHeader
-        eyebrow="Outcomes"
-        title="How you've been feeling"
-        description="Your trends over time. Shared with your care team to guide your plan."
-      />
 
-      {/* ---- Hero CTA card ---- */}
-      <Card tone="ambient" className="mb-8">
-        <CardContent className="py-8 px-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-          <div>
-            <Eyebrow className="mb-3">Track your progress</Eyebrow>
-            <h2 className="font-display text-2xl text-text tracking-tight leading-tight">
-              Regular check-ins help your care team see the full picture.
-            </h2>
-            <p className="text-sm text-text-muted mt-2 max-w-lg leading-relaxed">
-              A quick daily log -- pain, sleep, anxiety, and mood -- gives your
-              provider real data to work with. It only takes a minute.
-            </p>
-          </div>
-          <div className="shrink-0">
-            <Link href="/portal/outcomes/new">
-              <Button size="lg">Log a check-in</Button>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+      {/* EMR-185: page header + CTA collapse into one strip so the
+          metric grid is above the fold on a typical laptop. The heavy
+          ambient card has moved to /outcomes/new where the patient is
+          actually mid-task. */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <Eyebrow className="mb-2">Outcomes</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl text-text tracking-tight leading-tight">
+            How you&apos;ve been feeling
+          </h1>
+          <p className="text-sm text-text-muted mt-1.5 max-w-xl leading-relaxed">
+            Trends shared with your care team. A minute a day keeps the chart full.
+          </p>
+        </div>
+        <Link href="/portal/outcomes/new" className="shrink-0">
+          <Button size="lg">Log a check-in</Button>
+        </Link>
+      </div>
 
-      {/* ---- Metric trend cards ---- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-8">
+      {/* EMR-185: metric cards condensed onto a 4-up grid (was 2x2) so
+          all four pillars fit on one row on tablet+ — turns a 2-screen
+          page into a 1-screen overview. */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
         {METRICS.map((metric) => {
           const series = patient.outcomeLogs
             .filter((l) => l.metric === metric.key)
@@ -86,9 +81,9 @@ export default async function OutcomesPage() {
 
           return (
             <Card key={metric.key} tone="raised" className="card-hover">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="capitalize">{metric.label}</CardTitle>
+              <CardContent className="py-4 px-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-text">{metric.label}</p>
                   {latest !== undefined && (
                     <Badge
                       tone={
@@ -105,28 +100,19 @@ export default async function OutcomesPage() {
                           : "danger"
                       }
                     >
-                      {latest.toFixed(1)} / 10
+                      {latest.toFixed(1)}
                     </Badge>
                   )}
                 </div>
-                <CardDescription>
-                  {latest !== undefined
-                    ? `Latest: ${latest.toFixed(1)} / 10`
-                    : "No data yet -- log a check-in to start tracking."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
                 <Sparkline
                   data={series.length > 1 ? series : [0, 0]}
-                  width={280}
-                  height={56}
+                  width={200}
+                  height={40}
                 />
-                {series.length > 0 && (
-                  <div className="flex justify-between mt-1.5 px-0.5">
-                    <span className="text-[10px] text-text-subtle">{metric.lowLabel}</span>
-                    <span className="text-[10px] text-text-subtle">{metric.highLabel}</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-[10px] text-text-subtle px-0.5">
+                  <span>{metric.lowLabel}</span>
+                  <span>{metric.highLabel}</span>
+                </div>
               </CardContent>
             </Card>
           );
@@ -135,7 +121,7 @@ export default async function OutcomesPage() {
 
       {/* ---- Recent history ---- */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardTitle>Recent check-ins</CardTitle>
           <CardDescription>
             Your last 20 logged values across all metrics.
