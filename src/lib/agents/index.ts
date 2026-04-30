@@ -108,6 +108,9 @@ import { bioequivalenceMapperAgent } from "./pharmacology/bioequivalence-mapper-
 import { pregnancyLactationAdvisorAgent } from "./pharmacology/pregnancy-lactation-advisor-agent";
 // CFO / Controller — autonomous financial reporting
 import { cfoAgent } from "./cfo-agent";
+// Platform Licensing & MIPS — Track 8 Phase 8
+import { mipsExtrapolatorAgent } from "./platform/mips-extrapolator-agent";
+import { insuranceBillingOrchestratorAgent } from "./platform/billing-orchestrator-agent";
 
 /**
  * Registry of all agents. Adding an agent = new file + one line here +
@@ -225,6 +228,9 @@ export const agentRegistry = {
   pregnancyLactationAdvisor: pregnancyLactationAdvisorAgent,
   // CFO / Controller — autonomous financial reporting
   cfo: cfoAgent,
+  // Platform Licensing & MIPS — Track 8 Phase 8
+  mipsExtrapolator: mipsExtrapolatorAgent,
+  insuranceBillingOrchestrator: insuranceBillingOrchestratorAgent,
 } satisfies Record<string, Agent<any, any>>;
 
 /** Agents tagged as "commerce" — used by the marketplace ops console. */
