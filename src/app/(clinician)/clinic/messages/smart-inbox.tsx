@@ -19,6 +19,7 @@ import {
   type MessageCategory,
 } from "@/lib/domain/smart-inbox";
 import { sendReply } from "./actions";
+import { CallLaunchButtons } from "@/components/communications/call-launch-buttons";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -567,6 +568,13 @@ export function SmartInboxView({
                       {selectedThread.patientName}
                     </p>
                   </div>
+                  {selectedTriage && (
+                    <CallLaunchButtons
+                      patientId={selectedTriage.patientId}
+                      messageThreadId={selectedTriage.threadId}
+                      counterpartyName={selectedThread.patientName}
+                    />
+                  )}
                 </div>
               </div>
 
