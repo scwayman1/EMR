@@ -199,6 +199,21 @@ export default async function OperatorLayout({
       defaultCollapsed: true,
     },
     {
+      label: "Platform",
+      items: [
+        { label: "Modules", href: "/ops/platform/modules" },
+        { label: "Licensing menu", href: "/ops/platform/licensing" },
+        { label: "Pricing comparator", href: "/ops/platform/pricing" },
+        { label: "Business plan", href: "/ops/platform/business-plan" },
+        { label: "FHIR bridge", href: "/ops/platform/fhir-bridge" },
+        { label: "MIPS console", href: "/ops/platform/mips" },
+        { label: "Billing orchestrator", href: "/ops/platform/billing-orchestrator" },
+        { label: "FDA Rx + Cannabis", href: "/ops/platform/fda-rx" },
+        { label: "15-day launch", href: "/ops/platform/launch-15-day" },
+      ],
+      defaultCollapsed: true,
+    },
+    {
       label: "System",
       items: [
         { label: "AI Config", href: "/ops/settings/ai-config" },
