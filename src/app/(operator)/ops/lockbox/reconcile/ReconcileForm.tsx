@@ -3,7 +3,13 @@
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatMoney } from "@/lib/domain/billing";
+/** Inline to avoid importing server-only billing.ts into client bundle */
+function formatMoney(cents: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
+}
 import { previewReconcileCsv, type ReconcilePreviewResult } from "./actions";
 
 type Status = "matched" | "partially_matched" | "unmatched" | "variance";

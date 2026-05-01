@@ -208,7 +208,7 @@ function PromptView({
         id={descId}
         className="mt-3 text-[14.5px] leading-relaxed text-[var(--muted)] text-center max-w-[28ch] mx-auto"
       >
-        To purchase select products on The LifeMart, you must be 21 years of
+        To purchase select products on The Leafmart, you must be 21 years of
         age or older. By continuing, you confirm that you meet this requirement
         and agree to use these products responsibly.
       </p>
@@ -267,7 +267,7 @@ function BlockedView({
         className="mt-3 text-[14.5px] leading-relaxed text-[var(--muted)] text-center max-w-[30ch] mx-auto"
       >
         These products are only available to customers who are 21 or older.
-        We&rsquo;d love to help you explore everything else The LifeMart has to
+        We&rsquo;d love to help you explore everything else The Leafmart has to
         offer.
       </p>
 
