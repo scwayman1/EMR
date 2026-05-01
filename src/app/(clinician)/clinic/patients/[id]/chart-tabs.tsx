@@ -6,15 +6,25 @@ import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { useChartFrame, type ChartTabPosition } from "./chart-frame";
 
+// EMR-119 — Tab consolidation audit
+//
+// The chart bar surfaced 9 sibling tabs as a flat row, which read as a
+// wall of equal-weight options on first glance. We ran a clustering
+// audit (`scripts/audit-tab-density.ts`) and grouped the existing tabs
+// into three named buckets — "patient", "clinical", and "workflow" —
+// so the bar reads as three rhythmic clusters instead of one long ribbon.
+// The buckets are advisory: they don't constrain reorder (drag-to-move
+// still works across groups), they only render a thin separator hairline
+// between the last tab of one group and the first of the next.
 const TABS = [
-  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]" },
-  { key: "memory", label: "Memory", dot: "bg-accent" },
-  { key: "records", label: "Records", dot: "bg-accent" },
-  { key: "images", label: "Images", dot: "bg-[color:var(--info)]" },
-  { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]" },
-  { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]" },
-  { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]" },
-  { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]" },
+  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]", group: "patient" },
+  { key: "memory", label: "Memory", dot: "bg-accent", group: "patient" },
+  { key: "records", label: "Records", dot: "bg-accent", group: "clinical" },
+  { key: "images", label: "Images", dot: "bg-[color:var(--info)]", group: "clinical" },
+  { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]", group: "clinical" },
+  { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]", group: "clinical" },
+  { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]", group: "workflow" },
+  { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]", group: "workflow" },
   // EMR-178 — Billing tab is a deep-link to the standalone Financial
   // Cockpit page rather than a query-param panel inside the chart.
   // The cockpit is too rich (P&L, claim drilldowns, statements) to fit
@@ -24,6 +34,7 @@ const TABS = [
     key: "billing",
     label: "Financial cockpit",
     dot: "bg-[color:var(--success)]",
+    group: "workflow",
     redirectTo: (patientId: string) => `/clinic/patients/${patientId}/billing`,
   },
 ] as const;
@@ -251,7 +262,7 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
       )}
       aria-label="Chart sections"
     >
-      {order.map((key) => {
+      {order.map((key, idx) => {
         const tab = TAB_BY_KEY.get(key);
         if (!tab) return null;
         const isActive = active === tab.key;
@@ -261,10 +272,27 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
         const isOpen = openKey === tab.key && !draggingKey;
         const isDragging = draggingKey === tab.key;
         const isDropTarget = dragOverKey === tab.key && draggingKey !== tab.key;
+        // EMR-119: render a thin separator between adjacent tabs that
+        // belong to different groups so the bar reads as named clusters.
+        // Groups follow user-reorder, so dragging a tab into a new
+        // cluster updates the visual rhythm too — no special-cased
+        // ordering required.
+        const prevTab = idx > 0 ? TAB_BY_KEY.get(order[idx - 1]!) : undefined;
+        const isGroupBreak =
+          idx > 0 && prevTab && tab.group !== prevTab.group;
 
         return (
+          <React.Fragment key={tab.key}>
+            {isGroupBreak && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "shrink-0 bg-border",
+                  isVertical ? "mx-1 my-1 h-px w-full" : "my-2 h-4 w-px self-center mx-0.5",
+                )}
+              />
+            )}
           <div
-            key={tab.key}
             draggable
             onDragStart={handleDragStart(tab.key)}
             onDragOver={handleDragOver(tab.key)}
@@ -398,6 +426,7 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
               />
             )}
           </div>
+          </React.Fragment>
         );
       })}
 
