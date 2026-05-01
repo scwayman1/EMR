@@ -91,22 +91,18 @@ model Organization {
   rcmDailyClose            RcmDailyClose[]
   nsfEvents                NsfEvent[]
   // Track 3 — EDI & Claim Generation (EMR-218 payer rules registry)
-<<<<<<< scwayman/track-8-communications
-  payerRules          PayerRule[]
-  // Communications track
-  providerThreads        ProviderMessageThread[]
-  callLogs               CallLog[]
-  callTranscripts        CallTranscript[]
-  faxRecords             FaxRecord[]
-  outreachCampaigns      OutreachCampaign[]
-  voicemails             Voicemail[]
-=======
   payerRules               PayerRule[]
+  // Communications track
+  providerThreads          ProviderMessageThread[]
+  callLogs                 CallLog[]
+  callTranscripts          CallTranscript[]
+  faxRecords               FaxRecord[]
+  outreachCampaigns        OutreachCampaign[]
+  voicemails               Voicemail[]
   // Phase 8 Track 3 — Pharmacology & Commerce
   dispensaries             Dispensary[]
   supplyProducts           SupplyProduct[]
   dispensaryReimbursements DispensaryReimbursement[]
->>>>>>> main
 }
 
 model User {
@@ -241,27 +237,19 @@ model Patient {
   caregiverInvites         CaregiverInvite[]
   surveySubmissions        SurveySubmission[]
   // Marketplace
-<<<<<<< scwayman/track-8-communications
-  orders               Order[]
-  productReviews       ProductReview[]
-  cart                 Cart?
-  shippingAddresses    ShippingAddress[]
-  priorAuthorizations  PriorAuthorization[]
-  // Communications track
-  providerThreads      ProviderMessageThread[]
-  callLogs             CallLog[]
-  faxRecords           FaxRecord[]
-  outreachRecipients   OutreachRecipient[]
-  voicemails           Voicemail[]
-=======
   orders                   Order[]
   productReviews           ProductReview[]
   cart                     Cart?
   shippingAddresses        ShippingAddress[]
   priorAuthorizations      PriorAuthorization[]
+  // Communications track
+  providerThreads          ProviderMessageThread[]
+  callLogs                 CallLog[]
+  faxRecords               FaxRecord[]
+  outreachRecipients       OutreachRecipient[]
+  voicemails               Voicemail[]
   // Phase 8 Track 3 — Pharmacology & Commerce
   dispensaryReimbursements DispensaryReimbursement[]
->>>>>>> main
 
   @@index([organizationId, status])
   @@index([lastName, firstName])

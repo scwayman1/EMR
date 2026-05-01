@@ -80,6 +80,30 @@ export async function launchCallAction(
     if (!provider) return { ok: false, error: "Provider not in your org." };
   }
 
+  // Same-org enforcement for thread linkage (prevent cross-tenant FK injection).
+  let safeMessageThreadId: string | null = null;
+  if (parsed.data.messageThreadId) {
+    const thread = await prisma.messageThread.findFirst({
+      where: {
+        id: parsed.data.messageThreadId,
+        patient: { organizationId: user.organizationId },
+      },
+      select: { id: true },
+    });
+    if (thread) safeMessageThreadId = thread.id;
+  }
+  let safeProviderMessageThreadId: string | null = null;
+  if (parsed.data.providerMessageThreadId) {
+    const pThread = await prisma.providerMessageThread.findFirst({
+      where: {
+        id: parsed.data.providerMessageThreadId,
+        organizationId: user.organizationId,
+      },
+      select: { id: true },
+    });
+    if (pThread) safeProviderMessageThreadId = pThread.id;
+  }
+
   const call = await prisma.callLog.create({
     data: {
       organizationId: user.organizationId,
@@ -90,8 +114,8 @@ export async function launchCallAction(
       patientId: parsed.data.patientId ?? null,
       providerUserId: parsed.data.providerUserId ?? null,
       externalNumber: parsed.data.externalNumber ?? null,
-      messageThreadId: parsed.data.messageThreadId ?? null,
-      providerMessageThreadId: parsed.data.providerMessageThreadId ?? null,
+      messageThreadId: safeMessageThreadId,
+      providerMessageThreadId: safeProviderMessageThreadId,
       // In real life this would be the Twilio room/conference SID.
       externalSessionId: `dev-session-${Date.now()}`,
     },

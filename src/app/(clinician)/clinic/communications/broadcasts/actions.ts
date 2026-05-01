@@ -24,7 +24,12 @@ const campaignSchema = z.object({
   channel: z.enum(["sms", "email"]),
   bodyTemplate: z.string().min(1).max(1000),
   audience: audienceSchema,
-  scheduledFor: z.string().datetime().optional().nullable(),
+  // Accept full ISO 8601 and the shorter datetime-local format (YYYY-MM-DDTHH:mm).
+  scheduledFor: z
+    .string()
+    .refine((v) => !isNaN(Date.parse(v)), { message: "Invalid date/time value" })
+    .optional()
+    .nullable(),
   sendNow: z.boolean().default(false),
 });
 

@@ -68,11 +68,13 @@ export function redactToPertinentSummary(raw: string): RedactionResult {
   const redactedCategories: string[] = [];
 
   for (const { name, pattern } of PHI_PATTERNS) {
+    // Reset lastIndex — global regexes carry state across .test()
+    // calls, which can skip matches and leak PHI on repeat invocations.
+    pattern.lastIndex = 0;
     if (pattern.test(scrubbed)) {
+      pattern.lastIndex = 0;
       scrubbed = scrubbed.replace(pattern, `[${name.toUpperCase()} REDACTED]`);
       redactedCategories.push(name);
-      // Re-set lastIndex for global regexes by re-creating; the above
-      // .replace already handles all matches in one pass.
     }
   }
 
