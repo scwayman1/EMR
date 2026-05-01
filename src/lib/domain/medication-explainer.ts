@@ -10,6 +10,8 @@ export interface MedicationExplanation {
   simpleSideEffects: string;
   emoji: string;
   category: "cannabis" | "prescription" | "supplement" | "otc";
+  cartoonHero?: string; // bigger emoji-illustration shown as page header
+  storyLine?: string;   // single sentence read-aloud opener
 }
 
 const DB: MedicationExplanation[] = [

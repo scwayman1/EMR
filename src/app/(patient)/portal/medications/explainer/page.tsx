@@ -6,7 +6,6 @@ import { PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
-import { EmptyState } from "@/components/ui/empty-state";
 import {
   lookupMedication,
   getAllMedications,
@@ -37,20 +36,28 @@ function ExplainerCard({ med }: { med: MedicationExplanation }) {
   return (
     <Card tone="raised" className="overflow-hidden">
       <CardContent className="py-6 px-5 md:px-6">
-        <div className="flex items-start gap-4">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-soft text-2xl">
+        {/* Cartoon hero — large emoji illustration on a colored "stage" */}
+        <div className="flex justify-center mb-5 -mt-2">
+          <div
+            aria-hidden="true"
+            className="relative flex h-24 w-24 items-center justify-center rounded-full bg-accent-soft text-5xl shadow-inner"
+          >
+            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-3 w-16 rounded-full bg-text/5 blur-sm" />
             {med.emoji}
-          </span>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-4">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              <h3 className="font-display text-lg text-text tracking-tight">
+            <div className="flex items-center justify-center gap-2 flex-wrap mb-2">
+              <h3 className="font-display text-xl text-text tracking-tight">
                 {med.name}
               </h3>
               <Badge tone={CATEGORY_TONES[med.category] ?? "neutral"}>
                 {CATEGORY_LABELS[med.category] ?? med.category}
               </Badge>
             </div>
-            <p className="text-[15px] text-text-muted leading-relaxed mb-4">
+            <p className="text-[15px] text-text-muted leading-relaxed mb-4 text-center">
               {med.simpleWhat}
             </p>
 

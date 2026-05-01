@@ -264,6 +264,63 @@ function buildSnapshotFromNoteBlocks(
 }
 
 // ---------------------------------------------------------------------------
+// Emotional Vitals — EMR-134
+// ---------------------------------------------------------------------------
+// Persists the clinician's emoji read of the patient's demeanor on the
+// encounter (briefingContext.patientDemeanor). No schema migration needed —
+// briefingContext is already a Json field used for visit metadata.
+
+export const PATIENT_DEMEANOR_OPTIONS = [
+  { emoji: "\u{1F60A}", label: "Bright", value: "bright" },
+  { emoji: "\u{1F642}", label: "Positive", value: "positive" },
+  { emoji: "\u{1F610}", label: "Neutral", value: "neutral" },
+  { emoji: "\u{1F614}", label: "Withdrawn", value: "withdrawn" },
+  { emoji: "\u{1F622}", label: "Distressed", value: "distressed" },
+] as const;
+
+export type PatientDemeanor = typeof PATIENT_DEMEANOR_OPTIONS[number]["value"];
+
+const VALID_DEMEANORS: ReadonlySet<string> = new Set(
+  PATIENT_DEMEANOR_OPTIONS.map((o) => o.value),
+);
+
+export async function saveEmotionalVital(
+  encounterId: string,
+  demeanor: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+  if (!VALID_DEMEANORS.has(demeanor)) {
+    return { ok: false, error: "Unknown demeanor value" };
+  }
+
+  const encounter = await prisma.encounter.findFirst({
+    where: { id: encounterId, organizationId: user.organizationId! },
+    select: { id: true, briefingContext: true, patientId: true },
+  });
+  if (!encounter) return { ok: false, error: "Unauthorized" };
+
+  const ctx =
+    encounter.briefingContext && typeof encounter.briefingContext === "object"
+      ? (encounter.briefingContext as Record<string, unknown>)
+      : {};
+
+  await prisma.encounter.update({
+    where: { id: encounterId },
+    data: {
+      briefingContext: {
+        ...ctx,
+        patientDemeanor: demeanor,
+        patientDemeanorRecordedAt: new Date().toISOString(),
+        patientDemeanorRecordedBy: user.id,
+      },
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${encounter.patientId}`);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // AI Section Refiner
 // ---------------------------------------------------------------------------
 
