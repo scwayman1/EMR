@@ -25,7 +25,7 @@ export default function PatientComboWheelPage() {
   return (
     <div className="px-6 lg:px-12 py-10">
       <div className="mx-auto w-full max-w-[1100px]">
-        <PatientSectionNav section="journey" />
+        <PatientSectionNav section="chatLearn" />
         <div className="mb-8 text-center">
           <p className="text-[11px] uppercase tracking-[0.14em] text-accent font-medium mb-3">
             Leafjourney Proprietary Tool
