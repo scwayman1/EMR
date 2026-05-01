@@ -143,6 +143,7 @@ export default async function ClinicianLayout({
         { label: "Providers", href: "/clinic/providers" },
         { label: "Research", href: "/clinic/research" },
         { label: "Library", href: "/clinic/library" },
+        { label: "Communications", href: "/clinic/communications" },
       ],
       defaultCollapsed: true,
     },
