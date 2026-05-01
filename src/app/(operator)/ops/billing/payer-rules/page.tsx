@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth/session";
 import { PageShell, PageHeader } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -31,6 +32,15 @@ export default async function PayerRulesPage() {
         description="Override timely-filing windows, appeal deadlines, cannabis policy, and acknowledgment SLAs without a deploy."
       />
 
+      <div className="mb-4 flex justify-end">
+        <Link
+          href="/ops/billing/payer-rules/editor"
+          className="inline-flex items-center justify-center rounded-md bg-accent text-accent-ink px-4 h-9 text-sm font-medium hover:bg-accent-strong"
+        >
+          + New payer rule
+        </Link>
+      </div>
+
       {staleCount > 0 && (
         <Card className="mb-6 border-amber-300 bg-amber-50">
           <CardContent className="py-4">
@@ -60,6 +70,7 @@ export default async function PayerRulesPage() {
                   <th className="py-2 pr-4">Cannabis</th>
                   <th className="py-2 pr-4">Last reviewed</th>
                   <th className="py-2 pr-4">Source</th>
+                  <th className="py-2 pr-4"></th>
                 </tr>
               </thead>
               <tbody>
@@ -87,6 +98,11 @@ export default async function PayerRulesPage() {
                     </td>
                     <td className="py-2 pr-4">
                       {r.isOrgOverride ? <Badge tone="accent">Org override</Badge> : <span className="text-text-muted">Global</span>}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <Link href={`/ops/billing/payer-rules/editor?id=${encodeURIComponent(r.id)}`} className="text-accent hover:underline text-xs">
+                        edit →
+                      </Link>
                     </td>
                   </tr>
                 ))}
