@@ -6,6 +6,7 @@ import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { ConsciousnessOverlay } from "@/components/ui/consciousness-overlay";
 import { prisma } from "@/lib/db/prisma";
 import {
   computeApprovalsBadge,
@@ -104,6 +105,7 @@ export default async function ClinicianLayout({
       items: [
         { label: "Today", href: "/clinic" },
         { label: "Command Center", href: "/clinic/command" },
+        { label: "Schedule", href: "/clinic/schedule" },
         { label: "Roster", href: "/clinic/patients" },
         { label: "Inbox", href: "/clinic/messages" },
       ],
@@ -111,6 +113,10 @@ export default async function ClinicianLayout({
     {
       label: "Review",
       items: [
+        // EMR-165: unified sign-off queue rolls up labs + refills +
+        // notes + messages. Pinned to the top of the Review section so
+        // a doctor can clear the day's signatures from one place.
+        { label: "Sign-off", href: "/clinic/sign-off" },
         {
           label: "Approvals",
           href: "/clinic/approvals",
@@ -137,6 +143,7 @@ export default async function ClinicianLayout({
         { label: "Providers", href: "/clinic/providers" },
         { label: "Research", href: "/clinic/research" },
         { label: "Library", href: "/clinic/library" },
+        { label: "Communications", href: "/clinic/communications" },
       ],
       defaultCollapsed: true,
     },
@@ -168,6 +175,7 @@ export default async function ClinicianLayout({
       <BreathingBreak />
       <KeyboardShortcuts />
       <CommandPalette role="clinician" />
+      <ConsciousnessOverlay />
       {children}
     </AppShell>
   );
