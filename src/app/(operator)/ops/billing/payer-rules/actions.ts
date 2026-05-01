@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import {
@@ -100,7 +101,11 @@ export async function savePayerRuleAction(formData: FormData): Promise<SaveResul
   });
 
   revalidatePath("/ops/billing/payer-rules");
-  return { ok: true };
+  revalidatePath(`/ops/billing/payer-rules/editor`);
+  // Redirect when invoked from a `<form action={savePayerRuleAction}>`. The
+  // typed return is preserved for any direct programmatic callers that
+  // happen before this point.
+  redirect("/ops/billing/payer-rules");
 }
 
 export async function loadPayerRulesForOrg(organizationId: string) {
