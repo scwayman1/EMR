@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
+import { ShopShelf } from "@/components/leafmart/ShopShelf";
 import { getProducts } from "@/lib/leafmart/products";
 
 export const metadata: Metadata = {
@@ -66,9 +66,7 @@ export default async function ProductsPage() {
 
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
         <Suspense fallback={<ProductsLoading />}>
-          <div className="lm-stagger">
-            <LeafmartProductGrid products={products} />
-          </div>
+          <ShopShelf products={products} />
         </Suspense>
       </section>
     </>
