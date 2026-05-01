@@ -16,8 +16,8 @@ const PATIENT_SECTIONS: NavSection[] = [
     pillar: "health",
     items: [
       { label: "Log Dose", href: "/portal/log-dose" },
-      { label: "My Health", href: "/portal/records" },
-      { label: "My Journey", href: "/portal/lifestyle" },
+      { label: "My Records", href: "/portal/records" },
+      { label: "My Garden", href: "/portal/garden" },
     ],
   },
   {
@@ -32,6 +32,11 @@ const PATIENT_SECTIONS: NavSection[] = [
       { label: "Messages", href: "/portal/messages" },
       { label: "Q&A", href: "/portal/qa" },
     ],
+  },
+  {
+    label: "Chat & Learn",
+    pillar: "chat-learn",
+    items: [{ label: "Community", href: "/portal/community" }],
   },
   {
     label: "Account",

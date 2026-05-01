@@ -33,8 +33,12 @@ interface DemoReply {
   body: string;
   createdAt: string;
   isClinician?: boolean;
+  parentId?: string | null;
+  children?: DemoReply[];
 }
 
+// EMR-200: nested replies, Reddit-style. `parentId` is the source of
+// truth; `children` is rebuilt whenever the user posts a new nested reply.
 const DEMO_REPLIES: Record<string, DemoReply[]> = {
   "c-1": [
     {
@@ -43,15 +47,53 @@ const DEMO_REPLIES: Record<string, DemoReply[]> = {
       body: "Glad to hear it's working. Timing absolutely matters — most patients see best results 30–60 min before bed. Keep us posted at your next visit.",
       createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
       isClinician: true,
+      parentId: null,
+    },
+    {
+      id: "r-1a",
+      handle: "Mountain Rose #44",
+      body: "Seconding this — I set a phone alarm 45 min before bed and never miss a dose.",
+      createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+      parentId: "r-1",
     },
     {
       id: "r-2",
       handle: "Sage Orchard #412",
       body: "Same here — 45 minutes before bed is my sweet spot.",
       createdAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+      parentId: null,
+    },
+    {
+      id: "r-2a",
+      handle: "Indigo Valley #33",
+      body: "Have you tried 60 min? Curious if anyone notices a difference.",
+      createdAt: new Date(Date.now() - 80 * 60 * 1000).toISOString(),
+      parentId: "r-2",
+    },
+    {
+      id: "r-2a-i",
+      handle: "Sage Orchard #412",
+      body: "Tried it last week. Hit too hard at 60. 45 is my sweet spot for sure.",
+      createdAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      parentId: "r-2a",
     },
   ],
 };
+
+function buildReplyTree(flat: DemoReply[]): DemoReply[] {
+  const byId = new Map<string, DemoReply>();
+  for (const r of flat) byId.set(r.id, { ...r, children: [] });
+  const roots: DemoReply[] = [];
+  for (const r of flat) {
+    const node = byId.get(r.id)!;
+    if (r.parentId && byId.has(r.parentId)) {
+      byId.get(r.parentId)!.children!.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
+}
 
 export function CommunityView({
   initialPosts,
@@ -109,7 +151,8 @@ export function CommunityView({
   }
 
   const openThread = posts.find((p) => p.id === openThreadId);
-  const openReplies = openThreadId ? DEMO_REPLIES[openThreadId] ?? [] : [];
+  const flatReplies = openThreadId ? DEMO_REPLIES[openThreadId] ?? [] : [];
+  const replyTree = buildReplyTree(flatReplies);
 
   return (
     <div className="space-y-6">
@@ -306,30 +349,14 @@ export function CommunityView({
                 <p className="text-[10px] uppercase tracking-wider text-text-subtle mb-3">
                   Replies
                 </p>
-                {openReplies.length === 0 ? (
+                {replyTree.length === 0 ? (
                   <p className="text-sm text-text-muted">
                     Be the first to reply with kindness.
                   </p>
                 ) : (
                   <div className="space-y-3">
-                    {openReplies.map((r) => (
-                      <div key={r.id} className="rounded-lg bg-surface-muted/50 p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span
-                            className={cn(
-                              "text-xs font-medium",
-                              r.isClinician ? "text-emerald-700" : "text-text",
-                            )}
-                          >
-                            {r.handle}
-                          </span>
-                          <span className="text-text-subtle">·</span>
-                          <span className="text-[11px] text-text-subtle">
-                            {formatRelative(r.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-text leading-relaxed">{r.body}</p>
-                      </div>
+                    {replyTree.map((r) => (
+                      <NestedReply key={r.id} reply={r} depth={0} />
                     ))}
                   </div>
                 )}
@@ -341,6 +368,66 @@ export function CommunityView({
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// EMR-200: recursive Reddit-style reply with collapse threadline.
+function NestedReply({
+  reply,
+  depth,
+}: {
+  reply: DemoReply;
+  depth: number;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const indent = Math.min(depth, 5) * 14;
+  const hasChildren = (reply.children?.length ?? 0) > 0;
+
+  return (
+    <div style={{ marginLeft: indent }} className="relative">
+      {depth > 0 && (
+        <span
+          aria-hidden="true"
+          className="absolute -left-3 top-0 bottom-0 w-px bg-border"
+        />
+      )}
+      <div className="rounded-lg bg-surface-muted/50 p-3">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          {hasChildren && (
+            <button
+              type="button"
+              onClick={() => setCollapsed((v) => !v)}
+              className="text-text-subtle hover:text-text text-[11px] tabular-nums px-1.5 rounded border border-border bg-surface"
+              aria-label={collapsed ? "Expand replies" : "Collapse replies"}
+            >
+              {collapsed ? `+${reply.children!.length}` : "−"}
+            </button>
+          )}
+          <span
+            className={cn(
+              "text-xs font-medium",
+              reply.isClinician ? "text-emerald-700" : "text-text",
+            )}
+          >
+            {reply.handle}
+          </span>
+          <span className="text-text-subtle">·</span>
+          <span className="text-[11px] text-text-subtle">
+            {formatRelative(reply.createdAt)}
+          </span>
+        </div>
+        {!collapsed && (
+          <p className="text-sm text-text leading-relaxed">{reply.body}</p>
+        )}
+      </div>
+      {!collapsed && hasChildren && (
+        <div className="mt-2 space-y-2">
+          {reply.children!.map((child) => (
+            <NestedReply key={child.id} reply={child} depth={depth + 1} />
+          ))}
         </div>
       )}
     </div>
