@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { UniversalFeedbackFab } from "@/components/feedback/UniversalFeedbackFab";
 
 export const metadata: Metadata = {
   title: {
@@ -49,6 +50,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <UniversalFeedbackFab />
       </body>
     </html>
   );

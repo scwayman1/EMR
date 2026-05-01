@@ -17,6 +17,7 @@ import {
 import { APSO_ORDER, NOTE_BLOCK_LABELS } from "@/lib/domain/notes";
 import type { NoteBlockType } from "@/lib/domain/notes";
 import { LeafSprig } from "@/components/ui/ornament";
+import { DictateButton } from "@/components/ui/dictation";
 
 interface NoteBlock {
   type?: NoteBlockType;
@@ -304,13 +305,26 @@ export function NoteEditor({
                     className="w-full font-display text-lg font-medium text-text tracking-tight bg-transparent border-0 border-b border-border/60 pb-1.5 focus:outline-none focus:border-accent transition-colors"
                     placeholder="Section heading"
                   />
-                  <textarea
-                    value={block.body}
-                    onChange={(e) => updateBlock(i, "body", e.target.value)}
-                    rows={Math.max(3, block.body.split("\n").length + 1)}
-                    className="w-full text-sm text-text-muted leading-relaxed bg-transparent border border-border/40 rounded-md p-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all resize-y"
-                    placeholder="Note content..."
-                  />
+                  <div className="relative">
+                    <textarea
+                      value={block.body}
+                      onChange={(e) => updateBlock(i, "body", e.target.value)}
+                      rows={Math.max(3, block.body.split("\n").length + 1)}
+                      className="w-full text-sm text-text-muted leading-relaxed bg-transparent border border-border/40 rounded-md p-3 pr-10 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all resize-y"
+                      placeholder="Note content..."
+                    />
+                    {/* EMR-135: dictate directly into the section. Browser
+                        SpeechRecognition with a medical-vocabulary post-pass —
+                        clinician can speak "fifteen milligrams twice a day"
+                        and it lands as "15 mg BID". */}
+                    <DictateButton
+                      onText={(text) => {
+                        const sep = block.body && !/\s$/.test(block.body) ? " " : "";
+                        updateBlock(i, "body", `${block.body}${sep}${text.trim()}`);
+                      }}
+                      className="absolute top-2 right-2"
+                    />
+                  </div>
                   {/* AI Refine buttons */}
                   <div className="flex items-center gap-1.5 pt-1">
                     <span className="text-[10px] text-text-subtle uppercase tracking-wider mr-1">

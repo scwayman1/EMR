@@ -8,6 +8,11 @@ import { Avatar } from "@/components/ui/avatar";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { Button } from "@/components/ui/button";
 import { formatRelative } from "@/lib/utils/format";
+import {
+  computeDispensaryRevenue,
+  type DispensaryOrderInput,
+  type DispensaryProductInput,
+} from "@/lib/billing/dispensary-revenue";
 
 export const metadata = { title: "Revenue Cockpit" };
 
@@ -78,7 +83,18 @@ export default async function RevenuePage() {
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000);
 
-  const [byStatus, byProvider, byPayer, recent30Days, topCptCodes, deniedClaims, arAging, recentEscalations] = await Promise.all([
+  const [
+    byStatus,
+    byProvider,
+    byPayer,
+    recent30Days,
+    topCptCodes,
+    deniedClaims,
+    arAging,
+    recentEscalations,
+    dispensaryOrders,
+    dispensaryProducts,
+  ] = await Promise.all([
     // Claims grouped by status (all-time)
     prisma.claim.groupBy({
       by: ["status"],
@@ -136,6 +152,35 @@ export default async function RevenuePage() {
       orderBy: { createdAt: "desc" },
       take: 8,
     }),
+    // EMR-183 — last-90-day dispensary orders for the gross/net rollup.
+    prisma.order.findMany({
+      where: {
+        organizationId,
+        createdAt: { gte: new Date(Date.now() - 90 * 86_400_000) },
+      },
+      select: {
+        id: true,
+        status: true,
+        total: true,
+        tax: true,
+        createdAt: true,
+        items: {
+          select: { productId: true, quantity: true, totalPrice: true },
+        },
+      },
+    }),
+    // EMR-183 — full product catalog for inventory-on-hand snapshot.
+    prisma.product.findMany({
+      where: { organizationId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        format: true,
+        price: true,
+        inventoryCount: true,
+      },
+    }),
   ]);
 
   // Lookup providers
@@ -173,6 +218,27 @@ export default async function RevenuePage() {
   const collectionRate = totalBilled > 0 ? Math.round((totalPaid / totalBilled) * 100) : 0;
   const month30Billed = recent30Days._sum.billedAmountCents ?? 0;
   const month30Paid = recent30Days._sum.paidAmountCents ?? 0;
+
+  // EMR-183 — dispensary rollup. Computed in pure code from raw rows
+  // so the math is unit-testable without a Prisma harness.
+  const dispensaryRollup = computeDispensaryRevenue(
+    dispensaryOrders.map<DispensaryOrderInput>((o) => ({
+      id: o.id,
+      status: o.status,
+      total: o.total,
+      tax: o.tax,
+      createdAt: o.createdAt,
+      items: o.items,
+    })),
+    dispensaryProducts.map<DispensaryProductInput>((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      format: p.format,
+      price: p.price,
+      inventoryCount: p.inventoryCount,
+    })),
+  );
 
   return (
     <PageShell maxWidth="max-w-[1320px]">
@@ -324,6 +390,176 @@ export default async function RevenuePage() {
           </div>
         );
       })()}
+
+      {/* ── Dispensary Revenue + Inventory (EMR-183) ─────────── */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">Dispensary · gross / net (last 90 days)</Eyebrow>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <Card tone="raised">
+            <CardContent className="pt-5 pb-5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                Gross product revenue
+              </p>
+              <p className="font-display text-2xl text-text tabular-nums mt-1">
+                {formatMoney(dispensaryRollup.grossCents)}
+              </p>
+              <p className="text-[11px] text-text-muted mt-1">
+                {dispensaryRollup.ordersCounted} order
+                {dispensaryRollup.ordersCounted === 1 ? "" : "s"} · {dispensaryRollup.unitsSold} units
+              </p>
+            </CardContent>
+          </Card>
+          <Card tone="raised">
+            <CardContent className="pt-5 pb-5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                Refunds
+              </p>
+              <p className="font-display text-2xl text-danger tabular-nums mt-1">
+                {formatMoney(dispensaryRollup.refundedCents)}
+              </p>
+              <p className="text-[11px] text-text-muted mt-1">
+                Subtracted from net
+              </p>
+            </CardContent>
+          </Card>
+          <Card tone="raised">
+            <CardContent className="pt-5 pb-5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                Tax collected
+              </p>
+              <p className="font-display text-2xl text-text tabular-nums mt-1">
+                {formatMoney(dispensaryRollup.taxCents)}
+              </p>
+              <p className="text-[11px] text-text-muted mt-1">
+                Held for remittance
+              </p>
+            </CardContent>
+          </Card>
+          <Card tone="raised">
+            <CardContent className="pt-5 pb-5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
+                Net revenue
+              </p>
+              <p className="font-display text-2xl text-success tabular-nums mt-1">
+                {formatMoney(dispensaryRollup.netCents)}
+              </p>
+              <p className="text-[11px] text-text-muted mt-1">
+                Gross − refunds − tax
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <Card tone="raised" className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="text-base">Inventory on hand</CardTitle>
+              <CardDescription>
+                Snapshot across active SKUs
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-3 mb-3">
+                <span className="font-display text-3xl text-text tabular-nums">
+                  {dispensaryRollup.inventoryUnits.toLocaleString()}
+                </span>
+                <span className="text-xs text-text-muted">
+                  units across {dispensaryProducts.length} SKU
+                  {dispensaryProducts.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-[11px] uppercase tracking-[0.12em] text-text-subtle">
+                Estimated inventory value
+              </p>
+              <p className="font-display text-xl tabular-nums text-text mt-0.5">
+                {formatMoney(dispensaryRollup.inventoryValueCents)}
+              </p>
+              <p className="text-[11px] text-text-subtle mt-2 leading-relaxed">
+                Valued at retail price; swap to unit-cost when COGS data is
+                attached to each SKU.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card tone="raised" className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="text-base">Top SKUs by net revenue</CardTitle>
+              <CardDescription>
+                Net = gross − refunds (margin shown when COGS is set)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {dispensaryRollup.topSkus.length === 0 ? (
+                <p className="text-sm text-text-muted py-4 text-center">
+                  No dispensary orders in the last 90 days.
+                </p>
+              ) : (
+                <div className="overflow-x-auto -mx-6">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left">
+                        <th className="px-6 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                          SKU
+                        </th>
+                        <th className="px-6 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle text-right">
+                          Units
+                        </th>
+                        <th className="px-6 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle text-right">
+                          Net
+                        </th>
+                        <th className="px-6 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle text-right">
+                          Margin
+                        </th>
+                        <th className="px-6 py-2 text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle text-right">
+                          On hand
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {dispensaryRollup.topSkus.map((sku) => (
+                        <tr key={sku.productId} className="hover:bg-surface-muted/40">
+                          <td className="px-6 py-2.5">
+                            <p className="font-medium text-text">{sku.name}</p>
+                            <p className="text-[11px] text-text-subtle">
+                              {sku.brand} · {sku.format}
+                            </p>
+                          </td>
+                          <td className="px-6 py-2.5 text-right tabular-nums text-text-muted">
+                            {sku.unitsSold}
+                          </td>
+                          <td className="px-6 py-2.5 text-right tabular-nums font-medium text-text">
+                            {formatMoneyPrecise(sku.netCents)}
+                          </td>
+                          <td className="px-6 py-2.5 text-right tabular-nums text-text-muted">
+                            {sku.marginPct === null ? (
+                              <span className="text-text-subtle italic">—</span>
+                            ) : (
+                              `${sku.marginPct}%`
+                            )}
+                          </td>
+                          <td className="px-6 py-2.5 text-right tabular-nums">
+                            <span
+                              className={
+                                sku.inventoryOnHand <= 5
+                                  ? "text-danger font-medium"
+                                  : sku.inventoryOnHand <= 20
+                                    ? "text-[color:var(--warning)]"
+                                    : "text-text-muted"
+                              }
+                            >
+                              {sku.inventoryOnHand}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* ── Denial Queue (Layer 10 §2) ───────────────────────── */}
       {deniedClaims.length > 0 && (

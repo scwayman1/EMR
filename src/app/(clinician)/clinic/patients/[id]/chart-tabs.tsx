@@ -15,7 +15,17 @@ const TABS = [
   { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]" },
   { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]" },
   { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]" },
-  { key: "billing", label: "Billing", dot: "bg-[color:var(--success)]" },
+  // EMR-178 — Billing tab is a deep-link to the standalone Financial
+  // Cockpit page rather than a query-param panel inside the chart.
+  // The cockpit is too rich (P&L, claim drilldowns, statements) to fit
+  // inside the chart frame; sending physicians straight there avoids
+  // the half-rendered summary view.
+  {
+    key: "billing",
+    label: "Financial cockpit",
+    dot: "bg-[color:var(--success)]",
+    redirectTo: (patientId: string) => `/clinic/patients/${patientId}/billing`,
+  },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];
@@ -292,7 +302,11 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
               />
             )}
             <Link
-              href={`/clinic/patients/${patientId}?tab=${tab.key}`}
+              href={
+                "redirectTo" in tab && tab.redirectTo
+                  ? tab.redirectTo(patientId)
+                  : `/clinic/patients/${patientId}?tab=${tab.key}`
+              }
               scroll={false}
               draggable={false}
               aria-haspopup={hasPeek ? "true" : undefined}

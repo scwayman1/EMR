@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils/cn";
 import { explainLabValue } from "@/lib/domain/lab-explainer";
+import { LabTooltip } from "@/components/ui/lab-tooltip";
 import {
   draftLabOutreachAction,
   updateLabOutreachAction,
@@ -338,14 +339,16 @@ function LabOverlay({ row, onClose }: { row: LabRow; onClose: () => void }) {
                         )}
                       >
                         <td className="px-4 py-2.5">
-                          <span
-                            className={cn(
-                              "font-medium",
-                              isPriority ? "text-text" : "text-text-muted"
-                            )}
-                          >
-                            {name}
-                          </span>
+                          <LabTooltip name={name} value={c.value}>
+                            <span
+                              className={cn(
+                                "font-medium",
+                                isPriority ? "text-text" : "text-text-muted"
+                              )}
+                            >
+                              {name}
+                            </span>
+                          </LabTooltip>
                           {c.abnormal && (
                             <Badge
                               tone="danger"
