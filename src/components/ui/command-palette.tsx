@@ -233,8 +233,9 @@ const OPERATOR_COMMANDS: CommandDef[] = [
 const PATIENT_COMMANDS: CommandDef[] = [
   { id: "p-home", label: "Home", href: "/portal", group: "Navigate", roles: ["patient"], keywords: ["home", "dashboard"] },
   { id: "p-log-dose", label: "Log Dose", href: "/portal/log-dose", group: "Navigate", roles: ["patient"], keywords: ["dose", "log", "intake"] },
-  { id: "p-health", label: "My Health", href: "/portal/records", group: "Navigate", roles: ["patient"], keywords: ["records", "health", "results"] },
-  { id: "p-journey", label: "My Journey", href: "/portal/lifestyle", group: "Navigate", roles: ["patient"], keywords: ["journey", "lifestyle", "garden"] },
+  { id: "p-health", label: "My Records", href: "/portal/records", group: "Navigate", roles: ["patient"], keywords: ["records", "health", "results"] },
+  { id: "p-journey", label: "My Garden", href: "/portal/garden", group: "Navigate", roles: ["patient"], keywords: ["journey", "lifestyle", "garden"] },
+  { id: "p-chatlearn", label: "Chat & Learn", href: "/portal/community", group: "Navigate", roles: ["patient"], keywords: ["community", "chat", "learn", "research", "chatcb", "wheel"] },
   { id: "p-schedule", label: "Schedule", href: "/portal/schedule", group: "Navigate", roles: ["patient"], keywords: ["appointment", "book"] },
   { id: "p-messages", label: "Messages", href: "/portal/messages", group: "Navigate", roles: ["patient"], keywords: ["message", "inbox", "chat"] },
   { id: "p-qa", label: "Q&A", href: "/portal/qa", group: "Navigate", roles: ["patient"], keywords: ["question", "answer", "faq"] },
