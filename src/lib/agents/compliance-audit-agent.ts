@@ -132,7 +132,7 @@ export const complianceAuditAgent: Agent<
       orderBy: { createdAt: "asc" },
     });
 
-    ctx.source("audit-log", rows.map((r) => r.id));
+    ctx.tools.source("audit-log", rows.map((r) => r.id));
 
     const findings: Finding[] = [];
     const actors = new Set<string>();
@@ -254,17 +254,21 @@ export const complianceAuditAgent: Agent<
       (r) => r.action === "rx.contraindication.override",
     );
     if (ciOverrides.length > 0) {
-      const byActor = new Map<string, number>();
-      const absoluteCount = ciOverrides.filter(
-        (r) =>
-          (r.metadata as Record<string, unknown> | null)?.severity ===
-          "absolute",
-      ).length;
+      const byActor = new Map<string, typeof ciOverrides>();
       for (const r of ciOverrides) {
         const a = r.actorUserId ?? r.actorAgent ?? "unknown";
-        byActor.set(a, (byActor.get(a) ?? 0) + 1);
+        const list = byActor.get(a) ?? [];
+        list.push(r);
+        byActor.set(a, list);
       }
-      for (const [actor, count] of byActor) {
+      for (const [actor, actorRows] of byActor) {
+        const count = actorRows.length;
+        // Compute absolute count PER ACTOR, not globally
+        const absoluteCount = actorRows.filter(
+          (r) =>
+            (r.metadata as Record<string, unknown> | null)?.severity ===
+            "absolute",
+        ).length;
         if (count < 2 && absoluteCount === 0) continue;
         const severity: Finding["severity"] =
           absoluteCount > 0 ? "high" : count >= 5 ? "medium" : "low";

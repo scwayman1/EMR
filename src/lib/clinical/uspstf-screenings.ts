@@ -67,9 +67,14 @@ const DEFAULT_INTERVAL_MONTHS_BY_FREQUENCY: Record<string, number> = {
   "Every 3–5 years": 36, // be conservative
   "Every 2 years": 24,
   Annually: 12,
+  "Every visit": 0, // always due if no record for this visit
 };
 
+/** Sentinel: screening is one-time, never re-due after completion. */
+const ONE_TIME = -1;
+
 function intervalMonths(s: Screening): number {
+  if (s.frequency === "One-time") return ONE_TIME;
   return DEFAULT_INTERVAL_MONTHS_BY_FREQUENCY[s.frequency] ?? 12;
 }
 
@@ -129,6 +134,31 @@ export function evaluateScreening(
   let dueDate: Date;
   let daysOffset: number | null;
   let status: ScreeningStatus;
+
+  // One-time: if ever completed, always current.
+  if (months === ONE_TIME) {
+    if (history?.lastCompletedAt) {
+      return {
+        screening: s,
+        status: "current",
+        nextDueAt: null,
+        daysOffset: null,
+        emojiBadge: `${s.emoji} ${statusEmoji("current")}`,
+        patientMessage: `${s.label} — already done! No need to repeat. ✅`,
+        clinicianMessage: `${s.label}: one-time screening complete (${history.lastCompletedAt}).`,
+      };
+    }
+    // Never done — due now.
+    return {
+      screening: s,
+      status: "due",
+      nextDueAt: today.toISOString(),
+      daysOffset: 0,
+      emojiBadge: `${s.emoji} ${statusEmoji("due")}`,
+      patientMessage: `${s.label} is a one-time check — let's get it done at your visit.`,
+      clinicianMessage: `${s.label}: one-time screening, never performed. USPSTF Grade ${s.grade}.`,
+    };
+  }
 
   if (history?.lastCompletedAt) {
     const last = new Date(history.lastCompletedAt);
