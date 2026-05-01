@@ -15,7 +15,6 @@ const NAV_LINKS = [
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -28,104 +27,41 @@ export function SiteHeader() {
       data-scrolled={scrolled || undefined}
       className="sticky top-0 z-30 backdrop-blur-lg bg-bg/80 border-b border-transparent transition-[border-color,background-color] duration-300 data-[scrolled]:border-border data-[scrolled]:bg-bg/95"
     >
-      <div className="max-w-[1320px] mx-auto flex items-center justify-between px-6 lg:px-12 h-16">
-        <Link href="/" aria-label="Leafjourney home">
+      <div className="max-w-[1320px] mx-auto flex items-center justify-between gap-2 px-3 sm:px-6 lg:px-12 h-16">
+        <Link href="/" aria-label="Leafjourney home" className="shrink-0">
           <Wordmark size="md" />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-1" aria-label="Main">
+        {/* EMR-189: nav visible on mobile portrait — no hamburger.
+            Five primary links + Sign in scroll horizontally on phones,
+            wrap into the full row on tablet/desktop. */}
+        <nav
+          className="flex-1 min-w-0 flex items-center gap-0.5 overflow-x-auto no-scrollbar"
+          aria-label="Main"
+        >
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-text-muted hover:text-text px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors"
+              className="text-xs sm:text-sm text-text-muted hover:text-text px-2 sm:px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors whitespace-nowrap shrink-0"
             >
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/login"
+            className="text-xs sm:text-sm text-text-muted hover:text-text px-2 sm:px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors whitespace-nowrap shrink-0"
+          >
+            Sign in
+          </Link>
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden sm:inline text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Request Demo</Button>
-          </Link>
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 -mr-2"
-            aria-label="Toggle menu"
-            aria-expanded={menuOpen}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" className="text-text">
-              <line
-                x1="3"
-                y1={menuOpen ? "10" : "5"}
-                x2="17"
-                y2={menuOpen ? "10" : "5"}
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                style={{
-                  transform: menuOpen ? "rotate(45deg)" : "none",
-                  transformOrigin: "center",
-                  transition: "all 0.3s",
-                }}
-              />
-              <line
-                x1="3"
-                y1="10"
-                x2="17"
-                y2="10"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                style={{ opacity: menuOpen ? 0 : 1, transition: "opacity 0.2s" }}
-              />
-              <line
-                x1="3"
-                y1={menuOpen ? "10" : "15"}
-                x2="17"
-                y2={menuOpen ? "10" : "15"}
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                style={{
-                  transform: menuOpen ? "rotate(-45deg)" : "none",
-                  transformOrigin: "center",
-                  transition: "all 0.3s",
-                }}
-              />
-            </svg>
-          </button>
-        </div>
+        <Link href="/signup" className="shrink-0">
+          <Button size="sm" className="px-2.5 sm:px-3.5 text-xs sm:text-sm">
+            Demo
+          </Button>
+        </Link>
       </div>
-
-      {menuOpen && (
-        <div className="md:hidden border-t border-border bg-bg px-6 py-4 space-y-1">
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              className="block text-sm text-text-muted hover:text-text px-3 py-2.5 rounded-lg hover:bg-surface-muted transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
-          <Link
-            href="/login"
-            onClick={() => setMenuOpen(false)}
-            className="block text-sm text-text-muted hover:text-text px-3 py-2.5"
-          >
-            Sign in
-          </Link>
-        </div>
-      )}
     </header>
   );
 }

@@ -236,9 +236,12 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
         // (long lists overflow to a second row); vertical rails fill
         // the rail wrapper's height and pin the trailing controls to
         // the bottom via mt-auto on the trailing group.
+        // EMR-177: horizontal bars never use overflow-x — always
+        // wrap. The per-tab min-width below biases the wrap toward
+        // a clean 2-row layout instead of one long crowded row.
         isVertical
           ? "flex flex-col items-stretch h-full"
-          : "flex flex-wrap items-center",
+          : "flex flex-wrap items-center overflow-visible",
         // Border + outer spacing sit against the chart content (not
         // the page edge) regardless of which side the bar is on.
         onBottom && "border-t mt-8",
@@ -270,6 +273,10 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
             onDragEnd={handleDragEnd}
             className={cn(
               "relative group/tab transition-opacity",
+              // EMR-177: in horizontal mode tabs get a min width so a
+              // typical chart viewport yields two clean rows of ~5+4
+              // tabs that wrap on narrow screens — no swipe-only ribbon.
+              !isVertical && !compact && "min-w-[160px]",
               isDragging && "opacity-40"
             )}
             onMouseEnter={() => {

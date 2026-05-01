@@ -151,15 +151,20 @@
   .prose-clinical p { @apply mb-3 text-text-muted; }
   .prose-clinical strong { @apply text-text font-medium; }
 
-  /* Card that glows on hover — used sparingly on interactive tiles. */
+  /* Card that glows on hover — used sparingly on interactive tiles.
+     EMR-015: lift bumped from -1px to -3px and shadow strengthened so
+     hovers register at a glance during Justin's testing. */
   .card-hover {
-    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1),
-                box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+    transition: transform 220ms cubic-bezier(0.2, 0, 0, 1),
+                box-shadow 220ms cubic-bezier(0.2, 0, 0, 1);
   }
   .card-hover:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 30px -12px rgba(28, 26, 21, 0.15),
-                0 0 0 1px rgba(212, 194, 143, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 40px -14px rgba(28, 26, 21, 0.22),
+                0 0 0 1px rgba(212, 194, 143, 0.6);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-hover:hover { transform: none; }
   }
 
   /* Subtle paper grain — applied as a pseudo-element on containers. */
