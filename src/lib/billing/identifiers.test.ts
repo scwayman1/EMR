@@ -1,14 +1,17 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import {
   decryptTaxId,
+  einPrefixIsPlausible,
   encryptTaxId,
   isValidEin,
   isValidNpi,
+  normalizeEin,
   normalizeNpi,
   parseBillingAddress,
   resolveBillingIdentifiers,
   scrapeNpiFromBio,
 } from "./identifiers";
+import { parseProviderNpiCsv } from "./identifiers-db";
 import { randomBytes } from "crypto";
 
 // EMR-220 — pure helpers + 3-tier resolver
@@ -43,6 +46,43 @@ describe("isValidEin", () => {
     expect(isValidEin("12 3456789")).toBe(false);
     expect(isValidEin("123456789")).toBe(false);
     expect(isValidEin(null)).toBe(false);
+  });
+});
+
+describe("normalizeEin", () => {
+  it("strips the hyphen and any non-digits", () => {
+    expect(normalizeEin("12-3456789")).toBe("123456789");
+    expect(normalizeEin("12.3456789")).toBe("123456789");
+  });
+});
+
+describe("einPrefixIsPlausible", () => {
+  it("flags never-issued IRS prefixes", () => {
+    expect(einPrefixIsPlausible("00-1234567")).toBe(false);
+    expect(einPrefixIsPlausible("89-1234567")).toBe(false);
+  });
+  it("accepts in-use prefixes", () => {
+    expect(einPrefixIsPlausible("12-3456789")).toBe(true);
+    expect(einPrefixIsPlausible("46-1234567")).toBe(true);
+  });
+});
+
+describe("parseProviderNpiCsv", () => {
+  it("parses valid rows + flags malformed NPIs", () => {
+    const csv = [
+      "provider_id,npi,taxonomy_code",
+      "p1,1234567893,207RI0008X",
+      "p2,1234567890,",
+      ",1932456783,",
+    ].join("\n");
+    const r = parseProviderNpiCsv(csv);
+    expect(r.rows).toEqual([{ providerId: "p1", npi: "1234567893", taxonomyCode: "207RI0008X" }]);
+    expect(r.errors.length).toBe(2);
+  });
+
+  it("requires the header row", () => {
+    const r = parseProviderNpiCsv("p1,123,456");
+    expect(r.errors[0].message).toContain("provider_id, npi");
   });
 });
 
