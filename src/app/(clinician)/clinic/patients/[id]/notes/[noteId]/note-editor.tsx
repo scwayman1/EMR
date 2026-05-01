@@ -5,7 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { saveNoteBlocks, saveAndFinalizeNote, refineSection, type RefineMode } from "./actions";
+import {
+  saveNoteBlocks,
+  saveAndFinalizeNote,
+  refineSection,
+  saveEmotionalVital,
+  PATIENT_DEMEANOR_OPTIONS,
+  type PatientDemeanor,
+  type RefineMode,
+} from "./actions";
 import { APSO_ORDER, NOTE_BLOCK_LABELS } from "@/lib/domain/notes";
 import type { NoteBlockType } from "@/lib/domain/notes";
 import { LeafSprig } from "@/components/ui/ornament";
@@ -30,6 +38,7 @@ interface NoteEditorProps {
     emLevel: string | null;
     rationale: string | null;
   } | null;
+  initialDemeanor?: PatientDemeanor | null;
 }
 
 const REFINE_OPTIONS: { mode: RefineMode; label: string; icon: string }[] = [
@@ -71,6 +80,7 @@ export function NoteEditor({
   aiDrafted,
   aiConfidence,
   codingSuggestion,
+  initialDemeanor,
 }: NoteEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -99,6 +109,23 @@ export function NoteEditor({
   const [isPending, startTransition] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState(status);
+  const [demeanor, setDemeanor] = useState<PatientDemeanor | null>(initialDemeanor ?? null);
+  const [demeanorPending, setDemeanorPending] = useState(false);
+
+  function handleDemeanor(value: PatientDemeanor) {
+    if (demeanorPending) return;
+    const previous = demeanor;
+    setDemeanor(value);
+    setDemeanorPending(true);
+    void saveEmotionalVital(encounterId, value)
+      .then((res) => {
+        if (!res.ok) {
+          setDemeanor(previous);
+          setSaveMessage(res.error);
+        }
+      })
+      .finally(() => setDemeanorPending(false));
+  }
 
   const isEditable = currentStatus === "draft" || currentStatus === "needs_review";
 
@@ -230,26 +257,37 @@ export function NoteEditor({
         {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
       </div>
 
-      {/* Emotional vitals — EMR-134: emoji mood indicator */}
+      {/* Emotional vitals — EMR-134: emoji demeanor scale persisted to encounter */}
       {isEditable && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
             Patient demeanor:
           </span>
-          {[
-            { emoji: "😊", label: "Positive", value: "positive" },
-            { emoji: "😐", label: "Neutral", value: "neutral" },
-            { emoji: "😔", label: "Low", value: "low" },
-          ].map((mood) => (
-            <button
-              key={mood.value}
-              type="button"
-              title={mood.label}
-              className="text-2xl hover:scale-125 transition-transform focus:outline-none focus:ring-2 focus:ring-accent/40 rounded-lg p-1"
-            >
-              {mood.emoji}
-            </button>
-          ))}
+          {PATIENT_DEMEANOR_OPTIONS.map((mood) => {
+            const selected = demeanor === mood.value;
+            return (
+              <button
+                key={mood.value}
+                type="button"
+                title={mood.label}
+                onClick={() => handleDemeanor(mood.value)}
+                disabled={demeanorPending}
+                aria-pressed={selected}
+                className={`text-2xl rounded-lg p-1 transition-all focus:outline-none focus:ring-2 focus:ring-accent/40 ${
+                  selected
+                    ? "scale-125 bg-accent-soft ring-2 ring-accent/40"
+                    : "hover:scale-110 opacity-70 hover:opacity-100"
+                } disabled:opacity-50`}
+              >
+                {mood.emoji}
+              </button>
+            );
+          })}
+          {demeanor && (
+            <span className="text-[11px] text-text-subtle">
+              Recorded as {PATIENT_DEMEANOR_OPTIONS.find((o) => o.value === demeanor)?.label.toLowerCase()}
+            </span>
+          )}
         </div>
       )}
 

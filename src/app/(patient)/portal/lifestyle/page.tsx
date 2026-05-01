@@ -1,318 +1,199 @@
-"use client";
-import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
-
-import { useState } from "react";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db/prisma";
+import { requireRole } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { LIFESTYLE_DOMAINS, LIFESTYLE_TIPS } from "@/lib/domain/lifestyle";
 import {
-  LIFESTYLE_DOMAINS,
-  LIFESTYLE_TIPS,
-  type LifestyleDomain,
-  type LifestyleTip,
-} from "@/lib/domain/lifestyle";
+  buildAchievements,
+  consecutiveDayStreak,
+  DEMO_WEARABLE_SUMMARY,
+} from "@/lib/domain/achievements";
+import { computePlantHealth } from "@/lib/domain/plant-health";
+import { MindfulnessCheckIn } from "@/components/portal/mindfulness-check-in";
+import { LifestyleToolkit } from "./lifestyle-toolkit";
 
-/* ---------- Difficulty badge tone mapping ---------- */
+export const metadata = { title: "Wellness Toolkit" };
 
-const DIFFICULTY_TONE: Record<
-  LifestyleTip["difficulty"],
-  "success" | "warning" | "danger"
-> = {
-  easy: "success",
-  moderate: "warning",
-  challenging: "danger",
-};
+// ---------------------------------------------------------------------------
+// Wellness Toolkit — EMR-006 / EMR-138 / EMR-161 / EMR-191
+// ---------------------------------------------------------------------------
+// Replaces the old ribbon-tab lifestyle page with:
+//  - health score + plant health summary
+//  - mindfulness emoji check-in (EMR-138)
+//  - achievement badges + streak (EMR-161 — merged from /achievements)
+//  - wearable snapshot (EMR-161)
+//  - checkbox dropdown domain cards (EMR-191)
+// ---------------------------------------------------------------------------
 
-const DIFFICULTY_LABEL: Record<LifestyleTip["difficulty"], string> = {
-  easy: "Easy",
-  moderate: "Moderate",
-  challenging: "Challenging",
-};
+export default async function LifestylePage() {
+  const user = await requireRole("patient");
 
-/* ---------- Expandable tip row ---------- */
+  const patient = await prisma.patient.findUnique({
+    where: { userId: user.id },
+    include: {
+      outcomeLogs: { orderBy: { loggedAt: "desc" }, take: 200 },
+      messageThreads: { take: 1 },
+      chartSummary: true,
+      encounters: { orderBy: { scheduledFor: "desc" }, take: 1, where: { status: "complete" } },
+    },
+  });
+  if (!patient) redirect("/portal/intake");
 
-function TipRow({ tip }: { tip: LifestyleTip }) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen((v) => !v)}
-      className="w-full text-left group"
-    >
-      <div className="flex items-start gap-3 py-3.5 px-1">
-        {/* Expand / collapse chevron */}
-        <span
-          className="mt-0.5 shrink-0 text-text-subtle transition-transform duration-200"
-          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 4L10 8L6 12"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </span>
-
-        <div className="flex-1 min-w-0">
-          {/* Title + badges */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-text group-hover:text-accent transition-colors">
-              {tip.title}
-            </span>
-            <Badge tone={DIFFICULTY_TONE[tip.difficulty]} className="shrink-0">
-              {DIFFICULTY_LABEL[tip.difficulty]}
-            </Badge>
-            {tip.timeCommitment !== "0 min" && (
-              <span className="text-[11px] text-text-subtle">
-                {tip.timeCommitment}
-              </span>
-            )}
-          </div>
-
-          {/* Expanded body */}
-          <div
-            className="overflow-hidden transition-all duration-300 ease-out"
-            style={{
-              maxHeight: open ? "200px" : "0px",
-              opacity: open ? 1 : 0,
-            }}
-          >
-            <p className="text-sm text-text-muted leading-relaxed mt-2 pr-4">
-              {tip.body}
-            </p>
-          </div>
-        </div>
-      </div>
-    </button>
+  const plantHealth = await computePlantHealth(patient.id);
+  const consecutiveDays = consecutiveDayStreak(
+    patient.outcomeLogs.map((l) => l.loggedAt),
   );
-}
+  const uniqueMetrics = new Set(patient.outcomeLogs.map((l) => l.metric)).size;
+  const lastVisit = patient.encounters[0]?.completedAt;
+  const daysSinceLastVisit = lastVisit
+    ? Math.floor((Date.now() - lastVisit.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
-/* ---------- Domain card ---------- */
+  const achievements = buildAchievements({
+    outcomeLogCount: patient.outcomeLogs.length,
+    consecutiveDays,
+    uniqueMetricsLogged: uniqueMetrics,
+    daysSinceLastVisit,
+    hasMessagedTeam: patient.messageThreads.length > 0,
+    intakeComplete: patient.chartSummary?.completenessScore ?? 0,
+  });
+  const unlockedCount = achievements.filter((a) => a.unlocked).length;
 
-function DomainCard({ domain }: { domain: LifestyleDomain }) {
-  const tips = LIFESTYLE_TIPS[domain.id] ?? [];
-
-  return (
-    <Card
-      tone="raised"
-      className="overflow-hidden card-hover"
-      style={
-        {
-          borderLeftWidth: "4px",
-          borderLeftColor: domain.color,
-          "--domain-color": domain.color,
-        } as React.CSSProperties
-      }
-    >
-      {/* Domain header */}
-      <div className="px-6 pt-5 pb-2">
-        <div className="flex items-center gap-3">
-          <span
-            className="flex items-center justify-center w-10 h-10 rounded-xl text-xl"
-            style={{
-              backgroundColor: `color-mix(in srgb, ${domain.color} 12%, transparent)`,
-            }}
-            role="img"
-            aria-label={domain.label}
-          >
-            {domain.icon}
-          </span>
-          <div>
-            <h3 className="font-display text-lg font-medium text-text tracking-tight">
-              {domain.label}
-            </h3>
-            <p className="text-xs text-text-subtle mt-0.5">
-              {domain.description}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tips list */}
-      <CardContent className="pt-1 pb-4">
-        <div className="divide-y divide-border/50">
-          {tips.map((tip) => (
-            <TipRow key={tip.title} tip={tip} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+  const totalTips = Object.values(LIFESTYLE_TIPS).reduce(
+    (sum, tips) => sum + tips.length,
+    0,
   );
-}
-
-/* ---------- Domain icon pill (hero toolbar) ---------- */
-
-function DomainPill({
-  domain,
-  active,
-  onClick,
-}: {
-  domain: LifestyleDomain;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        "flex flex-col items-center gap-1.5 px-3 py-2.5 rounded-xl transition-all duration-200 " +
-        (active
-          ? "bg-accent-soft ring-2 ring-accent/30 scale-105 shadow-sm"
-          : "hover:bg-surface-muted")
-      }
-    >
-      <span
-        className="flex items-center justify-center w-11 h-11 rounded-full text-xl transition-transform duration-200"
-        style={{
-          backgroundColor: active
-            ? `color-mix(in srgb, ${domain.color} 18%, transparent)`
-            : `color-mix(in srgb, ${domain.color} 8%, transparent)`,
-        }}
-        role="img"
-        aria-label={domain.label}
-      >
-        {domain.icon}
-      </span>
-      <span
-        className={
-          "text-[11px] font-medium tracking-wide " +
-          (active ? "text-accent" : "text-text-subtle")
-        }
-      >
-        {domain.label}
-      </span>
-    </button>
-  );
-}
-
-/* ========== MAIN PAGE ========== */
-
-export default function LifestylePage() {
-  const [activeDomain, setActiveDomain] = useState<string | null>(null);
-
-  const displayedDomains = activeDomain
-    ? LIFESTYLE_DOMAINS.filter((d) => d.id === activeDomain)
-    : LIFESTYLE_DOMAINS;
 
   return (
-    <PageShell maxWidth="max-w-[960px]">
-      <PatientSectionNav section="journey" />
-      {/* ==================== Hero ==================== */}
-      <Card tone="ambient" className="mb-10 grain">
-        <div className="relative z-10 px-6 md:px-10 py-10 md:py-14">
-          <Eyebrow className="mb-4">Lifestyle plan</Eyebrow>
-          <h1 className="font-display text-3xl md:text-[2.75rem] text-text tracking-tight leading-[1.08]">
-            Your Lifestyle Plan
+    <PageShell maxWidth="max-w-[1040px]">
+      {/* Hero */}
+      <Card tone="ambient" className="mb-8 grain">
+        <div className="relative z-10 px-6 md:px-10 py-8 md:py-12">
+          <Eyebrow className="mb-3">Wellness toolkit</Eyebrow>
+          <h1 className="font-display text-3xl md:text-[2.5rem] text-text tracking-tight leading-[1.08]">
+            Your toolkit, in one place.
           </h1>
-          <p className="text-[15px] md:text-base text-text-muted mt-4 leading-relaxed max-w-xl">
-            Small changes, practiced consistently, become the foundation of how
-            you feel. This plan is built around{" "}
-            <span className="font-medium text-text">you</span>.
+          <p className="text-[15px] text-text-muted mt-3 leading-relaxed max-w-xl">
+            Lifestyle tips, mindfulness check-ins, achievements, and what your
+            wearables said today — all stitched into your health score so the
+            next move is obvious.
           </p>
-
-          {/* Domain icon toolbar */}
-          <div className="mt-8 flex flex-wrap gap-1 md:gap-2">
-            {LIFESTYLE_DOMAINS.map((d) => (
-              <DomainPill
-                key={d.id}
-                domain={d}
-                active={activeDomain === d.id}
-                onClick={() =>
-                  setActiveDomain((prev) => (prev === d.id ? null : d.id))
-                }
-              />
-            ))}
-          </div>
-
-          {activeDomain && (
-            <button
-              type="button"
-              onClick={() => setActiveDomain(null)}
-              className="mt-4 text-xs text-accent hover:text-accent-hover font-medium transition-colors"
-            >
-              Show all domains
-            </button>
-          )}
         </div>
       </Card>
 
-      {/* ==================== Quick stats ==================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-        <div className="bg-surface-raised border border-border rounded-xl p-4 text-center shadow-sm">
-          <p className="font-display text-2xl font-medium text-text">7</p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mt-1">
-            Life domains
-          </p>
-        </div>
-        <div className="bg-surface-raised border border-border rounded-xl p-4 text-center shadow-sm">
-          <p className="font-display text-2xl font-medium text-text">
-            {Object.values(LIFESTYLE_TIPS).reduce(
-              (sum, tips) => sum + tips.length,
-              0
-            )}
-          </p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mt-1">
-            Curated tips
-          </p>
-        </div>
-        <div className="bg-surface-raised border border-border rounded-xl p-4 text-center shadow-sm">
-          <p className="font-display text-2xl font-medium text-accent">
-            <LeafSprig size={20} className="inline -mt-0.5 mr-1" />
-            You
-          </p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mt-1">
-            Personalized
-          </p>
-        </div>
+      {/* Stat row — health score + streak + achievements */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          emoji="\u{1F33F}"
+          label="Plant health"
+          value={`${plantHealth.score}`}
+          hint={`${plantHealth.leafCount} leaves`}
+        />
+        <StatCard
+          emoji="\u{1F525}"
+          label="Streak"
+          value={`${consecutiveDays}`}
+          hint={consecutiveDays === 1 ? "day" : "days in a row"}
+        />
+        <StatCard
+          emoji="\u{1F3C6}"
+          label="Achievements"
+          value={`${unlockedCount}/${achievements.length}`}
+          hint="unlocked"
+        />
+        <StatCard
+          emoji="\u{1F4DA}"
+          label="Tip library"
+          value={`${totalTips}`}
+          hint={`across ${LIFESTYLE_DOMAINS.length} domains`}
+        />
       </div>
 
-      <EditorialRule className="mb-10" />
+      <div className="grid gap-5 md:grid-cols-[1.1fr,1fr] mb-10">
+        {/* Mindfulness check-in (EMR-138) */}
+        <MindfulnessCheckIn />
 
-      {/* ==================== Domain cards ==================== */}
-      <section>
-        <h2 className="font-display text-2xl text-text tracking-tight mb-6">
-          {activeDomain
-            ? `${LIFESTYLE_DOMAINS.find((d) => d.id === activeDomain)?.icon ?? ""} ${LIFESTYLE_DOMAINS.find((d) => d.id === activeDomain)?.label ?? ""}`
-            : "Your wellness toolkit"}
-        </h2>
+        {/* Wearable snapshot (EMR-161) */}
+        <Card tone="raised">
+          <CardContent className="py-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent">
+                Today from {DEMO_WEARABLE_SUMMARY.source}
+              </p>
+              <span className="text-2xl" aria-hidden="true">
+                {DEMO_WEARABLE_SUMMARY.emoji}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <WearableMetric label="Steps" value={DEMO_WEARABLE_SUMMARY.steps.toLocaleString()} />
+              <WearableMetric label="Sleep" value={`${DEMO_WEARABLE_SUMMARY.sleepHours}h`} />
+              <WearableMetric label="Resting HR" value={`${DEMO_WEARABLE_SUMMARY.restingHeartRate} bpm`} />
+              <WearableMetric label="Mindful" value={`${DEMO_WEARABLE_SUMMARY.mindfulMinutes} min`} />
+            </div>
+            <p className="mt-4 text-xs text-text-subtle">
+              Manage devices in <a href="/portal/integrations" className="text-accent hover:underline">Integrations</a>.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="space-y-5">
-          {displayedDomains.map((domain, idx) => (
-            <div key={domain.id}>
-              <DomainCard domain={domain} />
-              {/* Editorial rule between cards, not after the last one */}
-              {idx < displayedDomains.length - 1 &&
-                displayedDomains.length > 1 && (
-                  <EditorialRule className="my-5" />
-                )}
+      {/* Achievements grid (EMR-161) */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Your achievements</Eyebrow>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {achievements.map((a) => (
+            <div
+              key={a.id}
+              className={`rounded-xl border p-4 transition-colors ${
+                a.unlocked
+                  ? "border-accent/40 bg-accent-soft/40"
+                  : "border-border bg-surface-muted/40 opacity-70"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-2xl" aria-hidden="true">
+                  {a.emoji}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text">{a.title}</p>
+                  <p className="text-xs text-text-subtle line-clamp-2">{a.description}</p>
+                </div>
+              </div>
+              {a.progressLabel && !a.unlocked && (
+                <p className="text-[10px] uppercase tracking-wider text-text-subtle mt-3">
+                  {a.progressLabel}
+                </p>
+              )}
+              {a.unlocked && (
+                <Badge tone="success" className="mt-3 text-[10px]">
+                  Unlocked
+                </Badge>
+              )}
             </div>
           ))}
         </div>
       </section>
 
+      <EditorialRule className="mb-10" />
+
+      {/* Domain cards as checkbox dropdowns (EMR-191) */}
+      <LifestyleToolkit
+        domains={LIFESTYLE_DOMAINS}
+        tips={LIFESTYLE_TIPS}
+      />
+
       <EditorialRule className="my-10" />
 
-      {/* ==================== Motivational footer ==================== */}
-      <Card tone="default" className="mb-4">
+      <Card>
         <CardContent className="py-8 text-center">
           <p className="font-display text-xl text-text tracking-tight mb-2">
-            You don&apos;t have to do everything at once.
+            Pick one. Start small.
           </p>
           <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed">
-            Pick one domain. Choose the easiest tip. Try it for a week. That
-            single step is more powerful than a perfect plan you never start.
+            One easy tip you actually do beats a perfect plan you never start.
           </p>
           <div className="mt-5 flex items-center justify-center gap-2 text-accent/50">
             <LeafSprig size={16} />
@@ -324,5 +205,43 @@ export default function LifestylePage() {
         </CardContent>
       </Card>
     </PageShell>
+  );
+}
+
+function StatCard({
+  emoji,
+  label,
+  value,
+  hint,
+}: {
+  emoji: string;
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <Card tone="raised">
+      <CardContent className="py-5 text-center">
+        <span className="text-2xl block mb-1" aria-hidden="true">
+          {emoji}
+        </span>
+        <p className="font-display text-2xl font-medium text-text tabular-nums">
+          {value}
+        </p>
+        <p className="text-[10px] uppercase tracking-[0.14em] text-text-subtle mt-1">
+          {label}
+        </p>
+        <p className="text-xs text-text-subtle mt-1">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WearableMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-[0.14em] text-text-subtle">{label}</p>
+      <p className="font-display text-lg text-text tabular-nums">{value}</p>
+    </div>
   );
 }
