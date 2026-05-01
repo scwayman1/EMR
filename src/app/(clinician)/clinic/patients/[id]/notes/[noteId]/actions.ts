@@ -11,6 +11,7 @@ import {
   type ModelErrorCode,
 } from "@/lib/orchestration/model-client";
 import { z } from "zod";
+import { freezeNoteSnapshot } from "@/lib/agents/guardrails/note-guardrails";
 
 const blockSchema = z.object({
   heading: z.string(),
@@ -165,6 +166,11 @@ export async function saveAndFinalizeNote(
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  // EMR-131: Freeze a snapshot of the AI draft + transcript at sign
+  // time. Hashes go to AuditLog so we can prove provenance later
+  // (defense against "the AI made that up" complaints).
+  const snapshot = buildSnapshotFromNoteBlocks(note.blocks, blocks);
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
@@ -174,6 +180,19 @@ export async function saveAndFinalizeNote(
       authorUserId: user.id,
     },
   });
+
+  if (snapshot) {
+    await prisma.auditLog.create({
+      data: {
+        organizationId: user.organizationId!,
+        actorUserId: user.id,
+        action: "note.finalized.snapshot",
+        subjectType: "Note",
+        subjectId: noteId,
+        metadata: snapshot as any,
+      },
+    });
+  }
 
   // Also mark the encounter as complete
   await prisma.encounter.update({
@@ -207,6 +226,98 @@ export async function saveAndFinalizeNote(
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
   return { ok: true, status: "finalized" };
+}
+
+/**
+ * Pull the guardrails block off the original AI draft (planted by
+ * processTranscript) and freeze a snapshot pairing the original draft
+ * blocks with the clinician-edited blocks the user is signing.
+ */
+function buildSnapshotFromNoteBlocks(
+  storedBlocks: unknown,
+  signedBlocks: { heading: string; body: string }[],
+) {
+  if (!Array.isArray(storedBlocks)) return null;
+  const guardrailsBlock = storedBlocks.find(
+    (b: any) => b && b.heading === "_guardrails",
+  ) as any;
+  if (!guardrailsBlock?.metadata?.guardrails) return null;
+  const draftBlocks = (storedBlocks as any[])
+    .filter((b: any) => b && b.heading !== "_guardrails")
+    .map((b: any) => ({ type: b.type ?? "block", body: b.body ?? "" }));
+  const transcript = guardrailsBlock.metadata.transcriptPreview ?? "";
+  const guardrails = guardrailsBlock.metadata.guardrails;
+  return {
+    ...freezeNoteSnapshot({
+      draftBlocks,
+      transcript,
+      hallucinationConfidence: guardrails.hallucinationConfidence ?? 1,
+      redactionCounts: guardrails.redactionCounts ?? {
+        phone: 0, ssn: 0, email: 0, mrn: 0, dob: 0, name: 0,
+      },
+      flaggedSpans: guardrails.flaggedSpans ?? [],
+    }),
+    // Track whether the clinician edited the AI draft before signing.
+    blockCountDraft: draftBlocks.length,
+    blockCountSigned: signedBlocks.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Emotional Vitals — EMR-134
+// ---------------------------------------------------------------------------
+// Persists the clinician's emoji read of the patient's demeanor on the
+// encounter (briefingContext.patientDemeanor). No schema migration needed —
+// briefingContext is already a Json field used for visit metadata.
+
+export const PATIENT_DEMEANOR_OPTIONS = [
+  { emoji: "\u{1F60A}", label: "Bright", value: "bright" },
+  { emoji: "\u{1F642}", label: "Positive", value: "positive" },
+  { emoji: "\u{1F610}", label: "Neutral", value: "neutral" },
+  { emoji: "\u{1F614}", label: "Withdrawn", value: "withdrawn" },
+  { emoji: "\u{1F622}", label: "Distressed", value: "distressed" },
+] as const;
+
+export type PatientDemeanor = typeof PATIENT_DEMEANOR_OPTIONS[number]["value"];
+
+const VALID_DEMEANORS: ReadonlySet<string> = new Set(
+  PATIENT_DEMEANOR_OPTIONS.map((o) => o.value),
+);
+
+export async function saveEmotionalVital(
+  encounterId: string,
+  demeanor: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+  if (!VALID_DEMEANORS.has(demeanor)) {
+    return { ok: false, error: "Unknown demeanor value" };
+  }
+
+  const encounter = await prisma.encounter.findFirst({
+    where: { id: encounterId, organizationId: user.organizationId! },
+    select: { id: true, briefingContext: true, patientId: true },
+  });
+  if (!encounter) return { ok: false, error: "Unauthorized" };
+
+  const ctx =
+    encounter.briefingContext && typeof encounter.briefingContext === "object"
+      ? (encounter.briefingContext as Record<string, unknown>)
+      : {};
+
+  await prisma.encounter.update({
+    where: { id: encounterId },
+    data: {
+      briefingContext: {
+        ...ctx,
+        patientDemeanor: demeanor,
+        patientDemeanorRecordedAt: new Date().toISOString(),
+        patientDemeanorRecordedBy: user.id,
+      },
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${encounter.patientId}`);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

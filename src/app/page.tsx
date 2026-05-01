@@ -35,6 +35,7 @@ import { Reveal } from "@/components/marketing/reveal";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { AnimatedCounter } from "@/components/marketing/animated-counter";
+import { ComboWheel } from "@/components/education/ComboWheel";
 
 // Public marketing / acquisition home page.
 // Editorial, warm, botanical — with a live agent console to sell the core value prop.
@@ -408,7 +409,11 @@ export default function HomePage() {
 
       <EditorialRule className="max-w-[1320px] mx-auto px-6 lg:px-12" />
 
-      {/* ── Cannabis Combo Wheel Showcase — EMR-91 ──────────── */}
+      {/* ── Cannabis Combo Wheel Showcase — EMR-91 / EMR-150 / EMR-181 ──
+          The wheel is now front-and-center on the public landing page
+          (EMR-181) and on the patient home tab (EMR-150 lives at
+          /portal/combo-wheel). The pillars frame the wheel; the wheel
+          renders interactively below. */}
       <section className="max-w-[1320px] mx-auto px-6 lg:px-12 py-20">
         <Reveal>
           <div className="text-center mb-12">
@@ -423,19 +428,19 @@ export default function HomePage() {
               dosing guidance — personalized to your patient&apos;s condition.
             </p>
           </div>
-          <div className="relative overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/[0.04] via-surface-raised to-highlight/[0.04] p-8 md:p-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="relative overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/[0.04] via-surface-raised to-highlight/[0.04] p-6 md:p-10">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {WELLNESS_WHEEL_PILLARS.map((pillar) => {
                 const Icon = pillar.icon;
                 return (
                   <div
                     key={pillar.title}
-                    className="text-center p-6 rounded-2xl bg-surface/60 border border-border/50"
+                    className="text-center p-5 rounded-2xl bg-surface/60 border border-border/50"
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4 ring-1 ring-accent/15">
+                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-3 ring-1 ring-accent/15">
                       <Icon className="w-6 h-6 text-accent" />
                     </div>
-                    <h3 className="font-display text-lg text-text tracking-tight mb-2">
+                    <h3 className="font-display text-lg text-text tracking-tight mb-1">
                       {pillar.title}
                     </h3>
                     <p className="text-sm text-text-muted">{pillar.body}</p>
@@ -443,12 +448,20 @@ export default function HomePage() {
                 );
               })}
             </div>
-            <div className="text-center">
+
+            <ComboWheel
+              context="public"
+              showHeader={false}
+              showFooter={false}
+              className="mb-6"
+            />
+
+            <div className="text-center mt-6">
               <Link href="/portal/combo-wheel">
-                <Button size="lg">Try the Wellness Wheel</Button>
+                <Button size="lg">Open the full Wellness Wheel</Button>
               </Link>
               <p className="text-xs text-text-subtle mt-3">
-                Free demo access — no account required for the wheel.
+                Free to explore — no account required.
               </p>
             </div>
           </div>
