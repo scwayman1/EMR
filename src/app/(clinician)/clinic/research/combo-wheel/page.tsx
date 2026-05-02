@@ -30,12 +30,14 @@ interface Compound {
   description: string;
 }
 
+// EMR-201: saturated palette — moved each color toward higher chroma so the
+// wheel reads boldly even at smaller print sizes.
 const COMPOUNDS: Compound[] = [
   {
     id: "thc",
     name: "THC",
     type: "cannabinoid",
-    color: "#3A8560",
+    color: "#1F8A4D",
     symptoms: ["Pain", "Nausea", "Insomnia", "Appetite loss", "PTSD", "Muscle spasms"],
     risks: ["Psychoactivity", "Anxiety at high doses", "Cognitive effects", "Dependence risk"],
     benefits: ["Potent analgesic", "Antiemetic", "Sleep aid", "Appetite stimulant"],
@@ -46,7 +48,7 @@ const COMPOUNDS: Compound[] = [
     id: "cbd",
     name: "CBD",
     type: "cannabinoid",
-    color: "#4A90D9",
+    color: "#1F6FE0",
     symptoms: ["Anxiety", "Inflammation", "Seizures", "Pain", "Insomnia"],
     risks: ["Drug interactions (CYP2D6, CYP3A4)", "Liver enzyme elevation at very high doses"],
     benefits: ["Non-intoxicating", "Anxiolytic", "Anti-inflammatory", "Neuroprotective", "Modulates THC effects"],
@@ -57,7 +59,7 @@ const COMPOUNDS: Compound[] = [
     id: "cbn",
     name: "CBN",
     type: "cannabinoid",
-    color: "#7D3F9B",
+    color: "#7A1FB5",
     symptoms: ["Insomnia", "Pain", "Inflammation"],
     risks: ["Limited safety data", "Mild sedation"],
     benefits: ["Sedating", "Pain relief", "Anti-inflammatory"],
@@ -68,7 +70,7 @@ const COMPOUNDS: Compound[] = [
     id: "cbg",
     name: "CBG",
     type: "cannabinoid",
-    color: "#D4944F",
+    color: "#E8852A",
     symptoms: ["Anxiety", "Inflammation", "IBD", "Glaucoma"],
     risks: ["Limited long-term data"],
     benefits: ["Anxiolytic", "Anti-inflammatory", "Neuroprotective", "Non-intoxicating"],
@@ -79,7 +81,7 @@ const COMPOUNDS: Compound[] = [
     id: "thca",
     name: "THCA",
     type: "cannabinoid",
-    color: "#5C8A4F",
+    color: "#4FA628",
     symptoms: ["Nausea", "Inflammation", "Neurodegeneration"],
     risks: ["Converts to THC with heat"],
     benefits: ["Non-intoxicating (raw)", "Anti-inflammatory", "Antiemetic"],
@@ -90,7 +92,7 @@ const COMPOUNDS: Compound[] = [
     id: "cbda",
     name: "CBDA",
     type: "cannabinoid",
-    color: "#3A6B9B",
+    color: "#1E55B0",
     symptoms: ["Nausea", "Anxiety", "Inflammation"],
     risks: ["Unstable — converts to CBD with heat"],
     benefits: ["Potent antiemetic", "Anti-inflammatory", "Non-intoxicating"],
@@ -102,7 +104,7 @@ const COMPOUNDS: Compound[] = [
     id: "myrcene",
     name: "Myrcene",
     type: "terpene",
-    color: "#6DAF6D",
+    color: "#3FB04A",
     symptoms: ["Pain", "Insomnia", "Inflammation", "Muscle tension"],
     risks: ["Sedation at high doses"],
     benefits: ["Sedating", "Analgesic", "Anti-inflammatory", "Enhances THC absorption"],
@@ -113,7 +115,7 @@ const COMPOUNDS: Compound[] = [
     id: "limonene",
     name: "Limonene",
     type: "terpene",
-    color: "#F6D365",
+    color: "#F4C20D",
     symptoms: ["Depression", "Anxiety", "Stress", "Nausea"],
     risks: ["May cause reflux in sensitive individuals"],
     benefits: ["Mood elevation", "Anxiolytic", "Antifungal", "Gastroprotective"],
@@ -124,7 +126,7 @@ const COMPOUNDS: Compound[] = [
     id: "linalool",
     name: "Linalool",
     type: "terpene",
-    color: "#B388D9",
+    color: "#A050D6",
     symptoms: ["Anxiety", "Insomnia", "Pain", "Seizures"],
     risks: ["Potential skin sensitivity (topical)"],
     benefits: ["Calming", "Anxiolytic", "Analgesic", "Anticonvulsant"],
@@ -135,7 +137,7 @@ const COMPOUNDS: Compound[] = [
     id: "pinene",
     name: "Pinene",
     type: "terpene",
-    color: "#4A7A5C",
+    color: "#117D3F",
     symptoms: ["Inflammation", "Asthma", "Cognitive fog"],
     risks: ["May counteract sedating effects"],
     benefits: ["Bronchodilator", "Anti-inflammatory", "Memory aid", "Alertness"],
@@ -146,7 +148,7 @@ const COMPOUNDS: Compound[] = [
     id: "caryophyllene",
     name: "Caryophyllene",
     type: "terpene",
-    color: "#8B6F47",
+    color: "#A04A1F",
     symptoms: ["Pain", "Inflammation", "Anxiety", "Depression"],
     risks: ["Generally well tolerated"],
     benefits: ["CB2 agonist (unique terpene)", "Anti-inflammatory", "Analgesic", "Gastroprotective"],
@@ -157,7 +159,7 @@ const COMPOUNDS: Compound[] = [
     id: "humulene",
     name: "Humulene",
     type: "terpene",
-    color: "#9B7A3A",
+    color: "#D4661A",
     symptoms: ["Inflammation", "Pain", "Appetite (suppressant)"],
     risks: ["May reduce appetite"],
     benefits: ["Anti-inflammatory", "Appetite suppressant", "Antibacterial"],
@@ -177,10 +179,12 @@ function ComboWheel({
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const outerRadius = 180;
-  const innerRadius = 80;
-  const cx = 200;
-  const cy = 200;
+  // EMR-201: bump diameter and ring thickness so labels read clearly
+  // without zooming in. The viewBox grows in proportion.
+  const outerRadius = 250;
+  const innerRadius = 100;
+  const cx = 280;
+  const cy = 280;
 
   const cannabinoids = COMPOUNDS.filter((c) => c.type === "cannabinoid");
   const terpenes = COMPOUNDS.filter((c) => c.type === "terpene");
@@ -188,10 +192,10 @@ function ComboWheel({
 
   return (
     <svg
-      width={400}
-      height={400}
-      viewBox="0 0 400 400"
-      className="w-full max-w-[400px] mx-auto select-none"
+      width={560}
+      height={560}
+      viewBox="0 0 560 560"
+      className="w-full max-w-[560px] mx-auto select-none"
     >
       <style>{`
         .wheel-segment { cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
@@ -252,9 +256,9 @@ function ComboWheel({
                 Z
               `}
               fill={compound.color}
-              opacity={isSelected ? 1 : 0.35}
-              stroke={isSelected ? "#fff" : "none"}
-              strokeWidth={isSelected ? 2 : 0}
+              opacity={isSelected ? 1 : 0.78}
+              stroke={isSelected ? "#fff" : "rgba(255,255,255,0.35)"}
+              strokeWidth={isSelected ? 3 : 1}
             />
             <text
               x={lx}
@@ -262,11 +266,11 @@ function ComboWheel({
               textAnchor="middle"
               dominantBaseline="central"
               fill="#fff"
-              fontSize={compound.name.length > 8 ? 8 : 10}
-              fontWeight="600"
+              fontSize={compound.name.length > 8 ? 14 : 17}
+              fontWeight="700"
               fontFamily="var(--font-sans)"
               transform={`rotate(${textRotation} ${lx} ${ly})`}
-              style={{ pointerEvents: "none" }}
+              style={{ pointerEvents: "none", textShadow: "0 1px 2px rgba(0,0,0,0.25)" }}
             >
               {compound.name}
             </text>
@@ -289,10 +293,10 @@ function ComboWheel({
       {/* Center content */}
       <text
         x={cx}
-        y={cy - 14}
+        y={cy - 18}
         textAnchor="middle"
         fill="var(--text)"
-        fontSize={14}
+        fontSize={20}
         fontWeight="600"
         fontFamily="var(--font-display)"
       >
@@ -300,20 +304,20 @@ function ComboWheel({
       </text>
       <text
         x={cx}
-        y={cy + 6}
+        y={cy + 8}
         textAnchor="middle"
         fill="var(--text-muted)"
-        fontSize={10}
+        fontSize={13}
         fontFamily="var(--font-sans)"
       >
         {selected.size === 0 ? "Tap compounds" : "Tap to toggle"}
       </text>
       <text
         x={cx}
-        y={cy + 22}
+        y={cy + 30}
         textAnchor="middle"
         fill="var(--accent)"
-        fontSize={9}
+        fontSize={12}
         fontFamily="var(--font-sans)"
       >
         Combo Wheel

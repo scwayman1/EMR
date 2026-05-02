@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ReplyCompose, NewThreadCompose } from "./compose";
 import { formatRelative } from "@/lib/utils/format";
+import { cn } from "@/lib/utils/cn";
 
 function PhoneIcon() {
   return (
@@ -46,10 +46,27 @@ function VideoIcon() {
   );
 }
 
-// ---------- Types matching the serialized data from the server ----------
-// Note: this interface intentionally does NOT carry `aiDrafted` or
-// `senderAgent` — those are stripped server-side before the page renders
-// so patients never see agent attribution on their messages.
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={cn(
+        "transition-transform duration-200",
+        open ? "rotate-90" : "rotate-0",
+      )}
+    >
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
+  );
+}
 
 interface MessageData {
   id: string;
@@ -72,13 +89,6 @@ interface Props {
   currentUserId: string;
 }
 
-/**
- * "Care team is reviewing" inline status card. Shown immediately below a
- * patient's own message when there's no care-team reply yet. Communicates
- * "we got it, we're working on it" without mentioning the agent layer at
- * all. From the patient's perspective the care team is their care team —
- * the AI assist happens behind the curtain.
- */
 function CareTeamReviewingCard() {
   return (
     <div className="flex justify-start">
@@ -109,22 +119,186 @@ function CareTeamReviewingCard() {
   );
 }
 
-export function PatientMessagesView({ threads, currentUserId }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const activeThreadId = searchParams.get("thread");
-  const [showCompose, setShowCompose] = useState(false);
+function ThreadRow({
+  thread,
+  currentUserId,
+  isOpen,
+  onToggle,
+}: {
+  thread: ThreadData;
+  currentUserId: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
   const [callToast, setCallToast] = useState<string | null>(null);
+  const lastMsg = thread.messages[0];
+  const chronological = [...thread.messages].reverse();
+  const lastChrono = chronological[chronological.length - 1];
+  const awaitingReply =
+    lastChrono != null && lastChrono.senderUserId === currentUserId;
 
-  const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
+  function pingCallToast(label: string) {
+    setCallToast(label);
+    setTimeout(() => setCallToast(null), 2500);
+  }
 
-  function selectThread(id: string) {
-    router.push(`/portal/messages?thread=${id}`, { scroll: false });
+  return (
+    <div
+      className={cn(
+        "border-b border-border last:border-b-0 transition-colors",
+        isOpen
+          ? "bg-surface-muted/40 border-l-2 border-l-accent"
+          : "border-l-2 border-l-transparent hover:bg-surface-muted/40",
+      )}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={`thread-${thread.id}-panel`}
+        className="w-full text-left px-5 py-4 flex items-start gap-3"
+      >
+        <span className="mt-1 text-text-subtle shrink-0">
+          <ChevronIcon open={isOpen} />
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <p
+              className={cn(
+                "text-sm truncate",
+                isOpen ? "font-semibold text-text" : "font-medium text-text",
+              )}
+            >
+              {thread.subject}
+            </p>
+            <span className="text-[11px] text-text-subtle whitespace-nowrap">
+              {formatRelative(thread.lastMessageAt)}
+            </span>
+          </div>
+          {lastMsg && !isOpen && (
+            <p className="text-xs text-text-muted mt-1 line-clamp-1">
+              {lastMsg.body}
+            </p>
+          )}
+        </div>
+      </button>
+
+      {isOpen && (
+        <div id={`thread-${thread.id}-panel`} className="px-5 pb-5">
+          <div className="rounded-xl border border-border bg-surface overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-text-subtle">
+                Conversation
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => pingCallToast("Voice calling coming soon")}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
+                  aria-label="Voice call"
+                >
+                  <PhoneIcon />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => pingCallToast("Video calling coming soon")}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
+                  aria-label="Video call"
+                >
+                  <VideoIcon />
+                </button>
+              </div>
+            </div>
+
+            {callToast && (
+              <div className="mx-4 mt-3 text-xs text-text-muted bg-surface-muted rounded-lg px-3 py-2 text-center">
+                {callToast}
+              </div>
+            )}
+
+            <div className="px-4 py-4 space-y-4 max-h-[420px] overflow-y-auto">
+              {chronological.map((msg) => {
+                const isOwn = msg.senderUserId === currentUserId;
+                const senderName = isOwn
+                  ? "You"
+                  : msg.sender
+                    ? `${msg.sender.firstName} ${msg.sender.lastName}`
+                    : "Care Team";
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex",
+                      isOwn ? "justify-end" : "justify-start",
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "flex gap-2.5 max-w-[80%]",
+                        isOwn ? "flex-row-reverse" : "flex-row",
+                      )}
+                    >
+                      {!isOwn && (
+                        <Avatar
+                          firstName={msg.sender?.firstName ?? "C"}
+                          lastName={msg.sender?.lastName ?? "T"}
+                          size="sm"
+                          className="mt-1 shrink-0"
+                        />
+                      )}
+                      <div>
+                        <div
+                          className={cn(
+                            "rounded-xl px-4 py-2.5 text-sm leading-relaxed",
+                            isOwn
+                              ? "bg-accent-soft text-text"
+                              : "bg-surface-raised text-text border border-border/60",
+                          )}
+                        >
+                          {msg.body}
+                        </div>
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 mt-1",
+                            isOwn ? "justify-end" : "justify-start",
+                          )}
+                        >
+                          <span className="text-xs text-text-subtle">
+                            {senderName}
+                          </span>
+                          <span className="text-xs text-text-subtle">
+                            {formatRelative(msg.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {awaitingReply && <CareTeamReviewingCard />}
+            </div>
+
+            <ReplyCompose threadId={thread.id} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PatientMessagesView({ threads, currentUserId }: Props) {
+  const [showCompose, setShowCompose] = useState(false);
+  const [openThreadId, setOpenThreadId] = useState<string | null>(
+    threads[0]?.id ?? null,
+  );
+
+  function toggleThread(id: string) {
+    setOpenThreadId((prev) => (prev === id ? null : id));
   }
 
   return (
     <>
-      {/* New message compose card */}
       <NewThreadCompose
         open={showCompose}
         onClose={() => setShowCompose(false)}
@@ -139,173 +313,27 @@ export function PatientMessagesView({ threads, currentUserId }: Props) {
           }
         />
       ) : (
-        <div className="flex flex-col md:flex-row gap-4 min-h-[480px]">
-          {/* Thread list panel */}
-          <Card className="md:w-[320px] shrink-0 overflow-hidden">
-            <div className="p-3 border-b border-border">
-              <Button
-                size="sm"
-                className="w-full"
-                onClick={() => setShowCompose(true)}
-              >
-                New message
-              </Button>
-            </div>
-            <div className="overflow-y-auto max-h-[560px]">
-              {threads.map((t) => {
-                const isActive = t.id === activeThreadId;
-                const lastMsg = t.messages[0];
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => selectThread(t.id)}
-                    className={`w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted ${
-                      isActive
-                        ? "bg-surface-muted border-l-2 border-l-accent"
-                        : "border-l-2 border-l-transparent"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium text-text truncate">
-                        {t.subject}
-                      </p>
-                      <span className="text-[11px] text-text-subtle whitespace-nowrap">
-                        {formatRelative(t.lastMessageAt)}
-                      </span>
-                    </div>
-                    {lastMsg && (
-                      <p className="text-xs text-text-muted mt-1 line-clamp-2">
-                        {lastMsg.body}
-                      </p>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </Card>
-
-          {/* Thread detail panel */}
-          <Card className="flex-1 flex flex-col overflow-hidden">
-            {activeThread ? (
-              <>
-                {/* Thread header */}
-                <div className="px-5 py-4 border-b border-border">
-                  <div className="flex items-center justify-between gap-3">
-                    <h2 className="font-display text-lg text-text">
-                      {activeThread.subject}
-                    </h2>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCallToast("Voice calling coming soon");
-                          setTimeout(() => setCallToast(null), 2500);
-                        }}
-                        className="inline-flex items-center justify-center h-11 w-11 min-h-[44px] min-w-[44px] rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
-                        aria-label="Voice call"
-                      >
-                        <PhoneIcon />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCallToast("Video calling coming soon");
-                          setTimeout(() => setCallToast(null), 2500);
-                        }}
-                        className="inline-flex items-center justify-center h-11 w-11 min-h-[44px] min-w-[44px] rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
-                        aria-label="Video call"
-                      >
-                        <VideoIcon />
-                      </button>
-                    </div>
-                  </div>
-                  {callToast && (
-                    <div className="mt-2 text-xs text-text-muted bg-surface-muted rounded-lg px-3 py-2 text-center">
-                      {callToast}
-                    </div>
-                  )}
-                </div>
-
-                {/* Messages area */}
-                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                  {/* Show messages in chronological order */}
-                  {(() => {
-                    const chronological = [...activeThread.messages].reverse();
-                    // Detect whether the last message is from the patient
-                    // with no care-team reply after it. If so we'll render
-                    // a "care team is reviewing" system card below it.
-                    const lastMsg = chronological[chronological.length - 1];
-                    const awaitingReply =
-                      lastMsg != null && lastMsg.senderUserId === currentUserId;
-                    return (
-                      <>
-                        {chronological.map((msg) => {
-                          const isOwn = msg.senderUserId === currentUserId;
-                          const senderName = isOwn
-                            ? "You"
-                            : msg.sender
-                              ? `${msg.sender.firstName} ${msg.sender.lastName}`
-                              : "Care Team";
-
-                          return (
-                            <div
-                              key={msg.id}
-                              className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
-                            >
-                              <div
-                                className={`flex gap-2.5 max-w-[80%] ${isOwn ? "flex-row-reverse" : "flex-row"}`}
-                              >
-                                {!isOwn && (
-                                  <Avatar
-                                    firstName={msg.sender?.firstName ?? "C"}
-                                    lastName={msg.sender?.lastName ?? "T"}
-                                    size="sm"
-                                    className="mt-1 shrink-0"
-                                  />
-                                )}
-                                <div>
-                                  <div
-                                    className={`rounded-xl px-4 py-2.5 text-sm leading-relaxed ${
-                                      isOwn
-                                        ? "bg-accent-soft text-text"
-                                        : "bg-surface-raised text-text border border-border/60"
-                                    }`}
-                                  >
-                                    {msg.body}
-                                  </div>
-                                  <div
-                                    className={`flex items-center gap-2 mt-1 ${isOwn ? "justify-end" : "justify-start"}`}
-                                  >
-                                    <span className="text-xs text-text-subtle">
-                                      {senderName}
-                                    </span>
-                                    <span className="text-xs text-text-subtle">
-                                      {formatRelative(msg.createdAt)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {awaitingReply && <CareTeamReviewingCard />}
-                      </>
-                    );
-                  })()}
-                </div>
-
-                {/* Reply bar */}
-                <ReplyCompose threadId={activeThread.id} />
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <p className="text-sm text-text-muted">
-                  Select a conversation to view messages
-                </p>
-              </div>
-            )}
-          </Card>
-        </div>
+        <Card className="overflow-hidden">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <p className="text-sm font-medium text-text">
+              {threads.length} conversation{threads.length === 1 ? "" : "s"}
+            </p>
+            <Button size="sm" onClick={() => setShowCompose(true)}>
+              New message
+            </Button>
+          </div>
+          <div>
+            {threads.map((t) => (
+              <ThreadRow
+                key={t.id}
+                thread={t}
+                currentUserId={currentUserId}
+                isOpen={openThreadId === t.id}
+                onToggle={() => toggleThread(t.id)}
+              />
+            ))}
+          </div>
+        </Card>
       )}
     </>
   );

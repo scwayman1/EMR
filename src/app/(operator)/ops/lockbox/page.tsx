@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageShell, PageHeader } from "@/components/shell/PageHeader";
@@ -56,6 +57,15 @@ export default async function LockboxPage() {
         title="Lockbox reconciliation"
         description="Match every bank deposit to one or more ERAs / patient payments. Variance lands on the daily close exception list."
       />
+
+      <div className="mb-6 flex justify-end">
+        <Link
+          href="/ops/lockbox/reconcile"
+          className="inline-flex items-center justify-center rounded-md bg-accent text-accent-ink px-4 h-9 text-sm font-medium hover:bg-accent-strong"
+        >
+          + Upload bank CSV
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Match rate" value={`${matchRate}%`} tone={matchRate >= 95 ? "success" : matchRate >= 80 ? "accent" : "warning"} hint={`${formatMoney(totalMatched)} of ${formatMoney(totalDeposited)}`} />

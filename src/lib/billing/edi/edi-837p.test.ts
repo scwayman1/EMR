@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { build837P, groupCas, type Claim837Input } from "./edi-837p";
+import {
+  build837P,
+  ControlNumberAllocator,
+  groupCas,
+  validate837Input,
+  type Claim837Input,
+} from "./edi-837p";
 import { validateSnip1to5 } from "./snip-validator";
 
 // EMR-216 — golden test fixtures + SNIP validation
@@ -131,6 +137,88 @@ describe("build837P — secondary claim with Loop 2320 / 2430", () => {
     expect(built.payload).toContain("DTP*573*D8*20260415");
     expect(built.payload).toContain("REF*F8*MEDICARE-9876");
     expect(built.payload).toContain("SVD*MEDICARE*96.00*HC:99213");
+  });
+});
+
+describe("validate837Input", () => {
+  it("passes a clean primary claim", () => {
+    const r = validate837Input(baseInput());
+    expect(r.ok).toBe(true);
+    expect(r.errors).toEqual([]);
+  });
+
+  it("flags a malformed NPI", () => {
+    const i = baseInput();
+    i.billingProvider.npi = "12345";
+    const r = validate837Input(i);
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => e.field === "billing.npi")).toBe(true);
+  });
+
+  it("flags claim totals not equal to line sum", () => {
+    const i = baseInput();
+    i.claim.totalChargeCents = 99999;
+    const r = validate837Input(i);
+    expect(r.errors.some((e) => e.field === "claim.totalChargeCents")).toBe(true);
+  });
+
+  it("flags out-of-range diagnosis pointers", () => {
+    const i = baseInput();
+    i.serviceLines[0].diagnosisPointers = [3];
+    const r = validate837Input(i);
+    expect(r.errors.some((e) => e.field.endsWith(".diagnosisPointers"))).toBe(true);
+  });
+
+  it("requires originalClaimControlNumber on a corrected claim", () => {
+    const i = baseInput();
+    i.claim.frequencyCode = "7";
+    const r = validate837Input(i);
+    expect(r.errors.some((e) => e.field === "claim.originalClaimControlNumber")).toBe(true);
+  });
+
+  it("flags a secondary submission missing per-line primary adjudication", () => {
+    const i = baseInput();
+    i.secondary = {
+      primaryPayer: { name: "MEDICARE", payerId: "MEDICARE" },
+      primarySubscriber: { ...i.subscriber, memberId: "M-PRIMARY" },
+      primaryAllowedCents: 12000,
+      primaryPaidCents: 9600,
+      primaryEraDate: new Date(Date.UTC(2026, 3, 15)),
+      primaryCas: [],
+      primaryClaimControlNumber: "MEDICARE-1",
+    };
+    // Line missing primaryAdjudication — should fail.
+    const r = validate837Input(i);
+    expect(r.errors.some((e) => e.field.includes("primaryAdjudication"))).toBe(true);
+  });
+});
+
+describe("ControlNumberAllocator", () => {
+  it("issues monotonically increasing control numbers", () => {
+    const a = new ControlNumberAllocator({ isa: 100, gs: 500, st: 7 });
+    const a1 = a.next();
+    const a2 = a.next();
+    expect(a1.isaControlNumber).toBe(100);
+    expect(a2.isaControlNumber).toBe(101);
+    expect(a1.stControlNumber).toBe("0007");
+    expect(a2.stControlNumber).toBe("0008");
+  });
+
+  it("wraps ISA at 999,999,999", () => {
+    const a = new ControlNumberAllocator({ isa: 999_999_999 });
+    expect(a.next().isaControlNumber).toBe(999_999_999);
+    expect(a.next().isaControlNumber).toBe(1);
+  });
+});
+
+describe("multi-line NTE", () => {
+  it("splits long claim notes across multiple NTE segments", () => {
+    const i = baseInput();
+    i.claim.notes =
+      "Patient reports persistent symptoms after the initial dose; provider recommends a follow-up visit within two weeks to reassess and possibly titrate the cannabinoid ratio.";
+    const built = build837P(i, { ...CONTROL, date: FIXED_DATE });
+    const nteCount = (built.payload.match(/NTE\*ADD\*/g) ?? []).length;
+    expect(nteCount).toBeGreaterThan(1);
   });
 });
 
