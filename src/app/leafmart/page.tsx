@@ -323,7 +323,7 @@ export default async function LeafmartHomePage() {
 
       {/* ── HUMANITY / PORTRAITS ─────────────────────────── */}
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
-        <div className="rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 lg:p-14" style={{ background: "linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%)" }}>
+        <div className="rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 lg:p-14" style={{ background: "linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%)", ["--ink" as string]: "#152119", ["--text" as string]: "#1F2A24", ["--text-soft" as string]: "#4A5651" }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             {/* Left: anchor portrait + checklist */}
             <div className="order-2 lg:order-1">
@@ -382,13 +382,13 @@ export default async function LeafmartHomePage() {
           <div>
             <p className="eyebrow text-[rgba(255,248,232,0.8)]">2-minute quiz</p>
             <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 mb-4 sm:mb-[18px] text-[#FFF8E8]">
-              Not sure where to start? <em className="font-accent not-italic text-[var(--butter)]">We&apos;ll point you somewhere.</em>
+              Not sure where to start? <em className="font-accent not-italic text-[#F5E6B8]">We&apos;ll point you somewhere.</em>
             </h2>
             <p className="text-[15px] sm:text-[17px] leading-relaxed text-[rgba(255,248,232,0.8)] max-w-[480px]">
               Tell us how you&apos;d like to feel. We&apos;ll match you with three clinician-reviewed products to consider — no signup required.
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3.5 mt-6 sm:mt-7">
-              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[var(--ink)] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
+              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[#152119] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
                 Take the quiz →
               </Link>
               <Link href="/leafmart/shop" className="inline-flex items-center justify-center rounded-full font-medium border-[1.5px] border-[#FFF8E8] text-[#FFF8E8] hover:bg-[rgba(255,248,232,0.15)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">

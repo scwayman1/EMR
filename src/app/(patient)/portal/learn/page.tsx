@@ -39,7 +39,7 @@ export default function LearnPage() {
 
   return (
     <PageShell maxWidth="max-w-[960px]">
-      <PatientSectionNav section="health" />
+      <PatientSectionNav section="chatLearn" />
 
       <div className="mb-8">
         <Eyebrow className="mb-3">Educational Library</Eyebrow>
