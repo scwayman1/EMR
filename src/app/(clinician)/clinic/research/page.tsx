@@ -198,12 +198,13 @@ export default async function ResearchConsolePage({
             <CardContent>
               <p className="text-sm text-text-muted leading-relaxed">
                 Results are drawn from a curated index of peer-reviewed cannabis
-                studies. The Research Synthesizer Agent matches keywords, ranks
-                relevance, and generates a summary with traceable citations.
+                studies, augmented by the live PubMed E-utilities API. The
+                Research Synthesizer Agent matches keywords, ranks relevance,
+                and generates a summary with traceable citations.
               </p>
               <p className="text-xs text-text-subtle mt-3">
-                V1 uses a stub corpus of 4 foundational papers. The full semantic
-                index will be wired in Phase 4.
+                Every cited article links out to PubMed in a new tab, so the
+                full abstract is one click from the chart.
               </p>
             </CardContent>
           </Card>
