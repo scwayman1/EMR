@@ -25,9 +25,11 @@ import { searchPubMedArticles, type PubMedSearchResult } from "@/app/education/a
 
 // Kander book links — single source of truth so the URLs can be swapped to
 // our hosted PDF / mirrored web copy without hunting through the JSX.
+// EMR-370: web version moved to freecannabiscancerbook.com (the original
+// .com mirror started 404ing); PDF still served from the Archive.org copy.
 const KANDER_PDF_URL =
   "https://archive.org/download/cannabis-and-cannabinoids-in-cancer-treatment/CannabisAndCancer-JustinKander.pdf";
-const KANDER_WEB_URL = "https://www.cannabisandcancer.com/";
+const KANDER_WEB_URL = "https://freecannabiscancerbook.com/";
 
 export function ResearchTab() {
   const [cannabinoidFilter, setCannabinoidFilter] = useState("");
@@ -203,9 +205,16 @@ export function ResearchTab() {
                           {article.year > 0 && (
                             <Badge tone="neutral" className="text-[10px]">{article.year}</Badge>
                           )}
-                          <span className="text-[10px] text-slate-400 ml-auto font-mono">
+                          <a
+                            href={`https://pubmed.ncbi.nlm.nih.gov/${article.pmid}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-slate-500 hover:text-accent ml-auto font-mono inline-flex items-center gap-1"
+                            aria-label={`Open PMID ${article.pmid} on PubMed`}
+                          >
                             PMID: {article.pmid}
-                          </span>
+                            <ExternalLink className="w-2.5 h-2.5" strokeWidth={2.5} />
+                          </a>
                         </div>
                       </CardContent>
                     </Card>
@@ -373,51 +382,69 @@ export function ResearchTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((pair, i) => {
               const ev = EVIDENCE_COLORS[pair.evidenceLevel];
+              // EMR-348 — clicking a card opens the PubMed search for that
+              // exact cannabinoid+condition pair so the user can see the
+              // underlying studies and judge the evidence themselves.
+              const pubmedHref = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(
+                `${pair.cannabinoid} AND ${pair.condition}`,
+              )}`;
               return (
-                <Card
+                <a
                   key={i}
-                  className={cn(
-                    "rounded-2xl border-2 border-transparent transition-all duration-300",
-                    "hover:-translate-y-1 hover:shadow-lg hover:border-accent/30",
-                    ev.bg
-                  )}
+                  href={pubmedHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open the ${pair.studyCount.toLocaleString()} PubMed studies for ${pair.cannabinoid} and ${pair.condition}`}
+                  className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-2xl"
                 >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg font-display text-text mb-2 leading-snug">
-                          {pair.cannabinoid}
-                          <span className="text-slate-400 font-sans text-sm mx-1.5">for</span>
-                          {pair.condition}
-                        </p>
-                        <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                          {pair.summary}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0 flex flex-col items-end gap-2">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide",
-                            "px-2.5 py-1 rounded-full border",
-                            ev.bg,
-                            ev.text,
-                            "border-current/20 ring-1 ring-white/60"
-                          )}
-                          aria-label={ev.label}
-                        >
-                          <span aria-hidden className="text-xs leading-none">{ev.emoji}</span>
-                          {ev.label}
-                        </span>
-                        <div className="bg-white/70 px-2.5 py-1 rounded-md border border-black/5 backdrop-blur-sm">
-                          <p className="text-[11px] font-bold text-slate-700">
-                            {pair.studyCount.toLocaleString()}
-                            <span className="font-medium text-slate-500 ml-1">studies</span>
+                  <Card
+                    className={cn(
+                      "rounded-2xl border-2 border-transparent transition-all duration-300 cursor-pointer",
+                      "hover:-translate-y-1 hover:shadow-lg hover:border-accent/30",
+                      ev.bg
+                    )}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-lg font-display text-text mb-2 leading-snug">
+                            {pair.cannabinoid}
+                            <span className="text-slate-400 font-sans text-sm mx-1.5">for</span>
+                            {pair.condition}
+                          </p>
+                          <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                            {pair.summary}
                           </p>
                         </div>
+                        <div className="text-right shrink-0 flex flex-col items-end gap-2">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide",
+                              "px-2.5 py-1 rounded-full border",
+                              ev.bg,
+                              ev.text,
+                              "border-current/20 ring-1 ring-white/60"
+                            )}
+                            aria-label={ev.label}
+                          >
+                            <span aria-hidden className="text-xs leading-none">{ev.emoji}</span>
+                            {ev.label}
+                          </span>
+                          <div className="bg-white/70 px-2.5 py-1 rounded-md border border-black/5 backdrop-blur-sm">
+                            <p className="text-[11px] font-bold text-slate-700">
+                              {pair.studyCount.toLocaleString()}
+                              <span className="font-medium text-slate-500 ml-1">studies</span>
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <p className="mt-4 text-[11px] text-slate-500 inline-flex items-center gap-1 group-hover:text-accent">
+                        See top studies on PubMed
+                        <ExternalLink className="w-3 h-3" strokeWidth={2.5} />
+                      </p>
+                    </CardContent>
+                  </Card>
+                </a>
               );
             })}
           </div>

@@ -208,7 +208,7 @@ export default async function LeafmartHomePage() {
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-6 sm:mb-7">
           <div>
-            <p className="eyebrow text-[var(--leaf)]">The Sleep Shelf</p>
+            <p className="eyebrow text-[var(--leaf)]">The Rest Shelf</p>
             <h2 className="font-display text-[28px] sm:text-[40px] lg:text-[48px] font-normal tracking-[-1.0px] sm:tracking-[-1.2px] leading-[1.05] mt-2.5">
               For the hour <em className="font-accent not-italic text-[var(--leaf)]">before bed</em>.
             </h2>
@@ -216,7 +216,7 @@ export default async function LeafmartHomePage() {
               Reviewed in the last six months. Sorted by what people with a similar sleep profile told us actually helped.
             </p>
           </div>
-          <Link href="/leafmart/category/sleep" className="text-[14.5px] font-medium border-b-[1.5px] border-[var(--ink)] pb-0.5 mt-3 sm:mt-0">
+          <Link href="/leafmart/category/rest" className="text-[14.5px] font-medium border-b-[1.5px] border-[var(--ink)] pb-0.5 mt-3 sm:mt-0">
             See the whole shelf →
           </Link>
         </div>
@@ -327,7 +327,7 @@ export default async function LeafmartHomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             {/* Left: anchor portrait + checklist */}
             <div className="order-2 lg:order-1">
-              <Portrait src="/portraits/rosa.png" tone="rose" caption="Rosa, 64 · Sleep Shelf" />
+              <Portrait src="/portraits/rosa.png" tone="rose" caption="Rosa, 64 · Rest Shelf" />
               <div className="mt-6 sm:mt-7">
                 <h3 className="font-display text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--ink)]">Wellness, across every life</h3>
                 <div className="mt-4 flex flex-col gap-2.5">
@@ -355,7 +355,7 @@ export default async function LeafmartHomePage() {
               </p>
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lm-stagger">
                 <div>
-                  <Portrait src="/portraits/marcus.png" tone="sage" caption="Marcus, 38 · Recovery" />
+                  <Portrait src="/portraits/marcus.png" tone="sage" caption="Marcus, 38 · Relief" />
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The day after a long shift</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Field Balm № 4 · Flower Powered</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
@@ -363,7 +363,7 @@ export default async function LeafmartHomePage() {
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">Sunday afternoon, off the clock</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Stillwater Tonic · PhytoRx</div></div>
                 </div>
                 <div>
-                  <Portrait src="/portraits/james.png" tone="butter" caption="James, 82 · Sleep" />
+                  <Portrait src="/portraits/james.png" tone="butter" caption="James, 82 · Rest" />
                   <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Quiet Hours Tincture · Greenleaf Co.</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
@@ -377,8 +377,11 @@ export default async function LeafmartHomePage() {
       </section>
 
       {/* ── QUIZ CTA ─────────────────────────────────────── */}
+      {/* Lock the deep brand green explicitly: --leaf flips lighter in dark
+          mode and the cream copy fails AA contrast against the dark-mode
+          variant. The CTA is a fixed-color brand surface. */}
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
-        <div className="rounded-[28px] sm:rounded-[36px] px-6 sm:px-10 lg:px-16 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 lg:gap-10 items-center" style={{ background: "var(--leaf)", color: "#FFF8E8" }}>
+        <div className="rounded-[28px] sm:rounded-[36px] px-6 sm:px-10 lg:px-16 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 lg:gap-10 items-center" style={{ background: "#1F4D37", color: "#FFF8E8" }}>
           <div>
             <p className="eyebrow text-[rgba(255,248,232,0.8)]">2-minute quiz</p>
             <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 mb-4 sm:mb-[18px] text-[#FFF8E8]">

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatDate } from "@/lib/utils/format";
+import { DosingView } from "../dosing/dosing-view";
 
 export const metadata = { title: "My Medications" };
 
@@ -349,6 +350,20 @@ export default async function MedicationsPage() {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      {/* ==================== Dosing recommendation (merged from /portal/dosing) ==================== */}
+      <EditorialRule className="my-10" />
+      <section id="dosing-plan" className="scroll-mt-24 mb-4">
+        <Eyebrow className="mb-3">Dosing plan</Eyebrow>
+        <h2 className="font-display text-2xl md:text-3xl text-text tracking-tight">
+          AI-assisted dosing recommendation
+        </h2>
+        <p className="text-sm text-text-muted mt-3 max-w-md leading-relaxed mb-6">
+          Built from your health profile, current medications, and outcome
+          trends. Your care team will review and finalize.
+        </p>
+        <DosingView />
       </section>
     </PageShell>
   );

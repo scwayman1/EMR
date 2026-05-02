@@ -5,8 +5,8 @@ import { useState } from "react";
 
 const COLUMNS = [
   { title: "Shelves", links: [
-    { label: "Sleep", href: "/leafmart/category/sleep" },
-    { label: "Recovery", href: "/leafmart/category/recovery" },
+    { label: "Rest", href: "/leafmart/category/rest" },
+    { label: "RELIEF", href: "/leafmart/category/relief" },
     { label: "Calm", href: "/leafmart/category/calm" },
     { label: "Skin", href: "/leafmart/category/skin" },
     { label: "Focus", href: "/leafmart/category/focus" },

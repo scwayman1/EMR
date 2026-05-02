@@ -424,7 +424,7 @@ export default async function PatientHome() {
             ) : (
               <div>
                 <p className="text-sm text-text-muted">No active cannabis regimen yet.</p>
-                <Link href="/portal/dosing" className="mt-3 block">
+                <Link href="/portal/medications#dosing-plan" className="mt-3 block">
                   <Button size="sm" variant="secondary" className="w-full">
                     View dosing plan
                   </Button>

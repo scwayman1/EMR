@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
 import { LeafmartProductGrid } from "@/components/leafmart/LeafmartProductCard";
 import { DEMO_PRODUCTS } from "@/components/leafmart/demo-data";
+import { DosingGuideDisclaimer } from "@/components/leafmart/DosingGuideDisclaimer";
 import {
   findGuideByFormat,
   findGuideBySlug,
@@ -60,6 +61,7 @@ export default function DosingGuidePage({ params }: { params: { slug: string } }
 
   return (
     <>
+      <DosingGuideDisclaimer />
       {/* Breadcrumb */}
       <nav aria-label="Breadcrumb" className="px-4 sm:px-6 lg:px-14 pt-5 sm:pt-6 max-w-[1440px] mx-auto">
         <ol className="flex items-center gap-2 text-[11.5px] sm:text-xs text-[var(--muted)] flex-wrap">

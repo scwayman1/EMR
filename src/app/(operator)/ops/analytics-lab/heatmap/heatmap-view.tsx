@@ -12,22 +12,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 
-type Metric = "pain" | "sleep" | "anxiety" | "mood";
+type Metric = "pain" | "sleep" | "anxiety" | "mood" | "nausea";
 
 const METRICS: { key: Metric; label: string; emoji: string }[] = [
   { key: "pain", label: "Pain", emoji: "🩹" },
   { key: "sleep", label: "Sleep", emoji: "😴" },
   { key: "anxiety", label: "Anxiety", emoji: "😰" },
   { key: "mood", label: "Mood", emoji: "😊" },
+  { key: "nausea", label: "Nausea", emoji: "🤢" },
 ];
 
-// For "pain" and "anxiety" lower values = improvement; for "sleep" and "mood" higher = improvement.
+// "Lower-is-better" metrics — pain, anxiety, and nausea improve as the score
+// drops; sleep and mood improve as the score rises.
 function cellTone(metric: Metric, value: number, hasData: boolean): string {
   if (!hasData) return "bg-surface-muted border-border/50";
-  const improving =
-    metric === "pain" || metric === "anxiety" ? value <= 3 : value >= 7;
-  const worsening =
-    metric === "pain" || metric === "anxiety" ? value >= 7 : value <= 3;
+  const lowerIsBetter = metric === "pain" || metric === "anxiety" || metric === "nausea";
+  const improving = lowerIsBetter ? value <= 3 : value >= 7;
+  const worsening = lowerIsBetter ? value >= 7 : value <= 3;
   if (improving) {
     if (value <= 2 || value >= 8) return "bg-emerald-500 border-emerald-600";
     return "bg-emerald-300 border-emerald-400";

@@ -15,7 +15,7 @@ const DEMO_SUPPLIES: Supply[] = [
   { id: "sup-8",  name: "Sharps container (1 gal)",   unit: "each",       quantity: 4,  reorderPoint: 3,  supplier: "Medline" },
   { id: "sup-9",  name: "Surface disinfecting wipes", unit: "canister",   quantity: 9,  reorderPoint: 10, supplier: "Clorox Pro" },
   { id: "sup-10", name: "Bleach solution (gallon)",   unit: "gallon",     quantity: 2,  reorderPoint: 2,  supplier: "Clorox Pro" },
-  { id: "sup-11", name: "Hand sanitizer (500ml)",     unit: "bottle",     quantity: 18, reorderPoint: 6,  supplier: "Purell" },
+  { id: "sup-11", name: "Hand sanitizer (500 mL)",    unit: "bottle",     quantity: 18, reorderPoint: 6,  supplier: "Purell" },
   { id: "sup-12", name: "Printer paper (letter)",     unit: "ream",       quantity: 12, reorderPoint: 5,  supplier: "Staples" },
   { id: "sup-13", name: "Ballpoint pens",             unit: "box of 12",  quantity: 5,  reorderPoint: 3,  supplier: "Staples" },
   { id: "sup-14", name: "Exam table paper",           unit: "roll",       quantity: 6,  reorderPoint: 5,  supplier: "Medline" },

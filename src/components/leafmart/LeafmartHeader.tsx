@@ -9,8 +9,8 @@ import { AccountUserMenu } from "@/components/leafmart/AccountUserMenu";
 import { LogoMark } from "@/components/ui/logo";
 
 const NAV_LINKS = [
-  { label: "Sleep", href: "/leafmart/category/sleep" },
-  { label: "Recovery", href: "/leafmart/category/recovery" },
+  { label: "Rest", href: "/leafmart/category/rest" },
+  { label: "RELIEF", href: "/leafmart/category/relief" },
   { label: "Calm", href: "/leafmart/category/calm" },
   { label: "Skin", href: "/leafmart/category/skin" },
   { label: "Focus", href: "/leafmart/category/focus" },
@@ -190,7 +190,7 @@ export function LeafmartHeader() {
           <CartBadgeButton />
           <Link
             href="/leafmart/quiz"
-            className="bg-[var(--ink)] text-[var(--bg)] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            className="bg-[var(--ink)] text-[var(--bg)] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] hover:text-[var(--bg)] dark:hover:text-[#0F1210] transition-colors"
           >
             Take the quiz
           </Link>

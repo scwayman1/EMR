@@ -123,13 +123,24 @@ function buildFallbackResponse(
               ? "Insufficient data"
               : "Neutral";
 
-    response += `**${m.cannabinoid} for ${m.condition}** (${levelLabel}, ${m.studyCount} studies)\n`;
+    response += `🌿 ${m.cannabinoid} for ${m.condition} — ${levelLabel}, ${m.studyCount} studies\n`;
     response += `${m.summary}\n\n`;
   }
 
   response +=
-    `---\n\n*This information is sourced from our curated cannabis research database. ` +
-    `Always consult with a healthcare provider before making any treatment decisions.*`;
+    `🌿\n\nThis information is sourced from our curated cannabis research database. ` +
+    `Always consult with a healthcare provider before making any treatment decisions.`;
 
-  return response;
+  return stripStrayMarkdown(response);
+}
+
+/**
+ * Defensive cleanup for any `**bold**` or `*italic*` artifacts that the
+ * upstream LLM occasionally leaks into the chat surface — the chat panel
+ * renders raw text, so unparsed asterisks read as literal characters.
+ */
+function stripStrayMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(^|\s)\*(\S[^*]*?\S|\S)\*(?=\s|$|[.,;:!?])/g, "$1$2");
 }

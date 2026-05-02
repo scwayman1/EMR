@@ -68,6 +68,9 @@ const SHELF_BY_CATEGORY: Record<
   { bg: string; deep: string; shape: LeafmartProduct["shape"] }
 > = {
   // Goals / Symptoms
+  rest:                { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
+  relief:              { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
+  // Legacy slug aliases — keep until any external links / cached SEO drop off.
   sleep:               { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
   recovery:            { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
   calm:                { bg: "var(--butter)",   deep: "var(--butter-stamp)",   shape: "bottle" },
@@ -140,11 +143,11 @@ function doseLabelFrom(p: Product): string {
     case "beverage":
       return "12 fl oz";
     case "tincture":
-      return "30ml";
+      return "30 mL";
     case "topical":
       return "2oz";
     case "serum":
-      return "30ml";
+      return "30 mL";
     case "capsule":
       return "30 ct";
     case "edible":

@@ -16,6 +16,13 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      // Shelf renames — preserve any external/SEO links into the old slugs.
+      { source: "/leafmart/category/sleep", destination: "/leafmart/category/rest", permanent: true },
+      { source: "/leafmart/category/recovery", destination: "/leafmart/category/relief", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

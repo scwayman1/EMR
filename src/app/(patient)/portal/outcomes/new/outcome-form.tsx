@@ -75,6 +75,7 @@ const METRICS: MetricConfig[] = [
   { name: "sleep", label: "Sleep quality", lowLabel: "Very poor", highLabel: "Excellent" },
   { name: "anxiety", label: "Anxiety", lowLabel: "None", highLabel: "Severe" },
   { name: "mood", label: "Mood", lowLabel: "Very low", highLabel: "Great" },
+  { name: "nausea", label: "Nausea", lowLabel: "None", highLabel: "Severe" },
 ];
 
 function MetricRow({ config }: { config: MetricConfig }) {
