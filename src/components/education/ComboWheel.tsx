@@ -523,12 +523,15 @@ function Wheel({
           <path
             d={d}
             fill={c.color}
-            opacity={isSelected ? 1 : 0.38}
-            stroke={isSelected ? "#fff" : "rgba(255,255,255,0.25)"}
-            strokeWidth={isSelected ? 2.25 : 0.75}
+            opacity={isSelected ? 1 : 0.92}
+            stroke={isSelected ? "#fff" : "rgba(255,255,255,0.35)"}
+            strokeWidth={isSelected ? 2.5 : 1}
             className="combo-visible"
             style={{
-              transition: "opacity 200ms ease, stroke-width 200ms ease",
+              transition: "opacity 200ms ease, stroke-width 200ms ease, filter 300ms ease",
+              filter: isSelected
+                ? `drop-shadow(0 0 8px ${c.color}) drop-shadow(0 0 16px ${c.color}88)`
+                : "none",
               pointerEvents: dHit ? "none" : undefined,
             }}
           />
@@ -538,10 +541,14 @@ function Wheel({
             textAnchor="middle"
             dominantBaseline="central"
             fill="#fff"
-            fontSize={c.name.length > 8 ? 10 : 12}
-            fontWeight={600}
+            fontSize={c.name.length > 8 ? 12 : 14}
+            fontWeight={700}
             transform={`rotate(${rot} ${lx} ${ly})`}
-            style={{ pointerEvents: "none", letterSpacing: 0.2 }}
+            style={{
+              pointerEvents: "none",
+              letterSpacing: 0.4,
+              textShadow: "0 1px 3px rgba(0,0,0,0.4)",
+            }}
           >
             {c.name}
           </text>
@@ -551,8 +558,8 @@ function Wheel({
 
   const widthClass =
     size === "lg"
-      ? "w-full max-w-[440px] min-w-[300px]"
-      : "w-full max-w-[320px] min-w-[260px]";
+      ? "w-full max-w-[520px] min-w-[340px]"
+      : "w-full max-w-[360px] min-w-[280px]";
 
   return (
     <div className={cn("relative mx-auto", widthClass)}>
@@ -576,9 +583,9 @@ function Wheel({
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
           }
-          .combo-segment:hover .combo-visible { opacity: 0.85; }
+          .combo-segment:hover .combo-visible { opacity: 1 !important; filter: brightness(1.15) drop-shadow(0 0 6px var(--seg-color)) !important; }
           .combo-segment[aria-checked="true"] { animation: combo-pulse 600ms ease-out; }
-          .combo-segment:focus-visible .combo-visible { stroke: var(--seg-color); stroke-width: 3; filter: drop-shadow(0 0 6px var(--seg-color)); }
+          .combo-segment:focus-visible .combo-visible { stroke: var(--seg-color); stroke-width: 3; filter: drop-shadow(0 0 10px var(--seg-color)); }
           @keyframes combo-pulse {
             0% { transform: scale(1); }
             45% { transform: scale(1.02); }
@@ -605,14 +612,18 @@ function Wheel({
 
         <defs>
           <radialGradient id="combo-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="var(--accent-soft)" stopOpacity="0.55" />
-            <stop offset="70%" stopColor="var(--accent-soft)" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="var(--accent-soft)" stopOpacity="0" />
+            <stop offset="0%" stopColor="#4FA77B" stopOpacity="0.3" />
+            <stop offset="50%" stopColor="#4FA77B" stopOpacity="0.1" />
+            <stop offset="100%" stopColor="#4FA77B" stopOpacity="0" />
           </radialGradient>
           <radialGradient id="combo-hub" cx="50%" cy="50%" r="55%">
             <stop offset="0%" stopColor="var(--surface-raised)" />
             <stop offset="100%" stopColor="var(--surface)" />
           </radialGradient>
+          <filter id="combo-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
         </defs>
 
         <circle cx={cx} cy={cy} r={outerR + 12} fill="url(#combo-glow)" />
@@ -677,13 +688,13 @@ function Wheel({
         </text>
       </svg>
 
-      <div className="mt-4 flex items-center justify-center gap-4 text-[11px] text-text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-4 rounded-full bg-accent/60" aria-hidden />
+      <div className="mt-5 flex items-center justify-center gap-6 text-xs font-medium text-text-muted">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-3 w-5 rounded-full bg-[#2D8B5E]" aria-hidden />
           Cannabinoids
         </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-4 rounded-full bg-accent/30" aria-hidden />
+        <span className="inline-flex items-center gap-2">
+          <span className="h-3 w-5 rounded-full bg-[#E8A838]" aria-hidden />
           Terpenes
         </span>
       </div>

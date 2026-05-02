@@ -8,6 +8,7 @@
 import type { Metadata } from "next";
 import { AccountSidebar } from "@/components/leafmart/AccountSidebar";
 import { getCurrentUser } from "@/lib/auth/session";
+import { formatDate } from "@/components/leafmart/AccountData";
 import {
   DEMO_ACCOUNT,
   REWARD_CATALOG,
@@ -257,12 +258,3 @@ function RewardCard({
   );
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(+d)) return iso;
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
