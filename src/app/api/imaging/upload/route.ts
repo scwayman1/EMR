@@ -1,39 +1,46 @@
 /**
- * Medical Imaging Upload Backend — EMR-166
+ * Medical Imaging Upload Route — EMR-166
  *
- * Accepts CT / MRI / X-ray / US / PET uploads as multipart/form-data,
- * validates MIME + size guardrails, and registers a new ImagingStudy in
- * the in-memory store. File bytes are NOT persisted in this demo (no S3
- * key generation) — the metadata round-trip is what the viewer + report
- * UIs consume.
+ * Thin REST layer over `handleImagingUpload`. Responsibilities:
+ *   • Auth: only `clinician` or `operator` users may upload (HIPAA gate).
+ *   • Form parsing: validates metadata via zod, collects File parts.
+ *   • Tenant scoping: passes the user's organizationId into the pipeline
+ *     so storage paths inherit it (the pipeline refuses cross-tenant writes
+ *     by namespacing keys to `organizationId/patientId/studyId/...`).
  *
- * Form fields:
- *   patientId   — required string
- *   modality    — one of CT | MR | XR | US | PT | MG | NM
- *   description — required string (e.g. "CT Chest w/o contrast")
- *   bodyPart    — required string
- *   studyDate   — optional ISO yyyy-mm-dd; defaults to today
- *   indication  — optional clinical indication string
- *   files[]     — one or more File parts; rejected if MIME or size invalid
+ * Form fields (multipart/form-data):
+ *   patientId   — required string (chart patientId)
+ *   modality    — optional CT|MR|XR|US|PT|MG|NM (defaults to DICOM tag)
+ *   description — optional study description
+ *   bodyPart    — optional body part
+ *   studyDate   — optional yyyy-mm-dd
+ *   indication  — optional clinical indication
+ *   files[]     — one or more File parts
+ *
+ * GET returns the upload constraints so a UI can render its own
+ * dropzone hints without hardcoding limits.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { getCurrentUser } from "@/lib/auth/session";
 import {
   ACCEPTED_IMAGING_MIME,
   MAX_UPLOAD_BYTES,
-  modalityFromHint,
-  type ImagingStudy,
-  type Modality,
-  type UploadResult,
 } from "@/lib/domain/medical-imaging";
-import { upsertStudy } from "@/lib/domain/medical-imaging-store";
+import {
+  ImagingUploadError,
+  handleImagingUpload,
+  imagingStorageConfigured,
+} from "@/lib/imaging/upload";
 
 const MetadataSchema = z.object({
   patientId: z.string().min(1).max(200),
-  modality: z.enum(["CT", "MR", "XR", "US", "PT", "MG", "NM"]),
-  description: z.string().min(1).max(200),
-  bodyPart: z.string().min(1).max(120),
+  modality: z
+    .enum(["CT", "MR", "XR", "US", "PT", "MG", "NM"])
+    .optional(),
+  description: z.string().min(1).max(200).optional(),
+  bodyPart: z.string().min(1).max(120).optional(),
   studyDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected yyyy-mm-dd")
@@ -41,7 +48,19 @@ const MetadataSchema = z.object({
   indication: z.string().max(2000).optional(),
 });
 
+const ALLOWED_ROLES = new Set(["clinician", "operator", "system"]);
+
 export async function POST(req: NextRequest) {
+  // HIPAA gate: only authenticated, authorized roles may upload imaging.
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const allowed = user.roles.some((r) => ALLOWED_ROLES.has(r));
+  if (!allowed) {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   const contentType = req.headers.get("content-type") ?? "";
   if (!contentType.startsWith("multipart/form-data")) {
     return NextResponse.json(
@@ -53,9 +72,9 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const metadata = MetadataSchema.safeParse({
     patientId: form.get("patientId"),
-    modality: form.get("modality"),
-    description: form.get("description"),
-    bodyPart: form.get("bodyPart"),
+    modality: form.get("modality") ?? undefined,
+    description: form.get("description") ?? undefined,
+    bodyPart: form.get("bodyPart") ?? undefined,
     studyDate: form.get("studyDate") ?? undefined,
     indication: form.get("indication") ?? undefined,
   });
@@ -79,86 +98,55 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const accepted: File[] = [];
-  const rejected: UploadResult["rejectedFiles"] = [];
-  let totalBytes = 0;
+  try {
+    const outcome = await handleImagingUpload({
+      patientId: metadata.data.patientId,
+      organizationId: user.organizationId ?? undefined,
+      modality: metadata.data.modality,
+      description: metadata.data.description,
+      bodyPart: metadata.data.bodyPart,
+      studyDate: metadata.data.studyDate,
+      indication: metadata.data.indication,
+      files,
+      actor: {
+        userId: user.id,
+        role:
+          (user.roles.find((r) => r === "clinician" || r === "operator") as
+            | "clinician"
+            | "operator"
+            | undefined) ?? "system",
+      },
+    });
 
-  for (const file of files) {
-    if (file.size === 0) {
-      rejected.push({ name: file.name, reason: "empty file" });
-      continue;
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      rejected.push({
-        name: file.name,
-        reason: `exceeds ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB limit`,
-      });
-      continue;
-    }
-    const mime = (file.type || "application/octet-stream").toLowerCase();
-    const looksLikeDicom = file.name.toLowerCase().endsWith(".dcm");
-    if (!ACCEPTED_IMAGING_MIME.has(mime) && !looksLikeDicom) {
-      rejected.push({ name: file.name, reason: `unsupported type ${mime}` });
-      continue;
-    }
-    accepted.push(file);
-    totalBytes += file.size;
-  }
-
-  if (accepted.length === 0) {
     return NextResponse.json(
       {
-        error: "all_files_rejected",
-        rejected,
+        ok: true,
+        study: outcome.study,
+        result: outcome.result,
+        storageKeys: outcome.storageKeys,
+        dicom: outcome.dicomMetadata,
       },
-      { status: 422 },
+      { status: 201 },
+    );
+  } catch (err) {
+    if (err instanceof ImagingUploadError) {
+      const status =
+        err.code === "all_files_rejected"
+          ? 422
+          : err.code === "patient_mismatch"
+            ? 409
+            : 400;
+      return NextResponse.json(
+        { error: err.code, message: err.message, details: err.details },
+        { status },
+      );
+    }
+    console.error("[imaging/upload] internal error", err);
+    return NextResponse.json(
+      { error: "internal_error" },
+      { status: 500 },
     );
   }
-
-  // Construct a study id; in real PACS this would be a StudyInstanceUID from
-  // DICOM headers. For the upload demo we synthesize one and let the modality
-  // hint refine the parsed value if the client passed something fuzzy.
-  const modality: Modality =
-    metadata.data.modality ??
-    modalityFromHint(metadata.data.description) ??
-    "CT";
-
-  const studyId = `stu-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 6)}`;
-  const seriesId = `ser-${studyId}-1`;
-
-  const study: ImagingStudy = {
-    id: studyId,
-    patientId: metadata.data.patientId,
-    modality,
-    description: metadata.data.description,
-    bodyPart: metadata.data.bodyPart,
-    studyDate: metadata.data.studyDate ?? new Date().toISOString().slice(0, 10),
-    status: "uploaded",
-    indication: metadata.data.indication,
-    series: [
-      {
-        id: seriesId,
-        description: `${modality} primary series`,
-        frameCount: Math.max(1, accepted.length),
-        sliceThickness: modality === "CT" || modality === "MR" ? 2 : undefined,
-        orientation: "axial",
-      },
-    ],
-  };
-
-  upsertStudy(study);
-
-  const result: UploadResult = {
-    studyId,
-    seriesId,
-    acceptedFiles: accepted.length,
-    rejectedFiles: rejected,
-    totalBytes,
-  };
-
-  return NextResponse.json({ ok: true, study, result }, { status: 201 });
 }
 
 export async function GET() {
@@ -166,5 +154,6 @@ export async function GET() {
     accept: Array.from(ACCEPTED_IMAGING_MIME),
     maxBytes: MAX_UPLOAD_BYTES,
     modalities: ["CT", "MR", "XR", "US", "PT", "MG", "NM"],
+    storageConfigured: imagingStorageConfigured(),
   });
 }

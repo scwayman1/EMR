@@ -90,33 +90,10 @@ export interface BrandIdentity {
   inkClass: string;
 }
 
-export const FOUNDING_PARTNER_BRANDS: BrandIdentity[] = [
-  {
-    name: "PhytoRx",
-    tagline: "CBD + CBG beverages",
-    tileClass:
-      "bg-[linear-gradient(155deg,#E4ECE8_0%,#B5CCC4_55%,#4E6F67_100%)]",
-    inkClass: "text-[#1F332F]",
-  },
-  {
-    name: "Flower Powered",
-    tagline: "Full-spectrum topicals + tinctures",
-    tileClass:
-      "bg-[linear-gradient(155deg,#DDE4C9_0%,#9BB184_55%,#47663E_100%)]",
-    inkClass: "text-[#1E2E19]",
-  },
-  {
-    name: "Greenleaf Co.",
-    tagline: "Plant-powered wellness",
-    tileClass:
-      "bg-[linear-gradient(155deg,#F2E4C2_0%,#D9B880_55%,#9C7637_100%)]",
-    inkClass: "text-[#402B0C]",
-  },
-  {
-    name: "Potency 710",
-    tagline: "Gold Skin Serum",
-    tileClass:
-      "bg-[linear-gradient(155deg,#F7ECC5_0%,#DFC277_55%,#A98229_100%)]",
-    inkClass: "text-[#3E2E0A]",
-  },
-];
+/**
+ * EMR-204: Only confirmed founding-partner brands belong here. Until
+ * agreements close, this list is intentionally empty so we never render
+ * speculative brands as if they were live partners. Add entries below
+ * as deals close.
+ */
+export const FOUNDING_PARTNER_BRANDS: BrandIdentity[] = [];

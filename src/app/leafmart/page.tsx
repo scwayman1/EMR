@@ -267,24 +267,45 @@ export default async function LeafmartHomePage() {
             </p>
           </div>
 
-          {/* Mobile: horizontal scroll. sm+: grid. */}
-          <div className="-mx-6 sm:mx-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lm-stagger flex sm:flex-none overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none px-6 sm:px-0 gap-4 pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {partners.map((p) => (
-              <div
-                key={p.name}
-                className="card-lift rounded-3xl p-6 flex flex-col cursor-pointer flex-shrink-0 w-[78%] sm:w-auto snap-start sm:snap-align-none"
-                style={{ background: p.bg, height: 320 }}
-              >
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="w-[140px] h-[180px]">
-                    <ProductSilhouette shape={p.shape} bg="transparent" deep={p.deep} height={180} />
+          {/* EMR-204: only confirmed partners render here. When the
+              founding-partner shelf is empty we show a "Coming soon"
+              placeholder rather than speculative brand names. */}
+          {partners.length > 0 ? (
+            <div className="-mx-6 sm:mx-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lm-stagger flex sm:flex-none overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none px-6 sm:px-0 gap-4 pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {partners.map((p) => (
+                <div
+                  key={p.name}
+                  className="card-lift rounded-3xl p-6 flex flex-col cursor-pointer flex-shrink-0 w-[78%] sm:w-auto snap-start sm:snap-align-none"
+                  style={{ background: p.bg, height: 320 }}
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-[140px] h-[180px]">
+                      <ProductSilhouette shape={p.shape} bg="transparent" deep={p.deep} height={180} />
+                    </div>
                   </div>
+                  <h4 className="font-display text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--ink)] mt-3 mb-1.5">{p.name}</h4>
+                  <p className="text-[12.5px] sm:text-[13px] text-[var(--text-soft)] leading-snug">{p.desc}</p>
                 </div>
-                <h4 className="font-display text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--ink)] mt-3 mb-1.5">{p.name}</h4>
-                <p className="text-[12.5px] sm:text-[13px] text-[var(--text-soft)] leading-snug">{p.desc}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-[var(--leaf)]/30 bg-white/40 p-8 sm:p-10 text-center">
+              <p className="font-display text-[22px] sm:text-[26px] tracking-tight text-[var(--ink)]">
+                Founding partners <em className="font-accent not-italic text-[var(--leaf)]">coming soon</em>.
+              </p>
+              <p className="text-[13.5px] sm:text-[14.5px] text-[var(--text-soft)] mt-3 max-w-[460px] mx-auto leading-relaxed">
+                We&apos;re finalizing agreements with our first cohort of brands.
+                Every partner will be clinician-reviewed and lab-verified before
+                they appear on this shelf.
+              </p>
+              <Link
+                href="/leafmart/vendors"
+                className="inline-block mt-5 text-[13px] font-medium text-[var(--leaf)] border-b-[1.5px] border-[var(--leaf)] pb-0.5 hover:opacity-80 transition-opacity"
+              >
+                Apply to be a founding partner →
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -356,19 +377,19 @@ export default async function LeafmartHomePage() {
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lm-stagger">
                 <div>
                   <Portrait src="/portraits/marcus.png" tone="sage" caption="Marcus, 38 · Recovery" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The day after a long shift</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Field Balm № 4 · Flower Powered</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The day after a long shift</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Full-spectrum balm · Recovery shelf</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait src="/portraits/aanya.png" tone="warm" caption="Aanya, 31 · Calm" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">Sunday afternoon, off the clock</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Stillwater Tonic · PhytoRx</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">Sunday afternoon, off the clock</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">CBN sleep tonic · Calm shelf</div></div>
                 </div>
                 <div>
                   <Portrait src="/portraits/james.png" tone="butter" caption="James, 82 · Sleep" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Quiet Hours Tincture · Greenleaf Co.</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">CBD + CBN tincture · Sleep shelf</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait src="/portraits/eleanor.png" tone="lilac" caption="Eleanor, 71 · Skin" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">A slower morning routine</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Gold Skin Serum · Potency 710</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">A slower morning routine</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">CBD skin serum · Skin shelf</div></div>
                 </div>
               </div>
             </div>
@@ -382,13 +403,13 @@ export default async function LeafmartHomePage() {
           <div>
             <p className="eyebrow text-[rgba(255,248,232,0.8)]">2-minute quiz</p>
             <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 mb-4 sm:mb-[18px] text-[#FFF8E8]">
-              Not sure where to start? <em className="font-accent not-italic text-[var(--butter)]">We&apos;ll point you somewhere.</em>
+              Not sure where to start? <em className="font-accent not-italic text-[#F5E6B8]">We&apos;ll point you somewhere.</em>
             </h2>
             <p className="text-[15px] sm:text-[17px] leading-relaxed text-[rgba(255,248,232,0.8)] max-w-[480px]">
               Tell us how you&apos;d like to feel. We&apos;ll match you with three clinician-reviewed products to consider — no signup required.
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3.5 mt-6 sm:mt-7">
-              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[var(--ink)] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
+              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[#152119] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
                 Take the quiz →
               </Link>
               <Link href="/leafmart/shop" className="inline-flex items-center justify-center rounded-full font-medium border-[1.5px] border-[#FFF8E8] text-[#FFF8E8] hover:bg-[rgba(255,248,232,0.15)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
