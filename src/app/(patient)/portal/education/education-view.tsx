@@ -1,10 +1,72 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { generateEducationSheet, type EducationSheetResult } from "./actions";
+import { generateEducationSheet, type EducationSheetResult, type EducationReference } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeafSprig, EditorialRule } from "@/components/ui/ornament";
+import {
+  citationAnchorProps,
+  findCitationSpans,
+} from "@/lib/research/citation-resolver";
+
+/**
+ * Linkify inline `[N]` citation markers against the supplied reference
+ * list. Each marker becomes a superscript anchor that opens the matching
+ * PubMed / DOI URL in a new tab. EMR-179.
+ */
+function renderWithCitations(
+  para: string,
+  references: EducationReference[],
+): React.ReactNode {
+  if (references.length === 0) return para;
+  const spans = findCitationSpans(para);
+  if (spans.length === 0) return para;
+
+  const refByIndex = new Map(references.map((r) => [r.index, r]));
+  const out: React.ReactNode[] = [];
+  let cursor = 0;
+  spans.forEach((span, i) => {
+    if (span.start > cursor) out.push(para.slice(cursor, span.start));
+    const links: React.ReactNode[] = [];
+    span.indexes.forEach((idx, j) => {
+      const ref = refByIndex.get(idx);
+      const anchor = ref
+        ? citationAnchorProps({ title: ref.title, pmid: ref.pmid, doi: ref.doi })
+        : null;
+      if (anchor) {
+        links.push(
+          <a
+            key={`${i}-${j}`}
+            {...anchor}
+            className="text-accent hover:underline font-medium"
+          >
+            {idx}
+          </a>,
+        );
+      } else {
+        links.push(
+          <span key={`${i}-${j}`} className="text-accent">
+            {idx}
+          </span>,
+        );
+      }
+      if (j < span.indexes.length - 1) links.push(<span key={`sep-${i}-${j}`}>,</span>);
+    });
+    out.push(
+      <sup
+        key={`sup-${i}`}
+        className="font-mono text-[10px] mx-0.5 text-accent"
+        aria-label={`Reference ${span.indexes.join(", ")}`}
+      >
+        [{links}]
+      </sup>,
+    );
+    cursor = span.end;
+  });
+  if (cursor < para.length) out.push(para.slice(cursor));
+  return <>{out}</>;
+}
 
 // Section icon mapping
 function SectionIcon({ icon, className }: { icon: string; className?: string }) {
@@ -120,7 +182,7 @@ export function EducationView() {
             <div className="prose-clinical space-y-3 pl-14">
               {section.body.split("\n\n").map((para, j) => (
                 <p key={j} className="text-[15px] text-text-muted leading-relaxed">
-                  {para}
+                  {renderWithCitations(para, sheet.references ?? [])}
                 </p>
               ))}
             </div>
@@ -166,6 +228,63 @@ export function EducationView() {
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── References ──────────────────────────────── */}
+      {sheet.references && sheet.references.length > 0 && (
+        <Card tone="raised" className="education-section">
+          <CardContent className="py-8 px-6 md:px-8">
+            <h2 className="font-display text-xl text-text tracking-tight mb-5">
+              Research articles cited
+            </h2>
+            <ol className="space-y-3 list-none">
+              {sheet.references.map((ref) => {
+                const anchor = citationAnchorProps({
+                  title: ref.title,
+                  pmid: ref.pmid,
+                  doi: ref.doi,
+                });
+                return (
+                  <li
+                    key={ref.index}
+                    className="pl-4 border-l-2 border-accent/25"
+                    id={`reference-${ref.index}`}
+                  >
+                    <p className="text-sm leading-relaxed">
+                      <span className="font-mono text-xs text-accent mr-1">
+                        [{ref.index}]
+                      </span>
+                      {anchor ? (
+                        <a
+                          {...anchor}
+                          className="font-medium text-text hover:text-accent hover:underline"
+                        >
+                          {ref.title} ↗
+                        </a>
+                      ) : (
+                        <span className="font-medium text-text">{ref.title}</span>
+                      )}
+                      {ref.authors && (
+                        <span className="text-text-muted"> — {ref.authors}</span>
+                      )}
+                      {ref.journal && (
+                        <span className="text-text-subtle italic">, {ref.journal}</span>
+                      )}
+                      {ref.year && (
+                        <span className="text-text-subtle"> ({ref.year})</span>
+                      )}
+                      {ref.pmid && (
+                        <span className="text-[11px] text-text-subtle ml-2 font-mono">
+                          PMID: {ref.pmid}
+                        </span>
+                      )}
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
           </CardContent>
         </Card>
       )}
