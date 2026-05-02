@@ -29,9 +29,13 @@ export function AskCindyWidget() {
   const [pending, setPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // EMR-157 — re-scroll on `pending` flips so the loading bubble is
+  // brought into view as it appears, not only when the response
+  // replaces it. The reserved-height slot below keeps the swap
+  // layout-stable so the smooth scroll lands cleanly.
   useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, open]);
+    if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, open, pending]);
 
   async function send(text: string, highlightId?: string) {
     const q = text.trim();
@@ -149,13 +153,23 @@ export function AskCindyWidget() {
               </div>
             ))}
 
-            {pending && (
-              <div className="flex justify-start">
-                <div className="bg-slate-50 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-slate-500">
-                  <span className="animate-pulse">Thinking…</span>
+            {/* EMR-157 — fixed-height slot for the thinking bubble.
+                Reserves the bubble's footprint whether or not the
+                indicator is visible so layout is stable through the
+                pending → response swap. */}
+            <div
+              className="min-h-[44px]"
+              aria-live="polite"
+              aria-busy={pending || undefined}
+            >
+              {pending && (
+                <div className="flex justify-start">
+                  <div className="bg-slate-50 rounded-2xl rounded-bl-sm px-4 py-2.5 text-sm text-slate-500">
+                    <span className="animate-pulse">Thinking…</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <div ref={bottomRef} />
           </div>
