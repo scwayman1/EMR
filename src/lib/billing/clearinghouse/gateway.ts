@@ -412,6 +412,190 @@ export function getDefaultAdapter(env: NodeJS.ProcessEnv = process.env): Clearin
 }
 
 // ---------------------------------------------------------------------------
+// SFTP adapter (Office Ally + a few legacy gateways still require it)
+// ---------------------------------------------------------------------------
+// We deliberately do NOT pull `ssh2-sftp-client` directly. The adapter
+// accepts a small `SftpClient` interface so the worker layer can wire in
+// a real client (or a mock) without dragging the dep into this package.
+
+export interface SftpClient {
+  connect(): Promise<void>;
+  put(buf: Buffer, remotePath: string): Promise<void>;
+  list(remotePath: string): Promise<Array<{ name: string; modifyTime: number }>>;
+  get(remotePath: string): Promise<Buffer>;
+  delete(remotePath: string): Promise<void>;
+  end(): Promise<void>;
+}
+
+export interface SftpGatewayConfig {
+  name: GatewayName;
+  /** Inbound directory for our 837P uploads (gateway pulls from here). */
+  outboundDir: string;
+  /** Directory the gateway drops 277CA / 835 / 999 responses into. */
+  inboundDir: string;
+  /** Base name used for uploaded files. Tracking id is appended. */
+  filePrefix: string;
+  /** Factory that returns a fresh client per call — connect/disconnect is
+   *  per-operation, not pooled, to match the way the gateways size their
+   *  inbox SFTP servers. */
+  client: () => SftpClient;
+}
+
+export class SftpClearinghouseAdapter implements ClearinghouseAdapter {
+  readonly name: GatewayName;
+  private cfg: SftpGatewayConfig;
+  /** Track which inbound files we've already returned so poll() is idempotent. */
+  private seenInbound = new Set<string>();
+
+  constructor(cfg: SftpGatewayConfig) {
+    this.name = cfg.name;
+    this.cfg = cfg;
+  }
+
+  async submit(req: SubmitClaimRequest): Promise<SubmitClaimResponse> {
+    await rateLimitedAcquire(this.name);
+    const client = this.cfg.client();
+    const remotePath = `${this.cfg.outboundDir.replace(/\/$/, "")}/${this.cfg.filePrefix}-${req.correlationId}.edi`;
+    try {
+      await client.connect();
+      await client.put(Buffer.from(req.ediPayload, "utf8"), remotePath);
+      return {
+        gatewayTrackingId: req.correlationId,
+        syncStatus: "pending",
+        rawResponse: `SFTP upload accepted at ${remotePath}`,
+      };
+    } finally {
+      await client.end().catch(() => {});
+    }
+  }
+
+  async poll(cursor: string | null): Promise<PollResponse> {
+    await rateLimitedAcquire(this.name);
+    const client = this.cfg.client();
+    const sinceMs = cursor ? Number(cursor) || 0 : 0;
+    let latestSeen = sinceMs;
+    const documents: PollResponse["documents"] = [];
+    try {
+      await client.connect();
+      const entries = await client.list(this.cfg.inboundDir);
+      for (const e of entries) {
+        if (e.modifyTime <= sinceMs) continue;
+        if (this.seenInbound.has(e.name)) continue;
+        const remotePath = `${this.cfg.inboundDir.replace(/\/$/, "")}/${e.name}`;
+        const buf = await client.get(remotePath);
+        const body = buf.toString("utf8");
+        const type = classifyInboundFile(e.name, body);
+        if (!type) continue;
+        documents.push({ type, body, correlationId: extractCorrelationId(body) });
+        this.seenInbound.add(e.name);
+        if (e.modifyTime > latestSeen) latestSeen = e.modifyTime;
+      }
+    } finally {
+      await client.end().catch(() => {});
+    }
+    return {
+      documents,
+      nextCursor: latestSeen > sinceMs ? String(latestSeen) : cursor,
+    };
+  }
+}
+
+function classifyInboundFile(name: string, body: string): "277CA" | "835" | "999" | null {
+  const n = name.toLowerCase();
+  if (n.includes("277") || body.includes("ST*277")) return "277CA";
+  if (n.includes("835") || body.includes("ST*835")) return "835";
+  if (n.includes("999") || body.includes("ST*999")) return "999";
+  return null;
+}
+
+function extractCorrelationId(body: string): string | null {
+  // BHT03 (the patient control number we send) is echoed back on a 277CA;
+  // for 835 we'd match by check number which the parser handles separately.
+  const m = body.match(/BHT\*[^*]*\*[^*]*\*([^*~]+)/);
+  return m ? m[1] : null;
+}
+
+// ---------------------------------------------------------------------------
+// Concrete gateway-config factories
+// ---------------------------------------------------------------------------
+// One config per supported gateway so callers don't have to remember which
+// path Availity uses vs Waystar. All read from env so secrets never live
+// in code or the DB.
+
+type EnvLike = Record<string, string | undefined>;
+
+export function availityHttpsConfig(env: EnvLike = process.env): HttpsGatewayConfig | null {
+  const clientId = env.AVAILITY_CLIENT_ID;
+  const clientSecret = env.AVAILITY_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  return {
+    name: "availity",
+    baseUrl: env.AVAILITY_BASE_URL ?? "https://api.availity.com",
+    oauth: {
+      tokenUrl: env.AVAILITY_TOKEN_URL ?? "https://api.availity.com/v1/token",
+      clientId,
+      clientSecret,
+      scope: env.AVAILITY_OAUTH_SCOPE ?? "hipaa",
+    },
+    paths: {
+      submit: env.AVAILITY_SUBMIT_PATH ?? "/availity/v1/coverages/submissions",
+      poll: env.AVAILITY_POLL_PATH ?? "/availity/v1/coverages/responses",
+    },
+  };
+}
+
+export function waystarHttpsConfig(env: EnvLike = process.env): HttpsGatewayConfig | null {
+  const clientId = env.WAYSTAR_CLIENT_ID;
+  const clientSecret = env.WAYSTAR_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  return {
+    name: "waystar",
+    baseUrl: env.WAYSTAR_BASE_URL ?? "https://api.waystar.com",
+    oauth: {
+      tokenUrl: env.WAYSTAR_TOKEN_URL ?? "https://api.waystar.com/oauth/token",
+      clientId,
+      clientSecret,
+      scope: env.WAYSTAR_OAUTH_SCOPE ?? "claims:write claims:read",
+    },
+    paths: {
+      submit: env.WAYSTAR_SUBMIT_PATH ?? "/v2/claims/professional",
+      poll: env.WAYSTAR_POLL_PATH ?? "/v2/claims/responses",
+    },
+  };
+}
+
+export function changeHealthcareHttpsConfig(env: EnvLike = process.env): HttpsGatewayConfig | null {
+  const clientId = env.CHANGE_HEALTHCARE_CLIENT_ID;
+  const clientSecret = env.CHANGE_HEALTHCARE_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return null;
+  return {
+    name: "change_healthcare",
+    baseUrl: env.CHANGE_HEALTHCARE_BASE_URL ?? "https://apis.changehealthcare.com",
+    oauth: {
+      tokenUrl: env.CHANGE_HEALTHCARE_TOKEN_URL ?? "https://apis.changehealthcare.com/apip/v1/oauth/token",
+      clientId,
+      clientSecret,
+      scope: env.CHANGE_HEALTHCARE_OAUTH_SCOPE,
+    },
+    paths: {
+      submit: env.CHANGE_HEALTHCARE_SUBMIT_PATH ?? "/medicalnetwork/professionalclaims/v3/submission",
+      poll: env.CHANGE_HEALTHCARE_POLL_PATH ?? "/medicalnetwork/professionalclaims/v3/responses",
+    },
+  };
+}
+
+export function officeAllySftpConfig(env: EnvLike = process.env, clientFactory: () => SftpClient): SftpGatewayConfig | null {
+  if (!env.OFFICE_ALLY_SFTP_HOST || !env.OFFICE_ALLY_SFTP_USER) return null;
+  return {
+    name: "office_ally",
+    outboundDir: env.OFFICE_ALLY_OUTBOUND_DIR ?? "/inbound",
+    inboundDir: env.OFFICE_ALLY_INBOUND_DIR ?? "/outbound",
+    filePrefix: env.OFFICE_ALLY_FILE_PREFIX ?? "GP",
+    client: clientFactory,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Failure classification + dead-letter helper
 // ---------------------------------------------------------------------------
 

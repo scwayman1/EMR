@@ -44,6 +44,27 @@ export function isValidEin(ein: string | null | undefined): boolean {
   return /^\d{2}-\d{7}$/.test(ein);
 }
 
+/** Strip an EIN to 9 digits for X12 REF*EI (no hyphen allowed in 5010). */
+export function normalizeEin(ein: string): string {
+  return ein.replace(/\D/g, "").slice(0, 9);
+}
+
+/** First-pass IRS prefix sanity check. The IRS publishes a list of 2-digit
+ *  campus prefixes that are actually issued; everything else (e.g. "00",
+ *  "08", "09", "17", "18") is provably invalid. We don't ship the full
+ *  exhaustive list — just the obvious "never issued" prefixes — so this
+ *  is a *negative* check (only flags definite invalids). */
+const NEVER_ISSUED_EIN_PREFIXES = new Set([
+  "00", "07", "08", "09", "17", "18", "19", "28", "29", "49", "69", "70",
+  "78", "79", "89",
+]);
+
+export function einPrefixIsPlausible(ein: string): boolean {
+  const digits = normalizeEin(ein);
+  if (digits.length !== 9) return false;
+  return !NEVER_ISSUED_EIN_PREFIXES.has(digits.slice(0, 2));
+}
+
 /** Normalize an NPI into a 10-digit no-punctuation string ready for EDI. */
 export function normalizeNpi(npi: string): string {
   return npi.replace(/\D/g, "").slice(0, 10);
