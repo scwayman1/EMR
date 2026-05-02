@@ -94,9 +94,12 @@ function ChatCBTab() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // EMR-157 — also re-scroll when the loading state flips so the
+  // indicator slot is brought into view as it appears, rather than
+  // only after the response replaces it.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, loading]);
 
   async function handleSubmit(question?: string) {
     const q = (question ?? input).trim();
@@ -250,23 +253,34 @@ function ChatCBTab() {
             </div>
           ))}
 
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-white border-2 border-slate-100 rounded-3xl rounded-bl-sm px-6 py-5 shadow-sm">
-                <div className="flex items-center gap-3 text-sm text-slate-500 font-bold">
-                  <span className="animate-pulse flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-accent" />
-                    Consulting Knowledge Base
-                  </span>
-                  <span className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{animationDelay: '0ms'}}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{animationDelay: '150ms'}}></span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{animationDelay: '300ms'}}></span>
-                  </span>
+          {/* EMR-157 — loading indicator lives in a fixed-height slot
+              so the bubble appearing/disappearing doesn't shift the
+              scroll position. The reserved height matches the bubble
+              padding + line-height so transitioning to/from the
+              indicator is layout-stable. */}
+          <div
+            className="min-h-[72px]"
+            aria-live="polite"
+            aria-busy={loading || undefined}
+          >
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-white border-2 border-slate-100 rounded-3xl rounded-bl-sm px-6 py-5 shadow-sm">
+                  <div className="flex items-center gap-3 text-sm text-slate-500 font-bold">
+                    <span className="animate-pulse flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-accent" />
+                      Consulting Knowledge Base
+                    </span>
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{animationDelay: '0ms'}}></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{animationDelay: '150ms'}}></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{animationDelay: '300ms'}}></span>
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
           <div ref={bottomRef} />
         </div>
       )}
