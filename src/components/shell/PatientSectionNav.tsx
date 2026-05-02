@@ -34,6 +34,9 @@ const SECTIONS: Record<string, SectionDef> = {
     title: "My Records",
     // EMR-195: split into a primary row + collapsible "More" row so the
     // 8-tab ribbon doesn't overwhelm on first paint.
+    // EMR-119/124: "Learn" was duplicated here and in chatLearn — both
+    // pointed to /portal/learn. Drop the duplicate so health stays
+    // record-focused and the educational library lives in Chat & Learn.
     primary: [
       { label: "My Records", href: "/portal/records" },
       { label: "Medications", href: "/portal/medications" },
@@ -44,7 +47,6 @@ const SECTIONS: Record<string, SectionDef> = {
       { label: "Assessments", href: "/portal/assessments" },
       { label: "Log check-in", href: "/portal/outcomes" },
       { label: "Care guide", href: "/portal/education" },
-      { label: "Learn", href: "/portal/learn" },
     ],
   },
   // EMR-196: renamed "My Journey" → "My Garden". Ribbon is Lifestyle /
@@ -72,13 +74,16 @@ const SECTIONS: Record<string, SectionDef> = {
   },
   // EMR-200: Chat & Learn ribbon — community plus the public-style
   // education surfaces.
+  // EMR-124: prior "Research" label was misleading — /portal/learn is
+  // the educational library (cannabinoids/terpenes/conditions). Renamed
+  // to "Learn" so the label matches the destination.
   chatLearn: {
     title: "Chat & Learn",
     primary: [
       { label: "Community", href: "/portal/community" },
       { label: "Cannabis Wheel", href: "/portal/combo-wheel" },
       { label: "ChatCB", href: "/portal/chatcb" },
-      { label: "Research", href: "/portal/learn" },
+      { label: "Learn", href: "/portal/learn" },
     ],
   },
 };
