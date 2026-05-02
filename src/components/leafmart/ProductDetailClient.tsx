@@ -9,6 +9,7 @@ import { TrustSignalsBar } from "./TrustSignalsBar";
 import { ProductReviews } from "./ProductReviews";
 import { PairsWellWith } from "./PairsWellWith";
 import { StarRating } from "./StarRating";
+import { LeafShareButton } from "./LeafShareButton";
 import { useCart } from "@/lib/leafmart/cart-store";
 import { findGuideByFormat } from "@/lib/leafmart/dosing-guides";
 
@@ -102,7 +103,16 @@ export function ProductDetailClient({ product, related }: Props) {
 
           {/* Product info */}
           <div className="order-2 lg:pt-8">
-            <p className="eyebrow text-[var(--muted)] mb-3">{product.partner} · {product.formatLabel}</p>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <p className="eyebrow text-[var(--muted)]">{product.partner} · {product.formatLabel}</p>
+              {/* EMR-308: leaf share at the top of the PDP */}
+              <LeafShareButton
+                url={`/leafmart/products/${product.slug}`}
+                title={product.name}
+                text={product.support}
+                placement="pdp-top"
+              />
+            </div>
             <h1 className="font-display text-[32px] sm:text-[40px] lg:text-[48px] font-normal tracking-[-1.0px] sm:tracking-[-1.2px] leading-[1.05] text-[var(--ink)] mb-3 sm:mb-4">
               {product.name}
             </h1>
@@ -247,6 +257,16 @@ export function ProductDetailClient({ product, related }: Props) {
           reviews={product.reviews ?? []}
           averageRating={averageRating}
           reviewCount={reviewCount}
+        />
+      </div>
+
+      {/* EMR-308: leaf share at the bottom of the PDP */}
+      <div className="px-4 sm:px-6 lg:px-14 max-w-[1440px] mx-auto pb-2 sm:pb-4 flex justify-center">
+        <LeafShareButton
+          url={`/leafmart/products/${product.slug}`}
+          title={product.name}
+          text={product.support}
+          placement="pdp-bottom"
         />
       </div>
 

@@ -73,6 +73,49 @@ describe("checkCartShippingRestrictions", () => {
   });
 });
 
+describe("EMR-325 — military / international / territory blocks", () => {
+  it("blocks military state codes (AA / AE / AP) regardless of vendor", () => {
+    expect(checkShippingRestriction(phytoRx, "AA").reason).toBe("military_address");
+    expect(checkShippingRestriction(phytoRx, "AE").reason).toBe("military_address");
+    expect(checkShippingRestriction(phytoRx, "AP").reason).toBe("military_address");
+  });
+
+  it("blocks APO/FPO/DPO address-line patterns even when state is US", () => {
+    const result = checkShippingRestriction(phytoRx, "CA", {
+      addressLines: ["Unit 4567", "FPO AP 96321"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("military_address");
+  });
+
+  it("blocks VA medical center / veterans-affairs address lines", () => {
+    const result = checkShippingRestriction(phytoRx, "CA", {
+      addressLines: ["Department of Veterans Affairs", "Building 7"],
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("military_address");
+  });
+
+  it("blocks U.S. territories (PR / VI / GU / AS / MP)", () => {
+    expect(checkShippingRestriction(phytoRx, "PR").reason).toBe("us_territory");
+    expect(checkShippingRestriction(phytoRx, "GU").reason).toBe("us_territory");
+  });
+
+  it("blocks international country", () => {
+    const result = checkShippingRestriction(phytoRx, "CA", { country: "CA" });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("international_address");
+  });
+
+  it("permits valid US-state shipments when no restriction triggers", () => {
+    const result = checkShippingRestriction(phytoRx, "CA", {
+      addressLines: ["123 Main St"],
+      country: "US",
+    });
+    expect(result.ok).toBe(true);
+  });
+});
+
 describe("defaultShippableStatesForVendorType", () => {
   it("returns all 50 + DC for hemp brands", () => {
     expect(defaultShippableStatesForVendorType("hemp_brand")).toHaveLength(51);
