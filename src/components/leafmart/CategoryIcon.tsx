@@ -20,6 +20,16 @@ const ICONS: Record<string, IconRenderer> = {
   /* Goals / Symptoms ─────────────────────────────────────────── */
 
   // Crescent moon — wind-down, evening
+  rest: () => (
+    <path
+      d="M14 11.2A6 6 0 1 1 6.8 4a5 5 0 0 0 7.2 7.2Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  ),
+  // Backwards-compat alias for legacy "sleep" slug seed rows.
   sleep: () => (
     <path
       d="M14 11.2A6 6 0 1 1 6.8 4a5 5 0 0 0 7.2 7.2Z"

@@ -68,7 +68,11 @@ const SHELF_BY_CATEGORY: Record<
   { bg: string; deep: string; shape: LeafmartProduct["shape"] }
 > = {
   // Goals / Symptoms
+  rest:                { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
+  // Backwards-compat: legacy seed rows still use "sleep" slug. Continues
+  // to resolve until catalog re-seeded with the new label.
   sleep:               { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
+  relief:              { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
   recovery:            { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
   calm:                { bg: "var(--butter)",   deep: "var(--butter-stamp)",   shape: "bottle" },
   skin:                { bg: "var(--blush)",    deep: "var(--blush-stamp)",    shape: "serum" },

@@ -91,9 +91,15 @@ function RecommendationCard({
                     >
                       {cite.title}
                     </a>
-                    <span className="text-text-subtle font-mono text-xs ml-2">
+                    <a
+                      href={`https://pubmed.ncbi.nlm.nih.gov/${cite.pmid}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open PubMed article ${cite.pmid}`}
+                      className="text-text-subtle hover:text-accent font-mono text-xs ml-2 underline-offset-2 hover:underline"
+                    >
                       PMID:{cite.pmid}
-                    </span>
+                    </a>
                     <p className="text-text-muted text-xs mt-0.5 leading-relaxed">
                       {cite.summary}
                     </p>

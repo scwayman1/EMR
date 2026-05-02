@@ -559,6 +559,21 @@
 }
 
 /* ==========================================================================
+   Leafmart — Humanity / Portraits card (homepage)
+   EMR-331: card needs its own surface that respects dark mode. Light
+   mode keeps the cream gradient for warmth; dark mode uses the elevated
+   surface so headlines, names, and the Wellness checklist remain
+   readable instead of washing into a too-light gradient.
+   ========================================================================== */
+.lm-portraits-card {
+  background: linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%);
+}
+.theme-leafmart.dark .lm-portraits-card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-muted) 100%);
+  border: 1px solid var(--border);
+}
+
+/* ==========================================================================
    ADA — High-contrast mode
    ========================================================================== */
 @media (prefers-contrast: more) {

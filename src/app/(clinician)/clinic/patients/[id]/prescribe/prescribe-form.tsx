@@ -19,6 +19,11 @@ import {
   checkInteractions,
   type DrugInteraction,
 } from "@/lib/domain/drug-interactions";
+import {
+  classifyDEASchedule,
+  DEA_SCHEDULE_LABEL,
+  DEA_SCHEDULE_TONE,
+} from "@/lib/domain/dea-schedule";
 import { PharmacySelector } from "./pharmacy-selector";
 import { RxPreview } from "./rx-preview";
 import type { Pharmacy } from "@/lib/domain/e-prescribe";
@@ -75,6 +80,27 @@ const DOSE_UNITS = [
   { value: "puffs", label: "puffs" },
   { value: "grams", label: "grams" },
 ] as const;
+
+// EMR-360: cannabinoids the patient is open to. CBDA + CBG are flagged as
+// "preferred" because Dr. Patel considers their evidence most actionable
+// today; the rest are "promising" research-stage cannabinoids that some
+// patients explicitly want included in their prescription plan.
+const CANNABINOID_OPTIONS: Array<{
+  key: string;
+  label: string;
+  tier: "core" | "preferred" | "promising";
+  blurb: string;
+}> = [
+  { key: "THC", label: "THC", tier: "core", blurb: "Primary intoxicating cannabinoid. Strong evidence for pain, nausea, appetite." },
+  { key: "CBD", label: "CBD", tier: "core", blurb: "Non-intoxicating. Anti-inflammatory, anxiolytic, anti-seizure." },
+  { key: "CBDA", label: "CBDA", tier: "preferred", blurb: "Acidic precursor to CBD. Promising for nausea/inflammation, lower dose threshold." },
+  { key: "CBG", label: "CBG", tier: "preferred", blurb: "'Mother' cannabinoid. Anti-inflammatory, neuroprotective, antibacterial." },
+  { key: "THCV", label: "THCV", tier: "promising", blurb: "Appetite-suppressing, may reduce panic, neuroprotective." },
+  { key: "CBDV", label: "CBDV", tier: "promising", blurb: "Promising for seizures, autism-spectrum behaviors, GI inflammation." },
+  { key: "CBC", label: "CBC", tier: "promising", blurb: "Mood, anti-inflammatory, may enhance other cannabinoid effects." },
+  { key: "CBN", label: "CBN", tier: "promising", blurb: "Sedative profile, sometimes used adjunctively for sleep." },
+  { key: "CBGA", label: "CBGA", tier: "promising", blurb: "Acidic precursor to CBG. Early research; metabolic and antiviral signals." },
+];
 
 const DIAGNOSIS_OPTIONS: DiagnosisOption[] = [
   { code: "F41.1", label: "Generalized anxiety disorder" },
@@ -183,6 +209,9 @@ export function PrescribeForm({
   const [contraindicationAcknowledged, setContraindicationAcknowledged] = useState(false);
   const [contraindicationCoSignerUserId, setContraindicationCoSignerUserId] = useState("");
 
+  // --- Cannabinoid preferences (EMR-360) ---
+  const [openCannabinoids, setOpenCannabinoids] = useState<string[]>(["THC", "CBD"]);
+
   // --- Diagnoses ---
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<DiagnosisOption[]>(
     []
@@ -204,6 +233,17 @@ export function PrescribeForm({
     () => products.find((p) => p.id === selectedProductId) ?? null,
     [products, selectedProductId]
   );
+
+  // EMR-350: classify the medication against the DEA schedule table so the
+  // "Controlled" badge + override guardrails can fire when applicable.
+  const controlledMatch = useMemo(() => {
+    const name = selectedProduct?.name ?? customProductName;
+    return name ? classifyDEASchedule(name) : null;
+  }, [selectedProduct, customProductName]);
+  const [controlledAcknowledged, setControlledAcknowledged] = useState(false);
+  useEffect(() => {
+    setControlledAcknowledged(false);
+  }, [controlledMatch?.schedule]);
 
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products;
@@ -283,7 +323,11 @@ export function PrescribeForm({
   const mustAcknowledgeContraindication =
     hasBlockingContraindication &&
     (!contraindicationAcknowledged || contraindicationOverrideReason.trim().length < 20);
-  const mustAcknowledge = mustAcknowledgeInteraction || mustAcknowledgeContraindication;
+  const mustAcknowledgeControlled = !!controlledMatch && !controlledAcknowledged;
+  const mustAcknowledge =
+    mustAcknowledgeInteraction ||
+    mustAcknowledgeContraindication ||
+    mustAcknowledgeControlled;
 
   // Toggle diagnosis selection
   function toggleDiagnosis(dx: DiagnosisOption) {
@@ -498,11 +542,55 @@ export function PrescribeForm({
       {/* ── Inscription — Medication ─────────────────────────── */}
       <Card className={CARD_CLASS}>
         <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Medication</CardTitle>
+          <CardTitle className="text-lg tracking-tight flex items-center gap-2 flex-wrap">
+            Medication
+            {controlledMatch && (
+              <Badge
+                tone={DEA_SCHEDULE_TONE[controlledMatch.schedule]}
+                className="text-[10px] uppercase tracking-wider gap-1"
+                aria-label={`Controlled substance: ${DEA_SCHEDULE_LABEL[controlledMatch.schedule]}`}
+              >
+                <span aria-hidden>🛂</span>
+                Controlled · {DEA_SCHEDULE_LABEL[controlledMatch.schedule]}
+              </Badge>
+            )}
+          </CardTitle>
           <CardDescription>
             Select from your organization&apos;s formulary or enter a custom
             medication.
           </CardDescription>
+          {controlledMatch && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-900">
+              <p className="font-semibold flex items-center gap-1.5">
+                <span aria-hidden>⚠️</span>
+                {DEA_SCHEDULE_LABEL[controlledMatch.schedule]} controlled substance
+              </p>
+              <p className="mt-1 text-xs leading-relaxed">
+                {controlledMatch.rationale} A signed controlled-substance
+                attestation is required before this prescription can be
+                transmitted, and the action is logged to the audit trail.
+              </p>
+              <label className="mt-3 flex items-start gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="controlledAttested"
+                  checked={controlledAcknowledged}
+                  onChange={(e) => setControlledAcknowledged(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-700 focus:ring-amber-400/40"
+                />
+                <span>
+                  I confirm I&apos;m authorized to prescribe{" "}
+                  {DEA_SCHEDULE_LABEL[controlledMatch.schedule]} substances and
+                  have reviewed PMP/PDMP data for this patient.
+                </span>
+              </label>
+              <input
+                type="hidden"
+                name="controlledSchedule"
+                value={controlledMatch.schedule}
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search / filter */}
@@ -621,6 +709,69 @@ export function PrescribeForm({
               ))}
             </select>
           </FieldGroup>
+        </CardContent>
+      </Card>
+
+      {/* ── Cannabinoid preferences (EMR-360) ─────────────────── */}
+      <Card className={CARD_CLASS}>
+        <CardHeader>
+          <CardTitle className="text-lg tracking-tight">Cannabinoids open to</CardTitle>
+          <CardDescription>
+            Tag the cannabinoids this patient is willing to include in their
+            plan. Selections are saved with the prescription so future
+            recommendations can prioritize matching products.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <input
+            type="hidden"
+            name="openCannabinoids"
+            value={JSON.stringify(openCannabinoids)}
+          />
+          {(["core", "preferred", "promising"] as const).map((tier) => {
+            const options = CANNABINOID_OPTIONS.filter((c) => c.tier === tier);
+            if (options.length === 0) return null;
+            const tierLabel =
+              tier === "core"
+                ? "Core (most studied)"
+                : tier === "preferred"
+                  ? "Preferred (Dr. Patel: most actionable today)"
+                  : "Promising (research-stage, patient may opt in)";
+            return (
+              <div key={tier} className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-subtle">
+                  {tierLabel}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {options.map((c) => {
+                    const selected = openCannabinoids.includes(c.key);
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() =>
+                          setOpenCannabinoids((prev) =>
+                            prev.includes(c.key)
+                              ? prev.filter((k) => k !== c.key)
+                              : [...prev, c.key],
+                          )
+                        }
+                        aria-pressed={selected}
+                        title={c.blurb}
+                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                          selected
+                            ? "bg-accent text-white border-accent"
+                            : "bg-white text-text-muted border-border hover:border-accent/50"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
@@ -849,9 +1000,21 @@ export function PrescribeForm({
       {/* ── Section 4: Diagnosis Linking ───────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Diagnosis</CardTitle>
+          <CardTitle className="text-lg tracking-tight flex items-center gap-2">
+            Diagnosis
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-900"
+              title="A signed prescription with a linked ICD-10 classifies this as medical cannabis use (EMR-346)."
+            >
+              <span aria-hidden>🩺</span>
+              Medical use
+            </span>
+          </CardTitle>
           <CardDescription>
-            Link relevant ICD-10 diagnosis codes to this prescription.
+            Link relevant ICD-10 diagnosis codes to this prescription. A
+            documented diagnosis is what classifies cannabis use as
+            <em className="not-italic font-medium"> medical </em>
+            rather than recreational.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

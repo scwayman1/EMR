@@ -12,22 +12,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 
-type Metric = "pain" | "sleep" | "anxiety" | "mood";
+type Metric = "pain" | "sleep" | "anxiety" | "mood" | "nausea";
 
 const METRICS: { key: Metric; label: string; emoji: string }[] = [
   { key: "pain", label: "Pain", emoji: "🩹" },
   { key: "sleep", label: "Sleep", emoji: "😴" },
   { key: "anxiety", label: "Anxiety", emoji: "😰" },
   { key: "mood", label: "Mood", emoji: "😊" },
+  { key: "nausea", label: "Nausea", emoji: "🤢" },
 ];
 
-// For "pain" and "anxiety" lower values = improvement; for "sleep" and "mood" higher = improvement.
+// Symptom-style metrics — lower scores mean fewer symptoms / improvement.
+const LOWER_IS_BETTER = new Set<Metric>(["pain", "anxiety", "nausea"]);
+
 function cellTone(metric: Metric, value: number, hasData: boolean): string {
   if (!hasData) return "bg-surface-muted border-border/50";
-  const improving =
-    metric === "pain" || metric === "anxiety" ? value <= 3 : value >= 7;
-  const worsening =
-    metric === "pain" || metric === "anxiety" ? value >= 7 : value <= 3;
+  const lowerIsBetter = LOWER_IS_BETTER.has(metric);
+  const improving = lowerIsBetter ? value <= 3 : value >= 7;
+  const worsening = lowerIsBetter ? value >= 7 : value <= 3;
   if (improving) {
     if (value <= 2 || value >= 8) return "bg-emerald-500 border-emerald-600";
     return "bg-emerald-300 border-emerald-400";
@@ -57,10 +59,9 @@ export function HeatmapView({
     for (const c of cells) {
       if (!c.hasData) continue;
       withData++;
-      const isImproving =
-        metric === "pain" || metric === "anxiety" ? c.value <= 3 : c.value >= 7;
-      const isWorsening =
-        metric === "pain" || metric === "anxiety" ? c.value >= 7 : c.value <= 3;
+      const lowerIsBetter = LOWER_IS_BETTER.has(metric);
+      const isImproving = lowerIsBetter ? c.value <= 3 : c.value >= 7;
+      const isWorsening = lowerIsBetter ? c.value >= 7 : c.value <= 3;
       if (isImproving) improving++;
       else if (isWorsening) worsening++;
       else steady++;

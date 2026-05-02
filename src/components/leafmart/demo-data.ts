@@ -12,8 +12,8 @@ export const DEMO_PRODUCTS: LeafmartProduct[] = [
 ];
 
 export const CATEGORIES = [
-  { name: "Sleep", slug: "sleep", sub: "For evenings that should end quietly", count: 18, bg: "var(--sage)", deep: "var(--leaf)", shape: "bottle" as const },
-  { name: "Recovery", slug: "recovery", sub: "Built for the day after a long one", count: 12, bg: "var(--peach)", deep: "#9E5621", shape: "tin" as const },
+  { name: "Rest", slug: "rest", sub: "For evenings that should end quietly", count: 18, bg: "var(--sage)", deep: "var(--leaf)", shape: "bottle" as const },
+  { name: "Relief", slug: "recovery", sub: "Pain and muscle relief, gently", count: 12, bg: "var(--peach)", deep: "#9E5621", shape: "tin" as const },
   { name: "Calm", slug: "calm", sub: "Take the edge off, gently", count: 14, bg: "var(--butter)", deep: "#8A6A1F", shape: "can" as const },
   { name: "Skin", slug: "skin", sub: "Plant-powered skin recovery", count: 4, bg: "var(--rose)", deep: "#9E4D45", shape: "serum" as const },
 ];

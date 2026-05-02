@@ -33,22 +33,20 @@ const SECTIONS: Record<string, SectionDef> = {
   // EMR-195: "My Records" with two collapsible ribbons. Primary keeps the
   // most-trafficked destinations; secondary collapses behind a "More" toggle
   // so the 9-tab ribbon doesn't overwhelm on first paint.
+  // EMR-355: Medications + Dosing plan are merged.
+  // EMR-361: "Log dose" lives under My Health (was a truncated "Lo" link
+  //          dangling off /portal/outcomes — now points at /portal/log-dose).
   health: {
-    title: "My Records",
-    // EMR-195: split into a primary row + collapsible "More" row so the
-    // 8-tab ribbon doesn't overwhelm on first paint.
-    // EMR-119/124: "Learn" was duplicated here and in chatLearn — both
-    // pointed to /portal/learn. Drop the duplicate so health stays
-    // record-focused and the educational library lives in Chat & Learn.
+    title: "My Health",
     primary: [
       { label: "My Records", href: "/portal/records" },
-      { label: "Medications", href: "/portal/medications" },
-      { label: "Dosing plan", href: "/portal/dosing" },
+      { label: "Medications & Dosing", href: "/portal/medications" },
+      { label: "Log dose", href: "/portal/log-dose" },
       { label: "Labs", href: "/portal/labs" },
     ],
     secondary: [
       { label: "Assessments", href: "/portal/assessments" },
-      { label: "Log check-in", href: "/portal/outcomes" },
+      { label: "Check-in history", href: "/portal/outcomes" },
       { label: "Care plan", href: "/portal/care-plan" },
       { label: "Care guide", href: "/portal/education" },
     ],

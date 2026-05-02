@@ -46,9 +46,9 @@ const GOAL_PROFILES: Record<string, GoalProfile> = {
     label: "Calm",
   },
   "Less pain after a long day": {
-    primary: ["recovery", "tension", "balm", "topical", "soreness", "long day"],
+    primary: ["recovery", "relief", "tension", "balm", "topical", "soreness", "long day", "pain"],
     secondary: ["calm", "wind-down"],
-    label: "Recovery",
+    label: "Relief",
   },
   "Better sleep": {
     primary: ["sleep", "evening", "wind-down", "wind down", "night", "cbn"],

@@ -17,6 +17,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RichText } from "@/lib/utils/rich-text";
 
 interface EducationSheetProps {
   diagnosis?: string;
@@ -331,7 +332,9 @@ export function AIEducationSheet({
                 key={`title-${level}`}
                 className="font-display text-3xl md:text-4xl text-emerald-950 mb-2 tracking-tight animate-in fade-in duration-300 min-h-[2.25rem]"
               >
-                {activeContent.title || (
+                {activeContent.title ? (
+                  <RichText text={activeContent.title} />
+                ) : (
                   <SkeletonLine className="w-2/3" />
                 )}
                 {activeContent.liveField === "title" && <Caret />}
@@ -340,7 +343,11 @@ export function AIEducationSheet({
                 key={`intro-${level}`}
                 className="text-emerald-900/80 font-medium max-w-2xl text-base md:text-lg leading-relaxed animate-in fade-in duration-300 min-h-[3rem]"
               >
-                {activeContent.intro || <SkeletonLine className="w-full" />}
+                {activeContent.intro ? (
+                  <RichText text={activeContent.intro} />
+                ) : (
+                  <SkeletonLine className="w-full" />
+                )}
                 {activeContent.liveField === "intro" && <Caret />}
               </p>
             </div>
@@ -359,7 +366,9 @@ export function AIEducationSheet({
                 How it works
               </h3>
               <p className="text-base md:text-lg text-text-muted leading-relaxed bg-surface-muted/60 p-6 rounded-2xl border border-border/70 min-h-[5rem]">
-                {activeContent.howItWorks || (
+                {activeContent.howItWorks ? (
+                  <RichText text={activeContent.howItWorks} />
+                ) : (
                   <SkeletonBlock lines={2} />
                 )}
                 {activeContent.liveField === "howItWorks" && <Caret />}
@@ -384,7 +393,7 @@ export function AIEducationSheet({
                       {i + 1}
                     </div>
                     <p className="text-text-muted font-medium leading-snug">
-                      {tip || <SkeletonBlock lines={2} />}
+                      {tip ? <RichText text={tip} /> : <SkeletonBlock lines={2} />}
                       {activeContent.liveField === "tip" &&
                         i === activeContent.tips.length - 1 && <Caret />}
                     </p>
