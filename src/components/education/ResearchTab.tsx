@@ -25,9 +25,12 @@ import { searchPubMedArticles, type PubMedSearchResult } from "@/app/education/a
 
 // Kander book links — single source of truth so the URLs can be swapped to
 // our hosted PDF / mirrored web copy without hunting through the JSX.
+// Per EMR-370 (Dr. Patel): the canonical web home for the book is
+// freecannabiscancerbook.com — older builds pointed at cannabisandcancer.com
+// which 404s. Keep both URLs static so the buttons stop opening dead pages.
 const KANDER_PDF_URL =
-  "https://archive.org/download/cannabis-and-cannabinoids-in-cancer-treatment/CannabisAndCancer-JustinKander.pdf";
-const KANDER_WEB_URL = "https://www.cannabisandcancer.com/";
+  "https://freecannabiscancerbook.com/wp-content/uploads/2018/02/Cannabis-and-Cannabinoids-in-Cancer-Treatment-by-Justin-Kander.pdf";
+const KANDER_WEB_URL = "https://freecannabiscancerbook.com/";
 
 export function ResearchTab() {
   const [cannabinoidFilter, setCannabinoidFilter] = useState("");
@@ -45,9 +48,10 @@ export function ResearchTab() {
     return true;
   });
 
-  async function handlePubmedSearch() {
-    const q = pubmedQuery.trim();
+  async function handlePubmedSearch(forced?: string) {
+    const q = (forced ?? pubmedQuery).trim();
     if (!q || pubmedLoading) return;
+    if (forced) setPubmedQuery(forced);
     setPubmedLoading(true);
     try {
       const result = await searchPubMedArticles(q);
@@ -71,7 +75,11 @@ export function ResearchTab() {
       </div>
 
       {/* PubMed Live Search */}
-      <Card tone="raised" className="rounded-3xl border border-border shadow-lg overflow-hidden">
+      <Card
+        id="research-pubmed-section"
+        tone="raised"
+        className="rounded-3xl border border-border shadow-lg overflow-hidden scroll-mt-24"
+      >
         <CardHeader className="bg-gradient-to-r from-emerald-50 via-slate-50 to-emerald-50 border-b border-border py-5 px-6">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Badge tone="success" className="text-[10px] bg-emerald-100 text-emerald-800 gap-1.5">
@@ -121,7 +129,7 @@ export function ResearchTab() {
               />
             </div>
             <Button
-              onClick={handlePubmedSearch}
+              onClick={() => void handlePubmedSearch()}
               disabled={!pubmedQuery.trim() || pubmedLoading}
               className="rounded-2xl h-14 px-8 text-base font-semibold shadow-md min-w-[140px]"
             >
@@ -203,9 +211,15 @@ export function ResearchTab() {
                           {article.year > 0 && (
                             <Badge tone="neutral" className="text-[10px]">{article.year}</Badge>
                           )}
-                          <span className="text-[10px] text-slate-400 ml-auto font-mono">
+                          <a
+                            href={`https://pubmed.ncbi.nlm.nih.gov/${article.pmid}/`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open PubMed article ${article.pmid}`}
+                            className="text-[10px] text-slate-400 hover:text-accent ml-auto font-mono underline-offset-2 hover:underline"
+                          >
                             PMID: {article.pmid}
-                          </span>
+                          </a>
                         </div>
                       </CardContent>
                     </Card>
@@ -373,51 +387,70 @@ export function ResearchTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((pair, i) => {
               const ev = EVIDENCE_COLORS[pair.evidenceLevel];
+              const query = `${pair.cannabinoid} ${pair.condition}`;
               return (
-                <Card
+                <button
                   key={i}
-                  className={cn(
-                    "rounded-2xl border-2 border-transparent transition-all duration-300",
-                    "hover:-translate-y-1 hover:shadow-lg hover:border-accent/30",
-                    ev.bg
-                  )}
+                  type="button"
+                  onClick={() => {
+                    void handlePubmedSearch(query);
+                    if (typeof document !== "undefined") {
+                      document
+                        .getElementById("research-pubmed-section")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }}
+                  aria-label={`Show top PubMed studies for ${pair.cannabinoid} for ${pair.condition} (${pair.studyCount.toLocaleString()} studies)`}
+                  className="text-left rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-lg font-display text-text mb-2 leading-snug">
-                          {pair.cannabinoid}
-                          <span className="text-slate-400 font-sans text-sm mx-1.5">for</span>
-                          {pair.condition}
-                        </p>
-                        <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                          {pair.summary}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0 flex flex-col items-end gap-2">
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide",
-                            "px-2.5 py-1 rounded-full border",
-                            ev.bg,
-                            ev.text,
-                            "border-current/20 ring-1 ring-white/60"
-                          )}
-                          aria-label={ev.label}
-                        >
-                          <span aria-hidden className="text-xs leading-none">{ev.emoji}</span>
-                          {ev.label}
-                        </span>
-                        <div className="bg-white/70 px-2.5 py-1 rounded-md border border-black/5 backdrop-blur-sm">
-                          <p className="text-[11px] font-bold text-slate-700">
-                            {pair.studyCount.toLocaleString()}
-                            <span className="font-medium text-slate-500 ml-1">studies</span>
+                  <Card
+                    className={cn(
+                      "rounded-2xl border-2 border-transparent transition-all duration-300 cursor-pointer",
+                      "hover:-translate-y-1 hover:shadow-lg hover:border-accent/40 group",
+                      ev.bg
+                    )}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-lg font-display text-text mb-2 leading-snug">
+                            {pair.cannabinoid}
+                            <span className="text-slate-400 font-sans text-sm mx-1.5">for</span>
+                            {pair.condition}
+                          </p>
+                          <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                            {pair.summary}
+                          </p>
+                          <p className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                            View top studies
+                            <ExternalLink className="w-3 h-3" strokeWidth={2.5} />
                           </p>
                         </div>
+                        <div className="text-right shrink-0 flex flex-col items-end gap-2">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide",
+                              "px-2.5 py-1 rounded-full border",
+                              ev.bg,
+                              ev.text,
+                              "border-current/20 ring-1 ring-white/60"
+                            )}
+                            aria-label={ev.label}
+                          >
+                            <span aria-hidden className="text-xs leading-none">{ev.emoji}</span>
+                            {ev.label}
+                          </span>
+                          <div className="bg-white/70 px-2.5 py-1 rounded-md border border-black/5 backdrop-blur-sm">
+                            <p className="text-[11px] font-bold text-slate-700">
+                              {pair.studyCount.toLocaleString()}
+                              <span className="font-medium text-slate-500 ml-1">studies</span>
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </button>
               );
             })}
           </div>

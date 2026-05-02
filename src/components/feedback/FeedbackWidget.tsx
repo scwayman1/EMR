@@ -4,41 +4,12 @@ import * as React from "react";
 import { cn } from "@/lib/utils/cn";
 
 /**
- * Universal feedback widget — EMR-128
- *
- * Successor to <UniversalFeedbackFab/> with three improvements:
- *
- *  1. **Pluggable mount.** The widget can render as a floating
- *     bottom-right FAB (`mode="fab"`, the default), or inline inside
- *     any header / footer (`mode="inline"`) so dense surfaces aren't
- *     forced to give up the corner.
- *  2. **Page-snapshot annotation.** When `html2canvas` (or any other
- *     DOM-rasterizer adapter) is configured via `setSnapshotter`, the
- *     widget rasterizes the visible viewport into the annotation canvas
- *     before the user draws on it — pen, circle, arrow, and box marks
- *     land on the actual page screenshot. Without an adapter, the
- *     widget falls back to a faint viewport outline (matching the
- *     legacy FAB behavior) so it always works.
- *  3. **Programmatic open API.** Exports `useFeedbackWidget()` so any
- *     surface can open the widget pre-populated ("Tell us what's
- *     missing in this report"), seed it with a tag, or attach extra
- *     metadata to the submission payload.
+ * Universal feedback widget — EMR-128. Floats bottom-right (`mode="fab"`)
+ * or renders inline. Exposes `useFeedbackWidget()` for callers that want
+ * to open it pre-seeded with a comment, tag, or metadata.
  */
 
-type Tool = "pen" | "circle" | "arrow" | "box";
-type State = "closed" | "form" | "annotating" | "submitting" | "thanks" | "error";
-
-const TOOLS: Array<{ key: Tool; label: string }> = [
-  { key: "pen", label: "Pen" },
-  { key: "circle", label: "Circle" },
-  { key: "arrow", label: "Arrow" },
-  { key: "box", label: "Box" },
-];
-
-interface DrawnShape {
-  tool: Tool;
-  points: Array<{ x: number; y: number }>;
-}
+type State = "closed" | "form" | "submitting" | "thanks" | "error";
 
 export type FeedbackTag = "bug" | "idea" | "praise" | "confused";
 
@@ -54,7 +25,6 @@ export interface FeedbackPayload {
   pageUrl: string;
   comment: string;
   tag: FeedbackTag | null;
-  annotationDataUrl?: string;
   userAgent: string;
   viewport: { width: number; height: number };
   occurredAt: string;
@@ -62,17 +32,13 @@ export interface FeedbackPayload {
   extra?: Record<string, unknown>;
 }
 
-export type Snapshotter = (target: HTMLElement) => Promise<string>;
-
-let configuredSnapshotter: Snapshotter | null = null;
-
 /**
- * Wire up an html2canvas-style page rasterizer. The adapter receives
- * the documentElement and returns a PNG data URL the canvas paints
- * before the user starts marking.
+ * Retained for back-compat with existing imports. The widget no longer
+ * captures page screenshots — the annotation canvas was removed.
  */
-export function setSnapshotter(snap: Snapshotter | null) {
-  configuredSnapshotter = snap;
+export type Snapshotter = (target: HTMLElement) => Promise<string>;
+export function setSnapshotter(_snap: Snapshotter | null) {
+  /* no-op */
 }
 
 interface WidgetController {
@@ -121,15 +87,10 @@ export function FeedbackWidget({
   const [state, setState] = React.useState<State>("closed");
   const [comment, setComment] = React.useState("");
   const [tag, setTag] = React.useState<FeedbackTag | null>(null);
-  const [tool, setTool] = React.useState<Tool>("pen");
-  const [shapes, setShapes] = React.useState<DrawnShape[]>([]);
-  const [drawing, setDrawing] = React.useState<DrawnShape | null>(null);
   const [error, setError] = React.useState<string | null>(null);
-  const [snapshotUrl, setSnapshotUrl] = React.useState<string | null>(null);
   const [extra, setExtra] = React.useState<Record<string, unknown> | undefined>(
     defaultExtra,
   );
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   // Stable per-browser id used for de-dupe across reloads / retries.
   const clientIdRef = React.useRef<string>("");
@@ -151,15 +112,6 @@ export function FeedbackWidget({
       if (seed?.tag) setTag(seed.tag);
       if (seed?.extra) setExtra({ ...(defaultExtra ?? {}), ...seed.extra });
       else setExtra(defaultExtra);
-
-      if (configuredSnapshotter && typeof document !== "undefined") {
-        try {
-          const url = await configuredSnapshotter(document.documentElement);
-          setSnapshotUrl(url);
-        } catch {
-          setSnapshotUrl(null);
-        }
-      }
     },
     [defaultExtra],
   );
@@ -168,10 +120,7 @@ export function FeedbackWidget({
     setState("closed");
     setComment("");
     setTag(null);
-    setShapes([]);
-    setDrawing(null);
     setError(null);
-    setSnapshotUrl(null);
   }, []);
 
   // Register the imperative handle so useFeedbackWidget() callers can
@@ -189,62 +138,6 @@ export function FeedbackWidget({
     };
   }, [open]);
 
-  // Repaint the canvas whenever the underlying data changes.
-  React.useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, c.width, c.height);
-
-    const finishPaint = () => {
-      ctx.strokeStyle = "#c0392b";
-      ctx.lineWidth = 2.5;
-      ctx.lineCap = "round";
-      ctx.fillStyle = "rgba(192, 57, 43, 0.15)";
-      const all = drawing ? [...shapes, drawing] : shapes;
-      for (const s of all) drawShape(ctx, s);
-    };
-
-    if (snapshotUrl) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, c.width, c.height);
-        finishPaint();
-      };
-      img.src = snapshotUrl;
-      return;
-    }
-
-    // Fallback — faint backdrop with a dashed viewport outline.
-    ctx.fillStyle = "rgba(63, 110, 79, 0.04)";
-    ctx.fillRect(0, 0, c.width, c.height);
-    ctx.strokeStyle = "rgba(63, 110, 79, 0.2)";
-    ctx.setLineDash([4, 4]);
-    ctx.strokeRect(8, 8, c.width - 16, c.height - 16);
-    ctx.setLineDash([]);
-    finishPaint();
-  }, [shapes, drawing, snapshotUrl]);
-
-  function startDraw(e: React.PointerEvent<HTMLCanvasElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const point = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    setDrawing({ tool, points: [point] });
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-  function moveDraw(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!drawing) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const point = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    if (tool === "pen") setDrawing({ ...drawing, points: [...drawing.points, point] });
-    else setDrawing({ ...drawing, points: [drawing.points[0]!, point] });
-  }
-  function endDraw() {
-    if (!drawing) return;
-    setShapes((prev) => [...prev, drawing]);
-    setDrawing(null);
-  }
-
   async function submit() {
     if (comment.trim().length < 5) {
       setError("Tell us a little more — at least 5 characters helps us route it.");
@@ -253,14 +146,11 @@ export function FeedbackWidget({
     setState("submitting");
     setError(null);
     try {
-      const annotationDataUrl =
-        shapes.length > 0 ? canvasRef.current?.toDataURL("image/png") : undefined;
       const payload: FeedbackPayload = {
         clientId: clientIdRef.current,
         pageUrl: window.location.href,
         comment,
         tag,
-        annotationDataUrl,
         userAgent: navigator.userAgent,
         viewport: { width: window.innerWidth, height: window.innerHeight },
         occurredAt: new Date().toISOString(),
@@ -382,50 +272,9 @@ export function FeedbackWidget({
                   className="w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                 />
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs uppercase tracking-wider text-text-subtle">
-                      Optional annotation
-                    </p>
-                    <div className="flex items-center gap-1">
-                      {TOOLS.map((t) => (
-                        <button
-                          key={t.key}
-                          onClick={() => setTool(t.key)}
-                          className={cn(
-                            "px-2 py-1 rounded-md text-[11px] font-medium border transition-colors",
-                            tool === t.key
-                              ? "bg-emerald-700 text-white border-emerald-700"
-                              : "bg-surface text-text-muted border-border hover:bg-surface-muted",
-                          )}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                      <button
-                        onClick={() => setShapes([])}
-                        className="px-2 py-1 rounded-md text-[11px] font-medium border border-border bg-surface text-text-muted hover:bg-surface-muted"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                  </div>
-                  <canvas
-                    ref={canvasRef}
-                    width={520}
-                    height={220}
-                    onPointerDown={startDraw}
-                    onPointerMove={moveDraw}
-                    onPointerUp={endDraw}
-                    onPointerCancel={endDraw}
-                    className="block w-full border border-border rounded-md touch-none"
-                  />
-                  <p className="text-[11px] text-text-subtle">
-                    {snapshotUrl
-                      ? "We've snapshotted the page — circle exactly what you mean."
-                      : "Draw a quick mark over the area you're describing. We'll capture the page URL automatically."}
-                  </p>
-                </div>
+                <p className="text-[11px] text-text-subtle">
+                  We&apos;ll capture the page URL automatically.
+                </p>
 
                 {error && <p className="text-sm text-danger">{error}</p>}
               </>
@@ -450,45 +299,3 @@ export function FeedbackWidget({
   );
 }
 
-function drawShape(ctx: CanvasRenderingContext2D, s: DrawnShape) {
-  if (s.points.length === 0) return;
-  ctx.beginPath();
-  if (s.tool === "pen") {
-    ctx.moveTo(s.points[0]!.x, s.points[0]!.y);
-    for (const p of s.points.slice(1)) ctx.lineTo(p.x, p.y);
-    ctx.stroke();
-    return;
-  }
-  const a = s.points[0]!;
-  const b = s.points[s.points.length - 1]!;
-  if (s.tool === "circle") {
-    const cx = (a.x + b.x) / 2;
-    const cy = (a.y + b.y) / 2;
-    const rx = Math.abs(b.x - a.x) / 2;
-    const ry = Math.abs(b.y - a.y) / 2;
-    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  } else if (s.tool === "box") {
-    ctx.rect(a.x, a.y, b.x - a.x, b.y - a.y);
-    ctx.fill();
-    ctx.stroke();
-  } else if (s.tool === "arrow") {
-    ctx.moveTo(a.x, a.y);
-    ctx.lineTo(b.x, b.y);
-    ctx.stroke();
-    const angle = Math.atan2(b.y - a.y, b.x - a.x);
-    const head = 10;
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(
-      b.x - head * Math.cos(angle - Math.PI / 6),
-      b.y - head * Math.sin(angle - Math.PI / 6),
-    );
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(
-      b.x - head * Math.cos(angle + Math.PI / 6),
-      b.y - head * Math.sin(angle + Math.PI / 6),
-    );
-    ctx.stroke();
-  }
-}
