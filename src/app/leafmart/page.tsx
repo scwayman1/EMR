@@ -323,7 +323,7 @@ export default async function LeafmartHomePage() {
 
       {/* ── HUMANITY / PORTRAITS ─────────────────────────── */}
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
-        <div className="rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 lg:p-14" style={{ background: "linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%)" }}>
+        <div className="rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 lg:p-14" style={{ background: "linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%)", ["--ink" as string]: "#152119", ["--text" as string]: "#1F2A24", ["--text-soft" as string]: "#4A5651" }}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             {/* Left: anchor portrait + checklist */}
             <div className="order-2 lg:order-1">

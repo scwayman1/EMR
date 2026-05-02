@@ -349,9 +349,12 @@ export function build837P(input: Claim837Input, opts: BuildOptions): Built837 {
     segments.push(segment("REF", ["F8", input.claim.originalClaimControlNumber], delims));
   }
 
-  // NTE — claim notes
+  // NTE — claim notes. Each NTE is capped at 80 chars; longer notes split
+  // across multiple segments rather than getting truncated.
   if (input.claim.notes) {
-    segments.push(segment("NTE", ["ADD", input.claim.notes.slice(0, 80)], delims));
+    for (const chunk of splitNote(input.claim.notes, 80)) {
+      segments.push(segment("NTE", ["ADD", chunk], delims));
+    }
   }
 
   // ── Loop 2310B — Rendering provider (when ≠ billing) ─────────────
@@ -523,6 +526,25 @@ export function groupCas(adjustments: ClaimAdjustment[]): CasGroup[] {
     .map((g) => ({ groupCode: g, adjustments: byGroup.get(g)! }));
 }
 
+function splitNote(text: string, max: number): string[] {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length === 0) return [];
+  const out: string[] = [];
+  let i = 0;
+  while (i < cleaned.length) {
+    let end = Math.min(i + max, cleaned.length);
+    if (end < cleaned.length) {
+      // Break on the last whitespace so we don't split mid-word.
+      const lastSpace = cleaned.lastIndexOf(" ", end);
+      if (lastSpace > i) end = lastSpace;
+    }
+    out.push(cleaned.slice(i, end).trim());
+    i = end;
+    while (cleaned[i] === " ") i++;
+  }
+  return out;
+}
+
 function buildCasElements(groupCode: string, adjustments: ClaimAdjustment[]): X12Element[] {
   // CAS01 = group code, then up to 6 (reason / amount / units) triplets
   const els: X12Element[] = [groupCode];
@@ -535,4 +557,170 @@ function buildCasElements(groupCode: string, adjustments: ClaimAdjustment[]): X1
     els.push(a.reasonCode, formatAmount(a.amountCents), a.units != null ? String(a.units) : null);
   }
   return els;
+}
+
+// ---------------------------------------------------------------------------
+// Hardening: pre-build validation
+// ---------------------------------------------------------------------------
+// Catches the structural mistakes that would otherwise produce a clean-looking
+// 837P which the clearinghouse rejects with a generic "999 syntax error" or
+// 277CA "claim level reject" — issues we can detect deterministically before
+// we burn an interchange control number.
+
+export interface ValidationFinding {
+  /** Stable identifier for UI grouping ("billing.npi", "claim.totals", ...). */
+  field: string;
+  message: string;
+  severity: "error" | "warning";
+}
+
+const NPI_RE = /^\d{10}$/;
+const TAX_ID_RE = /^\d{9}$/;
+const CPT_RE = /^[0-9A-Z]{5}$/;
+const ICD10_RE = /^[A-TV-Z][0-9][A-Z0-9](?:\.[A-Z0-9]{1,4})?$/;
+
+/** Validate a `Claim837Input` *before* `build837P` runs. Returns every
+ *  finding rather than throwing on the first one so the UI can surface a
+ *  full punch list. `errors` block submission; `warnings` are advisory. */
+export function validate837Input(input: Claim837Input): {
+  ok: boolean;
+  errors: ValidationFinding[];
+  warnings: ValidationFinding[];
+} {
+  const findings: ValidationFinding[] = [];
+  const err = (field: string, message: string) =>
+    findings.push({ field, message, severity: "error" });
+  const warn = (field: string, message: string) =>
+    findings.push({ field, message, severity: "warning" });
+
+  if (!NPI_RE.test(input.billingProvider.npi)) {
+    err("billing.npi", "billing NPI must be 10 digits");
+  }
+  if (!NPI_RE.test(input.rendering.npi)) {
+    err("rendering.npi", "rendering NPI must be 10 digits");
+  }
+  if (!TAX_ID_RE.test(input.billingProvider.taxId)) {
+    err("billing.taxId", "billing tax ID must be 9 digits, no hyphen");
+  }
+
+  if (!input.subscriber.memberId.trim()) {
+    err("subscriber.memberId", "subscriber member ID is required");
+  }
+  if (input.subscriber.relationshipToPatient !== "18" && !input.patient) {
+    err(
+      "patient",
+      "subscriber.relationshipToPatient is not 'self' but no patient demographics were supplied",
+    );
+  }
+
+  if (input.claim.diagnoses.length === 0) {
+    err("claim.diagnoses", "at least one ICD-10 diagnosis is required");
+  } else if (input.claim.diagnoses.length > 12) {
+    err("claim.diagnoses", "X12 5010 caps diagnoses at 12 per claim");
+  }
+  for (const dx of input.claim.diagnoses) {
+    if (!ICD10_RE.test(dx)) {
+      warn("claim.diagnoses", `'${dx}' does not match the ICD-10 format`);
+    }
+  }
+
+  if (input.serviceLines.length === 0) {
+    err("serviceLines", "claim must contain at least one service line");
+  }
+  if (input.serviceLines.length > 50) {
+    err("serviceLines", "X12 5010 caps service lines at 50 per claim");
+  }
+
+  // Per-line checks
+  let lineSum = 0;
+  for (const line of input.serviceLines) {
+    lineSum += line.chargeCents;
+    if (!CPT_RE.test(line.cptCode)) {
+      err(`serviceLines[${line.sequence}].cptCode`, `'${line.cptCode}' is not a valid CPT/HCPCS code`);
+    }
+    if (line.modifiers.length > 4) {
+      err(`serviceLines[${line.sequence}].modifiers`, "max 4 modifiers per line");
+    }
+    if (line.units <= 0) {
+      err(`serviceLines[${line.sequence}].units`, "units must be > 0");
+    }
+    if (line.chargeCents < 0) {
+      err(`serviceLines[${line.sequence}].chargeCents`, "negative charges aren't valid on a primary claim");
+    }
+    if (line.diagnosisPointers.length === 0) {
+      err(`serviceLines[${line.sequence}].diagnosisPointers`, "at least one diagnosis pointer required");
+    }
+    for (const ptr of line.diagnosisPointers) {
+      if (ptr < 1 || ptr > input.claim.diagnoses.length) {
+        err(
+          `serviceLines[${line.sequence}].diagnosisPointers`,
+          `pointer ${ptr} is out of range for ${input.claim.diagnoses.length} diagnoses`,
+        );
+      }
+    }
+  }
+
+  // Claim total must equal sum of line charges (X12 5010 hard-fails otherwise)
+  if (lineSum > 0 && lineSum !== input.claim.totalChargeCents) {
+    err(
+      "claim.totalChargeCents",
+      `claim total ${formatAmount(input.claim.totalChargeCents)} does not equal sum of line charges ${formatAmount(lineSum)}`,
+    );
+  }
+
+  // Frequency 7 (replacement) / 8 (void) requires the original claim id
+  if (input.claim.frequencyCode !== "1" && !input.claim.originalClaimControlNumber) {
+    err(
+      "claim.originalClaimControlNumber",
+      `frequency '${input.claim.frequencyCode}' requires the original payer claim control number`,
+    );
+  }
+
+  // Secondary submission cross-check: every line must carry primaryAdjudication
+  if (input.secondary) {
+    for (const line of input.serviceLines) {
+      if (!line.primaryAdjudication) {
+        err(
+          `serviceLines[${line.sequence}].primaryAdjudication`,
+          "secondary submission requires primary adjudication on every line",
+        );
+      }
+    }
+  }
+
+  if (input.claim.notes && input.claim.notes.length > 80) {
+    warn("claim.notes", "NTE is capped at 80 chars; the rest will be truncated");
+  }
+
+  return {
+    ok: !findings.some((f) => f.severity === "error"),
+    errors: findings.filter((f) => f.severity === "error"),
+    warnings: findings.filter((f) => f.severity === "warning"),
+  };
+}
+
+/** Stateful in-process control-number allocator. Use one instance per
+ *  submission batch — ISA / GS / ST control numbers must be unique within
+ *  the interchange but stable enough that an SE counter mismatch is
+ *  catchable. ISA is 9 digits, GS is up to 9 digits, ST is 4-9 chars. */
+export class ControlNumberAllocator {
+  private isa: number;
+  private gs: number;
+  private st: number;
+  constructor(seed: { isa?: number; gs?: number; st?: number } = {}) {
+    this.isa = seed.isa ?? 1;
+    this.gs = seed.gs ?? 1;
+    this.st = seed.st ?? 1;
+  }
+  next(): { isaControlNumber: number; gsControlNumber: number; stControlNumber: string } {
+    const out = {
+      isaControlNumber: this.isa,
+      gsControlNumber: this.gs,
+      stControlNumber: this.st.toString().padStart(4, "0"),
+    };
+    this.isa = (this.isa % 999_999_999) + 1;
+    this.gs = (this.gs % 999_999_999) + 1;
+    this.st += 1;
+    return out;
+  }
 }
