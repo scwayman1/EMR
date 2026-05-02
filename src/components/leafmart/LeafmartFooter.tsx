@@ -5,8 +5,8 @@ import { useState } from "react";
 
 const COLUMNS = [
   { title: "Shelves", links: [
-    { label: "Sleep", href: "/leafmart/category/sleep" },
-    { label: "Recovery", href: "/leafmart/category/recovery" },
+    { label: "Rest", href: "/leafmart/category/rest" },
+    { label: "Relief", href: "/leafmart/category/relief" },
     { label: "Calm", href: "/leafmart/category/calm" },
     { label: "Skin", href: "/leafmart/category/skin" },
     { label: "Focus", href: "/leafmart/category/focus" },
@@ -186,8 +186,44 @@ export function LeafmartFooter() {
           ))}
         </div>
 
+        {/* EMR-335: Layered legal disclaimer block (Layer A — global).
+            Per Dr. Patel: every page must surface a no-medical-advice +
+            no-physician-patient-relationship + Farm-Bill-only-shipping
+            statement, before the copyright line. Layer B (checkout) and
+            Layer C (account creation) live in their own surfaces. */}
+        <div
+          role="region"
+          aria-label="Legal disclaimer"
+          className="pt-6 border-t border-[var(--border)] mb-5 text-[11.5px] sm:text-[12px] leading-relaxed text-[var(--text-soft)] space-y-2"
+        >
+          <p>
+            <strong className="text-[var(--ink)]">Not medical advice.</strong>
+            {" "}Information on this site is general and educational. Use
+            of Leafmart does not create a physician-patient relationship.
+            Talk to your healthcare provider before starting, changing,
+            or stopping anything you take.
+          </p>
+          <p>
+            <strong className="text-[var(--ink)]">Hemp products only.</strong>
+            {" "}Leafmart ships only hemp-derived products that are legal
+            under the federal 2018 Farm Bill (less than 0.3% delta-9 THC
+            by dry weight). We do not ship to military bases (APO/FPO/DPO),
+            VA facilities, U.S. territories, or international addresses.
+            Some states impose additional restrictions; restricted orders
+            are blocked at checkout.
+          </p>
+          <p>
+            <strong className="text-[var(--ink)]">21+ only.</strong>
+            {" "}Products containing cannabinoids may not be sold to
+            anyone under 21. Buyers assume full responsibility for use,
+            including any drug-test, drug-interaction, or workplace
+            consequences. Full terms in our
+            {" "}<Link href="/legal/terms" className="underline hover:text-[var(--ink)]">Terms of Service</Link>.
+          </p>
+        </div>
+
         {/* Bottom bar */}
-        <div className="pt-6 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-[var(--muted)]">
+        <div className="pt-4 border-t border-[var(--border)] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-[var(--muted)]">
           <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
             <span>&copy; {new Date().getFullYear()} Leafmart, from Leafjourney Health.</span>
             <BackToTop />

@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { AccountAuthFallback } from "@/components/leafmart/AccountAuthFallback";
+import { LiabilityAffirmationsGate } from "@/components/leafmart/LiabilityAffirmationsGate";
 
 export const metadata: Metadata = {
   title: "Create your account",
@@ -64,11 +65,16 @@ export default function LeafmartSignupPage() {
             </h1>
           </div>
 
-          {clerkEnabled ? (
-            <ClerkLeafmartSignUp />
-          ) : (
-            <AccountAuthFallback mode="signup" />
-          )}
+          {/* EMR-337: liability affirmations must be acknowledged before
+              the signup form is unlocked. Acknowledgement is recorded
+              server-side with timestamp + IP for the audit trail. */}
+          <LiabilityAffirmationsGate>
+            {clerkEnabled ? (
+              <ClerkLeafmartSignUp />
+            ) : (
+              <AccountAuthFallback mode="signup" />
+            )}
+          </LiabilityAffirmationsGate>
 
           <p className="text-[12.5px] text-[var(--muted)] mt-6 text-center">
             Already have an account?{" "}

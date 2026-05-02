@@ -9,8 +9,8 @@ import { AccountUserMenu } from "@/components/leafmart/AccountUserMenu";
 import { LogoMark } from "@/components/ui/logo";
 
 const NAV_LINKS = [
-  { label: "Sleep", href: "/leafmart/category/sleep" },
-  { label: "Recovery", href: "/leafmart/category/recovery" },
+  { label: "Rest", href: "/leafmart/category/rest" },
+  { label: "Relief", href: "/leafmart/category/relief" },
   { label: "Calm", href: "/leafmart/category/calm" },
   { label: "Skin", href: "/leafmart/category/skin" },
   { label: "Focus", href: "/leafmart/category/focus" },
