@@ -21,8 +21,12 @@ const CATEGORY_META: Record<string, { title: string; headline: string; accent: s
   focus: { title: "Focus", headline: "Clarity when it counts.", accent: "clarity", bg: "var(--lilac)" },
 };
 
+// User-facing slugs map to legacy DB slugs so renamed shelves
+// (relief ← recovery, rest ← sleep) keep returning the right rows
+// until the seed data is fully migrated.
 const CATEGORY_SLUG_ALIASES: Record<string, string> = {
   relief: "recovery",
+  rest: "sleep",
 };
 
 export async function generateStaticParams() {

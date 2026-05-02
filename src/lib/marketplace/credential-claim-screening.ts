@@ -48,7 +48,12 @@ export const BANNED_CREDENTIAL_PHRASES: ReadonlyArray<{
   saferAlternative: string;
 }> = [
   {
-    pattern: /\bdoctor[\s-]?recommend(?:ed|s|ation)\b/gi,
+    // The optional `(?:['’]s|s)` covers possessive forms
+    // ("doctor's recommendation", curly-quote variant from
+    // Word/Apple, plain plural "doctors recommendation") so the
+    // possessive phrasing flagged in the leading comment can't slip
+    // past the screener.
+    pattern: /\bdoctor(?:['’]s|s)?[\s-]?recommend(?:ed|s|ation)\b/gi,
     display: "doctor recommended",
     reason:
       "Implies a treating-physician endorsement, which creates malpractice and FDA-claim exposure for the clinician and the platform.",

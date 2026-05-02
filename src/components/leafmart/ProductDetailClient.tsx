@@ -12,6 +12,7 @@ import { StarRating } from "./StarRating";
 import { LeafShareButton } from "./LeafShareButton";
 import { useCart } from "@/lib/leafmart/cart-store";
 import { findGuideByFormat } from "@/lib/leafmart/dosing-guides";
+import { absoluteUrl } from "@/lib/leafmart/seo";
 
 interface Props {
   product: LeafmartProduct;
@@ -107,7 +108,7 @@ export function ProductDetailClient({ product, related }: Props) {
               <p className="eyebrow text-[var(--muted)]">{product.partner} · {product.formatLabel}</p>
               {/* EMR-308: leaf share at the top of the PDP */}
               <LeafShareButton
-                url={`/leafmart/products/${product.slug}`}
+                url={absoluteUrl(`/leafmart/products/${product.slug}`)}
                 title={product.name}
                 text={product.support}
                 placement="pdp-top"
@@ -263,7 +264,7 @@ export function ProductDetailClient({ product, related }: Props) {
       {/* EMR-308: leaf share at the bottom of the PDP */}
       <div className="px-4 sm:px-6 lg:px-14 max-w-[1440px] mx-auto pb-2 sm:pb-4 flex justify-center">
         <LeafShareButton
-          url={`/leafmart/products/${product.slug}`}
+          url={absoluteUrl(`/leafmart/products/${product.slug}`)}
           title={product.name}
           text={product.support}
           placement="pdp-bottom"

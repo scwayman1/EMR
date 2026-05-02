@@ -17,6 +17,9 @@ describe("screenCredentialClaims", () => {
 
   it.each([
     ["This product is doctor recommended for sleep.", "doctor recommended"],
+    ["Try our doctor-recommended blend.", "doctor-recommended"],
+    ["Backed by a doctor's recommendation.", "doctor's recommendation"],
+    ["Backed by a doctor’s recommendation.", "doctor’s recommendation"],
     ["A clinician-approved formulation.", "clinician-approved"],
     ["Physician formulated for evening calm.", "Physician formulated"],
     ["Used in my practice with great results.", "used in my practice"],
