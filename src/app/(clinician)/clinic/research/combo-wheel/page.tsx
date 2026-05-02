@@ -40,6 +40,11 @@ async function loadProviderUsage(
   // mapping isn't available the row is dropped — this is a guidance signal,
   // not a clinical metric.
   try {
+    // No `take` cap: query is bounded by `prescribedById = providerUserId`
+    // AND `active = true`, so the row count is one provider's active
+    // regimens — small in practice. A silent cap here would
+    // under-count busy providers and (without ORDER BY) would also
+    // return a nondeterministic subset on every request.
     const compoundUsage = await prisma.dosingRegimen.findMany({
       where: {
         active: true,
@@ -53,17 +58,24 @@ async function loadProviderUsage(
           select: {
             id: true,
             name: true,
-            thcContent: true,
-            cbdContent: true,
+            thcConcentration: true,
+            cbdConcentration: true,
           },
         },
       },
-      take: 500,
     });
 
+    // Doses are tracked per-patient so the displayed "average mg per
+    // dose across active patients" actually averages at patient
+    // granularity — a patient with 3 active regimens of THC counts
+    // once, not three times.
     const buckets = new Map<
       string,
-      { name: string; color: string; patients: Set<string>; doses: number[] }
+      {
+        name: string;
+        color: string;
+        dosesByPatient: Map<string, number[]>;
+      }
     >();
 
     function add(
@@ -75,35 +87,48 @@ async function loadProviderUsage(
     ) {
       const entry =
         buckets.get(id) ??
-        ({ name, color, patients: new Set<string>(), doses: [] } as {
-          name: string;
-          color: string;
-          patients: Set<string>;
-          doses: number[];
+        ({
+          name,
+          color,
+          dosesByPatient: new Map<string, number[]>(),
         });
-      entry.patients.add(patientId);
-      if (typeof dose === "number" && dose > 0) entry.doses.push(dose);
+      let pDoses = entry.dosesByPatient.get(patientId);
+      if (!pDoses) {
+        pDoses = [];
+        entry.dosesByPatient.set(patientId, pDoses);
+      }
+      if (typeof dose === "number" && dose > 0) pDoses.push(dose);
       buckets.set(id, entry);
     }
 
     for (const r of compoundUsage) {
-      const thc = r.calculatedThcMgPerDose ?? r.product?.thcContent ?? null;
-      const cbd = r.calculatedCbdMgPerDose ?? r.product?.cbdContent ?? null;
+      const thc = r.calculatedThcMgPerDose ?? r.product?.thcConcentration ?? null;
+      const cbd = r.calculatedCbdMgPerDose ?? r.product?.cbdConcentration ?? null;
       if (thc && thc > 0) add("thc", "THC", "#1F8A4D", r.patientId, thc);
       if (cbd && cbd > 0) add("cbd", "CBD", "#1F6FE0", r.patientId, cbd);
     }
 
     return Array.from(buckets.entries())
-      .map(([id, entry]) => ({
-        compoundId: id,
-        compoundName: entry.name,
-        color: entry.color,
-        patients: entry.patients.size,
-        averageDose:
-          entry.doses.length > 0
-            ? entry.doses.reduce((a, b) => a + b, 0) / entry.doses.length
-            : null,
-      }))
+      .map(([id, entry]) => {
+        const patientAverages: number[] = [];
+        for (const doses of entry.dosesByPatient.values()) {
+          if (doses.length === 0) continue;
+          patientAverages.push(
+            doses.reduce((a, b) => a + b, 0) / doses.length,
+          );
+        }
+        return {
+          compoundId: id,
+          compoundName: entry.name,
+          color: entry.color,
+          patients: entry.dosesByPatient.size,
+          averageDose:
+            patientAverages.length > 0
+              ? patientAverages.reduce((a, b) => a + b, 0) /
+                patientAverages.length
+              : null,
+        };
+      })
       .sort((a, b) => b.patients - a.patients);
   } catch {
     // Schema mismatches between branches are common during phased rollouts;

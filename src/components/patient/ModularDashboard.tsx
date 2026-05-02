@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sparkline } from "@/components/ui/sparkline";
 import { cn } from "@/lib/utils/cn";
-import { formatDate, formatRelative } from "@/lib/utils/format";
+import { formatDate, formatFromNow, formatRelative } from "@/lib/utils/format";
 
 const STORAGE_KEY = "lj.patient.dashboard.layout.v1";
 
@@ -549,7 +549,7 @@ function AppointmentWidget({ data }: { data: ModularDashboardData }) {
             </p>
             <div className="mt-1 flex items-center gap-2 flex-wrap">
               <span className="text-xs text-text-muted">
-                {formatRelative(visit.scheduledFor)}
+                {formatFromNow(visit.scheduledFor)}
               </span>
               {visit.modality && (
                 <Badge tone="accent" className="text-[10px]">
