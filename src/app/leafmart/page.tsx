@@ -267,24 +267,45 @@ export default async function LeafmartHomePage() {
             </p>
           </div>
 
-          {/* Mobile: horizontal scroll. sm+: grid. */}
-          <div className="-mx-6 sm:mx-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lm-stagger flex sm:flex-none overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none px-6 sm:px-0 gap-4 pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {partners.map((p) => (
-              <div
-                key={p.name}
-                className="card-lift rounded-3xl p-6 flex flex-col cursor-pointer flex-shrink-0 w-[78%] sm:w-auto snap-start sm:snap-align-none"
-                style={{ background: p.bg, height: 320 }}
-              >
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="w-[140px] h-[180px]">
-                    <ProductSilhouette shape={p.shape} bg="transparent" deep={p.deep} height={180} />
+          {/* EMR-204: only confirmed partners render here. When the
+              founding-partner shelf is empty we show a "Coming soon"
+              placeholder rather than speculative brand names. */}
+          {partners.length > 0 ? (
+            <div className="-mx-6 sm:mx-0 sm:grid sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lm-stagger flex sm:flex-none overflow-x-auto sm:overflow-visible snap-x snap-mandatory sm:snap-none px-6 sm:px-0 gap-4 pb-2 sm:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {partners.map((p) => (
+                <div
+                  key={p.name}
+                  className="card-lift rounded-3xl p-6 flex flex-col cursor-pointer flex-shrink-0 w-[78%] sm:w-auto snap-start sm:snap-align-none"
+                  style={{ background: p.bg, height: 320 }}
+                >
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="w-[140px] h-[180px]">
+                      <ProductSilhouette shape={p.shape} bg="transparent" deep={p.deep} height={180} />
+                    </div>
                   </div>
+                  <h4 className="font-display text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--ink)] mt-3 mb-1.5">{p.name}</h4>
+                  <p className="text-[12.5px] sm:text-[13px] text-[var(--text-soft)] leading-snug">{p.desc}</p>
                 </div>
-                <h4 className="font-display text-[20px] sm:text-[22px] font-medium tracking-tight text-[var(--ink)] mt-3 mb-1.5">{p.name}</h4>
-                <p className="text-[12.5px] sm:text-[13px] text-[var(--text-soft)] leading-snug">{p.desc}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-[var(--leaf)]/30 bg-white/40 p-8 sm:p-10 text-center">
+              <p className="font-display text-[22px] sm:text-[26px] tracking-tight text-[var(--ink)]">
+                Founding partners <em className="font-accent not-italic text-[var(--leaf)]">coming soon</em>.
+              </p>
+              <p className="text-[13.5px] sm:text-[14.5px] text-[var(--text-soft)] mt-3 max-w-[460px] mx-auto leading-relaxed">
+                We&apos;re finalizing agreements with our first cohort of brands.
+                Every partner will be clinician-reviewed and lab-verified before
+                they appear on this shelf.
+              </p>
+              <Link
+                href="/leafmart/vendors"
+                className="inline-block mt-5 text-[13px] font-medium text-[var(--leaf)] border-b-[1.5px] border-[var(--leaf)] pb-0.5 hover:opacity-80 transition-opacity"
+              >
+                Apply to be a founding partner →
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
@@ -364,7 +385,7 @@ export default async function LeafmartHomePage() {
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait src="/portraits/aanya.png" tone="warm" caption="Aanya, 31 · Calm" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">Sunday afternoon, off the clock</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Stillwater Tonic · PhytoRx</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">Sunday afternoon, off the clock</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">CBN sleep tonic · Calm shelf</div></div>
                 </div>
                 <div>
                   <Portrait src="/portraits/james.png" tone="butter" caption="James, 82 · Rest" />
@@ -372,7 +393,7 @@ export default async function LeafmartHomePage() {
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait src="/portraits/eleanor.png" tone="lilac" caption="Eleanor, 71 · Skin" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">A slower morning routine</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Gold Skin Serum · Potency 710</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">A slower morning routine</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">CBD skin serum · Skin shelf</div></div>
                 </div>
               </div>
             </div>

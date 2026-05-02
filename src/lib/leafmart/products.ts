@@ -480,16 +480,26 @@ export async function getVendors(): Promise<LeafmartPartner[]> {
       orderBy: [{ name: "asc" }],
     });
     if (rows.length === 0) return DEMO_PARTNERS;
+    // Fallback styling palette used when a DB vendor doesn't have a
+    // matching demo entry. Kept here so the function works even after
+    // EMR-204 emptied DEMO_PARTNERS of unconfirmed brands.
+    const STYLE_FALLBACKS = [
+      { bg: "var(--sage)", deep: "var(--leaf)", shape: "can" as const },
+      { bg: "var(--peach)", deep: "#9E5621", shape: "tin" as const },
+      { bg: "var(--lilac)", deep: "#5C4972", shape: "bottle" as const },
+      { bg: "var(--rose)", deep: "#9E4D45", shape: "serum" as const },
+    ];
     return rows.map((v: Vendor, i: number) => {
-      const fallback =
-        DEMO_PARTNERS.find((p) => p.name.toLowerCase() === v.name.toLowerCase()) ??
-        DEMO_PARTNERS[i % DEMO_PARTNERS.length];
+      const matched = DEMO_PARTNERS.find(
+        (p) => p.name.toLowerCase() === v.name.toLowerCase(),
+      );
+      const style = matched ?? STYLE_FALLBACKS[i % STYLE_FALLBACKS.length];
       return {
         name: v.name,
-        desc: fallback.desc,
-        bg: fallback.bg,
-        deep: fallback.deep,
-        shape: fallback.shape,
+        desc: matched?.desc ?? "Founding partner — clinician-reviewed.",
+        bg: style.bg,
+        deep: style.deep,
+        shape: style.shape,
       };
     });
   } catch (err) {

@@ -34,6 +34,8 @@ import {
   getAgeBand,
   isPediatric,
 } from "@/lib/utils/patient-age";
+import { CarePlanSection } from "@/components/patient/CarePlanSection";
+import { ChartTaskList } from "@/components/patient/ChartTaskList";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -491,29 +493,47 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         </CardContent>
       </Card>
 
-      {/* ── Open tasks panel (EMR-180) ─────────────────────── */}
-      {openTasks.length > 0 && (
-        <Card className="mb-6 border-l-4 border-l-highlight px-5 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-text-subtle font-medium">
-              Open tasks · {openTasks.length}
-            </p>
+      {/* ── Chart task list / to-do on open (EMR-180) ─────── */}
+      {/* Built from data we already fetched: open tasks + unsigned notes.
+          Uses the ChartTaskList component so the panel can be dismissed
+          per-patient and grows in one place when we add screenings,
+          missing consents, etc. */}
+      {(() => {
+        const unsignedNotes = allNotes.filter(
+          (n: any) => n.status !== "finalized" && n.status !== "amended",
+        );
+        const items = [
+          ...openTasks.map((task: any) => ({
+            id: task.id,
+            category: "task" as const,
+            title: task.title,
+            detail: task.description ?? undefined,
+            href: `/clinic/patients/${params.id}/orders`,
+            dueAt: task.dueAt,
+            severity:
+              task.dueAt && new Date(task.dueAt).getTime() < Date.now()
+                ? ("danger" as const)
+                : ("info" as const),
+          })),
+          ...unsignedNotes.slice(0, 5).map((n: any) => ({
+            id: n.id,
+            category: "note" as const,
+            title:
+              typeof (n.blocks as { chiefComplaint?: unknown })?.chiefComplaint === "string"
+                ? `Sign: ${(n.blocks as { chiefComplaint: string }).chiefComplaint}`
+                : "Sign visit note",
+            detail: n.status === "draft" ? "Draft awaiting sign-off" : "Pending review",
+            href: `/clinic/patients/${params.id}/notes/${n.id}`,
+            dueAt: null,
+            severity: "warning" as const,
+          })),
+        ];
+        return items.length > 0 ? (
+          <div className="mb-6">
+            <ChartTaskList patientId={params.id} items={items} />
           </div>
-          <ul className="space-y-1.5">
-            {openTasks.map((task: any) => (
-              <li key={task.id} className="flex items-center gap-3 text-sm">
-                <span className="h-1.5 w-1.5 rounded-full bg-highlight shrink-0" />
-                <span className="text-text flex-1 truncate">{task.title}</span>
-                {task.dueAt && (
-                  <span className="text-[11px] text-text-subtle shrink-0 tabular-nums">
-                    due {formatRelative(task.dueAt)}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+        ) : null;
+      })()}
 
       {/* ── CDS Panel (EMR-166) ──────────────────────────── */}
       {cdsAlerts.length > 0 && (
@@ -543,6 +563,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         <DemographicsTab
           patient={patient}
           medications={patientMedications}
+          openTasks={openTasks}
+          upcomingEncounters={patient.encounters.filter(
+            (e: any) =>
+              e.status === "scheduled" &&
+              e.scheduledFor &&
+              new Date(e.scheduledFor) >= new Date(),
+          )}
         />
       )}
       {tab === "records" && <RecordsTab documents={recordDocs} patientId={params.id} />}
@@ -600,9 +627,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
 function DemographicsTab({
   patient,
   medications,
+  openTasks,
+  upcomingEncounters,
 }: {
   patient: any;
   medications: any[];
+  openTasks: any[];
+  upcomingEncounters: any[];
 }) {
   const dob = patient.dateOfBirth ? new Date(patient.dateOfBirth) : null;
   const age = dob
@@ -646,6 +677,40 @@ function DemographicsTab({
           age={age}
         />
       )}
+
+      {/* EMR-159: Care plan inline. Replaces the standalone "Care plan"
+          tab — the physician sees treatment goals, upcoming visits, and
+          open tasks alongside identity instead of behind another click. */}
+      <CarePlanSection
+        patientId={patient.id}
+        treatmentGoals={patient.treatmentGoals}
+        presentingConcerns={patient.presentingConcerns}
+        upcomingVisits={upcomingEncounters.map((e) => ({
+          id: e.id,
+          scheduledFor: e.scheduledFor,
+          status: e.status,
+          modality: e.modality,
+          reason: e.reason,
+        }))}
+        openTasks={openTasks.map((t: any) => ({
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          dueAt: t.dueAt,
+        }))}
+        cannabisHistory={
+          patient.cannabisHistory && typeof patient.cannabisHistory === "object"
+            ? (patient.cannabisHistory as {
+                priorUse?: boolean;
+                formats?: string[];
+                reportedBenefits?: string[];
+                reportedSideEffects?: string[];
+              })
+            : null
+        }
+      />
+
 
       {/* Identity & Personal */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

@@ -8,8 +8,9 @@
 // cannabis wheel. Keeps implementation tight while still giving
 // patients a "wheel" feel.
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { ArrowRight, ShoppingCart, Sparkles } from "lucide-react";
 
 import {
   Card,
@@ -27,9 +28,13 @@ import {
 
 interface Props {
   compounds: SupplementCompoundView[];
+  // EMR-151: marks the host surface so the Leafmart "Shop this stack"
+  // CTA is hidden in clinical contexts where commerce should stay
+  // out of the way (e.g. clinician-facing previews).
+  context?: "patient" | "leafmart" | "clinical";
 }
 
-export function SupplementWheel({ compounds }: Props) {
+export function SupplementWheel({ compounds, context = "patient" }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const toggle = (id: string) => {
@@ -253,6 +258,34 @@ export function SupplementWheel({ compounds }: Props) {
                   </ul>
                 </CardContent>
               </Card>
+            )}
+
+            {context !== "clinical" && (
+              <Link
+                href={`/leafmart/shop?supplements=${selectedRows
+                  .map((c) => c.id)
+                  .join(",")}`}
+                prefetch={false}
+                className="group flex items-center justify-between gap-3 rounded-2xl bg-accent px-5 py-3.5 text-white shadow-[0_8px_24px_-10px_rgba(58,133,96,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-10px_rgba(58,133,96,0.65)]"
+              >
+                <span className="flex items-center gap-2.5 min-w-0">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/30">
+                    <ShoppingCart className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                  </span>
+                  <span className="flex flex-col min-w-0">
+                    <span className="text-sm font-semibold leading-tight">
+                      Shop this stack on Leafmart
+                    </span>
+                    <span className="text-[11px] text-white/80 leading-tight truncate">
+                      {selectedRows.map((c) => c.name).join(" + ")}
+                    </span>
+                  </span>
+                </span>
+                <ArrowRight
+                  className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </Link>
             )}
           </>
         )}
