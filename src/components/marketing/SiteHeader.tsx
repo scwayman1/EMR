@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Wordmark } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
+import { MobilePortraitNav } from "@/components/layout/MobilePortraitNav";
 
 const NAV_LINKS = [
   { label: "About", href: "/about" },
   { label: "Security", href: "/security" },
   { label: "Education", href: "/education" },
   { label: "Leafmart", href: "/leafmart" },
+  { label: "Marketplace", href: "/marketplace" },
   { label: "Developer", href: "/developer" },
 ];
 
@@ -32,11 +34,9 @@ export function SiteHeader() {
           <Wordmark size="md" />
         </Link>
 
-        {/* EMR-189: nav visible on mobile portrait — no hamburger.
-            Five primary links + Sign in scroll horizontally on phones,
-            wrap into the full row on tablet/desktop. */}
+        {/* EMR-189: tablet+ only — phones get the swipeable grid below. */}
         <nav
-          className="flex-1 min-w-0 flex items-center gap-0.5 overflow-x-auto no-scrollbar"
+          className="hidden md:flex flex-1 min-w-0 items-center gap-0.5 overflow-x-auto no-scrollbar"
           aria-label="Main"
         >
           {NAV_LINKS.map((link) => (
@@ -62,6 +62,10 @@ export function SiteHeader() {
           </Button>
         </Link>
       </div>
+
+      {/* EMR-189: mobile-portrait grid — every primary tab visible without
+          a hamburger. Hidden at md+ where the inline nav above is shown. */}
+      <MobilePortraitNav />
     </header>
   );
 }

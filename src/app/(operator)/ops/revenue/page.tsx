@@ -9,10 +9,13 @@ import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { Button } from "@/components/ui/button";
 import { formatRelative } from "@/lib/utils/format";
 import {
+  buildReorderAlerts,
   computeDispensaryRevenue,
+  computeWeeklyRevenueSeries,
   type DispensaryOrderInput,
   type DispensaryProductInput,
 } from "@/lib/billing/dispensary-revenue";
+import { Sparkline } from "@/components/ui/sparkline";
 
 export const metadata = { title: "Revenue Cockpit" };
 
@@ -221,24 +224,28 @@ export default async function RevenuePage() {
 
   // EMR-183 — dispensary rollup. Computed in pure code from raw rows
   // so the math is unit-testable without a Prisma harness.
+  const normalizedOrders = dispensaryOrders.map<DispensaryOrderInput>((o) => ({
+    id: o.id,
+    status: o.status,
+    total: o.total,
+    tax: o.tax,
+    createdAt: o.createdAt,
+    items: o.items,
+  }));
+  const normalizedProducts = dispensaryProducts.map<DispensaryProductInput>((p) => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    format: p.format,
+    price: p.price,
+    inventoryCount: p.inventoryCount,
+  }));
   const dispensaryRollup = computeDispensaryRevenue(
-    dispensaryOrders.map<DispensaryOrderInput>((o) => ({
-      id: o.id,
-      status: o.status,
-      total: o.total,
-      tax: o.tax,
-      createdAt: o.createdAt,
-      items: o.items,
-    })),
-    dispensaryProducts.map<DispensaryProductInput>((p) => ({
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      format: p.format,
-      price: p.price,
-      inventoryCount: p.inventoryCount,
-    })),
+    normalizedOrders,
+    normalizedProducts,
   );
+  const weeklyRevenueSeries = computeWeeklyRevenueSeries(normalizedOrders);
+  const reorderAlerts = buildReorderAlerts(normalizedProducts);
 
   return (
     <PageShell maxWidth="max-w-[1320px]">
@@ -394,6 +401,80 @@ export default async function RevenuePage() {
       {/* ── Dispensary Revenue + Inventory (EMR-183) ─────────── */}
       <div className="mb-10">
         <Eyebrow className="mb-4">Dispensary · gross / net (last 90 days)</Eyebrow>
+
+        {weeklyRevenueSeries.length >= 2 && (
+          <Card tone="raised" className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-base">Weekly gross / net trend</CardTitle>
+              <CardDescription>
+                Each week's gross is the upper band; net (gross − refunds − tax) is the lower.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+                    Gross
+                  </p>
+                  <Sparkline
+                    data={weeklyRevenueSeries.map((p) => p.grossCents / 100)}
+                    width={460}
+                    height={64}
+                  />
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle mb-1">
+                    Net
+                  </p>
+                  <Sparkline
+                    data={weeklyRevenueSeries.map((p) => p.netCents / 100)}
+                    width={460}
+                    height={64}
+                    color="var(--success)"
+                    fill="var(--accent-soft)"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {reorderAlerts.length > 0 && (
+          <Card tone="raised" className="mb-4 border-l-4 border-l-[color:var(--warning)]">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                Reorder alerts
+                <Badge tone="warning">{reorderAlerts.length}</Badge>
+              </CardTitle>
+              <CardDescription>
+                SKUs at or below the {20}-unit reorder threshold. Critical SKUs (
+                ≤ 5 units) are flagged in red.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {reorderAlerts.slice(0, 8).map((alert) => (
+                  <div
+                    key={alert.productId}
+                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-md hover:bg-surface-muted/40"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-text truncate">
+                        {alert.name}
+                      </p>
+                      <p className="text-[11px] text-text-subtle truncate">
+                        {alert.brand} · {alert.format}
+                      </p>
+                    </div>
+                    <Badge tone={alert.severity === "critical" ? "danger" : "warning"}>
+                      {alert.inventoryOnHand} left
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <Card tone="raised">
             <CardContent className="pt-5 pb-5">

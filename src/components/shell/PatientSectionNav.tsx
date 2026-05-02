@@ -49,7 +49,6 @@ const SECTIONS: Record<string, SectionDef> = {
       { label: "Check-in history", href: "/portal/outcomes" },
       { label: "Care plan", href: "/portal/care-plan" },
       { label: "Care guide", href: "/portal/education" },
-      { label: "Learn", href: "/portal/learn" },
     ],
   },
   // EMR-196: "My Journey" → "My Garden". Cannabis Combo Wheel moved to
@@ -74,14 +73,18 @@ const SECTIONS: Record<string, SectionDef> = {
       { label: "Settings", href: "/portal/settings" },
     ],
   },
-  // EMR-200: Chat & Learn — social + education hub.
+  // EMR-200: Chat & Learn ribbon — community plus the public-style
+  // education surfaces.
+  // EMR-124: prior "Research" label was misleading — /portal/learn is
+  // the educational library (cannabinoids/terpenes/conditions). Renamed
+  // to "Learn" so the label matches the destination.
   chatLearn: {
     title: "Chat & Learn",
     primary: [
       { label: "Community", href: "/portal/community" },
       { label: "Cannabis Combo Wheel", href: "/portal/combo-wheel" },
       { label: "ChatCB", href: "/portal/chatcb" },
-      { label: "Research", href: "/portal/learn" },
+      { label: "Learn", href: "/portal/learn" },
     ],
   },
 };

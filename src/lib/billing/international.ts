@@ -213,3 +213,346 @@ export function publicCoverageUnlikely(countryCode: Iso3166Alpha2): boolean {
   const policy = REGISTRY[countryCode].cannabisPolicy;
   return !policy.reimbursableUnderPublic;
 }
+
+// ---------------------------------------------------------------------------
+// EMR-116 — Currency conversion (FX), tax math, claim-format adapter, and
+// multi-currency ledger entry helpers. Everything below is pure: no DB, no
+// I/O, no side effects. The caller wires the FX rates from whatever feed it
+// trusts (in practice: a daily mid-market snapshot stored on the org row).
+// ---------------------------------------------------------------------------
+
+/**
+ * FX rate quoted as `1 unit of base = rate units of quote`. For example,
+ * EUR→USD on a day worth 1.08 means `{ base: "EUR", quote: "USD", rate: 1.08 }`.
+ */
+export interface FxRate {
+  base: CurrencyCode;
+  quote: CurrencyCode;
+  rate: number;
+  /** ISO date the rate was sourced. Stored on the ledger entry for audit. */
+  asOf: string;
+}
+
+export interface FxConversion {
+  fromCurrency: CurrencyCode;
+  toCurrency: CurrencyCode;
+  fromMinorUnits: number;
+  toMinorUnits: number;
+  rateApplied: number;
+  asOf: string;
+}
+
+const ONE_BY_ZERO_FX: number = 1;
+
+function findRate(
+  rates: FxRate[],
+  from: CurrencyCode,
+  to: CurrencyCode,
+): { rate: number; asOf: string } | null {
+  if (from === to) {
+    return { rate: ONE_BY_ZERO_FX, asOf: new Date().toISOString().slice(0, 10) };
+  }
+  const direct = rates.find((r) => r.base === from && r.quote === to);
+  if (direct) return { rate: direct.rate, asOf: direct.asOf };
+  const inverse = rates.find((r) => r.base === to && r.quote === from);
+  if (inverse && inverse.rate !== 0) {
+    return { rate: 1 / inverse.rate, asOf: inverse.asOf };
+  }
+  return null;
+}
+
+/**
+ * Convert a minor-unit amount (cents/pence/cent) from one supported currency
+ * to another using the supplied FX table. Rounds to the nearest minor unit.
+ */
+export function convertMoney(
+  fromMinorUnits: number,
+  fromCurrency: CurrencyCode,
+  toCurrency: CurrencyCode,
+  rates: FxRate[],
+): FxConversion {
+  const found = findRate(rates, fromCurrency, toCurrency);
+  if (!found) {
+    throw new Error(
+      `No FX rate available for ${fromCurrency} → ${toCurrency} in the supplied table.`,
+    );
+  }
+  const converted = Math.round(fromMinorUnits * found.rate);
+  return {
+    fromCurrency,
+    toCurrency,
+    fromMinorUnits,
+    toMinorUnits: converted,
+    rateApplied: found.rate,
+    asOf: found.asOf,
+  };
+}
+
+export interface TaxComputation {
+  countryCode: Iso3166Alpha2;
+  taxLabel: "VAT" | "GST" | "HST" | "MwSt" | "None";
+  /** VAT/GST/HST rate as percentage (e.g. 20 for 20%). */
+  taxRatePct: number;
+  /** Amount of tax, in minor units. Zero when medical services are exempt. */
+  taxMinorUnits: number;
+  /** Pre-tax amount, in minor units (echo of input for ledger writers). */
+  netMinorUnits: number;
+  /** Total billed including tax, in minor units. */
+  grossMinorUnits: number;
+}
+
+const TAX_LABEL: Record<Iso3166Alpha2, TaxComputation["taxLabel"]> = {
+  US: "None",
+  GB: "VAT",
+  CA: "HST",
+  DE: "MwSt",
+  AU: "GST",
+};
+
+/**
+ * Compute the country-specific consumption tax on a medical service line.
+ * Most jurisdictions exempt medical services from VAT/GST entirely, but the
+ * registry carries the rate explicitly so a non-medical line (e.g. a wellness
+ * product sold alongside) can opt in by passing `applyEvenIfMedical = true`.
+ */
+export function computeTax(
+  countryCode: Iso3166Alpha2,
+  netMinorUnits: number,
+  options: { applyEvenIfMedical?: boolean } = {},
+): TaxComputation {
+  const rule = REGISTRY[countryCode];
+  const exempt = !rule.medicalServicesTaxable && !options.applyEvenIfMedical;
+  const ratePct = exempt ? 0 : rule.vatRate;
+  const tax = Math.round((netMinorUnits * ratePct) / 100);
+  return {
+    countryCode,
+    taxLabel: TAX_LABEL[countryCode],
+    taxRatePct: ratePct,
+    taxMinorUnits: tax,
+    netMinorUnits,
+    grossMinorUnits: netMinorUnits + tax,
+  };
+}
+
+/**
+ * Country-neutral claim payload. Each downstream country adapter renders
+ * this into its native wire format (X12 837P for US, FHIR Claim for GB/CA,
+ * § 295 SGB V for DE, MBS-online for AU). The adapter shape is what the
+ * clearinghouse worker dispatches on.
+ */
+export interface NormalizedClaim {
+  countryCode: Iso3166Alpha2;
+  carrierId: string;
+  /** Patient's coverage ID with the carrier (member-id, NHS number, etc.). */
+  memberId: string;
+  serviceDate: string;
+  procedureCodes: string[];
+  diagnosisCodes: string[];
+  netMinorUnits: number;
+  taxMinorUnits: number;
+  currency: CurrencyCode;
+}
+
+export interface AdaptedClaim {
+  format: "X12_837P" | "FHIR_CLAIM" | "ABDA_KV" | "MBS_ONLINE";
+  filingDeadline: string;
+  payload: Record<string, unknown>;
+}
+
+function isoDatePlusDays(iso: string, days: number): string {
+  const d = new Date(iso);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Build a country-appropriate claim payload from the normalized form. This is
+ * the "international claim format adapter" — a thin marshalling layer; the
+ * clearinghouse worker is what actually serializes and ships it.
+ */
+export function adaptClaimForCountry(claim: NormalizedClaim): AdaptedClaim {
+  const rule = REGISTRY[claim.countryCode];
+  const filingDeadline = isoDatePlusDays(claim.serviceDate, rule.timelyFilingDays);
+
+  switch (claim.countryCode) {
+    case "US":
+      return {
+        format: "X12_837P",
+        filingDeadline,
+        payload: {
+          codingSystem: rule.codingSystem,
+          carrierId: claim.carrierId,
+          subscriberId: claim.memberId,
+          serviceDate: claim.serviceDate,
+          cptCodes: claim.procedureCodes,
+          icd10cmCodes: claim.diagnosisCodes,
+          billedAmountCents: claim.netMinorUnits + claim.taxMinorUnits,
+          currency: claim.currency,
+        },
+      };
+    case "GB":
+    case "CA":
+      return {
+        format: "FHIR_CLAIM",
+        filingDeadline,
+        payload: {
+          resourceType: "Claim",
+          status: "active",
+          insurer: { identifier: { value: claim.carrierId } },
+          patient: { identifier: { value: claim.memberId } },
+          billablePeriod: { start: claim.serviceDate, end: claim.serviceDate },
+          item: claim.procedureCodes.map((code, idx) => ({
+            sequence: idx + 1,
+            productOrService: { coding: [{ system: rule.codingSystem, code }] },
+          })),
+          diagnosis: claim.diagnosisCodes.map((code, idx) => ({
+            sequence: idx + 1,
+            diagnosisCodeableConcept: {
+              coding: [{ system: rule.codingSystem, code }],
+            },
+          })),
+          total: {
+            value: (claim.netMinorUnits + claim.taxMinorUnits) / 100,
+            currency: claim.currency,
+          },
+        },
+      };
+    case "DE":
+      return {
+        format: "ABDA_KV",
+        filingDeadline,
+        payload: {
+          krankenkasseId: claim.carrierId,
+          versichertenNummer: claim.memberId,
+          leistungsdatum: claim.serviceDate,
+          opsCodes: claim.procedureCodes,
+          icd10gmCodes: claim.diagnosisCodes,
+          bruttoBetragCent: claim.netMinorUnits + claim.taxMinorUnits,
+          waehrung: claim.currency,
+        },
+      };
+    case "AU":
+      return {
+        format: "MBS_ONLINE",
+        filingDeadline,
+        payload: {
+          medicareProviderNumber: claim.carrierId,
+          medicareCardNumber: claim.memberId,
+          dateOfService: claim.serviceDate,
+          mbsItemNumbers: claim.procedureCodes,
+          icd10amCodes: claim.diagnosisCodes,
+          chargeAmountCents: claim.netMinorUnits + claim.taxMinorUnits,
+          currency: claim.currency,
+        },
+      };
+  }
+}
+
+/**
+ * A single side of a journal entry, denominated in the foreign currency it
+ * originated in but always carrying its USD-translated equivalent so the
+ * group-wide P&L can roll up without needing to re-quote FX at report time.
+ */
+export interface MultiCurrencyLedgerEntry {
+  /** Stable ID the caller assigns when persisting. Pure helpers don't care. */
+  id?: string;
+  occurredAt: string;
+  countryCode: Iso3166Alpha2;
+  account: "AR" | "Revenue" | "TaxPayable" | "FxGainLoss" | "Cash";
+  direction: "debit" | "credit";
+  /** Native amount in minor units (the currency the transaction happened in). */
+  nativeMinorUnits: number;
+  nativeCurrency: CurrencyCode;
+  /** Reporting amount in USD minor units — the org's functional currency. */
+  reportingMinorUnitsUsd: number;
+  fxRateApplied: number;
+  fxAsOf: string;
+  memo?: string;
+}
+
+/**
+ * Build the full journal for a single billed encounter in the country's
+ * native currency, then translate to USD for the reporting ledger. Returns
+ * a balanced (debits = credits) set of entries: AR debit, Revenue credit,
+ * TaxPayable credit when applicable.
+ */
+export function buildBilledEncounterLedger(args: {
+  countryCode: Iso3166Alpha2;
+  occurredAt: string;
+  netMinorUnits: number;
+  taxMinorUnits: number;
+  rates: FxRate[];
+  memo?: string;
+}): MultiCurrencyLedgerEntry[] {
+  const rule = REGISTRY[args.countryCode];
+  const native = rule.currency;
+  const entries: MultiCurrencyLedgerEntry[] = [];
+  const total = args.netMinorUnits + args.taxMinorUnits;
+
+  const arUsd = convertMoney(total, native, "USD", args.rates);
+  entries.push({
+    occurredAt: args.occurredAt,
+    countryCode: args.countryCode,
+    account: "AR",
+    direction: "debit",
+    nativeMinorUnits: total,
+    nativeCurrency: native,
+    reportingMinorUnitsUsd: arUsd.toMinorUnits,
+    fxRateApplied: arUsd.rateApplied,
+    fxAsOf: arUsd.asOf,
+    memo: args.memo,
+  });
+
+  const revUsd = convertMoney(args.netMinorUnits, native, "USD", args.rates);
+  entries.push({
+    occurredAt: args.occurredAt,
+    countryCode: args.countryCode,
+    account: "Revenue",
+    direction: "credit",
+    nativeMinorUnits: args.netMinorUnits,
+    nativeCurrency: native,
+    reportingMinorUnitsUsd: revUsd.toMinorUnits,
+    fxRateApplied: revUsd.rateApplied,
+    fxAsOf: revUsd.asOf,
+    memo: args.memo,
+  });
+
+  if (args.taxMinorUnits > 0) {
+    const taxUsd = convertMoney(args.taxMinorUnits, native, "USD", args.rates);
+    entries.push({
+      occurredAt: args.occurredAt,
+      countryCode: args.countryCode,
+      account: "TaxPayable",
+      direction: "credit",
+      nativeMinorUnits: args.taxMinorUnits,
+      nativeCurrency: native,
+      reportingMinorUnitsUsd: taxUsd.toMinorUnits,
+      fxRateApplied: taxUsd.rateApplied,
+      fxAsOf: taxUsd.asOf,
+      memo: args.memo,
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * Sum the USD reporting side of a ledger run; useful for asserting the run
+ * is balanced before persisting and for surfacing a "translated to USD"
+ * total on the international billing dashboard.
+ */
+export function ledgerBalanceUsd(
+  entries: MultiCurrencyLedgerEntry[],
+): { debitsUsd: number; creditsUsd: number; isBalanced: boolean } {
+  const debitsUsd = entries
+    .filter((e) => e.direction === "debit")
+    .reduce((sum, e) => sum + e.reportingMinorUnitsUsd, 0);
+  const creditsUsd = entries
+    .filter((e) => e.direction === "credit")
+    .reduce((sum, e) => sum + e.reportingMinorUnitsUsd, 0);
+  return {
+    debitsUsd,
+    creditsUsd,
+    isBalanced: debitsUsd === creditsUsd,
+  };
+}

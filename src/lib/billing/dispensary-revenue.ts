@@ -221,3 +221,97 @@ export function formatRevenue(cents: number): string {
   }
   return `$${dollars.toFixed(0)}`;
 }
+
+// EMR-183 — Inventory reorder alerts.
+//
+// `LOW_STOCK_THRESHOLD` and `CRITICAL_STOCK_THRESHOLD` are the org-wide
+// defaults until each SKU carries its own par level. The cockpit lists
+// any SKU at-or-below the threshold so purchasing has a single queue.
+
+export const LOW_STOCK_THRESHOLD = 20;
+export const CRITICAL_STOCK_THRESHOLD = 5;
+
+export interface ReorderAlert {
+  productId: string;
+  name: string;
+  brand: string;
+  format: string;
+  inventoryOnHand: number;
+  /** "critical" when at or below the critical threshold; "low" otherwise. */
+  severity: "critical" | "low";
+}
+
+export function buildReorderAlerts(
+  products: DispensaryProductInput[],
+): ReorderAlert[] {
+  const alerts: ReorderAlert[] = [];
+  for (const p of products) {
+    if (p.inventoryCount > LOW_STOCK_THRESHOLD) continue;
+    alerts.push({
+      productId: p.id,
+      name: p.name,
+      brand: p.brand,
+      format: p.format,
+      inventoryOnHand: p.inventoryCount,
+      severity:
+        p.inventoryCount <= CRITICAL_STOCK_THRESHOLD ? "critical" : "low",
+    });
+  }
+  // Sort criticals first, then by ascending stock so the most urgent is on top.
+  alerts.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === "critical" ? -1 : 1;
+    return a.inventoryOnHand - b.inventoryOnHand;
+  });
+  return alerts;
+}
+
+// EMR-183 — Weekly gross/net time series.
+//
+// Splits the same orders the rollup uses into ISO-week buckets so the
+// cockpit can sparkline trend over the look-back window without a
+// second DB round-trip.
+
+export interface RevenuePoint {
+  weekStart: string;
+  grossCents: number;
+  refundedCents: number;
+  taxCents: number;
+  netCents: number;
+}
+
+function startOfIsoWeek(d: Date): Date {
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = date.getUTCDay();
+  const offset = (day + 6) % 7; // shift Sunday=0 → 6, Monday=1 → 0
+  date.setUTCDate(date.getUTCDate() - offset);
+  return date;
+}
+
+export function computeWeeklyRevenueSeries(
+  orders: DispensaryOrderInput[],
+): RevenuePoint[] {
+  const buckets = new Map<string, RevenuePoint>();
+  for (const o of orders) {
+    if (!COUNTED_STATUSES.has(o.status)) continue;
+    const key = startOfIsoWeek(o.createdAt).toISOString().slice(0, 10);
+    const point = buckets.get(key) ?? {
+      weekStart: key,
+      grossCents: 0,
+      refundedCents: 0,
+      taxCents: 0,
+      netCents: 0,
+    };
+    const isRefund = REFUNDED_STATUSES.has(o.status);
+    point.taxCents += toCents(o.tax);
+    for (const item of o.items) {
+      const line = toCents(item.totalPrice);
+      if (isRefund) point.refundedCents += line;
+      else point.grossCents += line;
+    }
+    point.netCents = point.grossCents - point.refundedCents - point.taxCents;
+    buckets.set(key, point);
+  }
+  return Array.from(buckets.values()).sort((a, b) =>
+    a.weekStart.localeCompare(b.weekStart),
+  );
+}

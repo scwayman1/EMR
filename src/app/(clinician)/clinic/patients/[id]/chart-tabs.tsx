@@ -6,25 +6,20 @@ import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { useChartFrame, type ChartTabPosition } from "./chart-frame";
 
-// EMR-119 — Tab consolidation audit
-//
-// The chart bar surfaced 9 sibling tabs as a flat row, which read as a
-// wall of equal-weight options on first glance. We ran a clustering
-// audit (`scripts/audit-tab-density.ts`) and grouped the existing tabs
-// into three named buckets — "patient", "clinical", and "workflow" —
-// so the bar reads as three rhythmic clusters instead of one long ribbon.
-// The buckets are advisory: they don't constrain reorder (drag-to-move
-// still works across groups), they only render a thin separator hairline
-// between the last tab of one group and the first of the next.
+// EMR-119/124: tabs are tagged with a `group` so the rail can cluster
+// related sections instead of presenting all 9 as one undifferentiated
+// row. Groups follow Dr. Patel's proposal — Overview / Clinical /
+// Documents / Financial. Deep links (`?tab=key`) are unchanged so
+// existing bookmarks and peek hrefs keep working.
 const TABS = [
-  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]", group: "patient" },
-  { key: "memory", label: "Memory", dot: "bg-accent", group: "patient" },
-  { key: "records", label: "Records", dot: "bg-accent", group: "clinical" },
-  { key: "images", label: "Images", dot: "bg-[color:var(--info)]", group: "clinical" },
-  { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]", group: "clinical" },
-  { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]", group: "clinical" },
-  { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]", group: "workflow" },
-  { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]", group: "workflow" },
+  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]", group: "Overview" },
+  { key: "memory", label: "Memory", dot: "bg-accent", group: "Overview" },
+  { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]", group: "Clinical" },
+  { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]", group: "Clinical" },
+  { key: "images", label: "Images", dot: "bg-[color:var(--info)]", group: "Clinical" },
+  { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]", group: "Clinical" },
+  { key: "records", label: "Records", dot: "bg-accent", group: "Documents" },
+  { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]", group: "Documents" },
   // EMR-178 — Billing tab is a deep-link to the standalone Financial
   // Cockpit page rather than a query-param panel inside the chart.
   // The cockpit is too rich (P&L, claim drilldowns, statements) to fit
@@ -34,7 +29,7 @@ const TABS = [
     key: "billing",
     label: "Financial cockpit",
     dot: "bg-[color:var(--success)]",
-    group: "workflow",
+    group: "Financial",
     redirectTo: (patientId: string) => `/clinic/patients/${patientId}/billing`,
   },
 ] as const;
@@ -272,24 +267,32 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
         const isOpen = openKey === tab.key && !draggingKey;
         const isDragging = draggingKey === tab.key;
         const isDropTarget = dragOverKey === tab.key && draggingKey !== tab.key;
-        // EMR-119: render a thin separator between adjacent tabs that
-        // belong to different groups so the bar reads as named clusters.
-        // Groups follow user-reorder, so dragging a tab into a new
-        // cluster updates the visual rhythm too — no special-cased
-        // ordering required.
-        const prevTab = idx > 0 ? TAB_BY_KEY.get(order[idx - 1]!) : undefined;
-        const isGroupBreak =
-          idx > 0 && prevTab && tab.group !== prevTab.group;
+        // EMR-119/124: render a group divider whenever the previous
+        // tab in the displayed order belongs to a different group.
+        // Vertical rails get an uppercase section label; horizontal
+        // bars get a thin hairline separator.
+        const prevKey = idx > 0 ? order[idx - 1] : null;
+        const prevGroup = prevKey ? TAB_BY_KEY.get(prevKey)?.group : null;
+        const showGroupBreak = prevGroup !== undefined && prevGroup !== tab.group;
+        const isFirstWithGroup = idx === 0;
 
         return (
-          <React.Fragment key={tab.key}>
-            {isGroupBreak && (
+          <React.Fragment key={`grp-${tab.key}`}>
+            {isVertical && (isFirstWithGroup || showGroupBreak) && (
+              <p
+                className={cn(
+                  "px-3 text-[10px] uppercase tracking-[0.14em] font-medium text-text-subtle/70",
+                  isFirstWithGroup ? "pt-1 pb-1.5" : "pt-3 pb-1.5"
+                )}
+                aria-hidden="true"
+              >
+                {tab.group}
+              </p>
+            )}
+            {!isVertical && showGroupBreak && (
               <span
                 aria-hidden="true"
-                className={cn(
-                  "shrink-0 bg-border",
-                  isVertical ? "mx-1 my-1 h-px w-full" : "my-2 h-4 w-px self-center mx-0.5",
-                )}
+                className="self-stretch w-px bg-border/60 mx-1 my-1"
               />
             )}
           <div
