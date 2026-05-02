@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
-import { PageShell, PageHeader } from "@/components/shell/PageHeader";
-import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
+import { PageShell } from "@/components/shell/PageHeader";
 import { Eyebrow } from "@/components/ui/ornament";
 import { QuickDoseLogger } from "./quick-dose-logger";
 
@@ -22,11 +21,13 @@ export default async function LogDosePage() {
     );
   }
 
-  // Load active dosing regimens with product info
+  // EMR-194: show all cannabis regimens — active and inactive — so the
+  // patient can still log against a product they paused or rotated off.
+  // Filtering is done client-side via filter chips.
   const regimens = await prisma.dosingRegimen.findMany({
-    where: { patientId: patient.id, active: true },
+    where: { patientId: patient.id },
     include: { product: true },
-    orderBy: { startDate: "desc" },
+    orderBy: [{ active: "desc" }, { startDate: "desc" }],
   });
 
   const products = regimens.map((r) => ({
@@ -40,11 +41,11 @@ export default async function LogDosePage() {
     doseUnit: r.volumeUnit,
     thcMg: r.calculatedThcMgPerDose,
     cbdMg: r.calculatedCbdMgPerDose,
+    active: r.active,
   }));
 
   return (
     <PageShell maxWidth="max-w-[640px]">
-      <PatientSectionNav section="health" />
       <div className="text-center mb-10">
         <Eyebrow className="justify-center mb-3">Quick log</Eyebrow>
         <h1 className="font-display text-3xl md:text-4xl text-text tracking-tight">

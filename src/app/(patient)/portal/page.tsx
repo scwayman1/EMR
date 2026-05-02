@@ -307,7 +307,7 @@ export default async function PatientHome() {
           </p>
           <div className="mt-5 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
             <Link href="/portal/outcomes" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:w-auto min-h-[44px]">Log today&apos;s check-in</Button>
+              <Button size="lg" className="w-full sm:w-auto min-h-[44px]">Log Check-in</Button>
             </Link>
             <Link href="/portal/messages" className="w-full sm:w-auto">
               <Button size="lg" variant="secondary" className="w-full sm:w-auto min-h-[44px]">Message your team</Button>
@@ -315,6 +315,20 @@ export default async function PatientHome() {
           </div>
         </div>
       </section>
+
+      {/* ── Symptom sparklines (kept above the fold per EMR-193) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 md:mb-8">
+        <MetricTile label="Pain" accent="forest" value={latestPain !== undefined ? latestPain.toFixed(1) : "—"} hint="0-10 scale" />
+        <MetricTile label="Sleep" accent="amber" value={latestSleep !== undefined ? latestSleep.toFixed(1) : "—"} hint="0-10 scale" />
+        <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Pain trend</p>
+          <Sparkline data={painSeries.length > 1 ? painSeries : [3, 4, 4, 3, 3, 2]} width={180} height={44} />
+        </div>
+        <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Sleep trend</p>
+          <Sparkline data={sleepSeries.length > 1 ? sleepSeries : [5, 5, 6, 6, 7, 7]} width={180} height={44} />
+        </div>
+      </div>
 
       {/* ── Top row: Health grade + Lifestyle bars + AI tips ── */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-5 mb-6 md:mb-8">
@@ -515,19 +529,6 @@ export default async function PatientHome() {
         </Card>
       </div>
 
-      {/* ── Third row: Metrics sparklines ─────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 md:mb-8">
-        <MetricTile label="Pain" accent="forest" value={latestPain !== undefined ? latestPain.toFixed(1) : "\u2014"} hint="0-10 scale" />
-        <MetricTile label="Sleep" accent="amber" value={latestSleep !== undefined ? latestSleep.toFixed(1) : "\u2014"} hint="0-10 scale" />
-        <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Pain trend</p>
-          <Sparkline data={painSeries.length > 1 ? painSeries : [3, 4, 4, 3, 3, 2]} width={180} height={44} />
-        </div>
-        <div className="bg-surface-raised border border-border rounded-xl p-4 shadow-sm">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Sleep trend</p>
-          <Sparkline data={sleepSeries.length > 1 ? sleepSeries : [5, 5, 6, 6, 7, 7]} width={180} height={44} />
-        </div>
-      </div>
 
       {/* ── Wellness tip of the day ────────── */}
       <div className="mb-6 md:mb-8">
