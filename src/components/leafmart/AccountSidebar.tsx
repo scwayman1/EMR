@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/leafmart/account", label: "Dashboard" },
   { href: "/leafmart/account/orders", label: "Orders" },
   { href: "/leafmart/account/outcomes", label: "Outcomes" },
+  { href: "/leafmart/account/rewards", label: "Rewards" },
   { href: "/leafmart/account/addresses", label: "Addresses" },
   { href: "/leafmart/consult", label: "Consultations" },
 ];
