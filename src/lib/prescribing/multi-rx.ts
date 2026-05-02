@@ -221,6 +221,13 @@ export interface DoubleCheckReport {
   formulary: Array<{ id: string; name: string; entry: FormularyEntry }>;
   /** True iff the batch is safe to send without an override. */
   safeToSend: boolean;
+  /**
+   * True when the block is a hard stop that must not be overridable.
+   * Currently set for contraindicated interactions and duplicate-class
+   * therapy — both of these require the clinician to fix the batch
+   * rather than attesting through them.
+   */
+  hardBlock: boolean;
   /** Highest-severity blocker, if any. */
   blockReason?: string;
 }
@@ -231,10 +238,13 @@ export function runDoubleCheck(rxs: Prescription[]): DoubleCheckReport {
   const formulary = rxs.map((r) => ({ id: r.id, name: r.name, entry: lookupFormulary(r.name) }));
 
   let blockReason: string | undefined;
+  let hardBlock = false;
   if (matrix.highestSeverity === "contraindicated") {
     blockReason = "Contraindicated interaction in batch — review before sending.";
+    hardBlock = true;
   } else if (duplicates.length > 0) {
     blockReason = `Duplicate therapy detected: ${duplicates.map((d) => d.className).join(", ")}.`;
+    hardBlock = true;
   }
 
   return {
@@ -242,6 +252,7 @@ export function runDoubleCheck(rxs: Prescription[]): DoubleCheckReport {
     duplicates,
     formulary,
     safeToSend: !blockReason,
+    hardBlock,
     blockReason,
   };
 }

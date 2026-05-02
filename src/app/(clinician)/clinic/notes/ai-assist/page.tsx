@@ -10,6 +10,7 @@ import {
   type AiNoteRecord,
   type GuardrailResult,
   type NoteSnapshot,
+  noteSnapshotSchema,
   prefillFromSnapshot,
   runGuardrails,
 } from "@/lib/clinical/ai-notes";
@@ -66,15 +67,31 @@ export default function AiAssistPage() {
   );
 
   function applySnapshot() {
+    let raw: unknown;
     try {
-      const parsed = JSON.parse(snapshotText) as NoteSnapshot;
-      setSnapshot(parsed);
-      setParseError(null);
-      setDraft(null);
-      setSigned(null);
+      raw = JSON.parse(snapshotText);
     } catch (err) {
       setParseError(err instanceof Error ? err.message : "Invalid JSON");
+      return;
     }
+    // Validate the parsed payload against the snapshot schema before
+    // accepting it. Without this, malformed JSON (e.g. missing
+    // vitals/labs arrays) would slip through and crash later in
+    // prefillFromSnapshot or guardrail evaluation.
+    const result = noteSnapshotSchema.safeParse(raw);
+    if (!result.success) {
+      setParseError(
+        `Snapshot does not match the expected shape: ${result.error.issues
+          .slice(0, 3)
+          .map((i) => `${i.path.join(".") || "(root)"} — ${i.message}`)
+          .join("; ")}`,
+      );
+      return;
+    }
+    setSnapshot(result.data);
+    setParseError(null);
+    setDraft(null);
+    setSigned(null);
   }
 
   function generate() {
@@ -160,7 +177,19 @@ export default function AiAssistPage() {
           {draft && guardrails && (
             <>
               <GuardrailsPanel result={guardrails} />
-              <DraftEditor draft={draft} onChange={setDraft} />
+              <DraftEditor
+                draft={draft}
+                onChange={(next) => {
+                  setDraft(next);
+                  // A signed seal+hash attests to the exact note
+                  // content at sign time. Any subsequent edit must
+                  // invalidate that attestation so the displayed
+                  // seal can never diverge from the signed content —
+                  // the clinician has to re-sign to attest the
+                  // updated draft.
+                  if (signed) setSigned(null);
+                }}
+              />
               {signed ? (
                 <Card tone="raised" className="border-l-4 border-l-emerald-500">
                   <CardContent className="py-5 px-5">

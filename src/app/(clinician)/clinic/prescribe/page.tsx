@@ -72,6 +72,10 @@ export default function PrescribePage() {
 
   function send() {
     if (!report) return;
+    // Hard blocks (contraindicated interactions, duplicate therapy)
+    // must never be sent — the override checkbox does not apply to
+    // them. Only soft blocks may be attested through.
+    if (report.hardBlock) return;
     if (!report.safeToSend && !overridden) return;
     setSent(report);
   }
@@ -80,6 +84,7 @@ export default function PrescribePage() {
     !!report &&
     filled.length > 0 &&
     filled.every((r) => r.name && r.dose && r.frequency) &&
+    !report.hardBlock &&
     (report.safeToSend || overridden);
 
   return (
@@ -194,22 +199,31 @@ export default function PrescribePage() {
             {report && !report.safeToSend && (
               <Card tone="raised" className="border-l-4 border-l-danger">
                 <CardContent className="py-4 px-5 space-y-2">
-                  <p className="font-display text-sm text-text">Override required</p>
+                  <p className="font-display text-sm text-text">
+                    {report.hardBlock ? "Cannot send" : "Override required"}
+                  </p>
                   <p className="text-xs text-text-muted">
                     {report.blockReason}
                   </p>
-                  <label className="inline-flex items-start gap-2 text-xs text-text-muted">
-                    <input
-                      type="checkbox"
-                      checked={overridden}
-                      onChange={(e) => setOverridden(e.target.checked)}
-                      className="mt-0.5"
-                    />
-                    <span>
-                      I have reviewed this and accept clinical responsibility for
-                      sending the batch as drafted.
-                    </span>
-                  </label>
+                  {report.hardBlock ? (
+                    <p className="text-xs text-danger">
+                      This batch must be corrected before sending. Hard blocks
+                      cannot be attested through.
+                    </p>
+                  ) : (
+                    <label className="inline-flex items-start gap-2 text-xs text-text-muted">
+                      <input
+                        type="checkbox"
+                        checked={overridden}
+                        onChange={(e) => setOverridden(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        I have reviewed this and accept clinical responsibility for
+                        sending the batch as drafted.
+                      </span>
+                    </label>
+                  )}
                 </CardContent>
               </Card>
             )}

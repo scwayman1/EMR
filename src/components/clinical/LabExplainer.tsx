@@ -62,6 +62,9 @@ export function LabExplainer({
 }: LabExplainerProps) {
   const [open, setOpen] = React.useState(false);
   const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Hooks must run unconditionally — call useId before the early
+  // return below, then assemble the id once we have an explanation.
+  const generatedId = React.useId().replace(/:/g, "");
   const result = explainLabValue(name, value);
 
   const onEnter = React.useCallback(() => {
@@ -76,7 +79,7 @@ export function LabExplainer({
   const { explanation, status, message } = result;
   const trend = computeTrend(history);
 
-  const tooltipId = `lab-${explanation.abbreviation}-${React.useId().replace(/:/g, "")}`;
+  const tooltipId = `lab-${explanation.abbreviation}-${generatedId}`;
 
   return (
     <span
