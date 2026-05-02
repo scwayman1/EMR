@@ -8,14 +8,14 @@ import { cn } from "@/lib/utils/cn";
 /**
  * Patient section sub-navigation.
  *
- * Renders a horizontal tab bar within a patient portal section (My Records,
- * My Garden, Account, Chat & Learn). The pattern mirrors the clinician
- * chart tabs — a consistent, scannable row of options one click deep from
- * the sidebar.
+ * Horizontal tab bar within a patient portal section (My Records, My Garden,
+ * Account, Chat & Learn). Mirrors the clinician chart tabs — a consistent,
+ * scannable row one click deep from the sidebar.
  *
- * `health` (My Records) renders as a two-row collapsible ribbon — a primary
- * row with the most-used links and a secondary "More" row that expands on
- * demand.
+ * `health` (My Records) renders as a two-row collapsible ribbon per EMR-195
+ * (Dr. Patel whiteboard): a primary row with the most-trafficked links and
+ * a secondary "More" row that expands on demand. Other sections render as
+ * a single row.
  */
 
 interface TabDef {
@@ -30,10 +30,11 @@ interface SectionDef {
 }
 
 const SECTIONS: Record<string, SectionDef> = {
+  // EMR-195: "My Records" with two collapsible ribbons. Primary keeps the
+  // most-trafficked destinations; secondary collapses behind a "More" toggle
+  // so the 9-tab ribbon doesn't overwhelm on first paint.
   health: {
     title: "My Records",
-    // EMR-195: split into a primary row + collapsible "More" row so the
-    // 8-tab ribbon doesn't overwhelm on first paint.
     primary: [
       { label: "My Records", href: "/portal/records" },
       { label: "Medications", href: "/portal/medications" },
@@ -43,13 +44,13 @@ const SECTIONS: Record<string, SectionDef> = {
     secondary: [
       { label: "Assessments", href: "/portal/assessments" },
       { label: "Log check-in", href: "/portal/outcomes" },
+      { label: "Care plan", href: "/portal/care-plan" },
       { label: "Care guide", href: "/portal/education" },
       { label: "Learn", href: "/portal/learn" },
     ],
   },
-  // EMR-196: renamed "My Journey" → "My Garden". Ribbon is Lifestyle /
-  // My Garden / Storybook / Roadmap. The Cannabis Combo Wheel moved to
-  // the Chat & Learn section.
+  // EMR-196: "My Journey" → "My Garden". Cannabis Combo Wheel moved to
+  // Chat & Learn (EMR-200).
   garden: {
     title: "My Garden",
     primary: [
@@ -59,8 +60,8 @@ const SECTIONS: Record<string, SectionDef> = {
       { label: "Roadmap", href: "/portal/roadmap" },
     ],
   },
-  // EMR-199: account ribbon trimmed to Profile / Billing / Intake / Settings.
-  // Community moved to the Chat & Learn ribbon.
+  // EMR-199: Account ribbon must fit one row at 375px. Community moved to
+  // Chat & Learn (EMR-200).
   account: {
     title: "Account",
     primary: [
@@ -70,31 +71,25 @@ const SECTIONS: Record<string, SectionDef> = {
       { label: "Settings", href: "/portal/settings" },
     ],
   },
-  // EMR-200: Chat & Learn ribbon — community plus the public-style
-  // education surfaces.
+  // EMR-200: Chat & Learn — social + education hub.
   chatLearn: {
     title: "Chat & Learn",
     primary: [
       { label: "Community", href: "/portal/community" },
-      { label: "Cannabis Wheel", href: "/portal/combo-wheel" },
+      { label: "Cannabis Combo Wheel", href: "/portal/combo-wheel" },
       { label: "ChatCB", href: "/portal/chatcb" },
       { label: "Research", href: "/portal/learn" },
     ],
   },
 };
 
-// Backwards-compat: callers used to pass `journey`. Map it to `garden`.
+// Existing pages pass `section="journey"`. EMR-196 renamed the section to
+// `garden`; the alias keeps those callers working until they're updated.
 const SECTION_ALIAS: Record<string, keyof typeof SECTIONS> = {
   journey: "garden",
 };
 
-function Tab({
-  tab,
-  pathname,
-}: {
-  tab: TabDef;
-  pathname: string;
-}) {
+function Tab({ tab, pathname }: { tab: TabDef; pathname: string }) {
   const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
   return (
     <Link
@@ -123,12 +118,14 @@ function Tab({
 
 export function PatientSectionNav({ section }: { section: string }) {
   const pathname = usePathname();
-  const resolved = (SECTION_ALIAS[section] as keyof typeof SECTIONS) ?? (section as keyof typeof SECTIONS);
+  const resolved =
+    (SECTION_ALIAS[section] as keyof typeof SECTIONS) ??
+    (section as keyof typeof SECTIONS);
   const config = SECTIONS[resolved];
-  // The "More" row needs to start expanded if any of the secondary tabs
-  // is the current page — otherwise the user sees an empty primary row
-  // with no indication of where they actually are.
   const secondary = config?.secondary ?? [];
+  // Start "More" expanded if the active page lives in the secondary row —
+  // otherwise the user lands on an empty-looking primary ribbon with no
+  // indication of where they are.
   const secondaryActive = secondary.some(
     (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
@@ -139,6 +136,9 @@ export function PatientSectionNav({ section }: { section: string }) {
   const hasSecondary = secondary.length > 0;
 
   return (
+    // Mobile portrait fix (EMR-117): horizontal scroll instead of wrap so
+    // ribbons stay a single scannable row on iPhone portrait. Right-edge
+    // fade hint signals more content.
     <div className="relative -mx-4 sm:mx-0 mb-8">
       <nav
         className={cn(
