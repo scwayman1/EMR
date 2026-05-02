@@ -382,13 +382,13 @@ export default async function LeafmartHomePage() {
           <div>
             <p className="eyebrow text-[rgba(255,248,232,0.8)]">2-minute quiz</p>
             <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 mb-4 sm:mb-[18px] text-[#FFF8E8]">
-              Not sure where to start? <em className="font-accent not-italic text-[var(--butter)]">We&apos;ll point you somewhere.</em>
+              Not sure where to start? <em className="font-accent not-italic text-[#F5E6B8]">We&apos;ll point you somewhere.</em>
             </h2>
             <p className="text-[15px] sm:text-[17px] leading-relaxed text-[rgba(255,248,232,0.8)] max-w-[480px]">
               Tell us how you&apos;d like to feel. We&apos;ll match you with three clinician-reviewed products to consider — no signup required.
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3.5 mt-6 sm:mt-7">
-              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[var(--ink)] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
+              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[#152119] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
                 Take the quiz →
               </Link>
               <Link href="/leafmart/shop" className="inline-flex items-center justify-center rounded-full font-medium border-[1.5px] border-[#FFF8E8] text-[#FFF8E8] hover:bg-[rgba(255,248,232,0.15)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
