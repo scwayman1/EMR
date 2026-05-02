@@ -11,10 +11,17 @@ import { Eyebrow, EditorialRule } from "@/components/ui/ornament";
 import {
   CARE_TEAM_TRAINERS,
   WORKOUT_LIBRARY,
+  WORKOUT_TEMPLATES,
+  EXERCISE_LOG_DEMO,
+  DEFAULT_STEP_GOAL,
   suggestWorkouts,
+  summarizeWeek,
+  templateById,
   type Workout,
+  type WorkoutTemplate,
   type CareTeamTrainer,
-} from "@/lib/domain/fitness";
+  type ExerciseLogEntry,
+} from "@/lib/lifestyle/fitness";
 
 export const metadata = { title: "Fitness" };
 
@@ -42,6 +49,12 @@ export default async function FitnessPage() {
     hasRegimen: patient.dosingRegimens.length > 0,
   });
 
+  const weekSummary = summarizeWeek(
+    EXERCISE_LOG_DEMO,
+    new Date(),
+    DEFAULT_STEP_GOAL,
+  );
+
   return (
     <PageShell maxWidth="max-w-[960px]">
       <PatientSectionNav section="journey" />
@@ -55,6 +68,30 @@ export default async function FitnessPage() {
           </Link>
         }
       />
+
+      {/* Weekly summary + step goal */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">This week so far</Eyebrow>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <SummaryStat label="Sessions" value={String(weekSummary.sessions)} />
+          <SummaryStat
+            label="Active minutes"
+            value={String(weekSummary.totalMinutes)}
+          />
+          <SummaryStat
+            label="Steps"
+            value={weekSummary.totalSteps.toLocaleString()}
+            sub={`${Math.round(weekSummary.goalPct * 100)}% of ${weekSummary.goalSteps.toLocaleString()}`}
+          />
+          <SummaryStat
+            label="Avg effort"
+            value={`${weekSummary.avgPerceivedExertion}/5`}
+          />
+        </div>
+        <StepGoalBar pct={weekSummary.goalPct} />
+      </section>
+
+      <EditorialRule className="mb-10" />
 
       {/* Recommended for you */}
       <section className="mb-10">
@@ -84,6 +121,30 @@ export default async function FitnessPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {CARE_TEAM_TRAINERS.map((trainer) => (
             <TrainerCard key={trainer.id} trainer={trainer} />
+          ))}
+        </div>
+      </section>
+
+      <EditorialRule className="mb-10" />
+
+      {/* Templates */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Workout templates</Eyebrow>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {WORKOUT_TEMPLATES.map((tpl) => (
+            <TemplateCard key={tpl.id} template={tpl} />
+          ))}
+        </div>
+      </section>
+
+      <EditorialRule className="mb-10" />
+
+      {/* Exercise log */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Recent exercise log</Eyebrow>
+        <div className="grid gap-2">
+          {EXERCISE_LOG_DEMO.map((entry) => (
+            <ExerciseLogRow key={entry.id} entry={entry} />
           ))}
         </div>
       </section>
@@ -240,5 +301,103 @@ function TrainerCard({ trainer }: { trainer: CareTeamTrainer }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function SummaryStat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-text-subtle">{label}</p>
+      <p className="font-display text-xl text-text mt-1 leading-none">{value}</p>
+      {sub && <p className="text-[10px] text-text-subtle mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+function StepGoalBar({ pct }: { pct: number }) {
+  const width = Math.max(0, Math.min(100, pct * 100));
+  return (
+    <div>
+      <div
+        className="h-2 rounded-full bg-surface-muted overflow-hidden"
+        aria-hidden="true"
+      >
+        <div
+          className="h-full bg-accent transition-all duration-500"
+          style={{ width: `${width}%` }}
+        />
+      </div>
+      <p className="text-[11px] text-text-subtle mt-2">
+        Step goal {Math.round(width)}%
+      </p>
+    </div>
+  );
+}
+
+function TemplateCard({ template }: { template: WorkoutTemplate }) {
+  const tpl = templateById(template.id) ?? template;
+  const workouts = tpl.workoutIds
+    .map((id) => WORKOUT_LIBRARY.find((w) => w.id === id))
+    .filter((w): w is Workout => Boolean(w));
+  return (
+    <Card tone="raised">
+      <CardContent className="py-5">
+        <div className="flex items-center gap-2 mb-2">
+          <Badge tone="accent" className="text-[10px] capitalize">
+            {tpl.focus}
+          </Badge>
+          <h3 className="font-display text-base text-text tracking-tight">
+            {tpl.title}
+          </h3>
+        </div>
+        <p className="text-sm text-text-muted leading-relaxed mb-3">
+          {tpl.cadenceDescription}
+        </p>
+        <ul className="space-y-1 text-sm text-text-muted">
+          {workouts.map((w) => (
+            <li key={w.id}>
+              <span aria-hidden="true">{w.emoji}</span> {w.title} · {w.durationMin} min
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExerciseLogRow({ entry }: { entry: ExerciseLogEntry }) {
+  const workout = entry.workoutId
+    ? WORKOUT_LIBRARY.find((w) => w.id === entry.workoutId)
+    : undefined;
+  const title = workout?.title ?? entry.customLabel ?? "Custom exercise";
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3 flex items-start gap-3">
+      <span className="text-2xl shrink-0" aria-hidden="true">
+        {workout?.emoji ?? "\u{1F3CB}"}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <p className="text-sm font-medium text-text">{title}</p>
+          <span className="text-[11px] text-text-subtle">
+            {new Date(entry.occurredAt).toLocaleDateString()}
+          </span>
+        </div>
+        <p className="text-[11px] text-text-subtle mt-0.5">
+          {entry.durationMin} min · effort {entry.perceivedExertion}/5
+          {entry.steps != null ? ` · ${entry.steps.toLocaleString()} steps` : ""}
+        </p>
+        {entry.notes && (
+          <p className="text-xs text-text-muted mt-1 leading-relaxed">{entry.notes}</p>
+        )}
+      </div>
+    </div>
   );
 }

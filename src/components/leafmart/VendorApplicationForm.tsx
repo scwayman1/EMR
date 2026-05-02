@@ -170,7 +170,7 @@ export function VendorApplicationForm() {
             type="text"
             value={form.companyName}
             onChange={(e) => update("companyName", e.target.value)}
-            placeholder="Flower Powered Co."
+            placeholder="Acme Botanicals Co."
             required
             aria-invalid={Boolean(errors.companyName)}
             aria-describedby={errors.companyName ? "vf-company-err" : undefined}
