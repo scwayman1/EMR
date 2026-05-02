@@ -19,9 +19,17 @@ import {
 import {
   GROW_GUIDE_STAGES,
   GROW_COMMUNITY_THREADS,
+  STRAIN_DATABASE,
+  PHOTO_JOURNAL_DEMO,
+  HARVEST_LOG_DEMO,
+  summarizeHarvestLog,
+  strainById,
   type GrowGuideStage,
   type GrowCommunityThread,
-} from "@/lib/domain/grow-guide";
+  type Strain,
+  type PhotoJournalEntry,
+  type HarvestLogEntry,
+} from "@/lib/lifestyle/grow-guide";
 
 export const metadata = { title: "My Garden" };
 
@@ -185,6 +193,58 @@ export default async function GardenPage() {
 
       <EditorialRule className="mb-10" />
 
+      {/* ---- Strain database (EMR-130 V3) ---- */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Pick your strain</Eyebrow>
+        <h2 className="font-display text-xl text-text tracking-tight mb-2">
+          Strain database
+        </h2>
+        <p className="text-sm text-text-muted leading-relaxed mb-6 max-w-xl">
+          Strains chosen for what patients actually use them for — sleep,
+          daytime pain, anxiety, focus. Pick one that matches your goal, not
+          the highest THC.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {STRAIN_DATABASE.map((strain) => (
+            <StrainCard key={strain.id} strain={strain} />
+          ))}
+        </div>
+      </section>
+
+      <EditorialRule className="mb-10" />
+
+      {/* ---- Photo journal (EMR-130 V3) ---- */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Photo journal</Eyebrow>
+        <h2 className="font-display text-xl text-text tracking-tight mb-2">
+          Watch the plant change
+        </h2>
+        <p className="text-sm text-text-muted leading-relaxed mb-6 max-w-xl">
+          Snap one photo per week. Patterns show up faster than you expect —
+          height, color, when the trichomes turn cloudy.
+        </p>
+        <div className="grid gap-3">
+          {PHOTO_JOURNAL_DEMO.map((entry) => (
+            <PhotoJournalRow key={entry.id} entry={entry} />
+          ))}
+        </div>
+      </section>
+
+      <EditorialRule className="mb-10" />
+
+      {/* ---- Harvest log (EMR-130 V3) ---- */}
+      <section className="mb-10">
+        <Eyebrow className="mb-3">Harvest log</Eyebrow>
+        <HarvestSummary entries={HARVEST_LOG_DEMO} />
+        <div className="grid gap-3 mt-5">
+          {HARVEST_LOG_DEMO.map((entry) => (
+            <HarvestLogRow key={entry.id} entry={entry} />
+          ))}
+        </div>
+      </section>
+
+      <EditorialRule className="mb-10" />
+
       {/* ---- Grower community (EMR-130) ---- */}
       <section className="mb-10">
         <div className="flex items-center justify-between mb-4">
@@ -270,6 +330,125 @@ function GrowDetail({ label, body }: { label: string; body: string }) {
         {label}
       </p>
       <p>{body}</p>
+    </div>
+  );
+}
+
+function StrainCard({ strain }: { strain: Strain }) {
+  const tone =
+    strain.category === "cbd-dominant"
+      ? "success"
+      : strain.category === "indica"
+        ? "highlight"
+        : strain.category === "sativa"
+          ? "info"
+          : "accent";
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <p className="text-sm font-medium text-text">{strain.name}</p>
+        <Badge tone={tone} className="text-[10px] capitalize shrink-0">
+          {strain.category.replace("-", " ")}
+        </Badge>
+      </div>
+      <p className="text-[11px] text-text-subtle mb-2">
+        THC {strain.thcRange} · CBD {strain.cbdRange} · {strain.floweringWeeks} wk flower · {strain.difficulty}
+      </p>
+      <p className="text-xs text-text-muted leading-relaxed mb-2">{strain.notes}</p>
+      <div className="flex flex-wrap gap-1">
+        {strain.helpsWith.map((h) => (
+          <Badge key={h} tone="neutral" className="text-[10px]">
+            {h}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PhotoJournalRow({ entry }: { entry: PhotoJournalEntry }) {
+  return (
+    <div className="flex items-start gap-4 rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3">
+      <div
+        className="h-16 w-16 shrink-0 rounded-lg bg-accent-soft flex items-center justify-center text-2xl"
+        aria-hidden="true"
+      >
+        {entry.stage === "seedling"
+          ? "🌱"
+          : entry.stage === "vegetative"
+            ? "🌿"
+            : entry.stage === "flowering"
+              ? "🌸"
+              : entry.stage === "harvest"
+                ? "✂️"
+                : "🫙"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <Badge tone="accent" className="text-[10px] capitalize">
+            {entry.stage}
+          </Badge>
+          <span className="text-[11px] text-text-subtle">{entry.takenAt}</span>
+        </div>
+        <p className="text-sm text-text leading-relaxed">{entry.caption}</p>
+        {entry.measurements && (
+          <p className="text-[11px] text-text-subtle mt-1">
+            {entry.measurements.heightInches != null
+              ? `${entry.measurements.heightInches}″`
+              : null}
+            {entry.measurements.phReading != null
+              ? ` · pH ${entry.measurements.phReading}`
+              : null}
+            {entry.measurements.tempF != null
+              ? ` · ${entry.measurements.tempF}°F`
+              : null}
+            {entry.measurements.humidityPct != null
+              ? ` · ${entry.measurements.humidityPct}% RH`
+              : null}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HarvestSummary({ entries }: { entries: HarvestLogEntry[] }) {
+  const summary = summarizeHarvestLog(entries);
+  const best = summary.bestStrainId ? strainById(summary.bestStrainId) : null;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <SummaryTile label="Total dry" value={`${summary.totalDryGrams}g`} />
+      <SummaryTile label="Avg rating" value={`${summary.averageRating}/5`} />
+      <SummaryTile label="Strains" value={String(summary.uniqueStrains)} />
+      <SummaryTile label="Top strain" value={best?.name ?? "—"} />
+    </div>
+  );
+}
+
+function SummaryTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-text-subtle">{label}</p>
+      <p className="font-display text-lg text-text mt-1">{value}</p>
+    </div>
+  );
+}
+
+function HarvestLogRow({ entry }: { entry: HarvestLogEntry }) {
+  const strain = strainById(entry.strainId);
+  return (
+    <div className="rounded-xl border border-border bg-surface-raised shadow-sm px-4 py-3">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <p className="text-sm font-medium text-text">{strain?.name ?? entry.strainId}</p>
+        <Badge tone="accent" className="text-[10px] shrink-0">
+          {"★".repeat(entry.rating)}
+          {"☆".repeat(Math.max(0, 5 - entry.rating))}
+        </Badge>
+      </div>
+      <p className="text-[11px] text-text-subtle mb-2">
+        Harvested {entry.harvestedAt} · {entry.dryGrams}g dry · {entry.cureWeeks} wk cure
+      </p>
+      <p className="text-xs text-text-muted leading-relaxed">{entry.notes}</p>
     </div>
   );
 }
