@@ -69,10 +69,10 @@ const SHELF_BY_CATEGORY: Record<
 > = {
   // Goals / Symptoms
   rest:                { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
-  // Backwards-compat: legacy seed rows still use "sleep" slug. Continues
-  // to resolve until catalog re-seeded with the new label.
-  sleep:               { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
   relief:              { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
+  // Legacy slug aliases — kept until external links / cached SEO drop
+  // off and the catalog is re-seeded with the new labels.
+  sleep:               { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
   recovery:            { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
   calm:                { bg: "var(--butter)",   deep: "var(--butter-stamp)",   shape: "bottle" },
   skin:                { bg: "var(--blush)",    deep: "var(--blush-stamp)",    shape: "serum" },
@@ -144,11 +144,11 @@ function doseLabelFrom(p: Product): string {
     case "beverage":
       return "12 fl oz";
     case "tincture":
-      return "30ml";
+      return "30 mL";
     case "topical":
       return "2oz";
     case "serum":
-      return "30ml";
+      return "30 mL";
     case "capsule":
       return "30 ct";
     case "edible":

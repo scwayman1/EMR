@@ -381,7 +381,7 @@ export default async function LeafmartHomePage() {
               <div className="grid grid-cols-2 gap-3 sm:gap-4 lm-stagger">
                 <div>
                   <Portrait src="/portraits/marcus.png" tone="sage" caption="Marcus, 38 · Relief" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The day after a long shift</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Field Balm № 4 · Flower Powered</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The day after a long shift</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Full-spectrum balm · Relief shelf</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait src="/portraits/aanya.png" tone="warm" caption="Aanya, 31 · Calm" />
@@ -389,7 +389,7 @@ export default async function LeafmartHomePage() {
                 </div>
                 <div>
                   <Portrait src="/portraits/james.png" tone="butter" caption="James, 82 · Rest" />
-                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">Quiet Hours Tincture · Greenleaf Co.</div></div>
+                  <div className="mt-3 sm:mt-3.5"><div className="text-[12.5px] sm:text-[13px] font-semibold text-[var(--ink)]">The hour before bed</div><div className="text-[12px] sm:text-[12.5px] text-[var(--text-soft)] mt-0.5">CBD + CBN tincture · Rest shelf</div></div>
                 </div>
                 <div className="mt-6 sm:mt-9">
                   <Portrait src="/portraits/eleanor.png" tone="lilac" caption="Eleanor, 71 · Skin" />
@@ -402,8 +402,11 @@ export default async function LeafmartHomePage() {
       </section>
 
       {/* ── QUIZ CTA ─────────────────────────────────────── */}
+      {/* Lock the deep brand green explicitly: --leaf flips lighter in dark
+          mode and the cream copy fails AA contrast against the dark-mode
+          variant. The CTA is a fixed-color brand surface. */}
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
-        <div className="rounded-[28px] sm:rounded-[36px] px-6 sm:px-10 lg:px-16 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 lg:gap-10 items-center" style={{ background: "var(--leaf)", color: "#FFF8E8" }}>
+        <div className="rounded-[28px] sm:rounded-[36px] px-6 sm:px-10 lg:px-16 py-10 sm:py-16 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-8 lg:gap-10 items-center" style={{ background: "#1F4D37", color: "#FFF8E8" }}>
           <div>
             <p className="eyebrow text-[rgba(255,248,232,0.8)]">2-minute quiz</p>
             <h2 className="font-display text-[32px] sm:text-[44px] lg:text-[56px] font-normal tracking-[-1.2px] sm:tracking-[-1.4px] leading-[1.05] sm:leading-[1.0] mt-3 mb-4 sm:mb-[18px] text-[#FFF8E8]">

@@ -13,9 +13,11 @@ import {
 export const revalidate = 3600;
 
 const CATEGORY_META: Record<string, { title: string; headline: string; accent: string; bg: string }> = {
-  rest: { title: "Rest", headline: "For evenings that should end quietly.", accent: "wind-down", bg: "var(--sage)" },
-  recovery: { title: "Relief", headline: "Pain and muscle relief, gently.", accent: "long days", bg: "var(--peach)" },
-  relief: { title: "Relief", headline: "Pain and muscle relief, gently.", accent: "long days", bg: "var(--peach)" },
+  rest: { title: "Rest", headline: "For evenings that should end quietly.", accent: "before bed", bg: "var(--sage)" },
+  relief: { title: "Relief", headline: "Built for the day after a long one.", accent: "long days", bg: "var(--peach)" },
+  // Legacy `/category/recovery` URL — kept so existing bookmarks and
+  // cached SEO entries land on the renamed Relief shelf without 404.
+  recovery: { title: "Relief", headline: "Built for the day after a long one.", accent: "long days", bg: "var(--peach)" },
   calm: { title: "Calm", headline: "Take the edge off, gently.", accent: "gently", bg: "var(--butter)" },
   skin: { title: "Skin", headline: "Plant-powered skin recovery.", accent: "recovery", bg: "var(--rose)" },
   focus: { title: "Focus", headline: "Clarity when it counts.", accent: "clarity", bg: "var(--lilac)" },

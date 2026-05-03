@@ -6,6 +6,7 @@ import { useCart, formatUSD } from "@/lib/leafmart/cart-store";
 import { useAgeConfirmation } from "@/lib/leafmart/age-confirmation";
 import { AgeGateModal } from "@/components/leafmart/AgeGateModal";
 import { ProductSilhouette } from "@/components/leafmart/ProductSilhouette";
+import { CheckoutShareModule } from "@/components/leafmart/CheckoutShareModule";
 
 const TAX_RATE = 0.0875;
 const STEPS = ["Contact", "Shipping", "Payment", "Confirmation"] as const;
@@ -970,6 +971,20 @@ export default function CheckoutPage() {
               {formatUSD(total)}
             </span>
           </div>
+
+          <div className="mt-5 flex items-center gap-3">
+            <Link
+              href="/leafmart/cart"
+              className="flex-1 inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--ink)] px-4 py-2.5 text-[12.5px] font-medium hover:border-[var(--leaf)] hover:text-[var(--leaf)] transition-colors"
+            >
+              Compare similar items
+            </Link>
+          </div>
+
+          <CheckoutShareModule
+            cartItems={items.map((i) => ({ slug: i.product.slug, quantity: i.quantity }))}
+            fromName={shipping.firstName || undefined}
+          />
         </aside>
       </div>
     </section>

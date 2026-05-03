@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import type { OutcomeMetric } from "@prisma/client";
 
-const METRICS: OutcomeMetric[] = ["pain", "sleep", "anxiety", "mood"];
+const METRICS: OutcomeMetric[] = ["pain", "sleep", "anxiety", "mood", "nausea"];
 
 const metricSchema = z.coerce.number().int().min(0).max(10);
 

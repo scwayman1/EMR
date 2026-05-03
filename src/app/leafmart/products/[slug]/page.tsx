@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductBySlug, getRelatedProducts, getProducts } from "@/lib/leafmart/products";
 import { ProductDetailClient } from "@/components/leafmart/ProductDetailClient";
+import { ProductDetailsList } from "@/components/leafmart/ProductDetailsList";
+import { ProductQATab } from "@/components/leafmart/ProductQATab";
 import { JsonLd } from "@/components/leafmart/JsonLd";
+import { curatedDetailsForLeafmartProduct } from "@/lib/marketplace/product-details";
+import { listProductQuestions } from "@/lib/marketplace/qa";
 import {
   absoluteUrl,
   breadcrumbList,
@@ -47,7 +51,11 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
   const product = await getProductBySlug(params.slug);
   if (!product) notFound();
 
-  const related = await getRelatedProducts(params.slug, 3);
+  const [related, questions] = await Promise.all([
+    getRelatedProducts(params.slug, 3),
+    listProductQuestions(params.slug),
+  ]);
+  const details = curatedDetailsForLeafmartProduct(product);
 
   const breadcrumbs = breadcrumbList([
     { name: "Leafmart", url: "/leafmart" },
@@ -59,6 +67,8 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
     <>
       <JsonLd data={[productLd(product), breadcrumbs]} />
       <ProductDetailClient product={product} related={related} />
+      <ProductDetailsList details={details} />
+      <ProductQATab productSlug={product.slug} initialQuestions={questions} />
     </>
   );
 }

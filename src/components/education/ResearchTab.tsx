@@ -215,10 +215,11 @@ export function ResearchTab() {
                             href={`https://pubmed.ncbi.nlm.nih.gov/${article.pmid}/`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={`Open PubMed article ${article.pmid}`}
-                            className="text-[10px] text-slate-400 hover:text-accent ml-auto font-mono underline-offset-2 hover:underline"
+                            className="text-[10px] text-slate-500 hover:text-accent ml-auto font-mono inline-flex items-center gap-1"
+                            aria-label={`Open PMID ${article.pmid} on PubMed`}
                           >
                             PMID: {article.pmid}
+                            <ExternalLink className="w-2.5 h-2.5" strokeWidth={2.5} />
                           </a>
                         </div>
                       </CardContent>
@@ -387,6 +388,10 @@ export function ResearchTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((pair, i) => {
               const ev = EVIDENCE_COLORS[pair.evidenceLevel];
+              // EMR-348 — clicking a card runs an in-page PubMed search
+              // for that exact cannabinoid+condition pair and scrolls
+              // down to the results section so the user can see the
+              // underlying studies without leaving the page.
               const query = `${pair.cannabinoid} ${pair.condition}`;
               return (
                 <button
