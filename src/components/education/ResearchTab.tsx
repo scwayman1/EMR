@@ -25,10 +25,11 @@ import { searchPubMedArticles, type PubMedSearchResult } from "@/app/education/a
 
 // Kander book links — single source of truth so the URLs can be swapped to
 // our hosted PDF / mirrored web copy without hunting through the JSX.
-// EMR-370: web version moved to freecannabiscancerbook.com (the original
-// .com mirror started 404ing); PDF still served from the Archive.org copy.
+// Per EMR-370 (Dr. Patel): the canonical web home for the book is
+// freecannabiscancerbook.com — older builds pointed at cannabisandcancer.com
+// which 404s. Keep both URLs static so the buttons stop opening dead pages.
 const KANDER_PDF_URL =
-  "https://archive.org/download/cannabis-and-cannabinoids-in-cancer-treatment/CannabisAndCancer-JustinKander.pdf";
+  "https://freecannabiscancerbook.com/wp-content/uploads/2018/02/Cannabis-and-Cannabinoids-in-Cancer-Treatment-by-Justin-Kander.pdf";
 const KANDER_WEB_URL = "https://freecannabiscancerbook.com/";
 
 export function ResearchTab() {
@@ -47,9 +48,10 @@ export function ResearchTab() {
     return true;
   });
 
-  async function handlePubmedSearch() {
-    const q = pubmedQuery.trim();
+  async function handlePubmedSearch(forced?: string) {
+    const q = (forced ?? pubmedQuery).trim();
     if (!q || pubmedLoading) return;
+    if (forced) setPubmedQuery(forced);
     setPubmedLoading(true);
     try {
       const result = await searchPubMedArticles(q);
@@ -73,7 +75,11 @@ export function ResearchTab() {
       </div>
 
       {/* PubMed Live Search */}
-      <Card tone="raised" className="rounded-3xl border border-border shadow-lg overflow-hidden">
+      <Card
+        id="research-pubmed-section"
+        tone="raised"
+        className="rounded-3xl border border-border shadow-lg overflow-hidden scroll-mt-24"
+      >
         <CardHeader className="bg-gradient-to-r from-emerald-50 via-slate-50 to-emerald-50 border-b border-border py-5 px-6">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Badge tone="success" className="text-[10px] bg-emerald-100 text-emerald-800 gap-1.5">
@@ -123,7 +129,7 @@ export function ResearchTab() {
               />
             </div>
             <Button
-              onClick={handlePubmedSearch}
+              onClick={() => void handlePubmedSearch()}
               disabled={!pubmedQuery.trim() || pubmedLoading}
               className="rounded-2xl h-14 px-8 text-base font-semibold shadow-md min-w-[140px]"
             >
@@ -382,25 +388,30 @@ export function ResearchTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map((pair, i) => {
               const ev = EVIDENCE_COLORS[pair.evidenceLevel];
-              // EMR-348 — clicking a card opens the PubMed search for that
-              // exact cannabinoid+condition pair so the user can see the
-              // underlying studies and judge the evidence themselves.
-              const pubmedHref = `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(
-                `${pair.cannabinoid} AND ${pair.condition}`,
-              )}`;
+              // EMR-348 — clicking a card runs an in-page PubMed search
+              // for that exact cannabinoid+condition pair and scrolls
+              // down to the results section so the user can see the
+              // underlying studies without leaving the page.
+              const query = `${pair.cannabinoid} ${pair.condition}`;
               return (
-                <a
+                <button
                   key={i}
-                  href={pubmedHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Open the ${pair.studyCount.toLocaleString()} PubMed studies for ${pair.cannabinoid} and ${pair.condition}`}
-                  className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-2xl"
+                  type="button"
+                  onClick={() => {
+                    void handlePubmedSearch(query);
+                    if (typeof document !== "undefined") {
+                      document
+                        .getElementById("research-pubmed-section")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }}
+                  aria-label={`Show top PubMed studies for ${pair.cannabinoid} for ${pair.condition} (${pair.studyCount.toLocaleString()} studies)`}
+                  className="text-left rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <Card
                     className={cn(
                       "rounded-2xl border-2 border-transparent transition-all duration-300 cursor-pointer",
-                      "hover:-translate-y-1 hover:shadow-lg hover:border-accent/30",
+                      "hover:-translate-y-1 hover:shadow-lg hover:border-accent/40 group",
                       ev.bg
                     )}
                   >
@@ -414,6 +425,10 @@ export function ResearchTab() {
                           </p>
                           <p className="text-sm text-slate-600 leading-relaxed font-medium">
                             {pair.summary}
+                          </p>
+                          <p className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                            View top studies
+                            <ExternalLink className="w-3 h-3" strokeWidth={2.5} />
                           </p>
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end gap-2">
@@ -438,13 +453,9 @@ export function ResearchTab() {
                           </div>
                         </div>
                       </div>
-                      <p className="mt-4 text-[11px] text-slate-500 inline-flex items-center gap-1 group-hover:text-accent">
-                        See top studies on PubMed
-                        <ExternalLink className="w-3 h-3" strokeWidth={2.5} />
-                      </p>
                     </CardContent>
                   </Card>
-                </a>
+                </button>
               );
             })}
           </div>

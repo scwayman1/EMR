@@ -25,7 +25,44 @@ export type ShippingRestrictionReason =
   | "ok"
   | "vendor_not_configured"
   | "state_not_permitted"
-  | "invalid_state";
+  | "invalid_state"
+  | "military_address"
+  | "international_address"
+  | "us_territory";
+
+/**
+ * EMR-325 — destinations the platform will not ship to under any
+ * circumstance. Listed separately from the per-state matrix because
+ * these blocks apply regardless of vendor configuration.
+ *
+ * - Military bases (APO/FPO/DPO + state codes AA, AE, AP) — federal
+ *   property; cannabinoid possession is a UCMJ violation even for
+ *   Farm-Bill hemp.
+ * - VA facilities — federal property; same reasoning.
+ * - U.S. territories (PR, VI, GU, AS, MP) — outside the Farm Bill's
+ *   "states" definition for hemp interstate commerce; treat as blocked
+ *   until counsel reviews each territory.
+ * - International — never; we are domestic-only.
+ */
+export const MILITARY_STATE_CODES: ReadonlySet<string> = new Set([
+  "AA", // Armed Forces Americas
+  "AE", // Armed Forces Europe
+  "AP", // Armed Forces Pacific
+]);
+
+export const US_TERRITORY_STATE_CODES: ReadonlySet<string> = new Set([
+  "PR", "VI", "GU", "AS", "MP",
+]);
+
+export const MILITARY_ADDRESS_PATTERNS: ReadonlyArray<RegExp> = [
+  /\bAPO\b/i,
+  /\bFPO\b/i,
+  /\bDPO\b/i,
+  // VA facility hints — common abbreviations seen in shipping addresses
+  /\bVA\s+(?:hospital|medical center|clinic|mc)\b/i,
+  /\b(?:Dept\.?|Department)\s+of\s+Veterans\s+Affairs\b/i,
+  /\bVeterans\s+Affairs\s+(?:Medical Center|Hospital|Clinic|MC)\b/i,
+];
 
 export interface ShippingRestrictionResult {
   ok: boolean;
@@ -44,8 +81,50 @@ type VendorShippingInputs = Pick<Vendor, "name" | "shippableStates">;
 export function checkShippingRestriction(
   vendor: VendorShippingInputs,
   stateCode: string,
+  opts?: { addressLines?: ReadonlyArray<string>; country?: string },
 ): ShippingRestrictionResult {
   const normalized = stateCode?.toUpperCase().trim();
+  const country = opts?.country?.toUpperCase().trim();
+  const lines = opts?.addressLines ?? [];
+
+  // EMR-325 — international: domestic-only
+  if (country && country !== "US" && country !== "USA") {
+    return {
+      ok: false,
+      reason: "international_address",
+      message: "We ship hemp products to U.S. addresses only.",
+    };
+  }
+
+  if (normalized && MILITARY_STATE_CODES.has(normalized)) {
+    return {
+      ok: false,
+      reason: "military_address",
+      message:
+        "We can't ship cannabinoid products to military addresses (APO/FPO/DPO).",
+    };
+  }
+
+  for (const line of lines) {
+    if (!line) continue;
+    if (MILITARY_ADDRESS_PATTERNS.some((rx) => rx.test(line))) {
+      return {
+        ok: false,
+        reason: "military_address",
+        message:
+          "We can't ship cannabinoid products to military or VA facility addresses.",
+      };
+    }
+  }
+
+  if (normalized && US_TERRITORY_STATE_CODES.has(normalized)) {
+    return {
+      ok: false,
+      reason: "us_territory",
+      message:
+        "We don't currently ship to U.S. territories. Domestic states + DC only.",
+    };
+  }
 
   if (!normalized || !ALL_US_STATES_AND_DC_SET.has(normalized)) {
     return {
@@ -101,10 +180,11 @@ export interface CartShippingRestrictionResult<V extends VendorShippingInputs> {
 export function checkCartShippingRestrictions<V extends VendorShippingInputs>(
   items: ReadonlyArray<CartItemForRestriction<V>>,
   stateCode: string,
+  opts?: { addressLines?: ReadonlyArray<string>; country?: string },
 ): CartShippingRestrictionResult<V> {
   const blocked: CartShippingRestrictionResult<V>["blocked"] = [];
   for (const item of items) {
-    const result = checkShippingRestriction(item.vendor, stateCode);
+    const result = checkShippingRestriction(item.vendor, stateCode, opts);
     if (!result.ok) blocked.push({ item, result });
   }
   return { ok: blocked.length === 0, blocked };

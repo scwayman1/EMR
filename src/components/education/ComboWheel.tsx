@@ -160,16 +160,15 @@ export function ComboWheel({
         {announcement}
       </div>
       {showHeading && (
-        <div className="text-center mb-8 sm:mb-10 px-4">
-          <div className="mb-3 flex justify-center">
+        <div className="text-center mb-4 sm:mb-5 px-4">
+          <div className="mb-2 flex justify-center">
             <Eyebrow>Interactive pharmacology</Eyebrow>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-text tracking-tight mb-3">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-text tracking-tight mb-1.5">
             Cannabis Combo Wheel
           </h2>
-          <p className="text-sm sm:text-base text-text-muted max-w-2xl mx-auto leading-relaxed">
-            Tap two or more compounds to see how cannabinoids and terpenes work together —
-            shared targets, combined benefits, and what to watch for.
+          <p className="text-xs sm:text-sm text-text-muted max-w-2xl mx-auto leading-relaxed">
+            Tap segments to combine compounds. Tap the center to reset.
           </p>
         </div>
       )}
@@ -192,7 +191,10 @@ export function ComboWheel({
               compounds={compounds}
               selected={selected}
               onToggle={toggle}
-              onReset={() => setSelected(new Set())}
+              onReset={() => {
+                setSelected(new Set());
+                onSelect?.([]);
+              }}
               size={isCompact ? "sm" : "lg"}
             />
           ) : (
@@ -488,6 +490,15 @@ function Wheel({
       const rot = (mid * 180) / Math.PI + 90;
 
       const d = annularWedge(r1, r2, start, end);
+      // Selected slices expand outward 8px (and inward 4px on the inner ring)
+      // so the user gets visual feedback that the wedge is "lifted off" the
+      // wheel. Per EMR-369: clicking should make the slice bigger.
+      const dExpanded = annularWedge(
+        Math.max(r1 - 4, hubR + 4),
+        r2 + 8,
+        start,
+        end,
+      );
       const dHit =
         hitSlop > 0
           ? annularWedge(
@@ -524,17 +535,17 @@ function Wheel({
             />
           )}
           <path
-            d={d}
+            d={isSelected ? dExpanded : d}
             fill={c.color}
-            opacity={isSelected ? 1 : 0.92}
-            stroke={isSelected ? "#fff" : "rgba(255,255,255,0.35)"}
-            strokeWidth={isSelected ? 2.5 : 1}
+            opacity={1}
+            stroke={isSelected ? "#fff" : "rgba(255,255,255,0.5)"}
+            strokeWidth={isSelected ? 3 : 1.25}
             className="combo-visible"
             style={{
-              transition: "opacity 200ms ease, stroke-width 200ms ease, filter 300ms ease",
+              transition: "d 240ms ease, stroke-width 200ms ease, filter 300ms ease",
               filter: isSelected
-                ? `drop-shadow(0 0 8px ${c.color}) drop-shadow(0 0 16px ${c.color}88)`
-                : "none",
+                ? `drop-shadow(0 0 10px ${c.color}) drop-shadow(0 0 22px ${c.color}cc)`
+                : `drop-shadow(0 1px 2px ${c.color}55)`,
               pointerEvents: dHit ? "none" : undefined,
             }}
           />
@@ -544,13 +555,13 @@ function Wheel({
             textAnchor="middle"
             dominantBaseline="central"
             fill="#fff"
-            fontSize={c.name.length > 8 ? 12 : 14}
-            fontWeight={700}
+            fontSize={c.name.length > 8 ? 14 : 17}
+            fontWeight={800}
             transform={`rotate(${rot} ${lx} ${ly})`}
             style={{
               pointerEvents: "none",
-              letterSpacing: 0.4,
-              textShadow: "0 1px 3px rgba(0,0,0,0.4)",
+              letterSpacing: 0.5,
+              textShadow: "0 1px 4px rgba(0,0,0,0.55)",
             }}
           >
             {c.name}
@@ -652,7 +663,7 @@ function Wheel({
             cursor + label flip when there's something to clear. */}
         <g
           role={selected.size > 0 ? "button" : undefined}
-          aria-label={selected.size > 0 ? "Reset selection" : undefined}
+          aria-label={selected.size > 0 ? "Reset combo selection" : undefined}
           tabIndex={selected.size > 0 ? 0 : -1}
           onClick={() => {
             if (selected.size === 0) return;
@@ -667,7 +678,7 @@ function Wheel({
               onReset();
             }
           }}
-          style={{ cursor: selected.size > 0 ? "pointer" : "default" }}
+          style={{ cursor: selected.size > 0 ? "pointer" : "default", outline: "none" }}
         >
           <circle
             cx={cx}

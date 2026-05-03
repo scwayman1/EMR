@@ -15,9 +15,16 @@ export const revalidate = 3600;
 const CATEGORY_META: Record<string, { title: string; headline: string; accent: string; bg: string }> = {
   rest: { title: "Rest", headline: "For evenings that should end quietly.", accent: "before bed", bg: "var(--sage)" },
   relief: { title: "Relief", headline: "Built for the day after a long one.", accent: "long days", bg: "var(--peach)" },
+  // Legacy `/category/recovery` URL — kept so existing bookmarks and
+  // cached SEO entries land on the renamed Relief shelf without 404.
+  recovery: { title: "Relief", headline: "Built for the day after a long one.", accent: "long days", bg: "var(--peach)" },
   calm: { title: "Calm", headline: "Take the edge off, gently.", accent: "gently", bg: "var(--butter)" },
   skin: { title: "Skin", headline: "Plant-powered skin recovery.", accent: "recovery", bg: "var(--rose)" },
   focus: { title: "Focus", headline: "Clarity when it counts.", accent: "clarity", bg: "var(--lilac)" },
+};
+
+const CATEGORY_SLUG_ALIASES: Record<string, string> = {
+  relief: "recovery",
 };
 
 export async function generateStaticParams() {
@@ -50,11 +57,12 @@ export default async function CategoryPage({ params }: { params: { slug: string 
   const cat = CATEGORY_META[params.slug];
   if (!cat) notFound();
 
+  const lookupSlug = CATEGORY_SLUG_ALIASES[params.slug] ?? params.slug;
   const [products, categories] = await Promise.all([
-    getProductsByCategory(params.slug),
+    getProductsByCategory(lookupSlug),
     getCategories(),
   ]);
-  const catInfo = categories.find((c) => c.slug === params.slug);
+  const catInfo = categories.find((c) => c.slug === lookupSlug);
 
   const breadcrumbs = breadcrumbList([
     { name: "Leafmart", url: "/leafmart" },

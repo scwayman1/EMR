@@ -18,9 +18,21 @@ const nextConfig = {
   },
   async redirects() {
     return [
-      // Shelf renames — preserve any external/SEO links into the old slugs.
-      { source: "/leafmart/category/sleep", destination: "/leafmart/category/rest", permanent: true },
-      { source: "/leafmart/category/recovery", destination: "/leafmart/category/relief", permanent: true },
+      // EMR-332: shelf renames ("sleep" → "rest", "recovery" →
+      // "relief") so the public copy doesn't imply cannabis treats
+      // medical sleep disorders or muscle-recovery claims. Permanent
+      // redirects so SEO and any external links still pointing at the
+      // legacy slugs land on the canonical shelf.
+      {
+        source: "/leafmart/category/sleep",
+        destination: "/leafmart/category/rest",
+        permanent: true,
+      },
+      {
+        source: "/leafmart/category/recovery",
+        destination: "/leafmart/category/relief",
+        permanent: true,
+      },
     ];
   },
 };

@@ -1,7 +1,7 @@
 import type { LeafmartProduct } from "@/components/leafmart/LeafmartProductCard";
 
 export const CATEGORY_FILTERS = [
-  { slug: "rest", name: "Rest", match: ["sleep", "rest", "evening", "wind-down", "wind down", "night", "cbn"] },
+  { slug: "rest", name: "Rest", match: ["rest", "sleep", "evening", "wind-down", "wind down", "night", "cbn"] },
   { slug: "relief", name: "Relief", match: ["relief", "recovery", "tension", "balm", "after long", "long days"] },
   { slug: "calm", name: "Calm", match: ["calm", "anxiety", "edge", "quiet"] },
   { slug: "skin", name: "Skin", match: ["skin", "serum", "barrier"] },

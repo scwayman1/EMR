@@ -16,7 +16,7 @@ import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatDate } from "@/lib/utils/format";
 import { DosingView } from "../dosing/dosing-view";
 
-export const metadata = { title: "My Medications" };
+export const metadata = { title: "My Medications & Dosing Plan" };
 
 /* ---------- Helpers ---------- */
 
@@ -314,6 +314,21 @@ export default async function MedicationsPage() {
           <EditorialRule className="my-10" />
         </>
       )}
+
+      {/* ==================== Dosing plan (merged from /portal/dosing) ==================== */}
+      <section id="dosing-plan" className="mb-10 scroll-mt-24">
+        <h2 className="font-display text-2xl text-text tracking-tight mb-6">
+          Your dosing plan
+        </h2>
+        <p className="text-sm text-text-muted mb-6 max-w-xl leading-relaxed">
+          A personalized dosing recommendation built from your health profile,
+          current medications, and outcome trends. Your care team will review
+          and finalize.
+        </p>
+        <DosingView />
+      </section>
+
+      <EditorialRule className="my-10" />
 
       {/* ==================== Understanding your dose ==================== */}
       <section className="mb-4">

@@ -70,7 +70,8 @@ const SHELF_BY_CATEGORY: Record<
   // Goals / Symptoms
   rest:                { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
   relief:              { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
-  // Legacy slug aliases — keep until any external links / cached SEO drop off.
+  // Legacy slug aliases — kept until external links / cached SEO drop
+  // off and the catalog is re-seeded with the new labels.
   sleep:               { bg: "var(--sage)",     deep: "var(--sage-stamp)",     shape: "can" },
   recovery:            { bg: "var(--peach)",    deep: "var(--peach-stamp)",    shape: "tin" },
   calm:                { bg: "var(--butter)",   deep: "var(--butter-stamp)",   shape: "bottle" },

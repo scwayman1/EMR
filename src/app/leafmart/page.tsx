@@ -213,7 +213,7 @@ export default async function LeafmartHomePage() {
               For the hour <em className="font-accent not-italic text-[var(--leaf)]">before bed</em>.
             </h2>
             <p className="mt-3 sm:mt-3.5 text-[var(--text-soft)] max-w-[520px] text-[14.5px] sm:text-[15.5px] leading-relaxed">
-              Reviewed in the last six months. Sorted by what people with a similar sleep profile told us actually helped.
+              Reviewed in the last six months. Sorted by what people with a similar evening routine told us actually helped.
             </p>
           </div>
           <Link href="/leafmart/category/rest" className="text-[14.5px] font-medium border-b-[1.5px] border-[var(--ink)] pb-0.5 mt-3 sm:mt-0">
@@ -344,7 +344,11 @@ export default async function LeafmartHomePage() {
 
       {/* ── HUMANITY / PORTRAITS ─────────────────────────── */}
       <section className="px-4 sm:px-6 lg:px-14 py-6 sm:py-8 pb-14 sm:pb-20 max-w-[1440px] mx-auto">
-        <div className="rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 lg:p-14" style={{ background: "linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%)", ["--ink" as string]: "#152119", ["--text" as string]: "#1F2A24", ["--text-soft" as string]: "#4A5651" }}>
+        {/* EMR-331: dark-mode background + use the global token cascade
+            so headings, names, and the "Take the quiz" CTA stay readable.
+            Previously this card hard-set --ink/--text inline, which
+            overrode the dark-mode token swap and washed out the copy. */}
+        <div className="lm-portraits-card rounded-[28px] sm:rounded-[36px] p-6 sm:p-10 lg:p-14">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14 items-start">
             {/* Left: anchor portrait + checklist */}
             <div className="order-2 lg:order-1">
@@ -355,7 +359,7 @@ export default async function LeafmartHomePage() {
                   {["Curated for people, not patients", "Plant-powered, plainly labeled", "For every stage of life, every body, every ritual", "Quiet support for everyday life", "From an actual healthcare brand"].map((b) => (
                     <div key={b} className="flex items-center gap-2.5">
                       <div className="w-5 h-5 rounded-full bg-[var(--leaf)] flex items-center justify-center flex-shrink-0">
-                        <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2.5 5.7 L4.5 7.5 L8.5 3.5" stroke="#FFF8E8" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2.5 5.7 L4.5 7.5 L8.5 3.5" stroke="var(--bg)" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
                       </div>
                       <span className="text-sm font-medium text-[var(--text)]">{b}</span>
                     </div>
@@ -412,7 +416,7 @@ export default async function LeafmartHomePage() {
               Tell us how you&apos;d like to feel. We&apos;ll match you with three clinician-reviewed products to consider — no signup required.
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3.5 mt-6 sm:mt-7">
-              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-medium bg-[#FFF8E8] text-[#152119] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">
+              <Link href="/leafmart/quiz" className="inline-flex items-center justify-center rounded-full font-semibold bg-[#FFF8E8] text-[#0A1812] hover:bg-white transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px] shadow-[0_2px_8px_rgba(0,0,0,0.12)]">
                 Take the quiz →
               </Link>
               <Link href="/leafmart/shop" className="inline-flex items-center justify-center rounded-full font-medium border-[1.5px] border-[#FFF8E8] text-[#FFF8E8] hover:bg-[rgba(255,248,232,0.15)] transition-colors px-6 sm:px-7 py-3.5 sm:py-4 text-[14.5px] sm:text-[15px]">

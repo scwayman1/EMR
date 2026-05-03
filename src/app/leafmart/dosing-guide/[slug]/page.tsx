@@ -77,6 +77,43 @@ export default function DosingGuidePage({ params }: { params: { slug: string } }
         </ol>
       </nav>
 
+      {/* EMR-323: PROVIDER-FIRST DOSING NOTICE
+          Dosing pages must lead with the strongest possible disclaimer.
+          We are NOT a treating clinic. Suggestions here are general,
+          evidence-and-clinician-informed, and require provider review
+          before any dose change. Liability waiver is referenced and
+          linked to the ToS for an audit trail. */}
+      <section className="px-4 sm:px-6 lg:px-14 pt-5 max-w-[1440px] mx-auto">
+        <div
+          role="note"
+          aria-label="Dosing safety notice"
+          className="rounded-2xl border border-[var(--highlight)] bg-[var(--highlight-soft)] p-4 sm:p-5 text-[13.5px] sm:text-[14px] leading-relaxed text-[var(--text)] flex flex-col sm:flex-row gap-3 sm:gap-4 items-start"
+        >
+          <span aria-hidden="true" className="mt-0.5 w-7 h-7 flex-shrink-0 rounded-full bg-[var(--surface)] text-[var(--highlight)] flex items-center justify-center font-display text-base font-semibold">
+            !
+          </span>
+          <div className="flex-1">
+            <p className="font-semibold text-[var(--ink)] mb-1">
+              These are general suggestions, not medical advice.
+            </p>
+            <p className="text-[var(--text-soft)]">
+              Leafmart is a curated marketplace, not a clinic. The numbers
+              below are starting-point ranges drawn from published evidence
+              and clinician input. <strong>Talk to your provider before
+              you start, change, or stop any dose</strong> — especially if
+              you take prescription medications, are pregnant or
+              breastfeeding, or have a history of substance-use disorder.
+              By using these guides you accept the
+              {" "}
+              <Link href="/legal/terms#dosing-waiver" className="underline text-[var(--leaf)] hover:text-[var(--ink)]">
+                liability waiver
+              </Link>
+              {" "}in our Terms.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* HERO */}
       <section className="px-4 sm:px-6 lg:px-14 py-8 sm:py-10 max-w-[1440px] mx-auto lm-fade-in">
         <div

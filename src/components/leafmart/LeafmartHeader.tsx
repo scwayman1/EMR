@@ -10,7 +10,7 @@ import { LogoMark } from "@/components/ui/logo";
 
 const NAV_LINKS = [
   { label: "Rest", href: "/leafmart/category/rest" },
-  { label: "RELIEF", href: "/leafmart/category/relief" },
+  { label: "Relief", href: "/leafmart/category/relief" },
   { label: "Calm", href: "/leafmart/category/calm" },
   { label: "Skin", href: "/leafmart/category/skin" },
   { label: "Focus", href: "/leafmart/category/focus" },

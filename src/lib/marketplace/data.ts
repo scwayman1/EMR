@@ -5,7 +5,7 @@ import type { MarketplaceProduct, MarketplaceCategory } from "./types";
 // ---------------------------------------------------------------------------
 
 export const CATEGORIES: MarketplaceCategory[] = [
-  { id: "cat-sleep", name: "Rest", slug: "rest", description: "Formulations designed to support restful, restorative evenings.", type: "symptom", icon: "\u263D", productCount: 3 },
+  { id: "cat-rest", name: "Rest", slug: "rest", description: "Formulations chosen to support evening wind-down and restful routines.", type: "goal", icon: "\u263D", productCount: 3 },
   { id: "cat-pain", name: "Pain Support", slug: "pain-support", description: "Targeted relief for chronic and acute discomfort.", type: "symptom", icon: "\u2695", productCount: 3 },
   { id: "cat-anxiety", name: "Anxiety", slug: "anxiety", description: "Calming formulations for stress and anxious moments.", type: "symptom", icon: "\u2661", productCount: 3 },
   { id: "cat-nausea", name: "Nausea", slug: "nausea", description: "Fast-acting support for nausea and appetite.", type: "symptom", icon: "\u2606", productCount: 2 },
@@ -62,7 +62,7 @@ export const PRODUCTS: MarketplaceProduct[] = [
     averageRating: 4.8,
     reviewCount: 124,
     featured: true,
-    categoryIds: ["cat-sleep", "cat-anxiety", "cat-calm", "cat-tincture", "cat-clinician", "cat-best", "cat-beginner"],
+    categoryIds: ["cat-rest", "cat-anxiety", "cat-calm", "cat-tincture", "cat-clinician", "cat-best", "cat-beginner"],
     variants: [
       { id: "v1a", name: "30 mL", upc: "850012345001", price: 64, compareAtPrice: 78, inStock: true },
       { id: "v1b", name: "60 mL", upc: "850012345002", price: 112, inStock: true },

@@ -22,11 +22,16 @@ const METRICS: { key: Metric; label: string; emoji: string }[] = [
   { key: "nausea", label: "Nausea", emoji: "🤢" },
 ];
 
-// "Lower-is-better" metrics — pain, anxiety, and nausea improve as the score
-// drops; sleep and mood improve as the score rises.
+// Symptom-style metrics — lower scores mean fewer symptoms / improvement.
+// Sleep and mood are the inverse: higher scores are better. The Set is
+// shared between cellTone (per-cell coloring) and the summary counters
+// below so the displayed totals always match the cell tones — Codex
+// flagged that they had drifted apart for nausea.
+const LOWER_IS_BETTER = new Set<Metric>(["pain", "anxiety", "nausea"]);
+
 function cellTone(metric: Metric, value: number, hasData: boolean): string {
   if (!hasData) return "bg-surface-muted border-border/50";
-  const lowerIsBetter = metric === "pain" || metric === "anxiety" || metric === "nausea";
+  const lowerIsBetter = LOWER_IS_BETTER.has(metric);
   const improving = lowerIsBetter ? value <= 3 : value >= 7;
   const worsening = lowerIsBetter ? value >= 7 : value <= 3;
   if (improving) {
@@ -58,10 +63,9 @@ export function HeatmapView({
     for (const c of cells) {
       if (!c.hasData) continue;
       withData++;
-      const isImproving =
-        metric === "pain" || metric === "anxiety" ? c.value <= 3 : c.value >= 7;
-      const isWorsening =
-        metric === "pain" || metric === "anxiety" ? c.value >= 7 : c.value <= 3;
+      const lowerIsBetter = LOWER_IS_BETTER.has(metric);
+      const isImproving = lowerIsBetter ? c.value <= 3 : c.value >= 7;
+      const isWorsening = lowerIsBetter ? c.value >= 7 : c.value <= 3;
       if (isImproving) improving++;
       else if (isWorsening) worsening++;
       else steady++;
