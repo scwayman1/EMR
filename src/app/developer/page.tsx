@@ -402,7 +402,7 @@ export default function DeveloperPortalPage() {
               integration end-to-end without ever touching real PHI.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup">
+              <Link href="/sign-up">
                 <Button size="lg">Create a sandbox</Button>
               </Link>
               <Link href="mailto:dev-support@leafjourney.com">

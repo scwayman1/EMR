@@ -61,8 +61,8 @@ export const DEFAULT_GROUPS: MobileNavGroup[] = [
     id: "account",
     label: "Account",
     tabs: [
-      { label: "Sign in", href: "/login", icon: "➜" },
-      { label: "Demo", href: "/signup", icon: "☆" },
+      { label: "Sign in", href: "/sign-in", icon: "➜" },
+      { label: "Demo", href: "/sign-up", icon: "☆" },
       { label: "Security", href: "/security", icon: "☢" },
       { label: "Developer", href: "/developer", icon: "⚙" },
     ],

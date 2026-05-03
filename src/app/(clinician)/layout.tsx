@@ -24,7 +24,7 @@ export default async function ClinicianLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
   if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
     const primary = user.roles[0];
     redirect(ROLE_HOME[primary] ?? "/");

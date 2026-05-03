@@ -89,7 +89,7 @@ function ChatCBClinicalGate({ onExploreWheel }: { onExploreWheel: () => void }) 
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-10">
             <Link
-              href="/signup"
+              href="/sign-up"
               className="group inline-flex items-center justify-center gap-2 rounded-full bg-accent px-7 py-3 text-sm font-semibold text-white shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5"
             >
               <Stethoscope className="h-4 w-4" strokeWidth={2.5} />

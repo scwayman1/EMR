@@ -24,7 +24,7 @@ export const metadata = { title: "Trifold reference guide" };
 
 export default async function TrifoldGuidePage() {
   const user = await requireRole("patient");
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
 
   return (
     <main className="min-h-screen bg-bg">

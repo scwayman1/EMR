@@ -114,7 +114,7 @@ export default async function PatientsPage({
             <span className="text-sm text-text-muted tabular-nums">
               {patients.length} patient{patients.length === 1 ? "" : "s"}
             </span>
-            <Link href="/signup">
+            <Link href="/sign-up">
               <Button variant="secondary" size="sm">
                 <svg
                   width="14"

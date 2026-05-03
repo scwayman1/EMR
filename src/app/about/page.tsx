@@ -262,7 +262,7 @@ export default function AboutPage() {
               we&apos;d love to hear from you.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup">
+              <Link href="/sign-up">
                 <Button size="lg">Request a demo</Button>
               </Link>
               <Link href="/">
