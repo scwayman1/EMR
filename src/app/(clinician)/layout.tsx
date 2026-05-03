@@ -106,6 +106,7 @@ export default async function ClinicianLayout({
         { label: "Today", href: "/clinic" },
         { label: "Command Center", href: "/clinic/command" },
         { label: "Schedule", href: "/clinic/schedule" },
+        { label: "Telehealth", href: "/telehealth" },
         { label: "Roster", href: "/clinic/patients" },
         { label: "Inbox", href: "/clinic/messages" },
       ],

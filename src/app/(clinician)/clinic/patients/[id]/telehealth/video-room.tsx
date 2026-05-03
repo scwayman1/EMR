@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import type { TelehealthChecklistItem } from "@/lib/domain/telehealth";
+import { DailyVideoFrame, type ConnectionState } from "@/components/telehealth/DailyVideoFrame";
 import {
   startTelehealthVisit,
   endTelehealthVisit,
@@ -86,8 +87,10 @@ export function VideoRoom({
   const [visitData, setVisitData] = useState<TelehealthVisitResult | null>(null);
   const [startingVisit, setStartingVisit] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [connection, setConnection] = useState<ConnectionState>("loading");
+  const [participantCount, setParticipantCount] = useState(1);
 
-  const timer = useTimer(phase === "in_progress");
+  const timer = useTimer(phase === "in_progress" && connection === "joined");
 
   const toggleCheck = useCallback((id: string) => {
     setCheckedItems((prev) => {
@@ -396,12 +399,21 @@ export function VideoRoom({
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Eyebrow>Telehealth</Eyebrow>
-          <Badge tone="danger" className="animate-pulse text-xs px-2.5">
-            LIVE
-          </Badge>
+          {connection === "joined" ? (
+            <Badge tone="danger" className="animate-pulse text-xs px-2.5">
+              LIVE
+            </Badge>
+          ) : (
+            <Badge tone="info" className="text-xs px-2.5">
+              {connection === "error" ? "Error" : "Connecting"}
+            </Badge>
+          )}
           <span className="font-mono text-lg text-text tabular-nums">
             {timer.formatted}
           </span>
+          <Badge tone="neutral" className="text-[10px]">
+            {participantCount} {participantCount === 1 ? "participant" : "participants"}
+          </Badge>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -417,53 +429,27 @@ export function VideoRoom({
       <div className="flex gap-6">
         {/* Main video area */}
         <div className="flex-1 min-w-0">
-          {/* Video frame */}
+          {/* Video frame — real Daily.co session */}
           <Card
             tone="raised"
             className="relative overflow-hidden mb-4 aspect-video"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
-              {cameraOff ? (
-                <div className="text-center">
-                  <div className="w-20 h-20 rounded-full bg-gray-700 mx-auto mb-4 flex items-center justify-center">
-                    <span className="text-2xl font-display text-white/80">
-                      {patient.firstName[0]}
-                      {patient.lastName[0]}
-                    </span>
-                  </div>
-                  <p className="text-white/60 text-sm">Camera off</p>
-                </div>
-              ) : (
-                <div className="text-center">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-600 to-emerald-800 mx-auto mb-4 flex items-center justify-center ring-4 ring-emerald-500/30">
-                    <span className="text-3xl font-display text-white">
-                      {patient.firstName[0]}
-                      {patient.lastName[0]}
-                    </span>
-                  </div>
-                  <p className="text-white text-lg font-display">
-                    {patient.firstName} {patient.lastName}
-                  </p>
-                  <p className="text-white/50 text-xs mt-1">
-                    Video simulation
-                  </p>
-                </div>
-              )}
-
-              {/* Self-view pip */}
-              <div className="absolute bottom-4 right-4 w-32 h-24 rounded-lg bg-gray-700 border border-gray-600 flex items-center justify-center">
-                <span className="text-xs text-white/60">{providerName}</span>
+            {visitData ? (
+              <DailyVideoFrame
+                roomUrl={visitData.room.url}
+                token={visitData.providerToken.token}
+                userName={providerName}
+                muted={muted}
+                cameraOff={cameraOff}
+                screenSharing={screenSharing}
+                onConnectionStateChange={setConnection}
+                onParticipantCountChange={setParticipantCount}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+                <p className="text-white/60 text-sm">Preparing video room…</p>
               </div>
-
-              {/* Screen sharing indicator */}
-              {screenSharing && (
-                <div className="absolute top-4 left-4">
-                  <Badge tone="info" className="text-xs">
-                    Screen sharing active
-                  </Badge>
-                </div>
-              )}
-            </div>
+            )}
           </Card>
 
           {/* Controls bar */}
