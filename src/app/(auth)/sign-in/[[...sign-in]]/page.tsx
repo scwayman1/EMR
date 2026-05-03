@@ -16,24 +16,6 @@ const ClerkSignInBox = dynamic(() => import("./clerk-signin-box"), {
 });
 
 export default function SignInPage() {
-  const clerkEnabled = process.env.AUTH_PROVIDER === "clerk";
-
-  if (!clerkEnabled) {
-    return (
-      <div className="text-center space-y-4">
-        <h1 className="font-display text-2xl text-text tracking-tight">
-          Clerk not yet enabled
-        </h1>
-        <p className="text-sm text-text-muted leading-relaxed">
-          Clerk authentication is configured but not active. Use the legacy sign-in instead.
-        </p>
-        <Link href="/login" className="inline-block text-sm text-accent hover:underline">
-          Go to legacy sign-in →
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col items-center">
       <h1 className="font-display text-2xl text-text tracking-tight mb-2">

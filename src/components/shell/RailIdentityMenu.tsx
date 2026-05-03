@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Avatar } from "@/components/ui/avatar";
-import { logoutAction } from "@/lib/auth/actions";
+import { SignOutButton } from "@clerk/nextjs";
 import type { AuthedUser } from "@/lib/auth/session";
 import { cn } from "@/lib/utils/cn";
 
@@ -62,15 +62,14 @@ export function RailIdentityMenu({
           </div>
 
           <div className="mt-2 border-t border-border/70 pt-2">
-            <form action={logoutAction}>
+            <SignOutButton redirectUrl="/sign-in">
               <button
-                type="submit"
                 role="menuitem"
                 className="w-full rounded-md px-3 py-2 text-left text-sm text-text-subtle transition-colors hover:bg-surface-muted hover:text-text"
               >
                 Sign out
               </button>
-            </form>
+            </SignOutButton>
           </div>
         </div>
       )}

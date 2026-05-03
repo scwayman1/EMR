@@ -1,0 +1,9 @@
+[mcp_servers.linear]
+args = [
+    "-y",
+    "@tacticlaunch/mcp-linear",
+]
+command = "npx"
+
+[mcp_servers.linear.env]
+LINEAR_API_KEY = "PASTE_YOUR_LINEAR_API_KEY_HERE"

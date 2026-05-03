@@ -2,7 +2,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Wordmark } from "@/components/ui/logo";
-import { logoutAction } from "@/lib/auth/actions";
+import { SignOutButton } from "@clerk/nextjs";
 import type { AuthedUser } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
 import { ROLE_HOME } from "@/lib/rbac/roles";
@@ -115,14 +115,13 @@ export function AppShell({
                   <div className="text-xs text-text-subtle truncate">{user.email}</div>
                 </div>
               </div>
-              <form action={logoutAction} className="mt-2">
-                <button
-                  type="submit"
-                  className="w-full text-left text-xs text-text-subtle hover:text-text px-3 py-1.5 transition-colors"
-                >
-                  Sign out →
-                </button>
-              </form>
+              <div className="mt-2">
+                <SignOutButton redirectUrl="/sign-in">
+                  <button className="w-full text-left text-xs text-text-subtle hover:text-text px-3 py-1.5 transition-colors">
+                    Sign out →
+                  </button>
+                </SignOutButton>
+              </div>
               <p className="text-[9px] text-text-subtle italic leading-tight mt-3 px-2 line-clamp-2">
                 Cannabis should be considered a medicine — please use it carefully
                 and judiciously. Respect the plant and its healing properties.
