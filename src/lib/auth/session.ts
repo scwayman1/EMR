@@ -1,46 +1,6 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
-import { getIronSession, type SessionOptions } from "iron-session";
 import type { Role } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
-
-export interface SessionData {
-  userId?: string;
-  // short-lived; the full user/role is loaded fresh from DB on each request
-}
-
-// Placeholder used ONLY during build-time static analysis. Any runtime
-// request in production must see a real SESSION_SECRET; we enforce that
-// inside getSession() below so the build itself doesn't blow up.
-const BUILD_TIME_PLACEHOLDER = "build-time-placeholder-not-used-at-runtime-32c";
-
-const sessionOptions: SessionOptions = {
-  password: process.env.SESSION_SECRET || BUILD_TIME_PLACEHOLDER,
-  cookieName: "emr_session",
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-  },
-};
-
-export async function getSession() {
-  // Runtime check: refuse to use the placeholder secret in production.
-  // Skipped during `next build` (NEXT_PHASE === 'phase-production-build')
-  // because prerender probing runs getSession() with no real env.
-  if (
-    process.env.NODE_ENV === "production" &&
-    process.env.NEXT_PHASE !== "phase-production-build" &&
-    !process.env.SESSION_SECRET
-  ) {
-    throw new Error(
-      "SESSION_SECRET environment variable is required in production. " +
-        "Refusing to issue sessions with an insecure default.",
-    );
-  }
-  return getIronSession<SessionData>(cookies(), sessionOptions);
-}
+import { getCurrentUserFromClerk } from "./clerk-session";
 
 export interface AuthedUser {
   id: string;
@@ -54,56 +14,11 @@ export interface AuthedUser {
 
 /**
  * Load the current user + roles.
- *
  * Cached per request so every server component gets the same reference.
- *
- * Delegates to Clerk when AUTH_PROVIDER=clerk; otherwise uses iron-session.
- * The AuthedUser shape is identical in both cases — the 100+ callers of
- * this function don't need to change.
+ * Delegates strictly to Clerk.
  */
 export const getCurrentUser = cache(async (): Promise<AuthedUser | null> => {
-  // EMR-205: when AUTH_PROVIDER=clerk is set but the legacy iron-session
-  // login action still writes its own cookie, Clerk returns null for
-  // iron-session users and the whole app 401s. Fall through to
-  // iron-session so both auth paths keep working until we finish the
-  // Clerk migration.
-  if (process.env.AUTH_PROVIDER === "clerk") {
-    try {
-      const { getCurrentUserFromClerk } = await import("./clerk-session");
-      const clerkUser = await getCurrentUserFromClerk();
-      if (clerkUser) return clerkUser;
-    } catch (err) {
-      console.warn("[auth] Clerk session lookup failed, falling back:", err);
-    }
-  }
-
-  // Legacy iron-session path (default, and fallback when Clerk has no session)
-  const session = await getSession();
-  if (!session.userId) return null;
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    include: {
-      memberships: {
-        include: { organization: true },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
-
-  if (!user) return null;
-
-  const firstMembership = user.memberships[0];
-
-  return {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    roles: user.memberships.map((m) => m.role),
-    organizationId: firstMembership?.organizationId ?? null,
-    organizationName: firstMembership?.organization?.name ?? null,
-  };
+  return await getCurrentUserFromClerk();
 });
 
 export async function requireUser(): Promise<AuthedUser> {

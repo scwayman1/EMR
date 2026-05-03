@@ -1,7 +1,6 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { AccountAuthFallback } from "@/components/leafmart/AccountAuthFallback";
 
 export const metadata: Metadata = {
   title: "Sign in",
@@ -16,8 +15,6 @@ const ClerkLeafmartSignIn = dynamic(() => import("./clerk-leafmart-signin"), {
 });
 
 export default function LeafmartLoginPage() {
-  const clerkEnabled = process.env.AUTH_PROVIDER === "clerk";
-
   return (
     <section className="px-6 lg:px-14 py-16 max-w-[1200px] mx-auto">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.1fr] gap-10 items-center">
@@ -44,11 +41,7 @@ export default function LeafmartLoginPage() {
             </h1>
           </div>
 
-          {clerkEnabled ? (
-            <ClerkLeafmartSignIn />
-          ) : (
-            <AccountAuthFallback mode="signin" />
-          )}
+          <ClerkLeafmartSignIn />
 
           <p className="text-[12.5px] text-[var(--muted)] mt-6 text-center leading-relaxed">
             By signing in you agree to our{" "}
