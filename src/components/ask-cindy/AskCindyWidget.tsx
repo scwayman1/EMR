@@ -22,12 +22,54 @@ interface CindyMessage {
   handoff?: AskCindyResult["handoff"];
 }
 
-export function AskCindyWidget() {
+type CindyMode = "public" | "patient";
+
+interface StarterPrompt {
+  id: string;
+  label: string;
+  question: string;
+  highlightId?: string;
+}
+
+const PATIENT_PROMPTS: StarterPrompt[] = [
+  {
+    id: "next-best-step",
+    label: "What should I do next?",
+    question:
+      "I am in the patient portal. Help me decide what to do next today, using only general portal guidance and no medical advice.",
+  },
+  {
+    id: "explain-results",
+    label: "Explain my portal",
+    question:
+      "Give me a simple tour of where to find records, messages, dosing, education, and check-ins in this patient portal.",
+  },
+  {
+    id: "prepare-visit",
+    label: "Prepare for my visit",
+    question:
+      "Help me prepare for an upcoming care visit. Keep it practical and suggest which portal areas to update.",
+  },
+];
+
+function starterPromptsFor(mode: CindyMode): StarterPrompt[] {
+  if (mode === "patient") return PATIENT_PROMPTS;
+  return CINDY_HIGHLIGHTS.map((h) => ({
+    id: h.id,
+    label: h.label,
+    question: h.label,
+    highlightId: h.id,
+  }));
+}
+
+export function AskCindyWidget({ mode = "public" }: { mode?: CindyMode }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<CindyMessage[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const patientMode = mode === "patient";
+  const starterPrompts = starterPromptsFor(mode);
 
   // EMR-157 — re-scroll on `pending` flips so the loading bubble is
   // brought into view as it appears, not only when the response
@@ -71,10 +113,12 @@ export function AskCindyWidget() {
         aria-label={open ? "Close Cindy" : "Ask Cindy"}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full",
-          "bg-accent text-white shadow-xl",
+          "fixed bottom-6 z-40 h-14 w-14 rounded-full",
           "flex items-center justify-center",
           "hover:scale-105 active:scale-95 transition-all",
+          patientMode
+            ? "left-6 liquid-glass text-accent shadow-xl"
+            : "right-6 bg-accent text-white shadow-xl",
         )}
       >
         {open ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6" />}
@@ -86,8 +130,9 @@ export function AskCindyWidget() {
           role="dialog"
           aria-label="Ask Cindy"
           className={cn(
-            "fixed bottom-24 right-6 z-40 w-[min(380px,calc(100vw-3rem))]",
-            "bg-white/95 backdrop-blur-xl border border-slate-200 rounded-3xl shadow-2xl",
+            "fixed bottom-24 z-40 w-[min(380px,calc(100vw-3rem))]",
+            patientMode ? "left-6 liquid-glass" : "right-6 bg-white/95 backdrop-blur-xl border border-slate-200",
+            "rounded-3xl shadow-2xl",
             "animate-in fade-in slide-in-from-bottom-4 duration-300",
             "flex flex-col max-h-[70vh]",
           )}
@@ -99,7 +144,9 @@ export function AskCindyWidget() {
               </div>
               <div>
                 <p className="font-semibold text-text">Ask Cindy</p>
-                <p className="text-xs text-text-muted">Tour guide for Leafjourney</p>
+                <p className="text-xs text-text-muted">
+                  {patientMode ? "Ambient guide for your care portal" : "Tour guide for Leafjourney"}
+                </p>
               </div>
             </div>
           </header>
@@ -111,10 +158,10 @@ export function AskCindyWidget() {
                   Quick questions to get you started:
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {CINDY_HIGHLIGHTS.map((h) => (
+                  {starterPrompts.map((h) => (
                     <button
                       key={h.id}
-                      onClick={() => send(h.label, h.id)}
+                      onClick={() => send(h.question, h.highlightId)}
                       className="text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 hover:border-accent hover:text-accent transition-all"
                     >
                       {h.label}
@@ -199,7 +246,7 @@ export function AskCindyWidget() {
           </form>
 
           <p className="text-[10px] text-center text-slate-400 pb-3 px-5">
-            Cindy is a tour guide, not a clinician. Not medical advice.
+            Cindy helps with portal guidance, not diagnosis or treatment. Not medical advice.
           </p>
         </div>
       )}

@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getIronSession, type SessionOptions } from "iron-session";
 import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { getLocalDemoPatientUser, isLocalDemoUserId } from "./local-demo";
 
 export interface SessionData {
   userId?: string;
@@ -80,6 +81,7 @@ export const getCurrentUser = cache(async (): Promise<AuthedUser | null> => {
   // Legacy iron-session path (default, and fallback when Clerk has no session)
   const session = await getSession();
   if (!session.userId) return null;
+  if (isLocalDemoUserId(session.userId)) return getLocalDemoPatientUser();
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
@@ -89,6 +91,9 @@ export const getCurrentUser = cache(async (): Promise<AuthedUser | null> => {
         orderBy: { createdAt: "asc" },
       },
     },
+  }).catch((err) => {
+    console.warn("[auth] user lookup failed:", err);
+    return null;
   });
 
   if (!user) return null;
