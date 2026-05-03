@@ -50,7 +50,10 @@ export default function middleware(req: NextRequest) {
   }
 
   // ── Security: Zero-Trust Ops & Clinic Allowlist ──────────
-  if (pathname.startsWith("/ops") || pathname.startsWith("/clinic")) {
+  const isOps = pathname === "/ops" || pathname.startsWith("/ops/");
+  const isClinic = pathname === "/clinic" || pathname.startsWith("/clinic/");
+  
+  if (isOps || isClinic) {
     const allowedIpsStr = process.env.OPS_ALLOWED_IPS;
     // Only enforce if the env var is explicitly set (e.g., in production)
     if (allowedIpsStr) {

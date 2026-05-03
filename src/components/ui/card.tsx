@@ -5,13 +5,15 @@ import { cn } from "@/lib/utils/cn";
  * Base card. Warm surface with a hairline border. Supports a `tone`
  * variant for subtle ambient / raised visual treatments.
  */
-type Tone = "default" | "raised" | "ambient" | "outlined";
+type Tone = "default" | "raised" | "ambient" | "outlined" | "glass" | "glassStrong";
 
 const TONES: Record<Tone, string> = {
   default: "bg-surface border border-border/80 shadow-sm",
   raised: "bg-surface-raised border border-border shadow-md",
   ambient: "relative overflow-hidden ambient border border-border shadow-md",
   outlined: "bg-transparent border border-dashed border-border-strong/60",
+  glass: "liquid-glass",
+  glassStrong: "liquid-glass-strong",
 };
 
 export function Card({

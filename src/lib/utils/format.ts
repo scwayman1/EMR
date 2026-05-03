@@ -14,13 +14,18 @@ export function formatRelative(date: Date | string | null | undefined): string {
   if (!date) return "—";
   const d = typeof date === "string" ? new Date(date) : date;
   const diff = Date.now() - d.getTime();
+  const suffix = diff < 0 ? "" : " ago";
+  const prefix = diff < 0 ? "in " : "";
   const minutes = Math.round(diff / 60000);
-  if (Math.abs(minutes) < 1) return "just now";
-  if (Math.abs(minutes) < 60) return `${minutes}m ago`;
+  const absMinutes = Math.abs(minutes);
+  if (absMinutes < 1) return "just now";
+  if (absMinutes < 60) return `${prefix}${absMinutes}m${suffix}`;
   const hours = Math.round(minutes / 60);
-  if (Math.abs(hours) < 24) return `${hours}h ago`;
+  const absHours = Math.abs(hours);
+  if (absHours < 24) return `${prefix}${absHours}h${suffix}`;
   const days = Math.round(hours / 24);
-  if (Math.abs(days) < 7) return `${days}d ago`;
+  const absDays = Math.abs(days);
+  if (absDays < 7) return `${prefix}${absDays}d${suffix}`;
   return formatDate(d);
 }
 
