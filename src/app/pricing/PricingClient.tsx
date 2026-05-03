@@ -32,7 +32,7 @@ const TIERS: Tier[] = [
       "Outcome tracking",
       "Community support",
     ],
-    cta: { label: "Start free trial", href: "/signup" },
+    cta: { label: "Start free trial", href: "/sign-up" },
   },
   {
     id: "professional",
@@ -48,7 +48,7 @@ const TIERS: Tier[] = [
       "Priority support",
       "Custom intake forms",
     ],
-    cta: { label: "Request demo", href: "/signup" },
+    cta: { label: "Request demo", href: "/sign-up" },
     featured: true,
   },
   {
@@ -412,7 +412,7 @@ export function PricingClient() {
               talk to our team about what a custom rollout looks like.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup">
+              <Link href="/sign-up">
                 <Button size="lg" trailingIcon={<ArrowRight className="w-4 h-4" />}>
                   Start free trial
                 </Button>

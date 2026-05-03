@@ -299,7 +299,7 @@ export default function BusinessPlanPage() {
               the full funding ask.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/signup">
+              <Link href="/sign-up">
                 <Button size="lg">Request the deck</Button>
               </Link>
               <Link href="/about">

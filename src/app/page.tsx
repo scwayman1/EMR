@@ -75,7 +75,7 @@ export default function HomePage() {
               can spend their time on what actually matters: <strong className="text-text">the patient in front of them</strong>.
             </p>
             <div className="mt-10 flex flex-wrap items-center gap-3">
-              <Link href="/signup">
+              <Link href="/sign-up">
                 <Button size="lg">Request a demo</Button>
               </Link>
               <Link href="/about">
@@ -521,7 +521,7 @@ export default function HomePage() {
                 to talk.
               </p>
               <div className="mt-10 flex flex-wrap gap-3">
-                <Link href="/signup">
+                <Link href="/sign-up">
                   <Button size="lg">Request a demo</Button>
                 </Link>
                 <Link href="/about">

@@ -65,7 +65,7 @@ export async function askCindy(input: AskCindyInput): Promise<AskCindyResult> {
       decision.handoffTo === "emergency"
         ? { label: "Call 911 / 988", href: "tel:988" }
         : decision.handoffTo === "human-ops"
-          ? { label: "Sign in", href: "/login" }
+          ? { label: "Sign in", href: "/sign-in" }
           : decision.handoffTo === "clinician"
             ? { label: "Find a clinician", href: "/clinicians" }
             : undefined;

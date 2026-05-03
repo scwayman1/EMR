@@ -49,7 +49,7 @@ function monthLabel(d: Date): string {
 
 export default async function DispensaryReimbursementPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
   if (
     !user.roles.some((r) => r === "operator" || r === "practice_owner")
   ) {

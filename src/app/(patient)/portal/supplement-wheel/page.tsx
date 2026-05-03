@@ -18,7 +18,7 @@ export const metadata = { title: "Supplement Wheel" };
 
 export default async function SupplementWheelPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
   if (!user.roles.includes("patient")) {
     redirect(ROLE_HOME[user.roles[0]] ?? "/");
   }

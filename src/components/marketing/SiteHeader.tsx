@@ -49,14 +49,14 @@ export function SiteHeader() {
             </Link>
           ))}
           <Link
-            href="/login"
+            href="/sign-in"
             className="text-xs sm:text-sm text-text-muted hover:text-text px-2 sm:px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors whitespace-nowrap shrink-0"
           >
             Sign in
           </Link>
         </nav>
 
-        <Link href="/signup" className="shrink-0">
+        <Link href="/sign-up" className="shrink-0">
           <Button size="sm" className="px-2.5 sm:px-3.5 text-xs sm:text-sm">
             Demo
           </Button>

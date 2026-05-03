@@ -39,7 +39,7 @@ function relativeAge(date: Date | null | undefined): string {
 
 export default async function ClinicDispensariesPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
   if (
     !user.roles.some((r) => r === "clinician" || r === "practice_owner" || r === "operator")
   ) {

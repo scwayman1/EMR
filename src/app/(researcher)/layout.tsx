@@ -34,7 +34,7 @@ export default async function ResearcherLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
 
   const allowed = user.roles.some(
     (r) => r === "operator" || r === "practice_owner" || r === "system",

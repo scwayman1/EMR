@@ -41,7 +41,7 @@ export default async function ResearchLibraryPage({
   searchParams?: { topic?: string };
 }) {
   const user = await requireRole("patient");
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
 
   const activeTopic = searchParams?.topic ?? "all";
   const filtered =

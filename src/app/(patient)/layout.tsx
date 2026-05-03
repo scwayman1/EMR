@@ -109,7 +109,7 @@ export default async function PatientLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
   if (!user.roles.includes("patient")) {
     const primary = user.roles[0];
     redirect(ROLE_HOME[primary] ?? "/");

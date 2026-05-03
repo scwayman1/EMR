@@ -30,7 +30,7 @@ const DEFAULT_ORIGIN = { lat: 37.7749, lng: -122.4194 }; // SF fallback
 
 export default async function PatientDispensariesPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
   if (!user.roles.includes("patient")) {
     redirect(ROLE_HOME[user.roles[0]] ?? "/");
   }

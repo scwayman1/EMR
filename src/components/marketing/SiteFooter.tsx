@@ -8,9 +8,9 @@ const COLUMNS = [
   {
     title: "Product",
     links: [
-      { label: "Clinician Portal", href: "/login" },
-      { label: "Patient Portal", href: "/login" },
-      { label: "Operator Dashboard", href: "/login" },
+      { label: "Clinician Portal", href: "/sign-in" },
+      { label: "Patient Portal", href: "/sign-in" },
+      { label: "Operator Dashboard", href: "/sign-in" },
       { label: "Leafmart", href: "/leafmart" },
       { label: "Cannabis Combo Wheel", href: "/portal/combo-wheel" },
     ],

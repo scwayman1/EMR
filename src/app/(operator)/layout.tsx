@@ -23,7 +23,7 @@ export default async function OperatorLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
 
   const allowed = user.roles.some(
     (r) => r === "operator" || r === "practice_owner" || r === "system"
@@ -34,7 +34,7 @@ export default async function OperatorLayout({
   }
 
   if (!user.organizationId) {
-    redirect("/login");
+    redirect("/sign-in");
   }
 
   const orgId = user.organizationId;
