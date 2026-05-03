@@ -32,7 +32,7 @@ function buildDemoItems(): InventoryItem[] {
     {
       id: "inv-2",
       productId: "p-cresco-tincture",
-      productName: "Live Budder 1:1 Tincture 30ml",
+      productName: "Live Budder 1:1 Tincture 30 mL",
       brand: "Cresco",
       productType: "Tincture",
       sku: "CRC-LB11-30",
@@ -83,7 +83,7 @@ function buildDemoItems(): InventoryItem[] {
     {
       id: "inv-5",
       productId: "p-papa-barkley-balm",
-      productName: "Releaf CBD/THC Balm 50ml",
+      productName: "Releaf CBD/THC Balm 50 mL",
       brand: "Papa & Barkley",
       productType: "Topical",
       sku: "PB-RLF-50",

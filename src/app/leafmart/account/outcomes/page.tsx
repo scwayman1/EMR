@@ -13,6 +13,49 @@ import {
   uniqueOrderedProductSlugs,
 } from "@/components/leafmart/AccountData";
 
+// EMR-373 — quick three-emoji sentiment row alongside the five-star picker.
+// Emoji clicks map onto the existing 1-5 rating scale so the timeline /
+// API layer doesn't have to change: sad→2, neutral→3, happy→5.
+const SENTIMENT_OPTIONS: { emoji: string; label: string; rating: 2 | 3 | 5 }[] = [
+  { emoji: "😞", label: "Not yet", rating: 2 },
+  { emoji: "😐", label: "Mixed", rating: 3 },
+  { emoji: "😊", label: "Helping", rating: 5 },
+];
+
+function SentimentRow({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: 2 | 3 | 5) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2" role="radiogroup" aria-label="Quick sentiment">
+      {SENTIMENT_OPTIONS.map((opt) => {
+        const active = value === opt.rating;
+        return (
+          <button
+            key={opt.rating}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            aria-label={opt.label}
+            onClick={() => onChange(opt.rating)}
+            className={
+              "h-11 w-11 sm:h-10 sm:w-10 rounded-full text-[22px] flex items-center justify-center transition-all border " +
+              (active
+                ? "bg-[var(--leaf-soft)] border-[var(--leaf)] scale-110"
+                : "bg-[var(--surface)] border-[var(--border)] hover:border-[var(--leaf)] hover:scale-105")
+            }
+          >
+            <span aria-hidden="true">{opt.emoji}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function StarPicker({
   value,
   onChange,
@@ -165,6 +208,11 @@ export default function OutcomesPage() {
                         <label className="text-[12.5px] font-medium text-[var(--text-soft)]">
                           How&rsquo;s it working?
                         </label>
+                        <SentimentRow
+                          value={d.rating}
+                          onChange={(v) => updateDraft(product.slug, { rating: v })}
+                        />
+                        <p className="text-[11px] text-[var(--muted)] mt-0.5">Or rate it</p>
                         <StarPicker
                           value={d.rating}
                           onChange={(v) => updateDraft(product.slug, { rating: v })}

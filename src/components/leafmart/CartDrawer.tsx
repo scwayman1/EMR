@@ -204,15 +204,20 @@ export function CartDrawer() {
                     key={product.slug}
                     className={`px-5 py-4 flex gap-3.5 ${isRemoving ? "lm-item-exit" : "lm-item-enter"}`}
                   >
-                    {/* Compact silhouette with quantity badge */}
+                    {/* Compact silhouette with quantity badge — clickable, deep-links to the PDP. */}
                     <div className="relative flex-shrink-0">
-                      <div className="w-[64px] h-[64px] rounded-2xl overflow-hidden">
+                      <Link
+                        href={`/leafmart/products/${product.slug}`}
+                        onClick={closeCart}
+                        aria-label={`View ${product.name}`}
+                        className="block w-[64px] h-[64px] rounded-2xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--leaf)]"
+                      >
                         <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={64} />
-                      </div>
+                      </Link>
                       {quantity > 1 && (
                         <span
                           key={`badge-${product.slug}-${tk}`}
-                          className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[var(--bg)] text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center tabular-nums shadow-sm lm-count-tick"
+                          className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[var(--bg)] text-[10px] font-bold rounded-full w-[18px] h-[18px] flex items-center justify-center tabular-nums shadow-sm lm-count-tick pointer-events-none"
                         >
                           {quantity}
                         </span>
@@ -222,9 +227,13 @@ export function CartDrawer() {
                     {/* Product info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-[10.5px] font-semibold tracking-[1.4px] uppercase text-[var(--text-soft)] mb-0.5">{product.partner}</p>
-                      <p className="font-display text-[15px] font-medium text-[var(--ink)] leading-tight truncate">
+                      <Link
+                        href={`/leafmart/products/${product.slug}`}
+                        onClick={closeCart}
+                        className="font-display text-[15px] font-medium text-[var(--ink)] leading-tight truncate block hover:text-[var(--leaf)] transition-colors"
+                      >
                         {product.name}
-                      </p>
+                      </Link>
                       <p className="text-[11.5px] text-[var(--muted)] mt-0.5">{product.dose}</p>
 
                       <div className="flex items-center justify-between mt-2.5">

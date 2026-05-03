@@ -190,7 +190,7 @@ export function LeafmartHeader() {
           <CartBadgeButton />
           <Link
             href="/leafmart/quiz"
-            className="bg-[var(--ink)] text-[var(--bg)] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors"
+            className="bg-[var(--ink)] text-[var(--bg)] rounded-full px-[18px] py-[10px] text-[13px] font-medium tracking-wide hover:bg-[var(--leaf)] hover:text-[var(--bg)] dark:hover:text-[#0F1210] transition-colors"
           >
             Take the quiz
           </Link>

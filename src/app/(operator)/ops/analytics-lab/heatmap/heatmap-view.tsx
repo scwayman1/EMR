@@ -23,6 +23,10 @@ const METRICS: { key: Metric; label: string; emoji: string }[] = [
 ];
 
 // Symptom-style metrics — lower scores mean fewer symptoms / improvement.
+// Sleep and mood are the inverse: higher scores are better. The Set is
+// shared between cellTone (per-cell coloring) and the summary counters
+// below so the displayed totals always match the cell tones — Codex
+// flagged that they had drifted apart for nausea.
 const LOWER_IS_BETTER = new Set<Metric>(["pain", "anxiety", "nausea"]);
 
 function cellTone(metric: Metric, value: number, hasData: boolean): string {

@@ -570,10 +570,13 @@ function Wheel({
       );
     });
 
+  // EMR-369: bumped the lg max width to fill the available column rather
+  // than floating in dead space. The viewBox is fixed (440), so the SVG
+  // simply scales up — labels grow proportionally.
   const widthClass =
     size === "lg"
       ? "w-full max-w-[640px] min-w-[340px]"
-      : "w-full max-w-[420px] min-w-[280px]";
+      : "w-full max-w-[400px] min-w-[280px]";
 
   return (
     <div className={cn("relative mx-auto", widthClass)}>
@@ -655,25 +658,27 @@ function Wheel({
           strokeWidth={0.75}
         />
         <circle cx={cx} cy={cy} r={innerR + 2} fill="url(#combo-hub)" />
+        {/* EMR-369: hub doubles as a "reset selection" button when one or
+            more segments are picked. The styling stays decorative; the
+            cursor + label flip when there's something to clear. */}
         <g
           role={selected.size > 0 ? "button" : undefined}
           aria-label={selected.size > 0 ? "Reset combo selection" : undefined}
           tabIndex={selected.size > 0 ? 0 : -1}
           onClick={() => {
-            if (selected.size > 0) {
-              triggerHaptic(20);
-              onReset();
-            }
+            if (selected.size === 0) return;
+            triggerHaptic([10, 20, 10]);
+            onReset();
           }}
           onKeyDown={(e) => {
-            if (selected.size > 0 && (e.key === "Enter" || e.key === " ")) {
+            if (selected.size === 0) return;
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
-              triggerHaptic(20);
+              triggerHaptic([10, 20, 10]);
               onReset();
             }
           }}
-          className={cn(selected.size > 0 && "cursor-pointer")}
-          style={{ outline: "none" }}
+          style={{ cursor: selected.size > 0 ? "pointer" : "default", outline: "none" }}
         >
           <circle
             cx={cx}
@@ -681,7 +686,7 @@ function Wheel({
             r={hubR}
             fill="var(--surface-raised)"
             stroke={selected.size > 0 ? "var(--accent)" : "var(--border)"}
-            strokeWidth={selected.size > 0 ? 2 : 1}
+            strokeWidth={selected.size > 0 ? 1.5 : 1}
             style={{ transition: "stroke 200ms ease, stroke-width 200ms ease" }}
           />
 
@@ -690,8 +695,8 @@ function Wheel({
             y={cy - 14}
             textAnchor="middle"
             fill="var(--accent)"
-            fontSize={9}
-            fontWeight={700}
+            fontSize={10}
+            fontWeight={600}
             letterSpacing={1.5}
             style={{ textTransform: "uppercase", pointerEvents: "none" }}
           >
@@ -699,11 +704,11 @@ function Wheel({
           </text>
           <text
             x={cx}
-            y={cy + 4}
+            y={cy + 5}
             textAnchor="middle"
             fill="var(--text)"
-            fontSize={selected.size === 0 ? 13 : 18}
-            fontWeight={700}
+            fontSize={selected.size === 0 ? 14 : 20}
+            fontWeight={600}
             fontFamily="var(--font-display, serif)"
             style={{ pointerEvents: "none" }}
           >
@@ -711,22 +716,16 @@ function Wheel({
           </text>
           <text
             x={cx}
-            y={cy + 22}
+            y={cy + 24}
             textAnchor="middle"
             fill={selected.size > 0 ? "var(--accent)" : "var(--text-muted)"}
-            fontSize={9}
-            fontWeight={selected.size > 0 ? 700 : 400}
-            style={{
-              textTransform: selected.size > 0 ? "uppercase" : undefined,
-              letterSpacing: selected.size > 0 ? 1 : undefined,
-              pointerEvents: "none",
-            }}
+            fontSize={10}
+            fontWeight={selected.size > 0 ? 600 : 400}
+            style={{ pointerEvents: "none" }}
           >
             {selected.size === 0
               ? "Tap any segment"
-              : selected.size === 1
-                ? "Tap center to reset"
-                : "Tap center to reset"}
+              : "Tap center to reset"}
           </text>
         </g>
       </svg>

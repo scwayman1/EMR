@@ -40,6 +40,9 @@ const SECTIONS: Record<string, SectionDef> = {
     title: "My Health",
     primary: [
       { label: "My Records", href: "/portal/records" },
+      // EMR-355: "Dosing plan" was merged into Medications; the dosing
+      // recommendation now lives at the bottom of /portal/medications
+      // under the #dosing-plan anchor.
       { label: "Medications & Dosing", href: "/portal/medications" },
       { label: "Log dose", href: "/portal/log-dose" },
       { label: "Labs", href: "/portal/labs" },

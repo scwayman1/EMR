@@ -24,6 +24,7 @@ const METRICS = [
   { key: "sleep" as const, label: "Sleep", lowLabel: "Poor", highLabel: "Great" },
   { key: "anxiety" as const, label: "Anxiety", lowLabel: "None", highLabel: "Severe" },
   { key: "mood" as const, label: "Mood", lowLabel: "Low", highLabel: "Great" },
+  { key: "nausea" as const, label: "Nausea", lowLabel: "None", highLabel: "Severe" },
 ];
 
 export default async function OutcomesPage() {

@@ -5,6 +5,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatSig, DEMO_PHARMACIES } from "@/lib/domain/e-prescribe";
 
+// EMR-350 — DEA schedule + controlled-substance gating.
+//
+// Cannabis is federally Schedule I; FDA-approved cannabinoid drugs sit
+// further down the schedule (Epidiolex → V, Marinol/Syndros → III). We
+// derive the schedule from the product type and the presence of THC so
+// the prescriber sees the correct controlled-substance posture before
+// they sign.
+type DeaSchedule = "I" | "II" | "III" | "IV" | "V";
+
+function deriveDeaSchedule(productType: string, thcMg?: number, cbdMg?: number): DeaSchedule | null {
+  const pt = productType.toLowerCase();
+  if (/epidiolex|cannabidiol oral/.test(pt)) return "V";
+  if (/marinol|dronabinol|syndros|cesamet|nabilone/.test(pt)) return "III";
+  if ((thcMg ?? 0) > 0) return "I";
+  if ((cbdMg ?? 0) > 0 && (thcMg ?? 0) === 0) return null; // hemp-derived CBD is not federally scheduled
+  return null;
+}
+
 interface RxPreviewProps {
   patientName: string;
   productName: string;
@@ -59,6 +77,27 @@ export function RxPreview({
   const pharmacy = pharmacyId ? DEMO_PHARMACIES.find((p) => p.id === pharmacyId) : null;
   const sig = formatSig({ doseAmount, doseUnit, frequency, route, timingInstructions });
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const deaSchedule = deriveDeaSchedule(productType, thcMg, cbdMg);
+  const isControlled = deaSchedule !== null;
+
+  function handleSignClick() {
+    if (signing || signed) return;
+    if (isControlled) {
+      // Required confirmation step before signing a controlled prescription.
+      // Browser confirm() keeps the cleanup change small; we can swap in a
+      // bespoke modal once the prescribing surface gets its next pass.
+      const ok = window.confirm(
+        `This prescription is for a controlled substance (DEA Schedule ${deaSchedule}).\n\n` +
+          `By continuing you confirm:\n` +
+          `  • The patient and indication are correct\n` +
+          `  • Quantity and refills follow Schedule ${deaSchedule} limits\n` +
+          `  • You are authorized to prescribe this schedule in this state\n\n` +
+          `Sign and transmit?`,
+      );
+      if (!ok) return;
+    }
+    onSign();
+  }
 
   return (
     <Card className="border-2 border-accent/30 bg-white">
@@ -95,8 +134,13 @@ export function RxPreview({
           <p className="text-sm text-text-muted mt-1">
             {productType} &middot; {route}
           </p>
-          {(thcMg || cbdMg) && (
-            <div className="flex items-center gap-2 mt-2">
+          {(isControlled || thcMg || cbdMg) && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {isControlled && (
+                <Badge tone="warning" className="text-[10px] uppercase tracking-wider">
+                  Controlled · DEA Schedule {deaSchedule}
+                </Badge>
+              )}
               {thcMg && thcMg > 0 && (
                 <Badge tone="warning" className="text-[10px]">THC {thcMg}mg</Badge>
               )}
@@ -175,8 +219,12 @@ export function RxPreview({
               <p className="text-sm font-medium text-text">{providerName}</p>
             </div>
             {!signed ? (
-              <Button onClick={onSign} disabled={signing} size="sm">
-                {signing ? "Signing..." : "Sign & send"}
+              <Button onClick={handleSignClick} disabled={signing} size="sm">
+                {signing
+                  ? "Signing..."
+                  : isControlled
+                    ? "Sign controlled Rx"
+                    : "Sign & send"}
               </Button>
             ) : (
               <div className="flex items-center gap-2">

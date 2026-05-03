@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 
 export const metadata = { title: "Dosing Plan" };
 
-// Per EMR-355: Medications + Dosing Plan are now a single page. Old links
-// to /portal/dosing land on the merged Medications page anchored to the
-// dosing-plan section.
+// EMR-355: /portal/dosing was merged into /portal/medications. The dosing
+// recommendation now renders inline at the bottom of the medications page.
+// We keep this route as a permanent server-side redirect so existing deep
+// links and bookmarks continue to land on the right anchor.
 export default function DosingPage(): never {
   redirect("/portal/medications#dosing-plan");
 }
