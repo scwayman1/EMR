@@ -16,6 +16,7 @@ function SubmitButton() {
 
 export function LoginForm() {
   const [state, formAction] = useFormState<ActionResult | null, FormData>(loginAction, null);
+  const showLocalPreview = process.env.NODE_ENV !== "production";
 
   return (
     <form action={formAction} className="space-y-4">
@@ -43,6 +44,18 @@ export function LoginForm() {
         <p className="text-sm text-danger -mt-2">{state.error}</p>
       )}
       <SubmitButton />
+      {showLocalPreview && (
+        <Button
+          type="submit"
+          name="localPreview"
+          value="patient"
+          variant="secondary"
+          className="w-full"
+          formNoValidate
+        >
+          Open patient preview
+        </Button>
+      )}
     </form>
   );
 }

@@ -80,7 +80,7 @@ export function QuickSymptomFab() {
         aria-label={view === "closed" ? "Quick log a symptom" : "Close symptom logger"}
         aria-expanded={view !== "closed"}
         className={cn(
-          "fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40",
+          "fixed bottom-20 right-5 sm:bottom-20 sm:right-6 z-40",
           "flex h-14 w-14 items-center justify-center rounded-full",
           "bg-gradient-to-b from-accent to-accent-strong text-accent-ink",
           "shadow-[0_12px_30px_-10px_rgba(4,120,87,0.6)]",

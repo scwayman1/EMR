@@ -6,9 +6,11 @@ import { logoutAction } from "@/lib/auth/actions";
 import type { AuthedUser } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
 import { ROLE_HOME } from "@/lib/rbac/roles";
+import { cn } from "@/lib/utils/cn";
 import { MobileNav } from "./MobileNav";
 import { NavSections } from "./NavSections";
 import { PillarNav } from "./PillarNav";
+import { RailIdentityMenu } from "./RailIdentityMenu";
 import { NavPrefsProvider } from "./NavPrefsContext";
 import { NavPrefsSections } from "./NavPrefsSections";
 import { NavVisitTracker } from "./NavVisitTracker";
@@ -23,6 +25,7 @@ export interface AppShellProps {
   sections?: NavSection[];
   nav?: NavItem[];
   roleLabel: string;
+  showNavPrefs?: boolean;
   children: React.ReactNode;
 }
 
@@ -41,16 +44,24 @@ export function AppShell({
   sections,
   nav,
   roleLabel,
+  showNavPrefs = true,
   children,
 }: AppShellProps) {
   const homeHref = ROLE_HOME[activeRole] ?? "/";
   const resolved = normalizeSections(sections, nav);
   const useRail = hasPillarIcons(resolved);
+  const isPatient = activeRole === "patient";
 
   return (
     <NavPrefsProvider>
       <NavVisitTracker sections={resolved} />
-      <div className="min-h-screen bg-bg flex">
+      <div
+        className={cn(
+          "min-h-screen bg-bg flex",
+          isPatient && "patient-liquid-shell",
+        )}
+        data-role={activeRole}
+      >
         {useRail ? (
           <div className="hidden md:block">
             <PillarNav
@@ -65,33 +76,7 @@ export function AppShell({
                 </Link>
               }
               footer={
-                <div className="flex flex-col items-center gap-2 pb-3">
-                  <form action={logoutAction}>
-                    <button
-                      type="submit"
-                      aria-label="Sign out"
-                      title="Sign out"
-                      className="flex h-10 w-10 items-center justify-center rounded-md text-text-subtle hover:bg-surface-muted hover:text-text transition-colors"
-                    >
-                      <svg
-                        width="18"
-                        height="18"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.75"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                      >
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
-                    </button>
-                  </form>
-                  <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
-                </div>
+                <RailIdentityMenu user={user} roleLabel={roleLabel} />
               }
             />
           </div>
@@ -116,7 +101,7 @@ export function AppShell({
             </div>
 
             <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2 overflow-y-auto">
-              <NavPrefsSections sections={resolved} />
+              {showNavPrefs && <NavPrefsSections sections={resolved} />}
               <NavSections sections={resolved} />
             </nav>
 

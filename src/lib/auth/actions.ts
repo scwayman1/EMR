@@ -8,6 +8,7 @@ import { getSession } from "./session";
 import { hashPassword, verifyPassword } from "./password";
 import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
 import { loginLimiter, signupLimiter } from "./rate-limit";
+import { isLocalDemoPreviewEnabled, LOCAL_DEMO_PATIENT_USER_ID } from "./local-demo";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -23,7 +24,29 @@ const signupSchema = z.object({
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+async function startLocalDemoPatientSession(): Promise<never> {
+  const session = await getSession();
+  session.userId = LOCAL_DEMO_PATIENT_USER_ID;
+  await session.save();
+  redirect(ROLE_HOME.patient);
+}
+
+function isDatabaseConnectionError(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return (
+    message.includes("ENOTFOUND") ||
+    message.includes("ECONNREFUSED") ||
+    message.includes("P1001") ||
+    message.includes("Can't reach database server") ||
+    message.includes("Connection terminated")
+  );
+}
+
 export async function loginAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  if (formData.get("localPreview") === "patient" && isLocalDemoPreviewEnabled()) {
+    await startLocalDemoPatientSession();
+  }
+
   // Rate limit by IP + email to prevent brute force
   const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   const emailRaw = (formData.get("email") as string)?.toLowerCase() ?? "";
@@ -41,10 +64,25 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
     return { ok: false, error: "Please enter a valid email and password." };
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email.toLowerCase() },
-    include: { memberships: true },
-  });
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { email: parsed.data.email.toLowerCase() },
+      include: { memberships: true },
+    });
+  } catch (err) {
+    if (isDatabaseConnectionError(err)) {
+      console.warn("[auth] login database unavailable:", err);
+      if (isLocalDemoPreviewEnabled()) {
+        await startLocalDemoPatientSession();
+      }
+      return {
+        ok: false,
+        error: "We can't reach the sign-in service right now. Please try again in a moment.",
+      };
+    }
+    throw err;
+  }
   if (!user) return { ok: false, error: "Invalid email or password." };
 
   const valid = await verifyPassword(parsed.data.password, user.passwordHash);
@@ -57,6 +95,8 @@ export async function loginAction(_prev: ActionResult | null, formData: FormData
   await prisma.user.update({
     where: { id: user.id },
     data: { lastLoginAt: new Date() },
+  }).catch((err) => {
+    console.warn("[auth] lastLoginAt update failed:", err);
   });
 
   const role = primaryRole(user.memberships.map((m) => m.role));

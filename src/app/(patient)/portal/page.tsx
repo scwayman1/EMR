@@ -3,17 +3,18 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageShell } from "@/components/shell/PageHeader";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { Sparkline } from "@/components/ui/sparkline";
-import { EmptyState } from "@/components/ui/empty-state";
-import { Eyebrow, LeafSprig, EditorialRule } from "@/components/ui/ornament";
-import { AmbientOrb } from "@/components/ui/hero-art";
+import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { HealthPlant } from "@/components/ui/health-plant";
 import { VisitActions } from "@/components/portal/visit-actions";
+import { ContinuePanel } from "@/components/portal/continue-panel";
 import { computePlantHealth, STAGE_LABELS, type PlantHealth } from "@/lib/domain/plant-health";
+import { isLocalDemoUserId } from "@/lib/auth/local-demo";
+import { buildLocalDemoPortalPatient, LOCAL_DEMO_PLANT_HEALTH } from "@/lib/domain/patient-portal-demo";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { OnboardingTour } from "@/components/ui/onboarding-tour";
 import { WellnessTipWidget } from "@/components/ui/wellness-tip-widget";
@@ -143,6 +144,7 @@ function generateHealthTips(data: {
 
 export default async function PatientHome() {
   const user = await requireRole("patient");
+  const isLocalDemo = isLocalDemoUserId(user.id);
 
   // Sentinel: the string "TIMEOUT" distinguishes a hung query from a
   // genuinely missing patient record, so we don't mis-route to intake.
@@ -153,47 +155,49 @@ export default async function PatientHome() {
   // may be missing from prod DBs where the migration hasn't run yet).
   // Keeping the field list minimal also makes this query less likely
   // to time out on slow connections.
-  const patient: any = await withTimeout<any>(
-    prisma.patient.findUnique({
-      where: { userId: user.id },
-      include: {
-        chartSummary: true,
-        outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 100 },
-        encounters: {
-          orderBy: { scheduledFor: "desc" },
-          take: 3,
-          select: {
-            id: true,
-            status: true,
-            scheduledFor: true,
-            modality: true,
-            completedAt: true,
-            briefingContext: true,
+  const patient: any = isLocalDemo
+    ? buildLocalDemoPortalPatient()
+    : await withTimeout<any>(
+      prisma.patient.findUnique({
+        where: { userId: user.id },
+        include: {
+          chartSummary: true,
+          outcomeLogs: { orderBy: { loggedAt: "asc" }, take: 100 },
+          encounters: {
+            orderBy: { scheduledFor: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              status: true,
+              scheduledFor: true,
+              modality: true,
+              completedAt: true,
+              briefingContext: true,
+            },
+          },
+          tasks: {
+            where: { status: "open" },
+            orderBy: { dueAt: "asc" },
+            take: 5,
+          },
+          messageThreads: {
+            orderBy: { lastMessageAt: "desc" },
+            take: 1,
+            include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
+          },
+          dosingRegimens: {
+            where: { active: true },
+            include: { product: true },
           },
         },
-        tasks: {
-          where: { status: "open" },
-          orderBy: { dueAt: "asc" },
-          take: 5,
-        },
-        messageThreads: {
-          orderBy: { lastMessageAt: "desc" },
-          take: 1,
-          include: { messages: { orderBy: { createdAt: "desc" }, take: 1 } },
-        },
-        dosingRegimens: {
-          where: { active: true },
-          include: { product: true },
-        },
-      },
-    }).catch((err) => {
-      console.warn("[portal.home] patient.findUnique rejected:", err);
-      return "TIMEOUT";
-    }),
-    PATIENT_QUERY_TIMEOUT_MS,
-    "TIMEOUT",
-    "portal.home.patient.findUnique",
-  );
+      }).catch((err) => {
+        console.warn("[portal.home] patient.findUnique rejected:", err);
+        return "TIMEOUT";
+      }),
+      PATIENT_QUERY_TIMEOUT_MS,
+      "TIMEOUT",
+      "portal.home.patient.findUnique",
+    );
 
   if (patient === "TIMEOUT") {
     return (
@@ -222,12 +226,14 @@ export default async function PatientHome() {
 
   if (!patient) redirect("/portal/intake");
 
-  const plantHealth = await withTimeout(
-    computePlantHealth(patient.id),
-    PLANT_HEALTH_TIMEOUT_MS,
-    DEFAULT_PLANT_HEALTH,
-    "portal.home.computePlantHealth",
-  );
+  const plantHealth = isLocalDemo
+    ? LOCAL_DEMO_PLANT_HEALTH
+    : await withTimeout(
+      computePlantHealth(patient.id),
+      PLANT_HEALTH_TIMEOUT_MS,
+      DEFAULT_PLANT_HEALTH,
+      "portal.home.computePlantHealth",
+    );
 
   // Build metric series
   const metricSeries: Record<string, number[]> = {};
@@ -287,8 +293,7 @@ export default async function PatientHome() {
       <OnboardingTour />
       <QuickSymptomFab />
       {/* ── Hero greeting ────────────────────────────── */}
-      <section className="relative overflow-hidden rounded-2xl md:rounded-3xl border border-border bg-surface-raised ambient mb-6 md:mb-8">
-        <AmbientOrb className="absolute -right-10 top-0 h-[260px] w-[480px] opacity-90" />
+      <section className="relative overflow-hidden rounded-2xl md:rounded-3xl liquid-glass-strong mb-6 md:mb-8">
         <div className="relative px-6 sm:px-8 md:px-12 py-8 md:py-12 max-w-2xl">
           <Eyebrow className="mb-3">
             {new Date().toLocaleDateString("en-US", {
@@ -316,6 +321,8 @@ export default async function PatientHome() {
         </div>
       </section>
 
+      <ContinuePanel />
+
       {/* ── Symptom sparklines (kept above the fold per EMR-193) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6 md:mb-8">
         <MetricTile label="Pain" accent="forest" value={latestPain !== undefined ? latestPain.toFixed(1) : "—"} hint="0-10 scale" />
@@ -333,7 +340,7 @@ export default async function PatientHome() {
       {/* ── Top row: Health grade + Lifestyle bars + AI tips ── */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-5 mb-6 md:mb-8">
         {/* Health Grade */}
-        <Card tone="raised" className="md:col-span-3 text-center">
+        <Card tone="glass" className="md:col-span-3 text-center">
           <CardContent className="py-8">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-3">
               Health grade
@@ -348,7 +355,7 @@ export default async function PatientHome() {
         </Card>
 
         {/* Lifestyle Bars */}
-        <Card tone="raised" className="md:col-span-5">
+        <Card tone="glass" className="md:col-span-5">
           <CardContent className="py-6">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-5">
               Lifestyle measures
@@ -367,7 +374,7 @@ export default async function PatientHome() {
         </Card>
 
         {/* AI Tips */}
-        <Card tone="raised" className="md:col-span-4">
+        <Card tone="glass" className="md:col-span-4">
           <CardContent className="py-6">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-accent mb-4 flex items-center gap-1.5">
               <LeafSprig size={12} className="text-accent/70" />
@@ -390,7 +397,7 @@ export default async function PatientHome() {
       {/* ── Second row: Cannabis module + Next visit + Mood ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
         {/* Cannabis Module */}
-        <Card tone="raised">
+        <Card tone="glass">
           <CardContent className="py-6">
             <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-4 flex items-center gap-1.5">
               <span className="text-sm">{"\uD83C\uDF3F"}</span>
@@ -435,7 +442,7 @@ export default async function PatientHome() {
         </Card>
 
         {/* Next Visit */}
-        <Card tone="raised">
+        <Card tone="glass">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
@@ -480,7 +487,7 @@ export default async function PatientHome() {
         </Card>
 
         {/* Chart readiness + Mood */}
-        <Card tone="raised">
+        <Card tone="glass">
           <CardContent className="py-6 space-y-5">
             {/* Chart readiness */}
             <div>
@@ -539,7 +546,7 @@ export default async function PatientHome() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
         {/* Plant companion */}
         <Link href="/portal/garden" className="block min-h-[44px]">
-          <Card tone="raised" className="card-hover h-full">
+          <Card tone="glass" className="card-hover h-full">
             <CardContent className="flex items-center gap-5 py-5">
               <div className="shrink-0">
                 <HealthPlant health={plantHealth} size="sm" />
