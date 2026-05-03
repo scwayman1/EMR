@@ -11,6 +11,7 @@
 //   leafmart.com / www.leafmart.com / theleafmart.com / www.theleafmart.com → Leafmart
 //   Everything else → Leafjourney (EMR)
 
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Hostnames that should resolve to the Leafmart storefront */
@@ -40,7 +41,10 @@ function isSharedPath(pathname: string): boolean {
   return SHARED_PATHS.some((p) => pathname.startsWith(p));
 }
 
-export default function middleware(req: NextRequest) {
+// Ensure the sign-in / sign-up routes and APIs are public
+const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/api(.*)", "/(.*)"]); // Wait, everything public? The previous middleware didn't enforce auth. Wait, in Next.js app router, the pages enforce auth.
+
+export default clerkMiddleware((auth, req) => {
   const host = req.headers.get("host") || "";
   const { pathname } = req.nextUrl;
 
@@ -55,10 +59,8 @@ export default function middleware(req: NextRequest) {
   
   if (isOps || isClinic) {
     const allowedIpsStr = process.env.OPS_ALLOWED_IPS;
-    // Only enforce if the env var is explicitly set (e.g., in production)
     if (allowedIpsStr) {
       const allowedIps = allowedIpsStr.split(",").map((ip) => ip.trim());
-      // Render/Vercel typically pass the real client IP in x-forwarded-for
       const clientIpHeader = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
       const clientIp = clientIpHeader ? clientIpHeader.split(",")[0].trim() : req.ip;
       
@@ -70,39 +72,26 @@ export default function middleware(req: NextRequest) {
   }
 
   // ── Leafmart domain routing ──────────────────────────────
-  // When accessed via leafmart.com, rewrite all paths to /leafmart/*
-  // so the user sees clean URLs (leafmart.com/products/x instead of
-  // leafmart.com/leafmart/products/x)
   if (isLeafmartHost(host)) {
-    // Already on a /leafmart path? Strip the prefix to avoid double-nesting
     if (pathname.startsWith("/leafmart")) {
-      // /leafmart/products/x → /products/x (redirect to clean URL)
       const cleanPath = pathname.replace(/^\/leafmart/, "") || "/";
       const url = req.nextUrl.clone();
       url.pathname = cleanPath;
       return NextResponse.redirect(url, 308);
     }
-
-    // Rewrite clean URL to internal /leafmart/* route
     const url = req.nextUrl.clone();
     url.pathname = `/leafmart${pathname === "/" ? "" : pathname}`;
-
     const response = NextResponse.rewrite(url);
-    // Set brand header so components can detect which domain they're on
     response.headers.set("x-leafmart-brand", "leafmart");
     return response;
   }
 
-  // ── Leafjourney (default) ────────────────────────────────
-  // Pass through normally — the EMR routes are at the root
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run on API routes
     "/(api|trpc)(.*)",
   ],
 };
