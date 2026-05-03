@@ -49,6 +49,23 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // ── Security: Zero-Trust Ops & Clinic Allowlist ──────────
+  if (pathname.startsWith("/ops") || pathname.startsWith("/clinic")) {
+    const allowedIpsStr = process.env.OPS_ALLOWED_IPS;
+    // Only enforce if the env var is explicitly set (e.g., in production)
+    if (allowedIpsStr) {
+      const allowedIps = allowedIpsStr.split(",").map((ip) => ip.trim());
+      // Render/Vercel typically pass the real client IP in x-forwarded-for
+      const clientIpHeader = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
+      const clientIp = clientIpHeader ? clientIpHeader.split(",")[0].trim() : req.ip;
+      
+      if (!clientIp || !allowedIps.includes(clientIp)) {
+        console.warn(`[SECURITY] Blocked unauthorized access to ${pathname} from IP: ${clientIp}`);
+        return new NextResponse("Forbidden: Access Denied via Zero-Trust Policy", { status: 403 });
+      }
+    }
+  }
+
   // ── Leafmart domain routing ──────────────────────────────
   // When accessed via leafmart.com, rewrite all paths to /leafmart/*
   // so the user sees clean URLs (leafmart.com/products/x instead of
