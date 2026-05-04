@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { UniversalFeedbackFab } from "@/components/feedback/UniversalFeedbackFab";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   title: {
@@ -12,14 +13,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }, // private by default in V1
 };
 
-// ClerkProvider was removed from the hot boot path to unblock Render deploys.
-// The previous top-level import forced @clerk/nextjs to initialize during
-// Next.js module evaluation, which — combined with the Clerk v7 / Next 14
-// peer-dep mismatch — was crashing the web server before it could bind a
-// port. Clerk is feature-flagged off in prod (AUTH_PROVIDER=iron-session),
-// so wrapping the tree with ClerkProvider here wasn't actually doing
-// anything. Re-enable via dynamic import when Clerk is properly wired and
-// the peer-dep / env-var story is resolved.
+// We have fully migrated to Clerk, so ClerkProvider is required globally.
 
 export default function RootLayout({
   children,
@@ -27,31 +21,33 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="theme-leafmart" suppressHydrationWarning>
-      <head>
-        {/* Google Fonts — Leafmart design system typography */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600&family=Instrument+Serif:ital@1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
-          rel="stylesheet"
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("leafjourney-theme");if(t==="dark"){document.documentElement.setAttribute("data-theme","dark")}}catch(e){}})();`,
-          }}
-        />
-      </head>
-      <body className="font-sans antialiased bg-bg text-text">
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-accent focus:text-accent-ink focus:text-sm focus:font-medium focus:shadow-lg"
-        >
-          Skip to content
-        </a>
-        {children}
-        <UniversalFeedbackFab />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="theme-leafmart" suppressHydrationWarning>
+        <head>
+          {/* Google Fonts — Leafmart design system typography */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600&family=Instrument+Serif:ital@1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
+            rel="stylesheet"
+          />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var t=localStorage.getItem("leafjourney-theme");if(t==="dark"){document.documentElement.setAttribute("data-theme","dark")}}catch(e){}})();`,
+            }}
+          />
+        </head>
+        <body className="font-sans antialiased bg-bg text-text">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-accent focus:text-accent-ink focus:text-sm focus:font-medium focus:shadow-lg"
+          >
+            Skip to content
+          </a>
+          {children}
+          <UniversalFeedbackFab />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
