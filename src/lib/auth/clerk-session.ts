@@ -109,7 +109,7 @@ export const getCurrentUserFromClerk = cache(async (): Promise<AuthedUser | null
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    roles: user.memberships.map((m) => m.role),
+    roles: user.memberships.length > 0 ? user.memberships.map((m) => m.role) : ["patient"],
     organizationId: firstMembership?.organizationId ?? null,
     organizationName: firstMembership?.organization?.name ?? null,
   };
