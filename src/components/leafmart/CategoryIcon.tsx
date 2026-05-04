@@ -189,6 +189,16 @@ const ICONS: Record<string, IconRenderer> = {
       <path d="M9 11c2-1 4-1 5 0" />
     </g>
   ),
+
+  // EMR-282 — Grow tent / lamp glyph for grow-accessories.
+  "grow-accessories": () => (
+    <g fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 4h8l-1 3H6L5 4z" />
+      <path d="M9 7v4" />
+      <path d="M6 14c1-1.5 5-1.5 6 0" />
+      <path d="M9 11l-1.5 3M9 11l1.5 3" />
+    </g>
+  ),
 };
 
 const FALLBACK: IconRenderer = () => (

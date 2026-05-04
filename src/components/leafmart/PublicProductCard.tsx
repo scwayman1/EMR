@@ -36,17 +36,21 @@ export function PublicProductCard({
 
       <div className="p-5 flex flex-col gap-1.5 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-text-subtle truncate">
+          {/* EMR-276 — bigger company/format text */}
+          <p className="text-[12px] sm:text-[13px] uppercase tracking-[0.18em] font-semibold text-text-muted truncate">
             {product.brand}
           </p>
           {product.clinicianPick && (
-            <Badge tone="accent" className="shrink-0 text-[10px]">
-              Pick
+            <Badge
+              tone="accent"
+              className="shrink-0 text-[12px] font-bold uppercase tracking-wide px-2.5 py-1 ring-2 ring-accent/20"
+            >
+              🌿 Pick
             </Badge>
           )}
         </div>
 
-        <p className="font-display text-lg leading-snug tracking-tight text-text group-hover:text-accent transition-colors line-clamp-2 min-h-[2.75rem]">
+        <p className="font-display text-xl sm:text-2xl leading-snug tracking-tight text-text group-hover:text-accent transition-colors line-clamp-2 min-h-[3rem]">
           {product.name}
         </p>
 

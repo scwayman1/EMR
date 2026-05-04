@@ -13,6 +13,7 @@
 // when fields are missing.
 
 import type { LeafmartProduct } from "./LeafmartProductCard";
+import { VendorSiteLink } from "./VendorSiteLink";
 
 export type DetailEmphasis = "trust" | "warning" | "neutral";
 
@@ -97,8 +98,163 @@ export function ProductDetails({ product, details }: Props) {
           </p>
         </blockquote>
       )}
+
+      {/* EMR-280 — Visit vendor site (with leaving-site disclaimer) */}
+      <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
+        <VendorSiteLink
+          vendorName={product.partner}
+          vendorUrl={vendorUrlFor(product)}
+        />
+        <p className="text-[12px] text-[var(--muted)] max-w-[420px] leading-relaxed">
+          We don't sell direct-message access to vendors — for clinical or
+          dosing questions, message your Leafjourney clinician.
+        </p>
+      </div>
+
+      {/* EMR-364 — Fill empty space under hero with "How patients use it"
+          tips and "When to consider" / "When to avoid" guidance. Pulled
+          from product fields with sensible defaults so every PDP fills. */}
+      <UsageTips product={product} />
     </section>
   );
+}
+
+function UsageTips({ product }: { product: LeafmartProduct }) {
+  const format = (product.format ?? "").toLowerCase();
+  const tips = TIPS_BY_FORMAT[format] ?? TIPS_BY_FORMAT.default;
+  return (
+    <div className="mt-10 sm:mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <p className="eyebrow text-[var(--leaf)] mb-2">How patients use it</p>
+        <ul className="space-y-2 text-[13.5px] text-[var(--text-soft)] leading-relaxed">
+          {tips.howTo.map((t) => (
+            <li key={t} className="flex gap-2">
+              <span className="mt-1.5 w-1 h-1 rounded-full bg-[var(--leaf)] shrink-0" />
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <p className="eyebrow text-[var(--leaf)] mb-2">When to consider</p>
+        <p className="text-[13.5px] text-[var(--text-soft)] leading-relaxed">{tips.consider}</p>
+      </div>
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5">
+        <p className="eyebrow text-amber-700 mb-2">When to skip</p>
+        <p className="text-[13.5px] text-[var(--text-soft)] leading-relaxed">{tips.skip}</p>
+      </div>
+    </div>
+  );
+}
+
+const TIPS_BY_FORMAT: Record<string, { howTo: string[]; consider: string; skip: string }> = {
+  topical: {
+    howTo: [
+      "Wash and dry the area; apply a pea-sized amount.",
+      "Massage in until absorbed — a little goes a long way.",
+      "Reapply every 4–6 hours as needed.",
+    ],
+    consider:
+      "Localized soreness, post-workout recovery, or stiff joints — anywhere you'd reach for a balm.",
+    skip: "Open wounds, fresh tattoos, or known fragrance/coconut allergies.",
+  },
+  balm: {
+    howTo: [
+      "Wash and dry the area; apply a pea-sized amount.",
+      "Massage in until absorbed.",
+      "Reapply every 4–6 hours as needed.",
+    ],
+    consider: "Targeted muscle or joint relief without systemic effects.",
+    skip: "Broken skin or known carrier-oil allergies.",
+  },
+  tincture: {
+    howTo: [
+      "Shake the bottle; place dose under your tongue.",
+      "Hold for 60 seconds before swallowing for faster onset.",
+      "Start at the lowest line and titrate up over a few days.",
+    ],
+    consider: "Steady support that's easy to titrate — sleep, anxiety, daily wellness.",
+    skip: "Empty-stomach sensitivity, MAOIs, or active interaction concerns.",
+  },
+  oil: {
+    howTo: [
+      "Shake the bottle; place dose under your tongue.",
+      "Hold for 60 seconds before swallowing.",
+      "Start low and titrate up.",
+    ],
+    consider: "Steady, titratable daily support.",
+    skip: "Active interaction concerns — review with your provider.",
+  },
+  capsule: {
+    howTo: [
+      "Take with water and a small bite of food.",
+      "Allow 60–90 minutes for full effect.",
+      "Pair with a sleep or wind-down routine for best results.",
+    ],
+    consider: "Discreet, predictable dosing for sleep or longer-acting support.",
+    skip: "Known liver-metabolism concerns — check with your clinician.",
+  },
+  gummy: {
+    howTo: [
+      "Start with one piece.",
+      "Allow 60–90 minutes before redosing.",
+      "Store in a cool, dry place out of reach of children.",
+    ],
+    consider: "Patients who prefer a familiar format and don't mind onset latency.",
+    skip: "Diabetes considerations or fasting — check labels for sugar content.",
+  },
+  beverage: {
+    howTo: [
+      "Shake well; serve chilled.",
+      "Pace yourself — onset is faster than a gummy.",
+      "Pair with a meal for the smoothest experience.",
+    ],
+    consider: "Social settings or replacing an evening drink.",
+    skip: "Mixing with alcohol — additive effects can be unpredictable.",
+  },
+  vape: {
+    howTo: [
+      "Take a slow 2–3 second draw.",
+      "Wait 10 minutes before deciding to redose.",
+      "Charge fully and store upright.",
+    ],
+    consider: "Fast onset for breakthrough symptoms.",
+    skip: "Lung conditions or any history of EVALI symptoms.",
+  },
+  flower: {
+    howTo: [
+      "Grind to a coarse texture for an even burn.",
+      "Use a clean filter or screen.",
+      "Hydrate and pace your sessions.",
+    ],
+    consider: "Patients who want maximum titratability and fast onset.",
+    skip: "Lung conditions, asthma, or pulmonary disease.",
+  },
+  patch: {
+    howTo: [
+      "Apply to clean, dry skin on a non-bony area.",
+      "Rotate sites every 8–12 hours.",
+      "Remove and discard responsibly when done.",
+    ],
+    consider: "Long-acting, hands-free dosing.",
+    skip: "Adhesive sensitivities or eczema in the application area.",
+  },
+  default: {
+    howTo: [
+      "Start at the lowest dose.",
+      "Wait the full onset window before redosing.",
+      "Log the outcome in your portal so we can refine recommendations.",
+    ],
+    consider: "Speak with your clinician about how this fits your goals.",
+    skip: "Pregnancy, lactation, or known interaction concerns — review first.",
+  },
+};
+
+function vendorUrlFor(product: LeafmartProduct): string {
+  // Demo data doesn't carry a vendor URL; fall back to a search query so
+  // the link goes somewhere sensible until the vendor table ships.
+  const partner = encodeURIComponent(product.partner);
+  return `https://duckduckgo.com/?q=${partner}+cannabis+vendor`;
 }
 
 function DetailRow({ row }: { row: ProductDetailRow }) {

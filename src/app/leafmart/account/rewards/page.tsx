@@ -1,9 +1,10 @@
-// EMR-313 — Loyalty / rewards page.
+// EMR-313, EMR-314 — Seed Trove (loyalty) page.
 //
-// Pulls the customer's loyalty account and renders the balance, tier
-// progress, redemption catalog, and the points ledger. The page falls
-// back to a demo account when no user is signed in so the design can
-// be reviewed without a live session.
+// Customer-facing lexicon (EMR-314): "points" → seeds, "rewards" →
+// fruits, "earning" → nurturing, "spending" → harvesting, the system
+// itself → "Seed Trove". Internal type names (LoyaltyAccount,
+// REWARD_CATALOG, etc.) stay as-is to avoid a deep refactor; only the
+// surface copy changes.
 
 import type { Metadata } from "next";
 import { AccountSidebar } from "@/components/leafmart/AccountSidebar";
@@ -21,8 +22,9 @@ import {
 } from "@/lib/leafmart/loyalty";
 
 export const metadata: Metadata = {
-  title: "Rewards",
-  description: "Earn points with every order and turn them into credit, perks, or clinician time.",
+  title: "Seed Trove",
+  description:
+    "Nurture your Seed Trove with every order. Harvest seeds for store credit, clinician time, or research-fund fruits.",
 };
 
 export const dynamic = "force-dynamic";
@@ -43,15 +45,16 @@ export default async function RewardsPage() {
   return (
     <section className="px-6 lg:px-14 pt-10 pb-20 max-w-[1440px] mx-auto">
       <div className="mb-10">
-        <p className="eyebrow text-[var(--muted)] mb-3">Rewards</p>
+        <p className="eyebrow text-[var(--muted)] mb-3">Seed Trove</p>
         <h1 className="font-display text-[40px] sm:text-[56px] font-normal tracking-[-1.5px] leading-[1.05] text-[var(--ink)]">
           Thanks for showing up,{" "}
           <em className="font-accent not-italic text-[var(--leaf)]">{userName}.</em>
         </h1>
         <p className="text-[17px] text-[var(--text-soft)] max-w-[560px] mt-4 leading-relaxed">
-          Every order, review, and outcome you log earns points — and the points
-          are good for store credit, clinician time, or a donation to our
-          research fund.
+          Every order, review, and outcome you log <em className="font-accent not-italic">nurtures</em>{" "}
+          your Seed Trove. <em className="font-accent not-italic">Harvest</em> seeds
+          for store-credit fruits, clinician time, or a donation to our research
+          fund.
         </p>
       </div>
 
@@ -80,12 +83,12 @@ export default async function RewardsPage() {
                     />
                   </div>
                   <p className="text-[13px] text-[var(--ink)]/75 mt-2">
-                    ${progress.spendNeeded.toFixed(0)} more spend in the next 12
-                    months unlocks{" "}
+                    ${progress.spendNeeded.toFixed(0)} more nurturing in the
+                    next 12 months unlocks{" "}
                     <span className="font-medium text-[var(--ink)]">
                       {progress.next.label}
                     </span>{" "}
-                    · {progress.next.multiplier}× points.
+                    · {progress.next.multiplier}× seeds.
                   </p>
                 </>
               ) : (
@@ -95,7 +98,7 @@ export default async function RewardsPage() {
               )}
             </div>
             <div className="text-right">
-              <p className="text-[12px] text-[var(--ink)]/70 mb-1">Available points</p>
+              <p className="text-[12px] text-[var(--ink)]/70 mb-1">Seeds available to harvest</p>
               <p className="font-display text-[44px] sm:text-[56px] tabular-nums font-medium leading-none text-[var(--ink)]">
                 {balance.toLocaleString()}
               </p>
@@ -137,7 +140,7 @@ export default async function RewardsPage() {
                       )}
                     </div>
                     <p className="text-[12px] text-[var(--muted)] mb-3">
-                      ${t.minSpend.toLocaleString()}+ trailing 12mo · {t.multiplier}× points
+                      ${t.minSpend.toLocaleString()}+ trailing 12mo · {t.multiplier}× seeds
                     </p>
                     <ul className="space-y-1.5 text-[12.5px] text-[var(--text-soft)] leading-relaxed">
                       {t.perks.map((p) => (
@@ -153,9 +156,9 @@ export default async function RewardsPage() {
             </div>
           </div>
 
-          {/* Redeem catalog */}
+          {/* Harvest catalog */}
           <div>
-            <p className="eyebrow text-[var(--muted)] mb-4">Redeem your points</p>
+            <p className="eyebrow text-[var(--muted)] mb-4">Harvest your seeds for fruits</p>
             {earnable.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                 {earnable.map((r) => (
@@ -164,13 +167,13 @@ export default async function RewardsPage() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[var(--border)] p-6 text-[13px] text-[var(--muted)] mb-6">
-                Earn a few more points and redemptions will unlock here.
+                Nurture a few more seeds and your first fruits will ripen here.
               </div>
             )}
 
             {aspirational.length > 0 && (
               <>
-                <p className="text-[12px] text-[var(--muted)] mb-3">Coming soon as you earn</p>
+                <p className="text-[12px] text-[var(--muted)] mb-3">Ripens as you nurture</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 opacity-70">
                   {aspirational.map((r) => (
                     <RewardCard key={r.id} reward={r} balance={balance} disabled />
@@ -182,11 +185,11 @@ export default async function RewardsPage() {
 
           {/* Ledger */}
           <div>
-            <p className="eyebrow text-[var(--muted)] mb-4">Points history</p>
+            <p className="eyebrow text-[var(--muted)] mb-4">Trove history</p>
             <div className="rounded-[24px] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
               {account.ledger.length === 0 ? (
                 <div className="px-6 py-8 text-center text-[13.5px] text-[var(--muted)]">
-                  No points activity yet.
+                  No Trove activity yet.
                 </div>
               ) : (
                 account.ledger.map((entry, i) => (
@@ -240,7 +243,7 @@ function RewardCard({
       </p>
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-[var(--border)]">
         <p className="text-[12px] text-[var(--muted)] tabular-nums">
-          {reward.cost.toLocaleString()} pts
+          {reward.cost.toLocaleString()} seeds
         </p>
         <button
           type="button"
@@ -251,7 +254,7 @@ function RewardCard({
               : "bg-[var(--border)] text-[var(--muted)] cursor-not-allowed"
           }`}
         >
-          {affordable ? "Redeem" : "Locked"}
+          {affordable ? "Harvest" : "Ripening"}
         </button>
       </div>
     </div>

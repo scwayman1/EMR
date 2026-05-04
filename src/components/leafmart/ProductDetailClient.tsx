@@ -164,6 +164,9 @@ export function ProductDetailClient({ product, related }: Props) {
               </div>
             </div>
 
+            {/* EMR-278: Onset / Duration / Effect tiles */}
+            <ExperienceTiles product={product} />
+
             {/* Variant selector */}
             <VariantSelector
               variants={variants}
@@ -280,4 +283,96 @@ function deriveAverageRating(reviews: { rating: number }[]): number {
   if (reviews.length === 0) return 0;
   const sum = reviews.reduce((s, r) => s + r.rating, 0);
   return sum / reviews.length;
+}
+
+// EMR-278 — Three quick tiles: Onset, Duration, Effect.
+//
+// We derive everything client-side from fields already on the product
+// so the PDP can render the tiles without an additional fetch. Effect
+// keywords come from the `support` and `clinicianNote` text — when the
+// AI curator ships, swap this for `product.effects` directly.
+const ONSET_BY_FORMAT: Record<string, string> = {
+  tincture: "15–30 min",
+  oil: "15–30 min",
+  capsule: "45–90 min",
+  gummy: "45–90 min",
+  edible: "45–90 min",
+  beverage: "20–45 min",
+  vape: "5–10 min",
+  inhalable: "5–10 min",
+  flower: "5–10 min",
+  topical: "20–40 min",
+  balm: "20–40 min",
+  patch: "30–60 min",
+};
+
+const DURATION_BY_FORMAT: Record<string, string> = {
+  tincture: "3–5 hr",
+  oil: "3–5 hr",
+  capsule: "5–8 hr",
+  gummy: "5–8 hr",
+  edible: "5–8 hr",
+  beverage: "3–5 hr",
+  vape: "1–3 hr",
+  inhalable: "1–3 hr",
+  flower: "1–3 hr",
+  topical: "2–4 hr",
+  balm: "2–4 hr",
+  patch: "8–12 hr",
+};
+
+const EFFECT_KEYWORDS = [
+  "sedating",
+  "uplifting",
+  "relaxing",
+  "mellow",
+  "couch lock",
+  "soothing",
+  "energizing",
+  "cerebral",
+  "euphoric",
+  "focused",
+  "creative",
+  "giggly",
+  "calming",
+  "balanced",
+];
+
+function deriveEffects(product: LeafmartProduct): string[] {
+  const haystack = `${product.support ?? ""} ${product.clinicianNote ?? ""}`.toLowerCase();
+  const matched = EFFECT_KEYWORDS.filter((kw) => haystack.includes(kw));
+  if (matched.length > 0) return matched.slice(0, 3);
+  // Reasonable defaults keyed off the support string so every PDP shows
+  // something rather than an empty tile.
+  if (/sleep|rest|insomnia/i.test(haystack)) return ["sedating", "soothing"];
+  if (/energy|focus|day/i.test(haystack)) return ["uplifting", "focused"];
+  if (/anxi|stress|calm/i.test(haystack)) return ["calming", "balanced"];
+  return ["balanced"];
+}
+
+function ExperienceTiles({ product }: { product: LeafmartProduct }) {
+  const format = (product.format ?? "").toLowerCase();
+  const onset = ONSET_BY_FORMAT[format] ?? "Varies";
+  const duration = DURATION_BY_FORMAT[format] ?? "Varies";
+  const effects = deriveEffects(product);
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-7 sm:mb-8">
+      <Tile label="Onset" value={onset} />
+      <Tile label="Duration" value={duration} />
+      <Tile label="Effect" value={effects.join(" · ")} />
+    </div>
+  );
+}
+
+function Tile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 sm:px-4 sm:py-4">
+      <p className="text-[10.5px] uppercase tracking-[0.16em] text-[var(--muted)] mb-1">
+        {label}
+      </p>
+      <p className="text-[13.5px] sm:text-[14.5px] font-medium text-[var(--ink)] capitalize leading-tight">
+        {value}
+      </p>
+    </div>
+  );
 }

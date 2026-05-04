@@ -69,7 +69,7 @@ export default function ConsultPage() {
               you choose products that match your goals, not the loudest label.
             </p>
 
-            <div className="flex flex-wrap items-center gap-3 mb-8">
+            <div className="flex flex-wrap items-center gap-3 mb-3">
               <Link
                 href="/portal/schedule"
                 className="inline-flex items-center rounded-full font-medium tracking-wide bg-[var(--ink)] text-[var(--bg)] hover:bg-[var(--leaf)] transition-colors"
@@ -85,6 +85,12 @@ export default function ConsultPage() {
                 How it works
               </Link>
             </div>
+            {/* EMR-284 — make the sign-in gate explicit so patients
+                aren't surprised by the auth redirect. */}
+            <p className="text-[12px] text-[var(--muted)] mb-8">
+              Booking requires a free Leafjourney account — we'll guide you
+              through sign-up if you don't have one yet.
+            </p>
 
             <div className="flex flex-wrap gap-2">
               <TrustChip>Licensed physicians</TrustChip>

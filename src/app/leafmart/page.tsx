@@ -74,6 +74,23 @@ export default async function LeafmartHomePage() {
           style={{ background: "var(--sage)" }}
         >
           <div>
+            {/* EMR-300 — Rolls-Royce-grade eyebrow: thin gold rule + uppercase
+                tracking, signaling "elegance, excellence, class" before
+                the patient even reads the headline. */}
+            <div className="flex items-center gap-3 mb-5 sm:mb-6">
+              <span
+                aria-hidden="true"
+                className="block h-px w-12"
+                style={{ background: "var(--gold-stamp, #b8965b)" }}
+              />
+              <span
+                className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-[0.28em]"
+                style={{ color: "var(--gold-stamp, #b8965b)" }}
+              >
+                The Quiet Standard in Cannabis
+              </span>
+            </div>
+
             {/* Member badge */}
             <div className="inline-flex items-center gap-2 bg-white/65 px-3.5 py-2 rounded-full text-[12px] sm:text-[12.5px] font-medium text-[var(--leaf)] mb-5 sm:mb-6 backdrop-blur-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--leaf)]" />
@@ -86,12 +103,21 @@ export default async function LeafmartHomePage() {
             </h1>
 
             <p className="mt-5 sm:mt-6 text-[15.5px] sm:text-[17.5px] leading-relaxed text-[var(--text-soft)] max-w-[480px]">
-              Every product on Leafmart is reviewed by a licensed clinician, verified by a third-party lab,
-              and ranked by what actually helped people like you. No dispensary energy. No guesswork.
+              Every product on Leafmart is reviewed by a licensed clinician,
+              verified by a third-party lab, and ranked by what actually helped
+              people like you — held to the unhurried, exacting standard you'd
+              expect of a marque, not a marketplace.
             </p>
 
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-3.5 sm:items-center mt-7 sm:mt-8">
               <Pill href="/leafmart/shop" primary className="w-full sm:w-auto">Find what helps →</Pill>
+              {/* EMR-284 — "Talk to a provider" CTA. The link points at
+                  /leafmart/consult; the consult flow gates on Clerk
+                  sign-in so unauthenticated patients are routed through
+                  account creation before the booking form. */}
+              <Pill href="/leafmart/consult" className="w-full sm:w-auto">
+                Talk to a provider
+              </Pill>
               <Link
                 href="/leafmart/about"
                 className="text-[14.5px] text-[var(--ink)] font-medium border-b-[1.5px] border-[var(--ink)] pb-0.5 hover:text-[var(--leaf)] hover:border-[var(--leaf)] transition-colors self-start sm:self-auto"
@@ -105,6 +131,13 @@ export default async function LeafmartHomePage() {
               <TrustChip>Lab Verified</TrustChip>
               <TrustChip>Outcome Informed</TrustChip>
             </div>
+
+            {/* EMR-303 — Benchmark line: we measure ourselves against the
+                breadth, search, and trust of Amazon — except every SKU is
+                vetted by a clinician first. */}
+            <p className="mt-5 sm:mt-6 text-[12px] sm:text-[12.5px] uppercase tracking-[0.18em] text-[var(--muted)]">
+              The Amazon of cannabis — curated, not crowded.
+            </p>
           </div>
 
           {/* Right: Product silhouette + floating cards */}

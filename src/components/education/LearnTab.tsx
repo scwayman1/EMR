@@ -8,56 +8,62 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, ArrowRight, Video, Sparkles, HelpCircle, Activity, ShieldCheck } from "lucide-react";
 
+// EMR-299 — Every Learn-tab topic routes into the Educational Library
+// ("Learn about your care") rather than the Dosing Recommendations or
+// Q&A page. Dr. Patel reported that "How to dose cannabis" was sending
+// patients to /portal/dosing — the dosing-plan view — instead of the
+// educational article. The fix: every card lives under the library at
+// /portal/education with a topic deep-link.
 const LEARN_TOPICS = [
-  { 
-    title: "What is CBD?", 
-    desc: "A beginner's guide to cannabidiol — the non-psychoactive cannabinoid changing medicine.", 
-    href: "/portal/education",
+  {
+    title: "What is CBD?",
+    desc: "A beginner's guide to cannabidiol — the non-psychoactive cannabinoid changing medicine.",
+    href: "/portal/education?topic=what-is-cbd",
     icon: Sparkles,
     color: "text-leaf",
     bg: "bg-mint",
     border: "border-mint"
   },
-  { 
-    title: "How to dose cannabis", 
-    desc: "Start low, go slow. Learn the principles of safe, effective cannabis dosing.", 
-    href: "/portal/dosing",
+  {
+    title: "How to dose cannabis",
+    desc: "Start low, go slow. Learn the principles of safe, effective cannabis dosing.",
+    href: "/portal/education?topic=how-to-dose",
     icon: Activity,
     color: "text-leaf",
     bg: "bg-sage",
     border: "border-sage"
   },
-  { 
-    title: "Routes of administration", 
-    desc: "Oral, sublingual, inhaled, topical — which delivery method is right for you?", 
-    href: "/portal/education",
+  {
+    title: "Routes of administration",
+    desc: "Oral, sublingual, inhaled, topical — which delivery method is right for you?",
+    href: "/portal/education?topic=routes",
     icon: FileText,
     color: "text-ink",
     bg: "bg-lilac",
     border: "border-lilac"
   },
-  { 
-    title: "Understanding terpenes", 
-    desc: "The aromatic compounds that shape each strain's unique therapeutic effects.", 
-    href: "/portal/education",
+  {
+    title: "Understanding terpenes",
+    desc: "The aromatic compounds that shape each strain's unique therapeutic effects.",
+    href: "/portal/education?topic=terpenes",
     icon: Sparkles,
     color: "text-highlight-hover",
     bg: "bg-butter",
     border: "border-butter"
   },
-  { 
-    title: "Cannabis & your medications", 
-    desc: "Important drug interactions every patient and caregiver should know.", 
-    href: "/portal/education",
+  {
+    title: "Cannabis & your medications",
+    desc: "Important drug interactions every patient and caregiver should know.",
+    href: "/portal/education?topic=interactions",
     icon: ShieldCheck,
     color: "text-danger",
     bg: "bg-rose",
     border: "border-rose"
   },
-  { 
-    title: "Legal considerations", 
-    desc: "State laws, federal status, and what it means for your workplace and travel.", 
-    href: "/portal/qa",
+  {
+    title: "Legal considerations",
+    desc: "State laws, federal status, and what it means for your workplace and travel.",
+    href: "/portal/education?topic=legal",
     icon: HelpCircle,
     color: "text-text-muted",
     bg: "bg-peach",

@@ -91,6 +91,10 @@ const SHELF_BY_CATEGORY: Record<
   "clinician-picks":   { bg: "var(--gold)",     deep: "var(--gold-stamp)",     shape: "bottle" },
   "best-sellers":      { bg: "var(--cloud)",    deep: "var(--cloud-stamp)",    shape: "can" },
   "beginner-friendly": { bg: "var(--sprout)",   deep: "var(--sprout-stamp)",   shape: "bottle" },
+  // EMR-282 — Grow accessories (lights, tents, fertilizer). PDPs in
+  // this category render a state-legality disclaimer; see
+  // `isGrowAccessory` in `src/lib/leafmart/grow-accessories.ts`.
+  "grow-accessories":  { bg: "var(--moss)",     deep: "var(--moss-stamp)",     shape: "box" },
 };
 
 const SHELF_BY_FORMAT: Record<string, LeafmartProduct["shape"]> = {

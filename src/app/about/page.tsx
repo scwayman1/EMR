@@ -60,8 +60,16 @@ export default function AboutPage() {
 
       <EditorialRule className="max-w-[1280px] mx-auto px-6 lg:px-12" />
 
-      {/* Mission Statement */}
-      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 py-20">
+      {/* Mission Statement (EMR-291) */}
+      <section
+        id="mission-statement"
+        className="max-w-[1280px] mx-auto px-6 lg:px-12 py-20 scroll-mt-24"
+      >
+        <Eyebrow className="mb-4">Mission Statement</Eyebrow>
+        <h2 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1] max-w-3xl mb-10">
+          Make exceptional cannabis care effortlessly accessible — with empathy,
+          evidence, and human dignity at the center.
+        </h2>
         <div className="relative overflow-hidden rounded-3xl border border-border bg-surface-raised p-10 md:p-14 ambient">
           <div className="relative max-w-3xl mx-auto text-center">
             <LeafSprig size={32} className="text-accent mx-auto mb-6" />
@@ -79,10 +87,13 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Founders */}
-      <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pb-20">
+      {/* Meet our team (EMR-291) */}
+      <section
+        id="meet-our-team"
+        className="max-w-[1280px] mx-auto px-6 lg:px-12 pb-20 scroll-mt-24"
+      >
         <div className="max-w-2xl mb-14">
-          <Eyebrow className="mb-4">The team</Eyebrow>
+          <Eyebrow className="mb-4">Meet our team</Eyebrow>
           <h2 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
             Built by people who live this every day.
           </h2>

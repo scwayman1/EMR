@@ -76,11 +76,16 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
     [addItem, p]
   );
 
+  // EMR-276 — Larger image, bigger company/format text, prominent
+  // clinician-pick callout. The image height bumped from 280 → 340 and
+  // the company/format eyebrow + name typography both step up.
+  const isClinicianPick = Boolean(p.clinicianPick) || /pick/i.test(p.tag ?? "");
+
   return (
     <Link href={`/leafmart/products/${p.slug}`} className="block card-lift rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
       <div className="relative">
-        <ProductImage src={p.imageUrl} alt={p.name} shape={p.shape} bg={p.bg} deep={p.deep} height={280} />
-        {p.tag && (
+        <ProductImage src={p.imageUrl} alt={p.name} shape={p.shape} bg={p.bg} deep={p.deep} height={340} />
+        {p.tag && !isClinicianPick && (
           <div
             className="absolute top-4 left-4 px-3 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide inline-flex items-center gap-1.5 shadow-sm"
             style={{ background: p.deep, color: "#FFF8E8" }}
@@ -89,14 +94,25 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
             {p.tag}
           </div>
         )}
+        {isClinicianPick && (
+          <div
+            className="absolute top-4 left-4 px-4 py-2 rounded-full text-[14px] font-bold tracking-wide inline-flex items-center gap-2 shadow-lg ring-2 ring-white/40"
+            style={{ background: "var(--ink)", color: "#FFF8E8" }}
+          >
+            <span aria-hidden="true">🌿</span>
+            Clinician Pick
+          </div>
+        )}
         <div className="absolute top-4 right-4 bg-white/85 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-[var(--leaf)] flex items-center gap-1.5 backdrop-blur-sm">
           <svg width="11" height="11" viewBox="0 0 11 11"><circle cx="5.5" cy="5.5" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M3 5.7L4.5 7.2L7.5 4.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
           COA
         </div>
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <p className="eyebrow text-[var(--text-soft)] mb-2">{p.partner} · {p.formatLabel}</p>
-        <h4 className="font-display text-[22px] font-medium tracking-tight leading-tight text-[var(--ink)] mb-2">{p.name}</h4>
+        <p className="eyebrow text-[var(--text-soft)] mb-2 text-[12.5px] font-semibold tracking-[0.14em]">
+          {p.partner} · {p.formatLabel}
+        </p>
+        <h4 className="font-display text-[24px] sm:text-[26px] font-medium tracking-tight leading-tight text-[var(--ink)] mb-2">{p.name}</h4>
         <p className="text-[13.5px] text-[var(--text-soft)] leading-relaxed flex-1">{p.support}</p>
         <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-[var(--border)]">
           <div>
