@@ -11,9 +11,15 @@ export default function ClerkSignInBox() {
     <SignIn
       signUpUrl="/sign-up"
       appearance={{
+        variables: {
+          colorPrimary: "hsl(var(--accent))",
+          colorBackground: "transparent",
+          colorInputBackground: "transparent",
+        },
         elements: {
           rootBox: "w-full",
-          card: "bg-transparent shadow-none border-0 p-0",
+          cardBox: "shadow-none border-0 bg-transparent p-0 m-0",
+          card: "bg-transparent shadow-none border-0 p-0 m-0",
           headerTitle: "hidden",
           headerSubtitle: "hidden",
           formButtonPrimary:
