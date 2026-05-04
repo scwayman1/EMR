@@ -1,0 +1,81 @@
+name: Staging & Production Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  verify:
+    name: Typecheck & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Prisma generate
+        run: npx prisma generate
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+
+  deploy_staging:
+    name: Deploy to Staging
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: Staging
+    steps:
+      - name: Trigger Render Staging Deploy
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          timeout: '60000'
+      - name: Wait for Staging Deploy
+        run: echo "Waiting for staging deploy to finish..." && sleep 180
+
+  test_staging:
+    name: Automated Tests (Staging)
+    needs: deploy_staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          BASE_URL: ${{ secrets.STAGING_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+  deploy_production:
+    name: Deploy to Production
+    needs: test_staging
+    runs-on: ubuntu-latest
+    environment: Production
+    steps:
+      - name: Trigger Render Production Deploy
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.RENDER_PRODUCTION_DEPLOY_HOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          timeout: '60000'

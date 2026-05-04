@@ -1,0 +1,117 @@
+
+# Render deploy pipeline — kept deliberately small.
+#
+# Rules of the road:
+#   1. `main` is the only branch that deploys. Open PRs into main; never
+#      point a Render service at a feature branch.
+#   2. Schema sync happens in `startCommand` via `prisma migrate deploy`
+#      — versioned migrations applied through Supabase's DIRECT (5432)
+#      connection. The pooler (6543) can't hold the advisory locks
+#      migrations need, which is how schema drift silently bit us before.
+#      Runtime queries still go through the pooler via DATABASE_URL.
+#   3. Seeding is a one-off, not part of every deploy. Run `npm run db:seed`
+#      manually from a Render shell when spinning up a fresh database.
+
+services:
+  # Web — the Next.js app (UI, API routes, server actions).
+  - type: web
+    name: emr-web-staging
+    env: node
+    plan: starter
+    branch: main
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_PROVIDER
+        value: clerk
+      - key: DATABASE_URL
+        fromDatabase:
+          name: emr-postgres-staging
+          property: connectionString
+      # Direct (non-pooled) Supabase URL for schema migrations. Must be
+      # set manually in the Render dashboard — it's the port-5432
+      # connection string from Supabase → Project Settings → Database →
+      # Connection string → "Direct connection".
+      - key: DIRECT_URL
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: AGENT_MODEL_CLIENT
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.0-flash-001
+      - key: OPENROUTER_FREE_MODEL
+        value: google/gemma-2-9b-it:free
+      - key: OPENROUTER_APP_NAME
+        value: Leafjourney
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STORAGE_BUCKET
+        value: documents
+      - key: PAYMENT_GATEWAY
+        value: stub
+      - key: PAYABLI_API_TOKEN
+        sync: false
+      - key: PAYABLI_ENTRY_POINT
+        sync: false
+      - key: PAYABLI_ENVIRONMENT
+        value: sandbox
+      - key: PAYABLI_WEBHOOK_SECRET
+        sync: false
+
+  # Worker — processes the AgentJob queue. Pinned to main.
+  - type: worker
+    name: emr-agent-worker-staging
+    env: node
+    plan: starter
+    branch: main
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: emr-postgres-staging
+          property: connectionString
+      - key: AGENT_MODEL_CLIENT
+        value: openrouter
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.0-flash-001
+      - key: OPENROUTER_FREE_MODEL
+        value: google/gemma-2-9b-it:free
+      - key: OPENROUTER_APP_NAME
+        value: Leafjourney
+
+  # Scheduler — enqueues recurring workflows every 15 minutes. Pinned to main.
+  - type: cron
+    name: emr-scheduler-staging
+    env: node
+    branch: main
+    schedule: "*/15 * * * *"
+    buildCommand: npm install && npx prisma generate
+    startCommand: npx tsx src/workers/scheduler.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: emr-postgres-staging
+          property: connectionString
+
+databases:
+  - name: emr-postgres-staging
+    plan: basic-256mb
+    databaseName: emr
+    user: emr
