@@ -53,23 +53,7 @@ export default clerkMiddleware((auth, req) => {
     return NextResponse.next();
   }
 
-  // ── Security: Zero-Trust Ops & Clinic Allowlist ──────────
-  const isOps = pathname === "/ops" || pathname.startsWith("/ops/");
-  const isClinic = pathname === "/clinic" || pathname.startsWith("/clinic/");
-  
-  if (isOps || isClinic) {
-    const allowedIpsStr = process.env.OPS_ALLOWED_IPS;
-    if (allowedIpsStr) {
-      const allowedIps = allowedIpsStr.split(",").map((ip) => ip.trim());
-      const clientIpHeader = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip");
-      const clientIp = clientIpHeader ? clientIpHeader.split(",")[0].trim() : req.ip;
-      
-      if (!clientIp || !allowedIps.includes(clientIp)) {
-        console.warn(`[SECURITY] Blocked unauthorized access to ${pathname} from IP: ${clientIp}`);
-        return new NextResponse("Forbidden: Access Denied via Zero-Trust Policy", { status: 403 });
-      }
-    }
-  }
+
 
   // ── Leafmart domain routing ──────────────────────────────
   if (isLeafmartHost(host)) {
