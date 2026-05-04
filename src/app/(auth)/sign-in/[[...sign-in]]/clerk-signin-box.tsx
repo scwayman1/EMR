@@ -12,23 +12,19 @@ export default function ClerkSignInBox() {
       signUpUrl="/sign-up"
       appearance={{
         variables: {
-          colorPrimary: "hsl(var(--accent))",
-          colorBackground: "transparent",
-          colorInputBackground: "transparent",
+          colorPrimary: "#2E5A44",
+          colorText: "#152119",
+          colorTextSecondary: "#5E6C64",
+          colorBackground: "white",
+          colorInputBackground: "white",
+          colorInputText: "#152119",
         },
         elements: {
           rootBox: "w-full",
-          cardBox: "shadow-none border-0 bg-transparent p-0 m-0",
-          card: "bg-transparent shadow-none border-0 p-0 m-0",
+          cardBox: "shadow-none border-none",
+          card: "shadow-none border-none",
           headerTitle: "hidden",
           headerSubtitle: "hidden",
-          formButtonPrimary:
-            "bg-accent hover:bg-accent/90 text-white font-medium rounded-md shadow-sm",
-          socialButtonsBlockButton:
-            "border border-border hover:bg-surface-muted rounded-md",
-          formFieldInput:
-            "rounded-md border border-border-strong bg-surface focus:border-accent focus:ring-2 focus:ring-accent/20",
-          footerActionLink: "text-accent hover:text-accent/80",
         },
         layout: {
           socialButtonsPlacement: "top",
