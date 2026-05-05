@@ -37,7 +37,19 @@ export default async function ChatCBPage() {
               <Button variant="secondary">Browse research</Button>
             </Link>
             <Link href="/portal/combo-wheel">
-              <Button>Try the Cannabis Wheel</Button>
+              <Button className="gap-2">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-4 w-4 items-center justify-center rounded-full ring-1 ring-white/40 shadow-[0_0_0_1px_rgba(255,255,255,0.15)]"
+                  style={{
+                    background:
+                      "conic-gradient(from 0deg, #2D8B5E, #4FA77B, #E8A838, #B86896, #6B4F8B, #1F8AB6, #2D8B5E)",
+                  }}
+                >
+                  <span className="block h-1 w-1 rounded-full bg-white" />
+                </span>
+                Try the Cannabis Wheel
+              </Button>
             </Link>
           </div>
         </CardContent>
