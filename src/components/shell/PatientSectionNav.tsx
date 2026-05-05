@@ -50,6 +50,7 @@ const SECTIONS: Record<string, SectionDef> = {
     secondary: [
       { label: "Assessments", href: "/portal/assessments" },
       { label: "Check-in history", href: "/portal/outcomes" },
+      { label: "Dose history", href: "/portal/dose-history" },
       { label: "Care plan", href: "/portal/care-plan" },
       { label: "Care guide", href: "/portal/education" },
     ],
@@ -74,6 +75,7 @@ const SECTIONS: Record<string, SectionDef> = {
       { label: "Billing", href: "/portal/billing" },
       { label: "Intake", href: "/portal/intake" },
       { label: "Settings", href: "/portal/settings" },
+      { label: "Security", href: "/portal/security" },
     ],
   },
   // EMR-200: Chat & Learn ribbon — community plus the public-style
