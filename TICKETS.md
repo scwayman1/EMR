@@ -2894,3 +2894,516 @@ Today data is spread across 15 agents with no dashboard.
 ---
 
 **Grand total: 230 tickets.** Product Drop #10 — production-billing hardening.
+
+---
+
+## Wave 19 — LeafMart spinout + Cannabis EMR feature backlog (EMR-231..EMR-257)
+
+**Source:** Two prompt batches from Scott + the Pam strategy conversation
+on the LeafMart e-commerce sibling. Verbatim prompts preserved in
+`LEAFMART_PROMPT_SHEET.md`. Strategic framing in `LEAFMART_STRATEGY.md`.
+
+**Theme:** The EMR (Leafjourney) and the e-commerce site (LeafMart, new
+domain `www.leafmart.com`) are deliberately separated for regulatory
+risk isolation — a DEA/FDA enforcement action against the marketplace
+must not be able to take down HIPAA-bound clinical infrastructure. Five
+"shared" tickets ship once and are consumed by both products. The rest
+split between EMR-side clinical features and LeafMart-side marketplace
+build-out.
+
+| # | Title | Side | Priority | Status |
+|---|---|---|---|---|
+| 231 | Lab Sets — Quest/LabCorp templated lab orders | EMR | **Urgent** | backlog |
+| 232 | Modular Prior-Auth + Peer-to-Peer API | EMR | **Urgent** | backlog |
+| 233 | AI Insurance Mediator (SheerHealth-style) | EMR | High | backlog |
+| 234 | AI Phone-Tree Navigator | EMR | High | backlog |
+| 235 | Insurance Phone Directory (geolocated) | EMR | Normal | backlog |
+| 236 | Geolocated Legal Disclaimer + Regulation Popup | Shared | **Urgent** | backlog |
+| 237 | Licensed Dispensary / Pharmacy Registry | Shared | High | backlog |
+| 238 | Year-End Cannabis Purchase Invoice (patient portal) | EMR | High | backlog |
+| 239 | State Hemp/THC Regulations Backend Table | Shared | **Urgent** | backlog |
+| 240 | Evidence-Backed Dosing Plan Engine | Shared | **Urgent** | backlog |
+| 241 | "How to Know What Product to Buy?" Education Module | Shared | High | backlog |
+| 242 | LeafMart Domain + Brand Registration | LeafMart | **Urgent** | backlog |
+| 243 | LeafMart AI Compliance Umbrella | LeafMart | **Urgent** | backlog |
+| 244 | LeafMart Marketplace MVP (Shopify/WPEngine backbone, age gate, catalog, filters, billing) | LeafMart | **Urgent** | backlog |
+| 245 | LeafMart Education Mirror | LeafMart | High | backlog |
+| 246 | LeafMart Login + Account System | LeafMart | **Urgent** | backlog |
+| 247 | LeafMart ↔ Leafjourney Account Linking + Data Sync | LeafMart | **Urgent** | backlog |
+| 248 | LeafMart Analytics + Log-Dose + Outcome Mirror | LeafMart | High | backlog |
+| 249 | Leaf Rating System (replaces stars) + Outcome Check-Ins | LeafMart | High | backlog |
+| 250 | LeafMart → Leafjourney De-Identified Data Pipeline | LeafMart | High | backlog |
+| 251 | LeafMart State-Regulation Filter | LeafMart | **Urgent** | backlog |
+| 252 | LeafMart Track-and-Trace + Quality Analytics | LeafMart | Normal | backlog |
+| 253 | LeafMart Brand Aesthetic + UI ("THE" trusted store) | LeafMart | High | backlog |
+| 254 | LeafMart Question-Driven Navigation Engine | LeafMart | **Urgent** | backlog |
+| 255 | LeafMart Billing + Digital Receipts + Tax Aggregation | LeafMart | **Urgent** | backlog |
+| 256 | LeafMart Modular Supply Chain API | LeafMart | **Urgent** | backlog |
+| 257 | LeafMart Veterinary Cannabis Shop Module | LeafMart | Normal | backlog |
+
+---
+
+### EMR-231: Lab Sets — Quest/LabCorp templated lab orders
+**Side:** EMR-only — clinician portal
+**Priority:** Urgent
+**Why now:** Repeat patients (e.g. quarterly metabolic check) re-create
+the same lab order every visit. Templated lab sets save provider time
+and eliminate transcription errors on ICD-10 + CPT pairings.
+
+**Acceptance criteria:**
+- Provider can create + save named "lab sets" (e.g. "Routine Follow-Up",
+  "Annual Physical", "Cannabis Initiation Panel")
+- Each lab set carries: ICD-10 codes (e.g. I10, E11.9, E78.00, Z79.899),
+  ordered tests (CBC w/diff, lipid panel, A1C, GGT, CMP), preferred lab
+  vendor (Quest / LabCorp / patient choice)
+- One-click "apply lab set" from patient chart generates a PDF lab slip
+  with patient demographics, insurance, ICD-10 codes, ordered tests,
+  ordering provider NPI, signature block
+- Auto-routes to vendor via electronic order interface (Quest HL7,
+  LabCorp HL7, fax fallback)
+- Patient delivery: email + SMS with PDF attachment; portal upload;
+  printable
+- Documented in chart as a finalized order with timestamp + auditor
+- Provider can edit the set per-patient before submission (skip a test,
+  add an extra ICD)
+- Multiple lab sets per provider; org-shared sets too
+
+### EMR-232: Modular Prior-Auth + Peer-to-Peer API
+**Side:** EMR-only — clinician + ops
+**Priority:** Urgent
+**Why now:** PA is the single largest consumer of clinician admin time.
+Auto-starting the PA at order time and routing peer-to-peer escalations
+through a tracked workflow turns days into hours.
+
+**Acceptance criteria:**
+- Triggers: medication prescribed / procedure scheduled — agent checks
+  payer rules and auto-opens PA when required
+- Pulls best-practice templates from a payer-keyed knowledge base
+  (which fields, which clinical references win the highest approval
+  rate)
+- Peer-to-peer module: clinician + payer reviewer get a private chat
+  thread or a masked direct-dial number (when payer opts out of chat)
+- Tracks every PA outcome to feed the approval-rate model (EMR-228)
+- UI: one screen for all open PAs across the panel; status timeline;
+  one-click attach clinical doc
+- Modular adapter so we can plug in CoverMyMeds, Surescripts, payer
+  portals as they get built (EMR-229)
+
+### EMR-233: AI Insurance Mediator (SheerHealth-style)
+**Side:** EMR-only — patient + clinician
+**Priority:** High
+**Why now:** Patients give up on appeals because they don't know how
+to fight back. SheerHealth proved an AI mediator works; we have the
+clinical record + denials + appeals already, so the mediator has the
+right context.
+
+**Acceptance criteria:**
+- AI agent fights for approval on meds / procedures / claims
+- Both clinician-side and patient-side flows
+- Pulls EMR context (note, dx, prior treatments) automatically
+- Drafts payer correspondence; submits via portal / fax / mail per
+  payer rule (EMR-218)
+- Tracks every interaction; learning loop feeds back into appeal
+  template ranking
+- Patient sees a "we're fighting for you" dashboard with status
+
+### EMR-234: AI Phone-Tree Navigator
+**Side:** EMR-only — patient feature
+**Priority:** High
+**Why now:** Phone trees waste real patient time. AI can listen to the
+IVR menu, recognize "press 3 for billing", press it, and ring the
+patient when a human picks up.
+
+**Acceptance criteria:**
+- In-app dial: patient enters a phone number + the doctor / department
+  name they want to reach
+- AI listens to the IVR via a Twilio-like voice channel and selects
+  options
+- Hold support: patient can hand the phone off and the agent stays in
+  hold; rings the patient when a human is on the line
+- Recognizes "doctor name" callouts in the IVR script and routes
+- Call-back-on-busy: agent redials and resumes from the saved IVR path
+- Privacy: no recording without consent
+
+### EMR-235: Insurance Phone Directory (geolocated)
+**Side:** EMR-only — patient + ops
+**Priority:** Normal
+**Why now:** Toll-free 1-800 numbers route to enormous queues. Local
+office numbers (regional claims, regional PA) get answered in 2 min
+instead of 30. Patients don't know they exist.
+
+**Acceptance criteria:**
+- Directory keyed by (payer, geography, purpose: general / PA /
+  pharmacy / claims / appeals)
+- Geolocated to patient address — surface the closest direct number
+  first
+- Source: back-of-card scrape + payer regional office lists +
+  community contributions
+- Resume-from-disconnect: if a call drops, the saved IVR path is
+  remembered so the patient can pick up where they left off (works
+  with EMR-234)
+- Monthly freshness check; flag stale numbers
+
+### EMR-236: Geolocated Legal Disclaimer + Regulation Popup
+**Side:** Shared (EMR + LeafMart)
+**Priority:** Urgent
+**Why now:** Federal hemp / THC regulation is moving fast. A static
+disclaimer is non-compliant the day it's deployed. Geolocated +
+AI-generated keeps it accurate.
+
+**Acceptance criteria:**
+- Standing disclaimer: "Talk to your medical provider and check local
+  regulations before purchase / use"
+- "More information" → modal with AI-generated state + federal
+  regulation summary based on geolocation (or zip-code fallback)
+- Cites federal sources (Farm Bill, FDA, DEA), state department of
+  agriculture / cannabis control authority
+- Updated weekly via a regulation-source crawl (see EMR-239)
+- Logged: which jurisdiction, which timestamp, which regulation
+  version was shown to the patient (audit-defensible)
+
+### EMR-237: Licensed Dispensary / Pharmacy Registry
+**Side:** Shared
+**Priority:** High
+**Why now:** Patients can't tell a licensed dispensary from a gray-
+market shop. Embedded license-number lookup raises trust and protects
+us from steering patients to non-compliant retailers.
+
+**Acceptance criteria:**
+- Registry keyed by (state, license number, retailer name, address)
+- Sources: cannabis.lacity.gov, search.cannabis.ca.gov,
+  hemp.ams.usda.gov public-search, state-by-state mapping from
+  huschblackwell nationwide regulatory map
+- Background refresh job; AI agents per-state for sources we don't have
+  a clean API for
+- Exposed as `/api/dispensaries` for both EMR and LeafMart
+- "Verify license" button on retailer detail pages
+
+### EMR-238: Year-End Cannabis Purchase Invoice (patient portal)
+**Side:** EMR — patient portal
+**Priority:** High
+**Why now:** Patients need this aggregated for tax + reimbursement.
+Today they piece it together from receipts.
+
+**Acceptance criteria:**
+- Annual invoice under Billing tab covering 1/1–12/31 of fiscal year
+- Line items: product, vendor, location, date, amount paid
+- ICD-10 cross-reference for reimbursement-eligible items
+- PDF + CSV download
+- Auto-generated 1/15 every year; last year's available year-round
+- Pulls from LeafMart purchases when account is linked (EMR-247) +
+  any in-EMR product log entries
+
+### EMR-239: State Hemp/THC Regulations Backend Table
+**Side:** Shared
+**Priority:** Urgent
+**Why now:** Drives EMR-236, EMR-251, and the cannabis-coverage
+routing in the billing fleet. Without it the disclaimer copy and the
+filter system can't function.
+
+**Acceptance criteria:**
+- Per-state record: medicinal vs recreational status, THC milligram
+  caps per delivery method, hemp legal status, age limits, advertising
+  rules, telehealth rules
+- Update cadence: weekly crawl of state department-of-cannabis sites +
+  federal Farm Bill status
+- Versioned — every record carries effective-date + source citation
+- Exposed as `/api/state-cannabis-regulations`
+- Admin UI for compliance officer to override / annotate
+
+### EMR-240: Evidence-Backed Dosing Plan Engine
+**Side:** Shared (EMR clinical + LeafMart consumer)
+**Priority:** Urgent
+**Why now:** "How much should I take?" is the #1 patient question. The
+naive-user dosing plan removes the friction that drives them back to
+recreational dispensaries.
+
+**Acceptance criteria:**
+- Inputs: condition (insomnia / anxiety / pain / etc), delivery
+  preference (edible / tincture / flower / topical / vape), prior
+  cannabis exposure
+- Output: starting dose by format, titration ladder, expected
+  onset/duration, peer-reviewed citations
+- Citations from PubMed (ChatCB integration), MCL paper data,
+  practice cohort outcomes when patient is identified
+- Updates as the cohort evolves
+- Exportable to printable card for offline use
+- Available on LeafMart "account → dosing plan" + EMR clinician chart
+
+### EMR-241: "How to Know What Product to Buy?" Education Module
+**Side:** Shared
+**Priority:** High
+**Why now:** Closes the loop from "what should I take?" (dosing) to
+"how do I shop for it?" (product literacy). Lives under the Learn tab.
+
+**Acceptance criteria:**
+- Question lists: what to ask the dispensary, what to look for on a
+  label (THC %, terpene profile, COA, QR codes, harvest date)
+- Delivery-method explainer: 100mg edible vs 100mg tincture
+- Validity / legality / origin checklist
+- Sources cited: realmofcaring.org, thesanctuarygarden.co, weedmaps,
+  highprofile, ashesociety, plus our own pharmacology DB
+- Quiz / interactive: "find the right product" guided flow
+- Embedded on EMR education tab AND LeafMart education tab
+
+### EMR-242: LeafMart Domain + Brand Registration
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** Foundational. Need the domain locked in before vendor
+contracts and payment-processor onboarding.
+
+**Acceptance criteria:**
+- Register www.leafmart.com (and trademark paths)
+- DNS + email + Google Workspace under leafmart.com
+- Brand identity: logo, palette, typography (similar-but-distinct from
+  Leafjourney per Pam strategy doc)
+- Separate cloud project / DB / secret-store from Leafjourney for
+  regulatory blast-radius isolation
+
+### EMR-243: LeafMart AI Compliance Umbrella
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** Cannabis e-commerce sits at the intersection of FDA, DEA,
+FCC, state cannabis control, e-commerce + payment regs. Compliance has
+to be designed in, not bolted on.
+
+**Acceptance criteria:**
+- AI agent fleet that crawls + summarizes regulation deltas weekly
+- Sources: latchedagency, cdtfa.ca.gov, hybridmarketingco,
+  covasoftware, 23state, convesio, spreecommerce, FDA + DEA RSS,
+  state cannabis control sites
+- Compliance dashboard for ops: open issues, jurisdictions affected,
+  remediation owners
+- Per-product compliance check at upload time (label, dosage,
+  ingredient declaration)
+- Pam's regulatory contacts wired into the escalation path
+
+### EMR-244: LeafMart Marketplace MVP
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** The core deliverable. November hemp-ban window says we
+ship before the regulatory event, not after.
+
+**Acceptance criteria:**
+- Backbone: Shopify or WPEngine + Spree (decision in tomorrow's call);
+  Soberish-style content discipline
+- 21+ age gate at "store" entry: yes → store, no → Leafjourney landing
+- Catalog: tile = product image, primary phytocannabinoids, 10-word
+  description, format (edible / tincture / flower / topical / vape),
+  price, link to vendor's external listing
+- Item identifier: UPC (per Scott's correction over SKU)
+- Direct transaction with LeafMart — credit-card capture against a
+  cannabis-friendly USA bank / processor (TBD)
+- Order passthrough to vendor for fulfillment (packaging, shipping)
+- Auto-invoice to consumer + vendor; stored in consumer account
+- Filter (top-right): price band, format, cannabinoid (THC/CBD/CBG/
+  combo), terpene (limonene, myrcene, pinene, etc), state-eligible
+- Mobile + desktop responsive; "90-year-old usable" accessibility bar
+- Fulfillment status sync per order
+
+### EMR-245: LeafMart Education Mirror
+**Side:** LeafMart-only
+**Priority:** High
+**Why now:** Education is the differentiator. Without it LeafMart is
+just another cannabis directory.
+
+**Acceptance criteria:**
+- Mirror Leafjourney education tab content: phytocannabinoid wheel,
+  ChatCB search, research articles, drug-mix checker, learn library
+- Shared content service so updates propagate to both sites
+- "How to know what product to buy?" (EMR-241) embedded
+- Cross-link to product catalog: "products that pair with this
+  research"
+
+### EMR-246: LeafMart Login + Account System
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** Anonymous shopping is allowed but the high-value features
+(dose plan, leaf ratings, year-end invoice, EMR linking) need
+authenticated identity.
+
+**Acceptance criteria:**
+- Email / Google / Apple sign-in; SMS verification for purchase
+- 21+ attestation captured at signup with audit timestamp
+- Profile: shipping address, payment methods, delivery preferences,
+  state of residence (drives regulation filter)
+- Optional Leafjourney account link (EMR-247)
+- Account deletion + data export per GDPR / CCPA / HIPAA-adjacent
+  practices
+
+### EMR-247: LeafMart ↔ Leafjourney Account Linking + Data Sync
+**Side:** LeafMart-only (with EMR receiver endpoints)
+**Priority:** Urgent
+**Why now:** The whole "EMR is the main hub" architecture rests on
+this. Without it LeafMart and Leafjourney are two unrelated products.
+
+**Acceptance criteria:**
+- OAuth-style consent flow at LeafMart: "Link to my Leafjourney
+  patient record"
+- Bidirectional revocation (revoke from either side; data stops
+  flowing immediately)
+- Data flows when linked:
+  - Purchases → Leafjourney chart documented products + year-end
+    invoice (EMR-238)
+  - Dose logs (entered on either site) → unified source of truth
+  - Outcome ratings → Leafjourney outcome logs
+  - Insurance reimbursement claim trigger → Leafjourney billing
+- Linking does NOT share PHI back to LeafMart — one-way for clinical
+  data
+- Audit log on every cross-system data event
+- API contract documented + versioned
+
+### EMR-248: LeafMart Analytics + Log-Dose + Outcome Mirror
+**Side:** LeafMart-only
+**Priority:** High
+**Why now:** Replicates Leafjourney's analytics + log-dose + emoji
+outcome capture. The combination of shopping + outcome logging is
+what makes LeafMart powerful for the consumer + valuable to research.
+
+**Acceptance criteria:**
+- Mirror exact UX patterns from Leafjourney: log dose button, pain /
+  anxiety / sleep / mood / stress 0-10 scales, emoji check-ins
+- Shared service so the data layer is consistent
+- Analytics dashboard for consumer: trend lines per metric, dose
+  correlation
+- Aggregated data feeds EMR-250 (de-identified pipeline)
+
+### EMR-249: Leaf Rating System (replaces stars) + Outcome Check-Ins
+**Side:** LeafMart-only
+**Priority:** High
+**Why now:** Brand differentiation + collects the outcome data that
+makes our product recommendations evidence-based.
+
+**Acceptance criteria:**
+- 5-leaf rating UI replacing Amazon stars
+- Outcome prompts: "did this help with sleep / anxiety / stress /
+  pain / focus?"
+- Free-text review with moderation queue (cannabis-specific
+  no-medical-claims rules)
+- Verified purchaser badge (tied to LeafMart purchase history)
+- Reviews surface in product detail + filter
+
+### EMR-250: LeafMart → Leafjourney De-Identified Data Pipeline
+**Side:** LeafMart + EMR
+**Priority:** High
+**Why now:** Population-level evidence is the long-term moat. A
+de-identified pipeline lets us improve recommendations without
+compromising consumer privacy.
+
+**Acceptance criteria:**
+- ETL job: LeafMart purchase + outcome data → de-identified rows
+  in Leafjourney research store
+- Identifier strip: hash + salt every consumer id; no PII / PHI in
+  the research store
+- Aggregation rules: minimum cohort size before any record is
+  surfaced (k-anonymity)
+- Documented data dictionary
+- Periodic re-identification audit
+
+### EMR-251: LeafMart State-Regulation Filter
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** Showing a Texas consumer a Colorado-legal product they
+can't buy is bad UX AND bad compliance.
+
+**Acceptance criteria:**
+- Filter products by consumer state (auto from profile, override per
+  search)
+- Hides products that exceed state THC mg cap, are excluded from
+  medicinal-only states for non-cardholders, etc
+- Pulls rules from EMR-239 backend table
+- "Why isn't this available?" tooltip when a product is hidden
+- Cardholder verification for medicinal-only states
+
+### EMR-252: LeafMart Track-and-Trace + Quality Analytics
+**Side:** LeafMart-only
+**Priority:** Normal
+**Why now:** Distinguishes "high sales" from "high quality" so the
+recommendation engine doesn't just surface the best-marketed product.
+
+**Acceptance criteria:**
+- Track every sale + every outcome rating per SKU/UPC + per vendor
+- Quality score = weighted blend of leaf rating + outcome efficacy
+  + return rate
+- Surface in vendor dashboard (EMR-244 vendor side)
+- Powers ranking on category pages and search
+
+### EMR-253: LeafMart Brand Aesthetic + UI ("THE" trusted store)
+**Side:** LeafMart-only
+**Priority:** High
+**Why now:** Pam's positioning thesis. Beautiful + trusted + similar-
+yet-distinct from Leafjourney is what makes LeafMart the default
+landing place when consumers want a real recommendation.
+
+**Acceptance criteria:**
+- Visual language: shares Leafjourney palette anchors, distinct
+  identity (different primary, different typography)
+- normalizemarketplace + Amazon-derived information density (without
+  being either)
+- Mobile-first; scrollable product lists; large tap targets
+- Color-coded cannabinoid tags
+- Accessibility: WCAG 2.1 AA target, "90-year-old usable" stress test
+
+### EMR-254: LeafMart Question-Driven Navigation Engine
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** The site exists to answer "what should I take for my
+condition?" with science. The whole UI orients around that question.
+
+**Acceptance criteria:**
+- Landing-page hero: "What are you trying to fix?" → condition picker
+- Per-condition curated path: dosing plan (EMR-240), product
+  recommendations, education references, dispensary locator
+- Up-titration / down-titration ladder per recommendation
+- Peer-reviewed citation surfaced inline
+- Compliance: every recommendation page renders the geolocated legal
+  disclaimer (EMR-236)
+
+### EMR-255: LeafMart Billing + Digital Receipts + Tax Aggregation
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** Direct-transaction model means LeafMart owns billing. No
+billing = no business. Year-end tax aggregation feeds EMR-238.
+
+**Acceptance criteria:**
+- Cart → checkout → cannabis-friendly processor (TBD; Pam recommendation)
+- PCI scope minimized — tokenize card; never store PAN
+- Per-purchase digital receipt to consumer + vendor (PDF + email)
+- Receipts archived in consumer account year-round
+- Year-end aggregation invoice (feeds EMR-238)
+- Refund + chargeback workflow (mirrors EMR-227 patterns)
+
+### EMR-256: LeafMart Modular Supply Chain API
+**Side:** LeafMart-only
+**Priority:** Urgent
+**Why now:** The "click → vendor fulfillment" flow needs an API
+contract. State + county regs (delivery, age check, hours) require
+runtime decisions per order.
+
+**Acceptance criteria:**
+- API contract for vendor onboarding: catalog feed, inventory sync,
+  order accept/reject, shipping update, return
+- State + county delivery rules engine (allowed methods, age
+  verification at delivery, dry-county overrides)
+- Order routing: when vendor declines, fall back to next-best vendor
+  carrying same UPC
+- SLA tracking per vendor (accept time, ship time, dispute rate)
+- Webhook delivery for vendor systems
+
+### EMR-257: LeafMart Veterinary Cannabis Shop Module
+**Side:** LeafMart-only
+**Priority:** Normal
+**Why now:** Pet cannabis is a real and growing category. A drop-down
+filter lets us serve it without forking the codebase.
+
+**Acceptance criteria:**
+- "For my pet" filter at the catalog top
+- Vet-targeted product subset (CBD-dominant, dose-by-weight)
+- Vet-specific compliance check (no THC for pets in most states)
+- Vet-specific dosing calculator
+- Veterinary dispensary registry slice (where applicable)
+
+---
+
+**Grand total: 257 tickets.** Product Drop #11 — LeafMart spinout +
+EMR feature backlog.
