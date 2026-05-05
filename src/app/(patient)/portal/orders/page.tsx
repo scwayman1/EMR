@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";

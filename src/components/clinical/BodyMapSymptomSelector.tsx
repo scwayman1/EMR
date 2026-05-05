@@ -70,13 +70,13 @@ export function BodyMapSymptomSelector({
                   : "bg-transparent border-transparent z-0"
             )}
             style={{
-              left: \`\${region.coordinates.x}%\`,
-              top: \`\${region.coordinates.y}%\`,
-              width: \`\${region.coordinates.width}%\`,
-              height: \`\${region.coordinates.height}%\`,
+              left: `${region.coordinates.x}%`,
+              top: `${region.coordinates.y}%`,
+              width: `${region.coordinates.width}%`,
+              height: `${region.coordinates.height}%`,
             }}
             aria-pressed={isSelected}
-            aria-label={\`Select \${region.label}\`}
+            aria-label={`Select ${region.label}`}
           >
             {/* Tooltip on hover */}
             {(isHovered || isSelected) && (

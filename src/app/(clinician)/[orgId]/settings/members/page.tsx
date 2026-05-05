@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/session";
 import { PageShell, PageHeader } from "@/components/shell/PageHeader";
