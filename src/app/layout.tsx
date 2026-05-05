@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { UniversalFeedbackFab } from "@/components/feedback/UniversalFeedbackFab";
 import { ClerkProvider } from "@clerk/nextjs";
+import { CookieConsent } from "@/components/layout/CookieConsent";
 
 export const metadata: Metadata = {
   title: {
@@ -46,6 +47,7 @@ export default function RootLayout({
           </a>
           {children}
           <UniversalFeedbackFab />
+          <CookieConsent />
         </body>
       </html>
     </ClerkProvider>
