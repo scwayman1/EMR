@@ -26,6 +26,7 @@
     "@daily-co/daily-js": "^0.86.0",
     "@prisma/adapter-pg": "^5.22.0",
     "@prisma/client": "^5.18.0",
+    "@sentry/nextjs": "^10.51.0",
     "@supabase/supabase-js": "^2.103.3",
     "@types/node": "^20.14.12",
     "@types/react": "18.3.3",

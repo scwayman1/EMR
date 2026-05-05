@@ -220,15 +220,20 @@ export function ComboWheel({
                 <EmptyState />
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {selectedCompounds.map((c) => (
+                  {selectedCompounds.map((c) => {
+                    const chipColor =
+                      c.type === "cannabinoid"
+                        ? CANNABINOID_COLOR
+                        : TERPENE_COLOR;
+                    return (
                     <button
                       key={c.id}
                       type="button"
                       onClick={() => toggle(c.id)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white shadow-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised"
                       style={{
-                        backgroundColor: c.color,
-                        boxShadow: `0 4px 14px -4px ${c.color}66`,
+                        backgroundColor: chipColor,
+                        boxShadow: `0 4px 14px -4px ${chipColor}66`,
                       }}
                       aria-label={`Remove ${c.name}`}
                     >
@@ -238,7 +243,8 @@ export function ComboWheel({
                         &times;
                       </span>
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -399,6 +405,12 @@ function EmptyState() {
   );
 }
 
+// Single source of truth for the two category colors used by both the wheel
+// segments and the legend swatches below it. Per-compound colors from the
+// seed are intentionally ignored — the design conveys category, not compound.
+const CANNABINOID_COLOR = "#2D8B5E";
+const TERPENE_COLOR = "#E8A838";
+
 // ---------------------------------------------------------------------------
 // Wheel geometry: outer ring = cannabinoids, inner ring = terpenes.
 // Each segment is an annular wedge built from two arcs + two radial lines.
@@ -513,6 +525,9 @@ function Wheel({
         ? `Deselect ${c.name}, ${c.type}, currently selected`
         : `Select ${c.name}, ${c.type}, currently unselected`;
 
+      const segColor =
+        c.type === "cannabinoid" ? CANNABINOID_COLOR : TERPENE_COLOR;
+
       return (
         <g
           key={c.id}
@@ -524,7 +539,7 @@ function Wheel({
           onTouchStart={() => handleTouchStart(c.id)}
           onKeyDown={(e) => handleKey(e, c.id)}
           className="combo-segment"
-          style={{ ["--seg-color" as string]: c.color }}
+          style={{ ["--seg-color" as string]: segColor }}
         >
           {dHit && (
             <path
@@ -536,7 +551,7 @@ function Wheel({
           )}
           <path
             d={isSelected ? dExpanded : d}
-            fill={c.color}
+            fill={segColor}
             opacity={1}
             stroke={isSelected ? "#fff" : "rgba(255,255,255,0.5)"}
             strokeWidth={isSelected ? 3 : 1.25}
@@ -544,8 +559,8 @@ function Wheel({
             style={{
               transition: "d 240ms ease, stroke-width 200ms ease, filter 300ms ease",
               filter: isSelected
-                ? `drop-shadow(0 0 10px ${c.color}) drop-shadow(0 0 22px ${c.color}cc)`
-                : `drop-shadow(0 1px 2px ${c.color}55)`,
+                ? `drop-shadow(0 0 10px ${segColor}) drop-shadow(0 0 22px ${segColor}cc)`
+                : `drop-shadow(0 1px 2px ${segColor}55)`,
               pointerEvents: dHit ? "none" : undefined,
             }}
           />
@@ -732,11 +747,19 @@ function Wheel({
 
       <div className="mt-5 flex items-center justify-center gap-6 text-xs font-medium text-text-muted">
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-5 rounded-full bg-[#2D8B5E]" aria-hidden />
+          <span
+            className="h-3 w-5 rounded-full"
+            style={{ background: CANNABINOID_COLOR }}
+            aria-hidden
+          />
           Cannabinoids
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-5 rounded-full bg-[#E8A838]" aria-hidden />
+          <span
+            className="h-3 w-5 rounded-full"
+            style={{ background: TERPENE_COLOR }}
+            aria-hidden
+          />
           Terpenes
         </span>
       </div>
