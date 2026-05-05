@@ -18,6 +18,10 @@ export interface MobileNavTab {
   label: string;
   href: string;
   icon: string;
+  // Optional 6-stop conic gradient. When present the tile renders the
+  // icon as a colorful "wheel" disc instead of a flat glyph — used for
+  // wheel/pharmacology surfaces so they read as proprietary tools.
+  wheelGradient?: boolean;
 }
 
 export interface MobileNavGroup {
@@ -43,7 +47,7 @@ export const DEFAULT_GROUPS: MobileNavGroup[] = [
     tabs: [
       { label: "ChatCB", href: "/education", icon: "❦" },
       { label: "Research", href: "/education#research", icon: "⚘" },
-      { label: "Wheel", href: "/education#wheel", icon: "⚫" },
+      { label: "Wheel", href: "/education#wheel", icon: "", wheelGradient: true },
       { label: "Drug Mix", href: "/education#drugmix", icon: "⚗" },
     ],
   },
@@ -148,12 +152,25 @@ export function MobilePortraitNav({
                     href={t.href}
                     className="flex flex-col items-center justify-center gap-1 rounded-xl bg-surface border border-border/60 px-2 py-3 hover:bg-surface-muted hover:border-accent/40 transition-all"
                   >
-                    <span
-                      className="text-base text-accent leading-none"
-                      aria-hidden
-                    >
-                      {t.icon}
-                    </span>
+                    {t.wheelGradient ? (
+                      <span
+                        className="relative inline-flex h-5 w-5 items-center justify-center rounded-full shadow-[0_2px_6px_-1px_rgba(45,139,94,0.55)]"
+                        style={{
+                          background:
+                            "conic-gradient(from 0deg, #2D8B5E, #4FA77B, #E8A838, #B86896, #6B4F8B, #1F8AB6, #2D8B5E)",
+                        }}
+                        aria-hidden
+                      >
+                        <span className="block h-1.5 w-1.5 rounded-full bg-white/90 ring-1 ring-black/5" />
+                      </span>
+                    ) : (
+                      <span
+                        className="text-base text-accent leading-none"
+                        aria-hidden
+                      >
+                        {t.icon}
+                      </span>
+                    )}
                     <span className="text-[10.5px] font-medium text-text leading-tight text-center">
                       {t.label}
                     </span>

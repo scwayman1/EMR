@@ -429,21 +429,52 @@ export default function HomePage() {
             </p>
           </div>
           <div className="relative overflow-hidden rounded-3xl border border-accent/20 bg-gradient-to-br from-accent/[0.04] via-surface-raised to-highlight/[0.04] p-6 md:p-10">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full opacity-50 blur-3xl"
+              style={{
+                background:
+                  "conic-gradient(from 200deg, #2D8B5E33, #E8A83833, #B8689633, #6B4F8B33, #2D8B5E33)",
+              }}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 relative">
               {WELLNESS_WHEEL_PILLARS.map((pillar) => {
                 const Icon = pillar.icon;
                 return (
                   <div
                     key={pillar.title}
-                    className="text-center p-5 rounded-2xl bg-surface/60 border border-border/50"
+                    className="group relative overflow-hidden text-center p-5 rounded-2xl bg-surface/70 border transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-22px_var(--pillar-color)]"
+                    style={{
+                      ["--pillar-color" as string]: pillar.color,
+                      borderColor: `${pillar.color}33`,
+                    }}
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-3 ring-1 ring-accent/15">
-                      <Icon className="w-6 h-6 text-accent" />
+                    <div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                      style={{
+                        background: `radial-gradient(circle at 50% 0%, ${pillar.color}1f, transparent 70%)`,
+                      }}
+                    />
+                    <div
+                      className="relative w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-[0_10px_24px_-10px_var(--pillar-color)]"
+                      style={{
+                        background: `linear-gradient(135deg, ${pillar.color}, ${pillar.colorEnd})`,
+                      }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-0 rounded-2xl ring-1 ring-white/30"
+                      />
+                      <Icon
+                        className="relative w-7 h-7 text-white"
+                        strokeWidth={2.25}
+                      />
                     </div>
-                    <h3 className="font-display text-lg text-text tracking-tight mb-1">
+                    <h3 className="relative font-display text-lg text-text tracking-tight mb-1">
                       {pillar.title}
                     </h3>
-                    <p className="text-sm text-text-muted">{pillar.body}</p>
+                    <p className="relative text-sm text-text-muted">{pillar.body}</p>
                   </div>
                 );
               })}
@@ -788,6 +819,11 @@ type WellnessWheelPillar = {
   icon: LucideIcon;
   title: string;
   body: string;
+  // Pillar swatches mirror the wheel's compound palette so the framing
+  // tiles read as a key for the wheel below — cannabinoid green, terpene
+  // gold, condition violet.
+  color: string;
+  colorEnd: string;
 };
 
 const WELLNESS_WHEEL_PILLARS: WellnessWheelPillar[] = [
@@ -796,17 +832,23 @@ const WELLNESS_WHEEL_PILLARS: WellnessWheelPillar[] = [
     title: "6 Cannabinoids",
     body:
       "THC, CBD, CBN, CBG, CBC, THCV — each with evidence-backed therapeutic profiles.",
+    color: "#2D8B5E",
+    colorEnd: "#4FA77B",
   },
   {
     icon: Flower2,
     title: "8 Terpenes",
     body:
       "Myrcene, limonene, linalool, pinene, caryophyllene, and more — the aromatic compounds that shape the effect.",
+    color: "#E8A838",
+    colorEnd: "#F2C46B",
   },
   {
     icon: Target,
     title: "10 Condition Guides",
     body:
       "Pain, insomnia, anxiety, PTSD, nausea, and more — matched to the best cannabinoid + terpene combinations.",
+    color: "#7C5BAA",
+    colorEnd: "#B07ECC",
   },
 ];

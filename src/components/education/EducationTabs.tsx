@@ -6,6 +6,34 @@ import { Users, Atom, Sparkles, BookOpen } from "lucide-react";
 
 export type TabKey = "community" | "wheel" | "chatcb" | "research";
 
+// Colorful conic disc that stands in for the wheel tab's icon. Lives in
+// place of a single-tone Lucide glyph so the proprietary pharmacology
+// tool reads as the visual hero of the tab strip.
+function WheelDisc({ active }: { active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative inline-flex h-4 w-4 items-center justify-center rounded-full",
+        active
+          ? "ring-1 ring-white/70 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]"
+          : "ring-1 ring-black/5 shadow-[0_2px_6px_-2px_rgba(45,139,94,0.5)]"
+      )}
+      style={{
+        background:
+          "conic-gradient(from 0deg, #2D8B5E, #4FA77B, #E8A838, #B86896, #6B4F8B, #1F8AB6, #2D8B5E)",
+      }}
+    >
+      <span
+        className={cn(
+          "block h-1 w-1 rounded-full",
+          active ? "bg-white" : "bg-surface"
+        )}
+      />
+    </span>
+  );
+}
+
 export const EDUCATION_TABS: { key: TabKey; label: string; Icon: React.ElementType }[] = [
   { key: "community", label: "Community", Icon: Users },
   { key: "wheel", label: "Cannabis Combo Wheel", Icon: Atom },
@@ -95,7 +123,11 @@ export function EducationTabs({
                     : "bg-white/50 text-text-muted border-border hover:text-text hover:border-accent/40 hover:bg-white"
                 )}
               >
-                <Icon className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
+                {tab.key === "wheel" ? (
+                  <WheelDisc active={active} />
+                ) : (
+                  <Icon className="w-4 h-4" strokeWidth={2} aria-hidden="true" />
+                )}
                 {tab.label}
               </button>
             );

@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { prisma } from "@/lib/db/prisma";
 import { listAffiliatePartners } from "@/lib/affiliate/partners";
+import { cn } from "@/lib/utils/cn";
 
 export const metadata: Metadata = {
   title: "Marketplace",
@@ -70,6 +71,11 @@ interface Surface {
   cta: string;
   count?: string;
   highlight?: string;
+  // When set, the card renders a colored conic-gradient orb in the
+  // header instead of the default LeafSprig — used for the wheel
+  // surfaces so they read as proprietary pharmacology tools rather
+  // than catalog tiles.
+  wheelAccent?: "cannabis" | "supplement";
 }
 
 export default async function MarketplaceHubPage() {
@@ -135,6 +141,7 @@ export default async function MarketplaceHubPage() {
         "Our signature pharmacology tool. Mix cannabinoids and terpenes; see the combined therapeutic profile.",
       cta: "Open the wheel →",
       highlight: "Proprietary",
+      wheelAccent: "cannabis",
     },
     {
       href: "/portal/supplement-wheel",
@@ -144,6 +151,7 @@ export default async function MarketplaceHubPage() {
         "Stack evidence-based supplements that complement your cannabis regimen. Surfaces interactions automatically.",
       cta: "Build your stack →",
       highlight: "New",
+      wheelAccent: "supplement",
     },
     {
       href: "/store",
@@ -178,38 +186,66 @@ export default async function MarketplaceHubPage() {
 
       <section className="max-w-[1320px] mx-auto px-6 lg:px-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {surfaces.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-2xl"
-            >
-              <Card
-                tone="raised"
-                className="h-full transition-transform group-hover:-translate-y-0.5 group-hover:shadow-md"
+          {surfaces.map((s) => {
+            const wheelGradient =
+              s.wheelAccent === "cannabis"
+                ? "conic-gradient(from 0deg, #2D8B5E, #4FA77B, #E8A838, #B86896, #6B4F8B, #1F8AB6, #2D8B5E)"
+                : s.wheelAccent === "supplement"
+                  ? "conic-gradient(from 0deg, #1F8AB6, #5BB8D8, #8BC34A, #FFB347, #E8A838, #B86896, #1F8AB6)"
+                  : null;
+            return (
+              <Link
+                key={s.href}
+                href={s.href}
+                className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-2xl"
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <Eyebrow>{s.eyebrow}</Eyebrow>
-                    {s.highlight && <Badge tone="accent">{s.highlight}</Badge>}
-                  </div>
-                  <CardTitle className="text-xl mt-2 flex items-center gap-2">
-                    <LeafSprig size={14} className="text-accent" />
-                    {s.title}
-                  </CardTitle>
-                  {s.count && (
-                    <CardDescription className="text-xs mt-1">{s.count}</CardDescription>
+                <Card
+                  tone="raised"
+                  className={cn(
+                    "h-full transition-transform group-hover:-translate-y-0.5 group-hover:shadow-md",
+                    wheelGradient && "relative overflow-hidden"
                   )}
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-text-muted leading-relaxed mb-4">
-                    {s.description}
-                  </p>
-                  <p className="text-sm font-medium text-accent">{s.cta}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+                >
+                  {wheelGradient && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -top-16 -right-16 h-44 w-44 rounded-full opacity-30 blur-3xl"
+                      style={{ background: wheelGradient }}
+                    />
+                  )}
+                  <CardHeader className="pb-3 relative">
+                    <div className="flex items-center justify-between gap-2">
+                      <Eyebrow>{s.eyebrow}</Eyebrow>
+                      {s.highlight && <Badge tone="accent">{s.highlight}</Badge>}
+                    </div>
+                    <CardTitle className="text-xl mt-2 flex items-center gap-2">
+                      {wheelGradient ? (
+                        <span
+                          aria-hidden="true"
+                          className="relative inline-flex h-5 w-5 items-center justify-center rounded-full ring-1 ring-black/5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.18)]"
+                          style={{ background: wheelGradient }}
+                        >
+                          <span className="block h-1.5 w-1.5 rounded-full bg-white/95" />
+                        </span>
+                      ) : (
+                        <LeafSprig size={14} className="text-accent" />
+                      )}
+                      {s.title}
+                    </CardTitle>
+                    {s.count && (
+                      <CardDescription className="text-xs mt-1">{s.count}</CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="relative">
+                    <p className="text-sm text-text-muted leading-relaxed mb-4">
+                      {s.description}
+                    </p>
+                    <p className="text-sm font-medium text-accent">{s.cta}</p>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
