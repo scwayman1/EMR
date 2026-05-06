@@ -32,6 +32,9 @@ enum Role {
   clinician
   operator
   practice_owner
+  practice_admin
+  implementation_admin
+  super_admin
   system
 }
 
