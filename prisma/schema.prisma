@@ -3916,3 +3916,69 @@ model SupplementCompound {
 
   @@index([category, active, sortOrder])
 }
+
+// --------------------------------------------------------------
+// EMR-409 — Practice configuration (specialty-adaptive shell)
+// --------------------------------------------------------------
+
+/// Minimal practice record — owned by an Organization. The configuration
+/// row joins to this by string ID (no FK) so other tickets can replace
+/// or extend the model without migration coupling.
+model Practice {
+  id             String   @id @default(cuid())
+  organizationId String
+  legalName      String
+  brandName      String?
+  npi            String?
+  address        Json?
+  timezone       String   @default("America/New_York")
+  primaryContact Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+enum PracticeConfigurationStatus {
+  draft
+  published
+  archived
+}
+
+model PracticeConfiguration {
+  id                            String   @id @default(cuid())
+  organizationId                String
+  practiceId                    String
+  selectedSpecialty             String?
+  careModel                     String?
+  enabledModalities             String[] @default([])
+  disabledModalities            String[] @default([])
+  workflowTemplateIds           String[] @default([])
+  chartingTemplateIds           String[] @default([])
+  rolePermissionTemplateIds     String[] @default([])
+  physicianShellTemplateId      String?
+  patientShellTemplateId        String?
+  migrationProfileId            String?
+  regulatoryFlags               Json     @default("{}")
+  status                        PracticeConfigurationStatus @default(draft)
+  version                       Int      @default(1)
+  publishedAt                   DateTime?
+  publishedBy                   String?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@index([practiceId, status])
+  @@index([organizationId])
+}
+
+model PracticeConfigurationVersion {
+  id              String   @id @default(cuid())
+  configurationId String
+  version         Int
+  snapshot        Json
+  publishedAt     DateTime @default(now())
+  publishedBy     String
+
+  @@unique([configurationId, version])
+  @@index([configurationId])
+}
