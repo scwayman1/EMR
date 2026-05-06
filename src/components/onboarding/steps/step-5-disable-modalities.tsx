@@ -21,7 +21,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MODALITY_META, type ModalityId } from "@/lib/modality/registry";
+import { MODALITY_META, type ModalityId, type ModalityMeta } from "@/lib/modality/registry";
 import {
   REGISTERED_MODALITIES,
   type SpecialtyManifest,
@@ -169,9 +169,10 @@ export function Step5DisableModalities({
     if (!template) return [] as { module: string; modality: ModalityId; explicit: boolean }[];
     const out: { module: string; modality: ModalityId; explicit: boolean }[] = [];
     for (const mod of template.default_modules) {
-      const owner = REGISTERED_MODALITIES.find((id) =>
-        MODALITY_META[id as ModalityId].modules.includes(mod),
-      ) as ModalityId | undefined;
+      const owner = REGISTERED_MODALITIES.find((id) => {
+        const meta = MODALITY_META[id as ModalityId] as ModalityMeta & { modules?: string[] };
+        return meta.modules?.includes(mod);
+      }) as ModalityId | undefined;
       if (owner && !enabled.has(owner)) {
         out.push({ module: mod, modality: owner, explicit: disabled.has(owner) });
       }
@@ -269,12 +270,6 @@ export function Step5DisableModalities({
                   </p>
                   <p className="text-xs text-text-muted/80 mt-2">
                     Hides: {meta.surfaces.join(", ")}
-                    {meta.modules.length > 0 && (
-                      <>
-                        {" · "}
-                        Modules: {meta.modules.join(", ")}
-                      </>
-                    )}
                   </p>
                 </div>
               </label>
