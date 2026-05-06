@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "tsx scripts/smoke-test.ts",
-    "pm": "tsx scripts/pm-agent.ts"
+    "pm": "tsx scripts/pm-agent.ts",
+    "manifests:lint": "tsx scripts/lint-manifests.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.1",
