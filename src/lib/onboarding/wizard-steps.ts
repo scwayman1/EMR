@@ -20,6 +20,8 @@ import { step5DisableModalitiesDefinition } from "@/components/onboarding/steps/
 import { Step6ApplyWorkflows } from "@/components/onboarding/steps/step-6-apply-workflows";
 import { Step7ApplyCharting } from "@/components/onboarding/steps/step-7-apply-charting";
 import { Step8ApplyRoles } from "@/components/onboarding/steps/step-8-apply-roles";
+import { Step9PatientShell } from "@/components/onboarding/steps/step-9-patient-shell";
+import { Step10PhysicianShell } from "@/components/onboarding/steps/step-10-physician-shell";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -116,18 +118,31 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     canSkip: true,
     Component: Step8ApplyRoles,
   },
-  placeholder(
-    "apply-patient-shell",
-    "Apply patient shell",
-    "apply-roles",
-    "Apply the patient-facing shell — navigation, surfaces, and modules.",
-  ),
-  placeholder(
-    "apply-physician-shell",
-    "Apply physician shell",
-    "apply-patient-shell",
-    "Apply the physician-facing shell — chart layout and tools.",
-  ),
+  {
+    id: "apply-patient-shell",
+    title: "Apply patient shell",
+    description:
+      "Pick the patient portal layout — the cards your patients see when they sign in.",
+    isComplete: (draft) =>
+      typeof draft.patientShellTemplateId === "string" &&
+      draft.patientShellTemplateId.length > 0,
+    isReachable: (draft) =>
+      Array.isArray(draft.rolePermissionTemplateIds) &&
+      draft.rolePermissionTemplateIds.length > 0,
+    Component: Step9PatientShell,
+  },
+  {
+    id: "apply-physician-shell",
+    title: "Apply physician shell",
+    description:
+      "Pick the Mission Control layout — what your clinicians see when they sign in.",
+    isComplete: (draft) =>
+      typeof draft.physicianShellTemplateId === "string" &&
+      draft.physicianShellTemplateId.length > 0,
+    isReachable: (draft, completedSteps) =>
+      completedSteps.has("apply-patient-shell"),
+    Component: Step10PhysicianShell,
+  },
   placeholder(
     "configure-migration",
     "Configure migration",
