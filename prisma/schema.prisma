@@ -4011,6 +4011,7 @@ model PracticeConfiguration {
   organizationId                String
   practiceId                    String
   selectedSpecialty             String?
+  selectedSpecialtyVersion      String?
   careModel                     String?
   enabledModalities             String[] @default([])
   disabledModalities            String[] @default([])

@@ -39,6 +39,19 @@ export const SpecialtyManifestSchema = z
     description: z.string(),
     icon: z.string().min(1),
     version: z.string().regex(SEMVER, "version must be semver"),
+    /**
+     * EMR-431 — Deprecation flag.
+     *
+     * When `true`, the manifest is excluded from `listActiveSpecialtyTemplates()`
+     * and may NOT be used to seed a NEW PracticeConfiguration via
+     * `applyTemplateDefaults` (the registry throws "DEPRECATED_TEMPLATE").
+     *
+     * Existing configurations that recorded `(slug, version)` against this
+     * manifest continue to render — `getSpecialtyTemplate(slug, version)`
+     * still returns the deprecated manifest by exact-version lookup so we
+     * preserve immutability of published references.
+     */
+    deprecated: z.boolean().optional(),
     default_care_model: z.enum(REGISTERED_CARE_MODELS),
     default_workflows: z.array(z.string()).default([]),
     default_modules: z.array(z.string()).default([]),
