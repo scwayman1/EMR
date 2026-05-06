@@ -44,15 +44,50 @@ function isSharedPath(pathname: string): boolean {
 // Ensure the sign-in / sign-up routes and APIs are public
 const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/api(.*)", "/(.*)"]); // Wait, everything public? The previous middleware didn't enforce auth. Wait, in Next.js app router, the pages enforce auth.
 
-export default clerkMiddleware((auth, req) => {
+// EMR-428 — Practice Onboarding Controller surfaces. Coarse gate: must be
+// signed in. The route handlers/pages do the real role check via
+// `requireImplementationAdmin()` (defense in depth — middleware runs on the
+// edge and can't reach Prisma for the membership/role join).
+const isControllerSurface = createRouteMatcher([
+  "/onboarding/wizard(.*)",
+  "/api/configs(.*)",
+  "/templates(.*)",
+]);
+
+export default clerkMiddleware(async (auth, req) => {
   const host = req.headers.get("host") || "";
   const { pathname } = req.nextUrl;
 
   // Skip shared paths (API, static assets)
   if (isSharedPath(pathname)) {
-    return NextResponse.next();
+    // /api/configs is a controller surface even though it lives under /api —
+    // we still want to gate it. Don't early-return for it.
+    if (!pathname.startsWith("/api/configs")) {
+      return NextResponse.next();
+    }
   }
 
+  // ── EMR-428: Practice Onboarding Controller gate ─────────
+  // Coarse check: require an authenticated session. Non-admins who slip past
+  // here are stopped by `requireImplementationAdmin()` in the route handler.
+  if (isControllerSurface(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      // For API routes: 403 JSON (no redirect — would break clients).
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "FORBIDDEN", message: "Authentication required." },
+          { status: 403 },
+        );
+      }
+      // For page routes: send to the friendly forbidden surface.
+      const url = req.nextUrl.clone();
+      url.pathname = "/forbidden";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    // Authenticated — fall through to per-route role check downstream.
+  }
 
 
   // ── Leafmart domain routing ──────────────────────────────

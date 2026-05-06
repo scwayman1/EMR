@@ -32,6 +32,9 @@ enum Role {
   clinician
   operator
   practice_owner
+  practice_admin
+  implementation_admin
+  super_admin
   system
 }
 
@@ -103,6 +106,54 @@ model Organization {
   dispensaries             Dispensary[]
   supplyProducts           SupplyProduct[]
   dispensaryReimbursements DispensaryReimbursement[]
+  // EMR-420 — Practice Onboarding Controller
+  // Multiple practice locations / sub-entities can roll up under one
+  // Organization. The Practice is the unit of clinical configuration
+  // (specialty, formularies, etc.); the Organization remains the legal
+  // / billing umbrella.
+  practices                Practice[]
+
+  // EMR-420 — Identity / location fields surfaced in Step 1 of the
+  // Practice Onboarding wizard. Optional so the field can land before the
+  // PracticeConfiguration draft (EMR-409) catches up; required at the
+  // Zod input layer in the API route.
+  legalName             String?
+  brandName             String?
+  primaryContactName    String?
+  primaryContactEmail   String?
+  npi                   String? // 10-digit org NPI (free-form here; validated in API)
+  street                String?
+  city                  String?
+  state                 String?
+  postalCode            String?
+  timeZone              String? // IANA tz, e.g. "America/Los_Angeles"
+}
+
+// EMR-420 — A Practice is a single clinical location/group under an
+// Organization. Step 1 of the onboarding wizard creates the Org+Practice
+// pair; downstream steps (specialty, modules, branding) populate a
+// PracticeConfiguration owned by EMR-409.
+model Practice {
+  id                  String   @id @default(cuid())
+  organizationId      String
+  name                String
+  npi                 String? // optional group NPI
+  street              String?
+  city                String?
+  state               String?
+  postalCode          String?
+  timeZone            String? // IANA tz, default-handled at the input layer
+  // Free-text label only — the canonical specialty is selected in Step 2
+  // and persisted on PracticeConfiguration. NEVER use this field to drive
+  // clinical behavior or feature gating.
+  specialtyHint       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([name])
 }
 
 model User {
@@ -3915,4 +3966,51 @@ model SupplementCompound {
   updatedAt           DateTime                   @updatedAt
 
   @@index([category, active, sortOrder])
+}
+
+// --------------------------------------------------------------
+
+
+enum PracticeConfigurationStatus {
+  draft
+  published
+  archived
+}
+
+model PracticeConfiguration {
+  id                            String   @id @default(cuid())
+  organizationId                String
+  practiceId                    String
+  selectedSpecialty             String?
+  careModel                     String?
+  enabledModalities             String[] @default([])
+  disabledModalities            String[] @default([])
+  workflowTemplateIds           String[] @default([])
+  chartingTemplateIds           String[] @default([])
+  rolePermissionTemplateIds     String[] @default([])
+  physicianShellTemplateId      String?
+  patientShellTemplateId        String?
+  migrationProfileId            String?
+  regulatoryFlags               Json     @default("{}")
+  status                        PracticeConfigurationStatus @default(draft)
+  version                       Int      @default(1)
+  publishedAt                   DateTime?
+  publishedBy                   String?
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  @@index([practiceId, status])
+  @@index([organizationId])
+}
+
+model PracticeConfigurationVersion {
+  id              String   @id @default(cuid())
+  configurationId String
+  version         Int
+  snapshot        Json
+  publishedAt     DateTime @default(now())
+  publishedBy     String
+
+  @@unique([configurationId, version])
+  @@index([configurationId])
 }

@@ -75,7 +75,7 @@ export function PillarNav({ sections, header, footer }: PillarNavProps) {
 
   return (
     <div className="flex" data-nav-rail>
-      <aside className="flex w-16 shrink-0 flex-col items-center border-r border-border bg-surface">
+      <aside className="relative z-50 flex w-16 shrink-0 flex-col items-center border-r border-border bg-surface">
         {header}
         <div className="flex-1 w-full">
           <IconRail

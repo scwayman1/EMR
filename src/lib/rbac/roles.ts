@@ -6,6 +6,9 @@ export const ROLE_LABELS: Record<Role, string> = {
   clinician: "Clinician",
   operator: "Operator",
   practice_owner: "Practice Owner",
+  practice_admin: "Practice Admin",
+  implementation_admin: "Implementation Admin",
+  super_admin: "Super Admin",
   system: "System",
 };
 
@@ -15,6 +18,9 @@ export const ROLE_HOME: Record<Role, string> = {
   clinician: "/clinic",
   operator: "/ops",
   practice_owner: "/ops",
+  practice_admin: "/ops",
+  implementation_admin: "/onboarding",
+  super_admin: "/onboarding",
   system: "/ops/mission-control",
 };
 
@@ -22,7 +28,10 @@ export const ROLE_HOME: Record<Role, string> = {
 const ROUTE_GUARDS: Array<{ prefix: string; roles: Role[] }> = [
   { prefix: "/portal", roles: ["patient"] },
   { prefix: "/clinic", roles: ["clinician", "practice_owner"] },
-  { prefix: "/ops", roles: ["operator", "practice_owner", "system"] },
+  { prefix: "/ops", roles: ["operator", "practice_owner", "practice_admin", "system"] },
+  // EMR-428: onboarding controller — Super Admin / Implementation Admin only.
+  { prefix: "/onboarding/wizard", roles: ["super_admin", "implementation_admin"] },
+  { prefix: "/templates", roles: ["super_admin", "implementation_admin"] },
 ];
 
 /** Does this role have any permission to access this path prefix? */
@@ -37,7 +46,16 @@ export function canAccessPath(role: Role, path: string): boolean {
 
 /** The highest-privilege role from a set — used to pick the primary experience. */
 export function primaryRole(roles: Role[]): Role {
-  const order: Role[] = ["system", "practice_owner", "operator", "clinician", "patient"];
+  const order: Role[] = [
+    "super_admin",
+    "implementation_admin",
+    "system",
+    "practice_owner",
+    "practice_admin",
+    "operator",
+    "clinician",
+    "patient",
+  ];
   for (const r of order) if (roles.includes(r)) return r;
   return "patient";
 }
