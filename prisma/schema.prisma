@@ -4043,3 +4043,29 @@ model PracticeConfigurationVersion {
   @@unique([configurationId, version])
   @@index([configurationId])
 }
+
+// EMR-453 — Migration profile attached to a PracticeConfiguration.
+// One profile describes the source data set + per-category mapping plan that
+// the migration job runner (EMR-456) will execute when a practice imports
+// records from a previous EMR. The `categories` JSON array carries the
+// per-domain mapping rows (see src/lib/migration/profile-types.ts for the
+// canonical TS shape). Field-mapping detail lands in EMR-454; runtime import
+// execution lands in EMR-456.
+model MigrationProfile {
+  id              String   @id @default(cuid())
+  configurationId String
+  /// "csv" | "json" | "ehr-export" | "manual" | null (greenfield)
+  sourceType      String?
+  /// Array of category rows. See type definition below.
+  categories      Json     @default("[]")
+  /// "draft" | "configured" | "completed" | "archived"
+  status          String   @default("draft")
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  /// Soft delete only. Null until archived.
+  archivedAt      DateTime?
+
+  @@index([configurationId])
+  @@index([status])
+}
