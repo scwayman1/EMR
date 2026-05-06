@@ -15,6 +15,8 @@ import { PlaceholderStep } from "@/app/(super-admin)/onboarding/wizard/[draftId]
 import { Step1OrgPractice } from "@/components/onboarding/steps/step-1-org-practice";
 import { Step2Specialty } from "@/components/onboarding/steps/step-2-specialty";
 import { step3CareModelDefinition } from "@/components/onboarding/steps/step-3-care-model";
+import { step4EnableModalitiesDefinition } from "@/components/onboarding/steps/step-4-enable-modalities";
+import { step5DisableModalitiesDefinition } from "@/components/onboarding/steps/step-5-disable-modalities";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -80,18 +82,8 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     Component: Step2Specialty,
   },
   step3CareModelDefinition,
-  placeholder(
-    "enable-modalities",
-    "Enable modalities",
-    "select-care-model",
-    "Turn on the treatment modalities this practice offers.",
-  ),
-  placeholder(
-    "disable-modalities",
-    "Disable modalities",
-    "enable-modalities",
-    "Turn off any modalities not relevant to this practice.",
-  ),
+  step4EnableModalitiesDefinition,
+  step5DisableModalitiesDefinition,
   placeholder(
     "apply-workflows",
     "Apply workflows",
