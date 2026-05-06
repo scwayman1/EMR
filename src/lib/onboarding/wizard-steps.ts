@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // Wizard step registry.
 //
 // Owns the canonical *order* of the 15 onboarding steps and keeps a
@@ -14,6 +13,7 @@
 
 import { PlaceholderStep } from "@/app/(super-admin)/onboarding/wizard/[draftId]/placeholder-step";
 import { Step1OrgPractice } from "@/components/onboarding/steps/step-1-org-practice";
+import { Step2Specialty } from "@/components/onboarding/steps/step-2-specialty";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -69,13 +69,15 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     isReachable: () => true,
     Component: Step1OrgPractice,
   },
-  // EMR-421 — owns this slot.
-  placeholder(
-    "select-specialty",
-    "Select specialty",
-    "org-and-practice",
-    "Choose the clinical specialty this practice serves.",
-  ),
+  {
+    id: "select-specialty",
+    title: "Select specialty",
+    description: "Choose the clinical specialty this practice serves.",
+    isComplete: (draft) => draft.selectedSpecialty != null,
+    isReachable: (draft) =>
+      Boolean(draft.organizationId) && Boolean(draft.practiceId),
+    Component: Step2Specialty,
+  },
   // EMR-422 — owns this slot.
   placeholder(
     "select-care-model",
