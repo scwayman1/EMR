@@ -12,7 +12,7 @@ export const metadata = {
 
 const FOUNDERS = [
   {
-    name: "Dr. Neal H. Patel",
+    name: "Dr. Neal H. Patel, D.O.",
     title: "Co-Founder & CEO",
     bio: "Physician, innovator, and cannabis medicine pioneer. Dr. Patel combines decades of clinical experience with a fearless vision for patient-centered care. A true shaman of modern medicine — blending evidence-based practice with deep compassion for every patient's journey.",
     initials: "NP",
@@ -82,7 +82,7 @@ export default function AboutPage() {
       {/* Founders */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pb-20">
         <div className="max-w-2xl mb-14">
-          <Eyebrow className="mb-4">The team</Eyebrow>
+          <Eyebrow className="mb-4">Meet our team</Eyebrow>
           <h2 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
             Built by people who live this every day.
           </h2>
@@ -291,7 +291,7 @@ const EXECS: {
   {
     role: "CEO",
     title: "Chief Executive Officer",
-    name: "Dr. Neal H. Patel",
+    name: "Dr. Neal H. Patel, D.O.",
     initials: "NP",
     filled: true,
     focus: "Clinical vision, partnerships, and patient-centered strategy.",
