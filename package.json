@@ -21,7 +21,8 @@
     "test:smoke": "tsx scripts/smoke-test.ts",
     "pm": "tsx scripts/pm-agent.ts",
     "manifests:lint": "tsx scripts/lint-manifests.ts",
-    "audit:export": "tsx scripts/export-audit-log.ts"
+    "audit:export": "tsx scripts/export-audit-log.ts",
+    "lint:modality": "tsx scripts/lint-modality-bleed.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.1",
