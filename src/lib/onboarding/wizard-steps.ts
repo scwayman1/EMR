@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Wizard step registry.
 //
 // Owns the canonical *order* of the 15 onboarding steps and keeps a
@@ -12,6 +13,7 @@
 //    so the shell stays navigable while real steps are still being built.
 
 import { PlaceholderStep } from "@/app/(super-admin)/onboarding/wizard/[draftId]/placeholder-step";
+import { Step1OrgPractice } from "@/components/onboarding/steps/step-1-org-practice";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -55,13 +57,18 @@ function placeholder(
 // ---------------------------------------------------------------------------
 
 export const WIZARD_STEPS: WizardStepDefinition[] = [
-  // EMR-420 — owns this slot.
-  placeholder(
-    "org-and-practice",
-    "Organization & practice",
-    null,
-    "Pick the organization and practice this configuration belongs to.",
-  ),
+  {
+    id: "org-and-practice",
+    title: "Organization & practice",
+    description: "Pick an existing org and practice, or create them now.",
+    isComplete: (draft) =>
+      typeof draft.organizationId === "string" &&
+      draft.organizationId.length > 0 &&
+      typeof draft.practiceId === "string" &&
+      draft.practiceId.length > 0,
+    isReachable: () => true,
+    Component: Step1OrgPractice,
+  },
   // EMR-421 — owns this slot.
   placeholder(
     "select-specialty",
