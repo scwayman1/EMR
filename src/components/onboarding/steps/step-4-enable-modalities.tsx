@@ -24,7 +24,7 @@ import {
   REGISTERED_MODALITIES,
   type SpecialtyManifest,
 } from "@/lib/specialty-templates/manifest-schema";
-import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
+import { useActiveManifest } from "./preview-chrome";
 import type {
   WizardStepDefinition,
   WizardStepProps,
@@ -77,23 +77,7 @@ export function Step4EnableModalities({
   goNext,
   goBack,
 }: WizardStepProps) {
-  const [template, setTemplate] = useState<SpecialtyManifest | null>(() =>
-    draft.selectedSpecialty
-      ? getSpecialtyTemplate(draft.selectedSpecialty)
-      : null,
-  );
-
-  // The component reads the manifest directly via the registry (server-safe
-  // module-init data). The registry is loaded eagerly at boot, so this is
-  // synchronous. We still keep state to allow a future swap to async fetch
-  // without changing the rendering shape.
-  useEffect(() => {
-    if (!draft.selectedSpecialty) {
-      setTemplate(null);
-      return;
-    }
-    setTemplate(getSpecialtyTemplate(draft.selectedSpecialty));
-  }, [draft.selectedSpecialty]);
+  const template = useActiveManifest(draft.selectedSpecialty);
 
   // Seed: prefer existing draft.enabledModalities; fall back to manifest.
   const seedEnabled = useMemo<ModalitySet>(() => {

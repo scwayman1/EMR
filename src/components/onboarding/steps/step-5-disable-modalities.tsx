@@ -26,7 +26,7 @@ import {
   REGISTERED_MODALITIES,
   type SpecialtyManifest,
 } from "@/lib/specialty-templates/manifest-schema";
-import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
+import { useActiveManifest } from "./preview-chrome";
 import type {
   WizardStepDefinition,
   WizardStepProps,
@@ -57,19 +57,7 @@ export function Step5DisableModalities({
   goNext,
   goBack,
 }: WizardStepProps) {
-  const [template, setTemplate] = useState<SpecialtyManifest | null>(() =>
-    draft.selectedSpecialty
-      ? getSpecialtyTemplate(draft.selectedSpecialty)
-      : null,
-  );
-
-  useEffect(() => {
-    if (!draft.selectedSpecialty) {
-      setTemplate(null);
-      return;
-    }
-    setTemplate(getSpecialtyTemplate(draft.selectedSpecialty));
-  }, [draft.selectedSpecialty]);
+  const template = useActiveManifest(draft.selectedSpecialty);
 
   const enabled = useMemo<ModalitySet>(
     () => new Set((draft.enabledModalities as ModalityId[] | undefined) ?? []),

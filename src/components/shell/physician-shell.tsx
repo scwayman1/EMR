@@ -28,7 +28,7 @@ import { Tile, TilePlaceholder } from "@/components/ui/tile";
 import { TileGrid } from "@/components/ui/tile-grid";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
+import type { SpecialtyManifest } from "@/lib/specialty-templates/manifest-schema";
 import type { PracticeConfiguration } from "@/lib/practice-config/types";
 import {
   resolvePhysicianModules,
@@ -59,6 +59,12 @@ export interface PhysicianShellProps {
   >;
 
   /**
+   * The specialty manifest matching the config's selectedSpecialty. Passed in
+   * by the caller to keep this component client-safe when used in previews.
+   */
+  manifest?: SpecialtyManifest | null;
+
+  /**
    * Optional override for the modality registry. Defaults to the canonical
    * MODALITY_META once EMR-410 lands; until then the resolver runs without
    * `requires` cascade checks (still correct — manifests don't declare
@@ -69,13 +75,10 @@ export interface PhysicianShellProps {
 
 export function PhysicianShell({
   config,
+  manifest,
   modalityMeta = MODALITY_META_FALLBACK,
 }: PhysicianShellProps): React.JSX.Element {
-  const manifest = config.selectedSpecialty
-    ? getSpecialtyTemplate(config.selectedSpecialty)
-    : null;
-
-  const resolution = resolvePhysicianModules(config, manifest, { modalityMeta });
+  const resolution = resolvePhysicianModules(config, manifest ?? null, { modalityMeta });
 
   if (resolution.kind === "unknown-specialty") {
     return (

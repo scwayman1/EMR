@@ -26,15 +26,12 @@
 //     template rendering.
 //   - Does NOT mount any edit UI.
 
-import "server-only";
-
 import * as React from "react";
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
 import type { PracticeConfiguration } from "@/lib/practice-config/types";
 
 // EMR-410 (`@/lib/modality/registry`) is in flight in this storm but not yet
@@ -92,6 +89,9 @@ export interface PracticeAdminShellProps {
    *  so the user can switch which practice they're viewing. The shell just
    *  renders it — picking is the page's responsibility. */
   picker?: React.ReactNode;
+  /** Display name of the selected specialty. Passed from caller so this
+   *  component remains client-safe (no server registry imports). */
+  specialtyName?: string;
 }
 
 function formatAddress(p: PracticeSummary): string | null {
@@ -107,10 +107,8 @@ export function PracticeAdminShell({
   config,
   practice,
   picker,
+  specialtyName,
 }: PracticeAdminShellProps) {
-  const manifest = config.selectedSpecialty
-    ? getSpecialtyTemplate(config.selectedSpecialty)
-    : null;
 
   const enabled = config.enabledModalities ?? [];
   const disabled = config.disabledModalities ?? [];
@@ -193,7 +191,7 @@ export function PracticeAdminShell({
                   config.selectedSpecialty ? (
                     <span className="flex flex-col">
                       <span className="text-text">
-                        {manifest?.name ?? config.selectedSpecialty}
+                        {specialtyName ?? config.selectedSpecialty}
                       </span>
                       <code className="text-[11px] text-text-subtle bg-surface-muted px-1.5 py-0.5 rounded mt-1 self-start">
                         {config.selectedSpecialty}

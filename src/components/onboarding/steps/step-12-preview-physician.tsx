@@ -15,6 +15,7 @@ import {
   PreviewBanner,
   DraftSummaryPanel,
   useDraftSummary,
+  useActiveManifest,
 } from "./preview-chrome";
 
 export function Step12PreviewPhysician({
@@ -24,6 +25,7 @@ export function Step12PreviewPhysician({
   isLast,
 }: WizardStepProps) {
   const summary = useDraftSummary(draft);
+  const manifest = useActiveManifest(draft.selectedSpecialty);
 
   // EMR-427: previewing draft as if published — required fields are
   // validated by the publish step before this is reachable
@@ -34,7 +36,7 @@ export function Step12PreviewPhysician({
       <PreviewBanner />
 
       <section aria-label="Physician shell preview">
-        <PhysicianShell config={previewConfig} />
+        <PhysicianShell config={previewConfig} manifest={manifest} />
       </section>
 
       <DraftSummaryPanel summary={summary} />
