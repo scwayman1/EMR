@@ -19,9 +19,8 @@ export const ROLE_HOME: Record<Role, string> = {
   operator: "/ops",
   practice_owner: "/ops",
   practice_admin: "/ops",
-  // EMR-428: LeafJourney internal roles land on the controller surface.
-  implementation_admin: "/onboarding/wizard",
-  super_admin: "/onboarding/wizard",
+  implementation_admin: "/onboarding",
+  super_admin: "/onboarding",
   system: "/ops/mission-control",
 };
 
