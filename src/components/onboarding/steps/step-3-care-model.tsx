@@ -8,7 +8,7 @@
 // override requires a written justification which is recorded in the
 // controller audit log (EMR-428).
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,8 @@ import { FieldGroup, Textarea } from "@/components/ui/input";
 import {
   REGISTERED_CARE_MODELS as CARE_MODELS,
   type RegisteredCareModel as CareModel,
+  type SpecialtyManifest,
 } from "@/lib/specialty-templates/manifest-schema";
-import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -66,17 +66,61 @@ const CARE_MODEL_OPTIONS: Record<
 };
 
 export function Step3CareModel({ draft, patch, goNext, goBack }: WizardStepProps) {
-  const template = useMemo(
-    () =>
-      draft.selectedSpecialty
-        ? getSpecialtyTemplate(draft.selectedSpecialty)
-        : null,
-    [draft.selectedSpecialty]
+  const [template, setTemplate] = useState<SpecialtyManifest | null>(null);
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!draft.selectedSpecialty) {
+      setIsLoadingTemplate(false);
+      return;
+    }
+    fetch("/api/specialty-templates")
+      .then((res) => res.json())
+      .then((data: { items: SpecialtyManifest[] }) => {
+        if (cancelled) return;
+        const found = data.items.find((m) => m.slug === draft.selectedSpecialty);
+        setTemplate(found || null);
+        setIsLoadingTemplate(false);
+      })
+      .catch(() => {
+        if (!cancelled) setIsLoadingTemplate(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft.selectedSpecialty]);
+
+  const defaultCareModel = template?.default_care_model as CareModel | undefined;
+  
+  const [selected, setSelected] = useState<CareModel | null>(
+    (draft.careModel as CareModel | null) ?? null
   );
+  
+  // Update selected once default is loaded if we didn't have one
+  useEffect(() => {
+    if (!selected && defaultCareModel) {
+      setSelected(defaultCareModel);
+    }
+  }, [defaultCareModel, selected]);
+
+  const [reason, setReason] = useState<string>(
+    (draft.regulatoryFlags as { careModelOverrideReason?: string } | undefined)?.careModelOverrideReason ?? ""
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (isLoadingTemplate) {
+    return (
+      <div className="rounded-xl border border-dashed border-border-strong/60 bg-surface-muted p-8 text-center text-sm text-text-muted">
+        Loading care model recommendations...
+      </div>
+    );
+  }
 
   // Manifest could legitimately be missing if a specialty was registered when
   // the draft was created but later removed. Render a recoverable error.
-  if (!template) {
+  if (!template || !defaultCareModel) {
     return (
       <Card className="p-6">
         <h2 className="font-display text-lg font-medium text-text">
@@ -95,17 +139,6 @@ export function Step3CareModel({ draft, patch, goNext, goBack }: WizardStepProps
       </Card>
     );
   }
-
-  const defaultCareModel = template.default_care_model;
-  const [selected, setSelected] = useState<CareModel>(
-    (draft.careModel as CareModel | null) ?? defaultCareModel
-  );
-  const [reason, setReason] = useState<string>(
-    (draft.regulatoryFlags as { careModelOverrideReason?: string } | undefined)?.careModelOverrideReason ?? ""
-  );
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const isOverride = selected !== defaultCareModel;
   const reasonLength = reason.trim().length;
   const reasonValid =
@@ -219,7 +252,11 @@ export function Step3CareModel({ draft, patch, goNext, goBack }: WizardStepProps
               onChange={(e) => setReason(e.target.value)}
               maxLength={REASON_MAX}
               rows={4}
-              placeholder={`Why is "${CARE_MODEL_OPTIONS[selected].label}" a better fit than the recommended "${CARE_MODEL_OPTIONS[defaultCareModel].label}" for this ${template.name} practice?`}
+              placeholder={
+                selected && defaultCareModel
+                  ? `Why is "${CARE_MODEL_OPTIONS[selected].label}" a better fit than the recommended "${CARE_MODEL_OPTIONS[defaultCareModel].label}" for this ${template?.name ?? "specialty"} practice?`
+                  : "Explain why this care model is right for this practice."
+              }
             />
           </FieldGroup>
         </Card>
