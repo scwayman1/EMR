@@ -56,6 +56,10 @@ export async function POST(req: Request) {
         practiceId,
         status: "draft",
         selectedSpecialty: selectedSpecialty ?? null,
+        // EMR-431: anchor the draft to the manifest version the registry
+        // resolved at create time, so a subsequent publish records the same
+        // (slug, version) pair the wizard saw.
+        selectedSpecialtyVersion: seed.selectedSpecialtyVersion ?? null,
         careModel: seed.careModel ?? null,
         enabledModalities: seed.enabledModalities ?? [],
         disabledModalities: seed.disabledModalities ?? [],
