@@ -7,7 +7,10 @@
 // to surface based on the draft's templates and modality flags.
 
 import { Button } from "@/components/ui/button";
-import { PracticeAdminShell } from "@/components/shell/practice-admin-shell";
+import {
+  PracticeAdminShell,
+  type PracticeSummary,
+} from "@/components/shell/practice-admin-shell";
 import type { PracticeConfiguration } from "@/lib/practice-config/types";
 import type { WizardStepProps } from "@/lib/onboarding/wizard-types";
 import {
@@ -28,12 +31,26 @@ export function Step14PreviewPracticeAdmin({
   // validated by the publish step before this is reachable
   const previewConfig = draft as PracticeConfiguration;
 
+  // The wizard doesn't carry the full Practice row in the draft; build a
+  // best-effort PracticeSummary from what we have. Address fields are nulled —
+  // EMR-447's renderer handles null gracefully.
+  const previewPractice: PracticeSummary = {
+    id: draft.practiceId ?? "preview",
+    name: "Practice preview",
+    brandName: null,
+    npi: null,
+    street: null,
+    city: null,
+    state: null,
+    postalCode: null,
+  };
+
   return (
     <div className="space-y-6">
       <PreviewBanner />
 
       <section aria-label="Practice admin shell preview">
-        <PracticeAdminShell config={previewConfig} />
+        <PracticeAdminShell config={previewConfig} practice={previewPractice} />
       </section>
 
       <DraftSummaryPanel summary={summary} />
