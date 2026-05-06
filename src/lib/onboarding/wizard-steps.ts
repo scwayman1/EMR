@@ -14,6 +14,7 @@
 import { PlaceholderStep } from "@/app/(super-admin)/onboarding/wizard/[draftId]/placeholder-step";
 import { Step1OrgPractice } from "@/components/onboarding/steps/step-1-org-practice";
 import { Step2Specialty } from "@/components/onboarding/steps/step-2-specialty";
+import { step3CareModelDefinition } from "@/components/onboarding/steps/step-3-care-model";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -78,13 +79,7 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
       Boolean(draft.organizationId) && Boolean(draft.practiceId),
     Component: Step2Specialty,
   },
-  // EMR-422 — owns this slot.
-  placeholder(
-    "select-care-model",
-    "Select care model",
-    "select-specialty",
-    "Pick the care model that defines how this practice delivers care.",
-  ),
+  step3CareModelDefinition,
   placeholder(
     "enable-modalities",
     "Enable modalities",
