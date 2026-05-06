@@ -17,6 +17,9 @@ import { Step2Specialty } from "@/components/onboarding/steps/step-2-specialty";
 import { step3CareModelDefinition } from "@/components/onboarding/steps/step-3-care-model";
 import { step4EnableModalitiesDefinition } from "@/components/onboarding/steps/step-4-enable-modalities";
 import { step5DisableModalitiesDefinition } from "@/components/onboarding/steps/step-5-disable-modalities";
+import { Step6ApplyWorkflows } from "@/components/onboarding/steps/step-6-apply-workflows";
+import { Step7ApplyCharting } from "@/components/onboarding/steps/step-7-apply-charting";
+import { Step8ApplyRoles } from "@/components/onboarding/steps/step-8-apply-roles";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -84,24 +87,35 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
   step3CareModelDefinition,
   step4EnableModalitiesDefinition,
   step5DisableModalitiesDefinition,
-  placeholder(
-    "apply-workflows",
-    "Apply workflows",
-    "disable-modalities",
-    "Apply the workflow templates that match the selected care model.",
-  ),
-  placeholder(
-    "apply-charting",
-    "Apply charting",
-    "apply-workflows",
-    "Apply the charting templates and structured note formats.",
-  ),
-  placeholder(
-    "apply-roles",
-    "Apply roles",
-    "apply-charting",
-    "Apply role definitions and permission groups for this practice.",
-  ),
+  {
+    id: "apply-workflows",
+    title: "Apply workflows",
+    description:
+      "Apply the workflow templates that match the selected care model.",
+    isComplete: (draft) => Array.isArray(draft.workflowTemplateIds),
+    isReachable: priorComplete("disable-modalities"),
+    canSkip: true,
+    Component: Step6ApplyWorkflows,
+  },
+  {
+    id: "apply-charting",
+    title: "Apply charting",
+    description: "Apply the charting templates and structured note formats.",
+    isComplete: (draft) => Array.isArray(draft.chartingTemplateIds),
+    isReachable: priorComplete("apply-workflows"),
+    canSkip: true,
+    Component: Step7ApplyCharting,
+  },
+  {
+    id: "apply-roles",
+    title: "Apply roles",
+    description:
+      "Apply role definitions and permission groups for this practice.",
+    isComplete: (draft) => Array.isArray(draft.rolePermissionTemplateIds),
+    isReachable: priorComplete("apply-charting"),
+    canSkip: true,
+    Component: Step8ApplyRoles,
+  },
   placeholder(
     "apply-patient-shell",
     "Apply patient shell",
