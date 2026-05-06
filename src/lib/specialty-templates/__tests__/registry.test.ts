@@ -14,14 +14,25 @@ import {
 } from "@/lib/specialty-templates/registry";
 
 describe("specialty-template registry", () => {
-  it("loads and validates all three v1 manifests", () => {
+  it("loads and validates all three v1 manifests (plus the test fixture under NODE_ENV=test)", () => {
     const slugs = listActiveSpecialtyTemplates()
       .map((m) => m.slug)
       .sort();
 
+    // EMR-433: under NODE_ENV=test the registry also picks up
+    // `test-fixture-specialty` via file-system discovery. The three v1
+    // production specialties must always be present; the fixture rides
+    // along under test only.
     expect(slugs).toEqual(
-      ["cannabis-medicine", "internal-medicine", "pain-management-non-cannabis"].sort(),
+      expect.arrayContaining([
+        "cannabis-medicine",
+        "internal-medicine",
+        "pain-management-non-cannabis",
+      ]),
     );
+    // Sanity: registry must never load the fixture in non-test mode. That
+    // path is exercised explicitly in extensibility.test.ts.
+    expect(slugs).toContain("test-fixture-specialty");
   });
 
   it("getSpecialtyTemplate returns the manifest for a known slug and null otherwise", () => {

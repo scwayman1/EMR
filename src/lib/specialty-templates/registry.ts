@@ -1,5 +1,5 @@
 /**
- * Specialty Template Registry — EMR-408
+ * Specialty Template Registry — EMR-408 / EMR-433
  *
  * Single source of truth for the specialty manifests that the Practice
  * Onboarding Controller (EMR-409+) uses to seed a draft PracticeConfiguration.
@@ -9,26 +9,32 @@
  *     never branches on `slug === 'cannabis-medicine'`. Cannabis behaviour
  *     is a manifest configuration — not a controller code path.
  *   - Adding a new specialty MUST be a manifest file drop under ./manifests/.
- *     This file should not need to change.
+ *     This file should not need to change. (EMR-433.)
  *   - Pain Management (non-cannabis) is the v1 acceptance gate: its manifest
  *     MUST list "cannabis-medicine" in default_disabled_modalities (not just
  *     omit it from enabled). The registry trusts the manifest — it does not
  *     re-derive disabled lists from absence.
  *
- * Boot behaviour:
- *   At module-init time the registry enumerates ./manifests/, validates every
- *   manifest via SpecialtyManifestSchema, and throws a descriptive error if
- *   ANY manifest is invalid. This fail-loud behaviour is intentional — a
- *   silently-skipped bad manifest could cause a practice to onboard with the
- *   wrong modality bleed and is the kind of regression that's only caught in
- *   production.
+ * Boot behaviour (EMR-433):
+ *   At module-init time the registry enumerates ./manifests/ via readdirSync,
+ *   dynamic-loads every `*.ts` file (and, when EMR-431 lands, every
+ *   `{slug}/v*.ts` nested versioned file) via `createRequire`, validates the
+ *   default export with SpecialtyManifestSchema, and throws a descriptive
+ *   error if ANY manifest is invalid. This fail-loud behaviour is intentional
+ *   — a silently-skipped bad manifest could cause a practice to onboard with
+ *   the wrong modality bleed and is the kind of regression that's only caught
+ *   in production.
+ *
+ *   Files matching `/test-fixture-/` are skipped UNLESS NODE_ENV === 'test',
+ *   so the test fixture specialty does not pollute production specialty
+ *   listings.
  */
 
-import { readdirSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// TODO(EMR-429): integrate once the manifest-schema branch lands.
 import {
   validateManifest,
   type SpecialtyManifest,
@@ -49,54 +55,113 @@ type PracticeConfigurationSeed = {
   patientShellTemplateId: string | null;
 };
 
-// Eager static imports of every v1 manifest. Adding a new specialty = drop a
-// file under ./manifests/ AND add one line here. The directory listing below
-// is asserted at boot to catch the case where a contributor drops a file but
-// forgets the import — fail-loud, not silently skip.
-import internalMedicine from "./manifests/internal-medicine";
-import painManagementNonCannabis from "./manifests/pain-management-non-cannabis";
-import cannabisMedicine from "./manifests/cannabis-medicine";
-
-const REGISTERED_FILES: Record<string, unknown> = {
-  "internal-medicine.ts": internalMedicine,
-  "pain-management-non-cannabis.ts": painManagementNonCannabis,
-  "cannabis-medicine.ts": cannabisMedicine,
-};
-
 type RegistryEntry = SpecialtyManifest & { active: boolean };
+
+const TEST_FIXTURE_PATTERN = /test-fixture-/;
+
+/**
+ * Pull the manifest object out of a freshly-loaded module record.
+ * Manifests are exported as `export default <object>`, but we accept any
+ * non-null object export to remain forgiving of TypeScript transpilation
+ * differences (CJS interop where `default` lives under `.default`).
+ */
+function extractManifest(mod: unknown): unknown {
+  if (mod === null || typeof mod !== "object") return mod;
+  const m = mod as Record<string, unknown>;
+  if ("default" in m && m.default && typeof m.default === "object") {
+    return m.default;
+  }
+  return mod;
+}
 
 function loadManifests(): Map<string, RegistryEntry> {
   const map = new Map<string, RegistryEntry>();
 
-  // Cross-check: every .ts file in ./manifests/ MUST appear in REGISTERED_FILES.
-  // We don't dynamic-import (Next/webpack hostility), but we do enforce that
-  // the import list and the directory contents stay in sync.
-  let directoryFiles: string[] = [];
+  const here = dirname(fileURLToPath(import.meta.url));
+  const manifestDir = join(here, "manifests");
+
+  // `createRequire` gives us a synchronous loader from this ESM module.
+  // We need sync because the registry exports a sync API
+  // (`listActiveSpecialtyTemplates`), and module-init can't `await`.
+  const requireFn = createRequire(import.meta.url);
+
+  const includeTestFixtures = process.env.NODE_ENV === "test";
+
+  // Discovery: every `*.ts` file in the manifests/ directory plus, for the
+  // versioned nested layout coming with EMR-431, every `*.ts` file inside a
+  // `{slug}/` subdirectory. Both layouts coexist — flat `slug.ts` files and
+  // `slug/vX.Y.Z.ts` files — and the registry treats them the same.
+  const candidatePaths: string[] = [];
+  let entries: string[] = [];
   try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const manifestDir = join(here, "manifests");
-    directoryFiles = readdirSync(manifestDir).filter(
-      (f) => f.endsWith(".ts") && !f.endsWith(".d.ts") && !f.endsWith(".test.ts"),
+    entries = readdirSync(manifestDir);
+  } catch (err) {
+    throw new Error(
+      `[specialty-templates] cannot read manifests directory ` +
+        `"${manifestDir}": ${(err as Error).message}`,
     );
-  } catch {
-    // In some bundled / browser-side contexts fs is unavailable. The registry
-    // is a server-side concern; if fs isn't there we fall back to whatever's
-    // statically imported and skip the directory cross-check. Validation of
-    // imported manifests still runs.
-    directoryFiles = Object.keys(REGISTERED_FILES);
   }
 
-  for (const file of directoryFiles) {
-    if (!(file in REGISTERED_FILES)) {
-      throw new Error(
-        `[specialty-templates] manifest file "${file}" exists on disk but is ` +
-          `not imported in registry.ts. Add it to REGISTERED_FILES so the ` +
-          `registry can validate and load it.`,
-      );
+  for (const entry of entries) {
+    const full = join(manifestDir, entry);
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch {
+      continue;
+    }
+
+    if (stat.isFile()) {
+      if (
+        entry.endsWith(".ts") &&
+        !entry.endsWith(".d.ts") &&
+        !entry.endsWith(".test.ts")
+      ) {
+        candidatePaths.push(full);
+      }
+      continue;
+    }
+
+    if (stat.isDirectory()) {
+      // EMR-431 nested layout: manifests/{slug}/v{X.Y.Z}.ts.
+      let nested: string[] = [];
+      try {
+        nested = readdirSync(full);
+      } catch {
+        continue;
+      }
+      for (const child of nested) {
+        if (
+          child.endsWith(".ts") &&
+          !child.endsWith(".d.ts") &&
+          !child.endsWith(".test.ts")
+        ) {
+          candidatePaths.push(join(full, child));
+        }
+      }
     }
   }
 
-  for (const [file, raw] of Object.entries(REGISTERED_FILES)) {
+  for (const file of candidatePaths) {
+    const basename = file.slice(file.lastIndexOf("/") + 1);
+    if (!includeTestFixtures && TEST_FIXTURE_PATTERN.test(basename)) {
+      continue;
+    }
+
+    let raw: unknown;
+    try {
+      // Sync dynamic-load. tsx / vitest / Next's server runtime all support
+      // requiring `.ts` under their respective loaders; in plain Node we'd
+      // pre-compile, but every runtime that calls into this module already
+      // has TS support wired up.
+      raw = extractManifest(requireFn(file));
+    } catch (err) {
+      throw new Error(
+        `[specialty-templates] failed to load manifest "${file}": ` +
+          `${(err as Error).message}`,
+      );
+    }
+
     const result = validateManifest(raw);
     if (!result.ok) {
       throw new Error(
@@ -208,7 +273,8 @@ export function applyTemplateDefaults(
 /**
  * Test-only escape hatch: re-run boot validation. Useful when a test wants
  * to confirm that the current import-time state is still valid after
- * mutating manifests in-memory. Production callers should not need this.
+ * mutating manifests in-memory or after toggling NODE_ENV. Production
+ * callers should not need this.
  */
 export function __reloadForTests(): void {
   const fresh = loadManifests();
