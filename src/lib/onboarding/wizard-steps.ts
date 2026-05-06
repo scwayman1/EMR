@@ -15,6 +15,7 @@ import { PlaceholderStep } from "@/app/(super-admin)/onboarding/wizard/[draftId]
 import { Step1OrgPractice } from "@/components/onboarding/steps/step-1-org-practice";
 import { Step2Specialty } from "@/components/onboarding/steps/step-2-specialty";
 import { step3CareModelDefinition } from "@/components/onboarding/steps/step-3-care-model";
+<<<<<<< HEAD
 import { step4EnableModalitiesDefinition } from "@/components/onboarding/steps/step-4-enable-modalities";
 import { step5DisableModalitiesDefinition } from "@/components/onboarding/steps/step-5-disable-modalities";
 import { Step6ApplyWorkflows } from "@/components/onboarding/steps/step-6-apply-workflows";
@@ -22,6 +23,7 @@ import { Step7ApplyCharting } from "@/components/onboarding/steps/step-7-apply-c
 import { Step8ApplyRoles } from "@/components/onboarding/steps/step-8-apply-roles";
 import { Step9PatientShell } from "@/components/onboarding/steps/step-9-patient-shell";
 import { Step10PhysicianShell } from "@/components/onboarding/steps/step-10-physician-shell";
+import { step11ConfigureMigrationDefinition } from "@/components/onboarding/steps/step-11-configure-migration";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -143,12 +145,7 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
       completedSteps.has("apply-patient-shell"),
     Component: Step10PhysicianShell,
   },
-  placeholder(
-    "configure-migration",
-    "Configure migration",
-    "apply-physician-shell",
-    "Decide how existing data will migrate into the new configuration.",
-  ),
+  step11ConfigureMigrationDefinition,
   placeholder(
     "preview-physician",
     "Preview physician",
