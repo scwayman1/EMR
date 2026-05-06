@@ -37,10 +37,7 @@
  *     Exact-version lookups still resolve so existing configs keep rendering.
  */
 
-import { readdirSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+
 
 import {
   validateManifest,
@@ -128,86 +125,36 @@ function extractManifest(mod: unknown): unknown {
   return mod;
 }
 
-function discoverManifestPaths(manifestDir: string): string[] {
-  const candidatePaths: string[] = [];
-
-  let entries: string[] = [];
-  try {
-    entries = readdirSync(manifestDir);
-  } catch (err) {
-    throw new Error(
-      `[specialty-templates] cannot read manifests directory ` +
-        `"${manifestDir}": ${(err as Error).message}`,
-    );
-  }
-
-  for (const entry of entries) {
-    const full = join(manifestDir, entry);
-    let stat;
-    try {
-      stat = statSync(full);
-    } catch {
-      continue;
-    }
-
-    if (stat.isFile()) {
-      if (
-        entry.endsWith(".ts") &&
-        !entry.endsWith(".d.ts") &&
-        !entry.endsWith(".test.ts")
-      ) {
-        candidatePaths.push(full);
-      }
-      continue;
-    }
-
-    if (stat.isDirectory()) {
-      // Versioned nested layout: manifests/{slug}/v{X.Y.Z}.ts
-      let nested: string[] = [];
-      try {
-        nested = readdirSync(full);
-      } catch {
-        continue;
-      }
-      for (const child of nested) {
-        if (
-          child.endsWith(".ts") &&
-          !child.endsWith(".d.ts") &&
-          !child.endsWith(".test.ts")
-        ) {
-          candidatePaths.push(join(full, child));
-        }
-      }
-    }
-  }
-
-  return candidatePaths;
-}
-
 function loadManifests(): void {
   REGISTRY.clear();
   LATEST_BY_SLUG.clear();
 
-  const here = dirname(fileURLToPath(import.meta.url));
-  const manifestDir = join(here, "manifests");
-  const requireFn = createRequire(import.meta.url);
   const includeTestFixtures = process.env.NODE_ENV === "test";
 
-  const candidatePaths = discoverManifestPaths(manifestDir);
+  // Webpack require.context allows us to dynamically require files in a
+  // directory at runtime by bundling them at build time. This satisfies the
+  // architecture constraint (no hardcoded imports) while being Next.js safe.
+  // @ts-ignore - require.context is a Webpack specific API
+  const requireCtx = require.context("./manifests", true, /\.ts$/);
+  const candidateKeys = requireCtx.keys();
 
   // First pass: validate + index every discovered manifest.
-  for (const file of candidatePaths) {
-    const basename = file.slice(file.lastIndexOf("/") + 1);
+  for (const key of candidateKeys) {
+    if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) {
+      continue;
+    }
+
+    const basename = key.slice(key.lastIndexOf("/") + 1);
     if (!includeTestFixtures && TEST_FIXTURE_PATTERN.test(basename)) {
       continue;
     }
 
     let raw: unknown;
     try {
-      raw = extractManifest(requireFn(file));
+      raw = extractManifest(requireCtx(key));
     } catch (err) {
       throw new Error(
-        `[specialty-templates] failed to load manifest "${file}": ` +
+        `[specialty-templates] failed to load manifest "${key}": ` +
           `${(err as Error).message}`,
       );
     }
@@ -215,7 +162,7 @@ function loadManifests(): void {
     const result = validateManifest(raw);
     if (!result.ok) {
       throw new Error(
-        `[specialty-templates] invalid manifest in "${file}":\n  ` +
+        `[specialty-templates] invalid manifest in "${key}":\n  ` +
           result.errors.join("\n  "),
       );
     }
@@ -230,14 +177,14 @@ function loadManifests(): void {
         ? false
         : true;
 
-    const key = versionKey(manifest.slug, manifest.version);
-    if (REGISTRY.has(key)) {
+    const versionedKey = versionKey(manifest.slug, manifest.version);
+    if (REGISTRY.has(versionedKey)) {
       throw new Error(
-        `[specialty-templates] duplicate manifest "${key}" — registered ` +
-          `twice. Each (slug, version) pair must be unique. Source: ${file}`,
+        `[specialty-templates] duplicate manifest "${versionedKey}" — registered ` +
+          `twice. Each (slug, version) pair must be unique. Source: ${key}`,
       );
     }
-    REGISTRY.set(key, { ...manifest, active, source: file });
+    REGISTRY.set(versionedKey, { ...manifest, active, source: key });
   }
 
   // Second pass: compute the latest non-deprecated version per slug.

@@ -50,7 +50,11 @@ export function Step14PreviewPracticeAdmin({
       <PreviewBanner />
 
       <section aria-label="Practice admin shell preview">
-        <PracticeAdminShell config={previewConfig} practice={previewPractice} />
+        <PracticeAdminShell 
+          config={previewConfig} 
+          practice={previewPractice} 
+          specialtyName={summary.specialty.name}
+        />
       </section>
 
       <DraftSummaryPanel summary={summary} />
