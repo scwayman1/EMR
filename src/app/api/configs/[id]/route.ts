@@ -6,13 +6,10 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-// TODO(EMR-428): integrate `requireImplementationAdmin` + `logControllerAction`
-// once src/lib/auth/super-admin.ts lands.
-import {
-  requireImplementationAdmin,
-  logControllerAction,
-} from "@/lib/auth/super-admin";
+import { requireImplementationAdmin } from "@/lib/auth/super-admin";
+import { logControllerAction } from "@/lib/auth/audit-stub";
 // TODO(EMR-409): swap to the canonical `DraftPracticeConfigurationInput`
 // re-export from src/lib/practice-config/types.ts once that file lands. For
 // now we accept the partial JSON-blob shape EMR-409 documents.
@@ -84,22 +81,14 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
     const updated = await prisma.practiceConfiguration.update({
       where: { id: params.id },
-      data: {
-        // Spread of caller-supplied draft fields. Strict per-field validation
-        // is the responsibility of EMR-429; we have already rejected the
-        // protected fields above.
-        ...update,
-        updatedBy: admin.id,
-      },
+      data: update as Prisma.PracticeConfigurationUpdateInput,
     });
 
     await logControllerAction({
-      actorId: admin.id,
-      action: "practice_config.updated",
-      configurationId: updated.id,
-      organizationId: updated.organizationId,
-      practiceId: updated.practiceId,
-      metadata: { keys: Object.keys(update) },
+      actor: admin,
+      action: "controller.config.updated",
+      targetId: updated.id,
+      after: { keys: Object.keys(update) },
     });
 
     return NextResponse.json(updated);

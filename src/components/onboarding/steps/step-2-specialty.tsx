@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Eyebrow, EditorialRule } from "@/components/ui/ornament";
 import { cn } from "@/lib/utils/cn";
 import type { SpecialtyManifest } from "@/lib/specialty-templates/manifest-schema";
-import type { WizardStepProps } from "@/lib/onboarding/wizard-types";
+import type { WizardStepProps, PracticeConfiguration } from "@/lib/onboarding/wizard-types";
 
 type LucideIcon = React.ComponentType<{ size?: number; className?: string }>;
 
@@ -33,8 +33,8 @@ interface FetchedTemplates {
 
 export function Step2Specialty({
   draft,
-  onAdvance,
-  onDraftChanged,
+  patch,
+  goNext,
 }: WizardStepProps) {
   const [templates, setTemplates] = React.useState<FetchedTemplates>({
     status: "loading",
@@ -125,6 +125,11 @@ export function Step2Specialty({
       setOverrideAcknowledged(true);
       return;
     }
+    if (!draft.id) {
+      setSubmitState("error");
+      setSubmitError("No draft id — cannot apply specialty.");
+      return;
+    }
     setSubmitState("submitting");
     setSubmitError(null);
     try {
@@ -140,9 +145,10 @@ export function Step2Specialty({
         const text = await res.text().catch(() => "");
         throw new Error(text || `HTTP ${res.status}`);
       }
-      await onDraftChanged?.();
+      const data = (await res.json()) as { applied?: Partial<PracticeConfiguration> };
+      if (data.applied) patch(data.applied);
       setSubmitState("idle");
-      onAdvance();
+      goNext();
     } catch (err: unknown) {
       setSubmitState("error");
       setSubmitError(err instanceof Error ? err.message : "Failed to apply");
@@ -342,8 +348,8 @@ const SpecialtyCard = React.forwardRef<HTMLButtonElement, SpecialtyCardProps>(
             </div>
 
             <p className="pt-1 text-xs text-text-muted">
-              {manifest.default_workflows_count} workflows &middot;{" "}
-              {manifest.default_charting_templates_count} charting templates
+              {manifest.default_workflows.length} workflows &middot;{" "}
+              {manifest.default_charting_templates.length} charting templates
             </p>
           </CardContent>
         </Card>

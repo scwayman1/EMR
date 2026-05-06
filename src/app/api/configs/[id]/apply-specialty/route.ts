@@ -58,8 +58,8 @@ export async function POST(
     at: new Date().toISOString(),
     draftId,
     slug: parsed.data.slug,
-    enabledCount: defaults.enabledModalities.length,
-    disabledCount: defaults.disabledModalities.length,
+    enabledCount: (defaults.enabledModalities ?? []).length,
+    disabledCount: (defaults.disabledModalities ?? []).length,
   });
 
   return NextResponse.json({

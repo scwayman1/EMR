@@ -8,12 +8,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-// TODO(EMR-428): integrate `requireImplementationAdmin` + `logControllerAction`
-// once src/lib/auth/super-admin.ts lands.
-import {
-  requireImplementationAdmin,
-  logControllerAction,
-} from "@/lib/auth/super-admin";
+import { requireImplementationAdmin } from "@/lib/auth/super-admin";
+import { logControllerAction } from "@/lib/auth/audit-stub";
 // TODO(EMR-408): integrate `applyTemplateDefaults` once
 // src/lib/specialty-templates/registry.ts lands.
 import { applyTemplateDefaults } from "@/lib/specialty-templates/registry";
@@ -51,31 +47,30 @@ export async function POST(req: Request) {
     // defaults from the EMR-408 registry. Otherwise we create an empty draft
     // and let the wizard fill it in later.
     const seed = selectedSpecialty
-      ? await applyTemplateDefaults(selectedSpecialty)
+      ? applyTemplateDefaults(selectedSpecialty)
       : {};
 
-    // TODO(EMR-409): once `PracticeConfiguration` lands in prisma/schema.prisma
-    // these field names are taken from the EMR-409 ticket spec
-    // (status='draft', version=0, publishedAt/publishedBy null, settings JSON).
     const created = await prisma.practiceConfiguration.create({
       data: {
         organizationId,
         practiceId,
         status: "draft",
-        version: 0,
         selectedSpecialty: selectedSpecialty ?? null,
-        settings: seed,
-        createdBy: admin.id,
+        careModel: seed.careModel ?? null,
+        enabledModalities: seed.enabledModalities ?? [],
+        disabledModalities: seed.disabledModalities ?? [],
+        workflowTemplateIds: seed.workflowTemplateIds ?? [],
+        chartingTemplateIds: seed.chartingTemplateIds ?? [],
+        physicianShellTemplateId: seed.physicianShellTemplateId ?? null,
+        patientShellTemplateId: seed.patientShellTemplateId ?? null,
       },
     });
 
     await logControllerAction({
-      actorId: admin.id,
-      action: "practice_config.draft_created",
-      configurationId: created.id,
-      organizationId,
-      practiceId,
-      metadata: { selectedSpecialty: selectedSpecialty ?? null },
+      actor: admin,
+      action: "controller.config.draft_created",
+      targetId: created.id,
+      after: { organizationId, practiceId, selectedSpecialty: selectedSpecialty ?? null },
     });
 
     return NextResponse.json(created, { status: 201 });

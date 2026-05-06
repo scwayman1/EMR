@@ -4,11 +4,8 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-// TODO(EMR-428): integrate once src/lib/auth/super-admin.ts lands.
-import {
-  requireImplementationAdmin,
-  logControllerAction,
-} from "@/lib/auth/super-admin";
+import { requireImplementationAdmin } from "@/lib/auth/super-admin";
+import { logControllerAction } from "@/lib/auth/audit-stub";
 import { withAuthErrors, notFound } from "../../_helpers";
 
 export const runtime = "nodejs";
@@ -28,10 +25,7 @@ export async function POST(_req: Request, { params }: Ctx) {
 
     const archived = await prisma.practiceConfiguration.update({
       where: { id: params.id },
-      data: {
-        status: "archived",
-        updatedBy: admin.id,
-      },
+      data: { status: "archived" },
     });
 
     // If this row was the currently-published config for its practice, the
@@ -40,11 +34,9 @@ export async function POST(_req: Request, { params }: Ctx) {
     revalidateTag(`practice-config:${archived.practiceId}`);
 
     await logControllerAction({
-      actorId: admin.id,
-      action: "practice_config.archived",
-      configurationId: archived.id,
-      organizationId: archived.organizationId,
-      practiceId: archived.practiceId,
+      actor: admin,
+      action: "controller.config.archived",
+      targetId: archived.id,
     });
 
     return NextResponse.json(archived);

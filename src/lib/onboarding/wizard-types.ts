@@ -20,27 +20,8 @@ import type * as React from "react";
 // declaration below with a re-export from `@/lib/practice-config/types`.
 // ---------------------------------------------------------------------------
 
-// TODO(EMR-409): replace with `import type { PracticeConfiguration } from "@/lib/practice-config/types";`
-// and re-export it from this module.
-export type PracticeConfiguration = {
-  id: string;
-  organizationId: string;
-  practiceId?: string | null;
-  specialtyId?: string | null;
-  careModelId?: string | null;
-  enabledModalities?: string[];
-  disabledModalities?: string[];
-  workflowsApplied?: string[];
-  chartingApplied?: string[];
-  rolesApplied?: string[];
-  patientShellApplied?: string[];
-  physicianShellApplied?: string[];
-  migrationConfig?: Record<string, unknown> | null;
-  publishedAt?: string | null;
-  // Free-form bag for fields not yet modelled — keeps the shell compatible
-  // while EMR-409 iterates on the schema.
-  [key: string]: unknown;
-};
+export type { PracticeConfiguration } from "@/lib/practice-config/types";
+import type { PracticeConfiguration } from "@/lib/practice-config/types";
 
 // ---------------------------------------------------------------------------
 // Step contract

@@ -36,14 +36,6 @@ enum Role {
   implementation_admin
   super_admin
   system
-  // EMR-420 — added so rbac/roles.ts compiles in this worktree.
-  // The canonical authority for practice/implementation/super admin
-  // roles lives in EMR-428 (super-admin gate). When their branch lands
-  // we may relocate these into a dedicated AdminRole enum; for now the
-  // Role union matches what `@/lib/rbac/roles.ts` already references.
-  practice_admin
-  implementation_admin
-  super_admin
 }
 
 model Organization {
@@ -3977,26 +3969,7 @@ model SupplementCompound {
 }
 
 // --------------------------------------------------------------
-// EMR-409 — Practice configuration (specialty-adaptive shell)
-// --------------------------------------------------------------
 
-/// Minimal practice record — owned by an Organization. The configuration
-/// row joins to this by string ID (no FK) so other tickets can replace
-/// or extend the model without migration coupling.
-model Practice {
-  id             String   @id @default(cuid())
-  organizationId String
-  legalName      String
-  brandName      String?
-  npi            String?
-  address        Json?
-  timezone       String   @default("America/New_York")
-  primaryContact Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([organizationId])
-}
 
 enum PracticeConfigurationStatus {
   draft

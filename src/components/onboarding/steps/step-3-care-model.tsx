@@ -14,13 +14,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FieldGroup, Textarea } from "@/components/ui/input";
-import { CARE_MODELS, type CareModel } from "@/lib/specialty-templates/manifest-schema";
+import {
+  REGISTERED_CARE_MODELS as CARE_MODELS,
+  type RegisteredCareModel as CareModel,
+} from "@/lib/specialty-templates/manifest-schema";
 import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
-import type { PracticeConfigDraft } from "@/lib/practice-config/types";
-import type { WizardStepDefinition, WizardStepProps } from "@/lib/onboarding/wizard-types";
-// TODO(EMR-428): swap to real helper when the audit-stub branch lands; the
-// import path is already canonical.
-import { logControllerAction } from "@/lib/auth/audit-stub";
+import type {
+  PracticeConfiguration,
+  WizardStepDefinition,
+  WizardStepProps,
+} from "@/lib/onboarding/wizard-types";
 import { cn } from "@/lib/utils/cn";
 
 const REASON_MIN = 50;
@@ -62,9 +65,12 @@ const CARE_MODEL_OPTIONS: Record<
   },
 };
 
-export function Step3CareModel({ draft, onPatch, onNext, onBack }: WizardStepProps) {
+export function Step3CareModel({ draft, patch, goNext, goBack }: WizardStepProps) {
   const template = useMemo(
-    () => getSpecialtyTemplate(draft.selectedSpecialty),
+    () =>
+      draft.selectedSpecialty
+        ? getSpecialtyTemplate(draft.selectedSpecialty)
+        : null,
     [draft.selectedSpecialty]
   );
 
@@ -82,7 +88,7 @@ export function Step3CareModel({ draft, onPatch, onNext, onBack }: WizardStepPro
           continue setting up this practice.
         </p>
         <div className="mt-4">
-          <Button variant="secondary" onClick={onBack}>
+          <Button variant="secondary" onClick={goBack}>
             Go back to step 2
           </Button>
         </div>
@@ -94,7 +100,9 @@ export function Step3CareModel({ draft, onPatch, onNext, onBack }: WizardStepPro
   const [selected, setSelected] = useState<CareModel>(
     (draft.careModel as CareModel | null) ?? defaultCareModel
   );
-  const [reason, setReason] = useState<string>(draft.careModelOverrideReason ?? "");
+  const [reason, setReason] = useState<string>(
+    (draft.regulatoryFlags as { careModelOverrideReason?: string } | undefined)?.careModelOverrideReason ?? ""
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,25 +116,19 @@ export function Step3CareModel({ draft, onPatch, onNext, onBack }: WizardStepPro
     setError(null);
     setSubmitting(true);
     try {
-      await onPatch({
+      const overrideFlags = isOverride
+        ? {
+            ...(draft.regulatoryFlags as Record<string, unknown> | undefined),
+            careModelOverrideReason: reason.trim(),
+            careModelOverrideFromDefault: defaultCareModel,
+          }
+        : (draft.regulatoryFlags as Record<string, unknown> | undefined) ?? {};
+      patch({
         careModel: selected,
-        careModelOverrideReason: isOverride ? reason.trim() : null,
+        regulatoryFlags: overrideFlags as PracticeConfiguration["regulatoryFlags"],
       });
 
-      if (isOverride) {
-        // TODO(EMR-428): integrate once the real audit logger lands. For now
-        // we call the stub so the contract is exercised end-to-end.
-        await logControllerAction({
-          actor: "current-user", // TODO(EMR-428): wire actual Clerk actor id
-          action: "care_model_override",
-          targetId: draft.id,
-          before: defaultCareModel,
-          after: selected,
-          reason: reason.trim(),
-        });
-      }
-
-      onNext();
+      goNext();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save care model.");
     } finally {
@@ -230,7 +232,7 @@ export function Step3CareModel({ draft, onPatch, onNext, onBack }: WizardStepPro
       )}
 
       <div className="flex items-center justify-between pt-2">
-        <Button variant="ghost" onClick={onBack} disabled={submitting}>
+        <Button variant="ghost" onClick={goBack} disabled={submitting}>
           Back
         </Button>
         <Button onClick={handleConfirm} disabled={!canContinue}>
@@ -242,10 +244,10 @@ export function Step3CareModel({ draft, onPatch, onNext, onBack }: WizardStepPro
 }
 
 export const step3CareModelDefinition: WizardStepDefinition = {
-  id: "care-model",
-  label: "Care model",
-  hint: "How this practice delivers care.",
-  component: Step3CareModel,
-  isComplete: (draft: PracticeConfigDraft) => draft.careModel != null,
-  isReachable: (draft: PracticeConfigDraft) => draft.selectedSpecialty != null,
+  id: "select-care-model",
+  title: "Care model",
+  description: "How this practice delivers care.",
+  Component: Step3CareModel,
+  isComplete: (draft) => draft.careModel != null,
+  isReachable: (draft) => draft.selectedSpecialty != null,
 };

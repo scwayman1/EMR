@@ -11,10 +11,7 @@ import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
-import {
-  NotImplementationAdminError,
-  requireImplementationAdmin,
-} from "@/lib/auth/super-admin";
+import { requireImplementationAdmin } from "@/lib/auth/super-admin";
 
 export const runtime = "nodejs";
 
@@ -63,8 +60,8 @@ const createPracticeSchema = z.object({
 });
 
 function adminErrorResponse(err: unknown): NextResponse | null {
-  if (err instanceof NotImplementationAdminError) {
-    return NextResponse.json({ error: err.message }, { status: err.status });
+  if (err instanceof Error && err.message === "FORBIDDEN") {
+    return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
   }
   return null;
 }

@@ -9,11 +9,8 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
-// TODO(EMR-428): integrate once src/lib/auth/super-admin.ts lands.
-import {
-  requireImplementationAdmin,
-  logControllerAction,
-} from "@/lib/auth/super-admin";
+import { requireImplementationAdmin } from "@/lib/auth/super-admin";
+import { logControllerAction } from "@/lib/auth/audit-stub";
 import { withAuthErrors, notFound } from "../../_helpers";
 
 export const runtime = "nodejs";
@@ -90,7 +87,6 @@ export async function POST(_req: Request, { params }: Ctx) {
           version: nextVersion,
           publishedAt,
           publishedBy: admin.id,
-          updatedBy: admin.id,
         },
       });
     });
@@ -99,12 +95,10 @@ export async function POST(_req: Request, { params }: Ctx) {
     revalidateTag(`practice-config:${published.practiceId}`);
 
     await logControllerAction({
-      actorId: admin.id,
-      action: "practice_config.published",
-      configurationId: published.id,
-      organizationId: published.organizationId,
-      practiceId: published.practiceId,
-      metadata: { version: nextVersion },
+      actor: admin,
+      action: "controller.config.published",
+      targetId: published.id,
+      after: { version: nextVersion },
     });
 
     return NextResponse.json(published);

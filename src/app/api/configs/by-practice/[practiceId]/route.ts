@@ -17,8 +17,6 @@ import { NextResponse } from "next/server";
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-// TODO(EMR-428): integrate `canViewPracticeConfig` once
-// src/lib/auth/super-admin.ts lands.
 import { canViewPracticeConfig } from "@/lib/auth/super-admin";
 
 export const runtime = "nodejs";
@@ -78,17 +76,12 @@ export async function GET(_req: Request, { params }: Ctx) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  const visibility = await canViewPracticeConfig(user, {
-    practiceId: params.practiceId,
-    organizationId: (config as { organizationId: string }).organizationId,
-  });
+  const canViewFull = await canViewPracticeConfig(user, params.practiceId);
 
-  if (visibility === "full") {
+  if (canViewFull) {
     return NextResponse.json(config);
   }
 
-  // 'summary' (default) — thin shape. Anything else from the auth helper is
-  // treated as summary so we fail closed.
   return NextResponse.json(
     thinSummary(config as unknown as Record<string, unknown>),
   );
