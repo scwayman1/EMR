@@ -15,6 +15,18 @@ import { PlaceholderStep } from "@/app/(super-admin)/onboarding/wizard/[draftId]
 import { Step1OrgPractice } from "@/components/onboarding/steps/step-1-org-practice";
 import { Step2Specialty } from "@/components/onboarding/steps/step-2-specialty";
 import { step3CareModelDefinition } from "@/components/onboarding/steps/step-3-care-model";
+import { step4EnableModalitiesDefinition } from "@/components/onboarding/steps/step-4-enable-modalities";
+import { step5DisableModalitiesDefinition } from "@/components/onboarding/steps/step-5-disable-modalities";
+import { Step6ApplyWorkflows } from "@/components/onboarding/steps/step-6-apply-workflows";
+import { Step7ApplyCharting } from "@/components/onboarding/steps/step-7-apply-charting";
+import { Step8ApplyRoles } from "@/components/onboarding/steps/step-8-apply-roles";
+import { Step9PatientShell } from "@/components/onboarding/steps/step-9-patient-shell";
+import { Step10PhysicianShell } from "@/components/onboarding/steps/step-10-physician-shell";
+import { step11ConfigureMigrationDefinition } from "@/components/onboarding/steps/step-11-configure-migration";
+import { Step12PreviewPhysician } from "@/components/onboarding/steps/step-12-preview-physician";
+import { Step13PreviewPatient } from "@/components/onboarding/steps/step-13-preview-patient";
+import { Step14PreviewPracticeAdmin } from "@/components/onboarding/steps/step-14-preview-practice-admin";
+import { step15PublishDefinition } from "@/components/onboarding/steps/step-15-publish";
 import type {
   PracticeConfiguration,
   WizardStepDefinition,
@@ -80,78 +92,91 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     Component: Step2Specialty,
   },
   step3CareModelDefinition,
-  placeholder(
-    "enable-modalities",
-    "Enable modalities",
-    "select-care-model",
-    "Turn on the treatment modalities this practice offers.",
-  ),
-  placeholder(
-    "disable-modalities",
-    "Disable modalities",
-    "enable-modalities",
-    "Turn off any modalities not relevant to this practice.",
-  ),
-  placeholder(
-    "apply-workflows",
-    "Apply workflows",
-    "disable-modalities",
-    "Apply the workflow templates that match the selected care model.",
-  ),
-  placeholder(
-    "apply-charting",
-    "Apply charting",
-    "apply-workflows",
-    "Apply the charting templates and structured note formats.",
-  ),
-  placeholder(
-    "apply-roles",
-    "Apply roles",
-    "apply-charting",
-    "Apply role definitions and permission groups for this practice.",
-  ),
-  placeholder(
-    "apply-patient-shell",
-    "Apply patient shell",
-    "apply-roles",
-    "Apply the patient-facing shell — navigation, surfaces, and modules.",
-  ),
-  placeholder(
-    "apply-physician-shell",
-    "Apply physician shell",
-    "apply-patient-shell",
-    "Apply the physician-facing shell — chart layout and tools.",
-  ),
-  placeholder(
-    "configure-migration",
-    "Configure migration",
-    "apply-physician-shell",
-    "Decide how existing data will migrate into the new configuration.",
-  ),
-  placeholder(
-    "preview-physician",
-    "Preview physician",
-    "configure-migration",
-    "Walk through the physician experience with the new configuration.",
-  ),
-  placeholder(
-    "preview-patient",
-    "Preview patient",
-    "preview-physician",
-    "Walk through the patient experience with the new configuration.",
-  ),
-  placeholder(
-    "preview-practice-admin",
-    "Preview practice admin",
-    "preview-patient",
-    "Walk through the practice admin experience with the new configuration.",
-  ),
-  placeholder(
-    "publish",
-    "Publish",
-    "preview-practice-admin",
-    "Publish this configuration and make it active for the practice.",
-  ),
+  step4EnableModalitiesDefinition,
+  step5DisableModalitiesDefinition,
+  {
+    id: "apply-workflows",
+    title: "Apply workflows",
+    description:
+      "Apply the workflow templates that match the selected care model.",
+    isComplete: (draft) => Array.isArray(draft.workflowTemplateIds),
+    isReachable: priorComplete("disable-modalities"),
+    canSkip: true,
+    Component: Step6ApplyWorkflows,
+  },
+  {
+    id: "apply-charting",
+    title: "Apply charting",
+    description: "Apply the charting templates and structured note formats.",
+    isComplete: (draft) => Array.isArray(draft.chartingTemplateIds),
+    isReachable: priorComplete("apply-workflows"),
+    canSkip: true,
+    Component: Step7ApplyCharting,
+  },
+  {
+    id: "apply-roles",
+    title: "Apply roles",
+    description:
+      "Apply role definitions and permission groups for this practice.",
+    isComplete: (draft) => Array.isArray(draft.rolePermissionTemplateIds),
+    isReachable: priorComplete("apply-charting"),
+    canSkip: true,
+    Component: Step8ApplyRoles,
+  },
+  {
+    id: "apply-patient-shell",
+    title: "Apply patient shell",
+    description:
+      "Pick the patient portal layout — the cards your patients see when they sign in.",
+    isComplete: (draft) =>
+      typeof draft.patientShellTemplateId === "string" &&
+      draft.patientShellTemplateId.length > 0,
+    isReachable: (draft) =>
+      Array.isArray(draft.rolePermissionTemplateIds) &&
+      draft.rolePermissionTemplateIds.length > 0,
+    Component: Step9PatientShell,
+  },
+  {
+    id: "apply-physician-shell",
+    title: "Apply physician shell",
+    description:
+      "Pick the Mission Control layout — what your clinicians see when they sign in.",
+    isComplete: (draft) =>
+      typeof draft.physicianShellTemplateId === "string" &&
+      draft.physicianShellTemplateId.length > 0,
+    isReachable: (draft, completedSteps) =>
+      completedSteps.has("apply-patient-shell"),
+    Component: Step10PhysicianShell,
+  },
+  step11ConfigureMigrationDefinition,
+  {
+    id: "preview-physician",
+    title: "Preview physician",
+    description:
+      "Walk through the physician experience with the new configuration.",
+    Component: Step12PreviewPhysician,
+    isComplete: () => true,
+    isReachable: priorComplete("configure-migration"),
+  },
+  {
+    id: "preview-patient",
+    title: "Preview patient",
+    description:
+      "Walk through the patient experience with the new configuration.",
+    Component: Step13PreviewPatient,
+    isComplete: () => true,
+    isReachable: priorComplete("preview-physician"),
+  },
+  {
+    id: "preview-practice-admin",
+    title: "Preview practice admin",
+    description:
+      "Walk through the practice admin experience with the new configuration.",
+    Component: Step14PreviewPracticeAdmin,
+    isComplete: () => true,
+    isReachable: priorComplete("preview-patient"),
+  },
+  step15PublishDefinition,
 ];
 
 /** Lookup helper. */

@@ -30,9 +30,7 @@ services:
       - key: AUTH_PROVIDER
         value: clerk
       - key: DATABASE_URL
-        fromDatabase:
-          name: emr-postgres
-          property: connectionString
+        sync: false
       # Direct (non-pooled) Supabase URL for schema migrations. Must be
       # set manually in the Render dashboard — it's the port-5432
       # connection string from Supabase → Project Settings → Database →
@@ -80,9 +78,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: emr-postgres
-          property: connectionString
+        sync: false
       - key: AGENT_MODEL_CLIENT
         value: openrouter
       - key: OPENROUTER_API_KEY
@@ -106,9 +102,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: emr-postgres
-          property: connectionString
+        sync: false
 
 databases:
   - name: emr-postgres

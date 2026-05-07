@@ -11,6 +11,7 @@ import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireImplementationAdmin } from "@/lib/auth/super-admin";
 import { logControllerAction } from "@/lib/auth/audit-stub";
+import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
 import { withAuthErrors, notFound } from "../../_helpers";
 
 export const runtime = "nodejs";
@@ -65,6 +66,24 @@ export async function POST(_req: Request, { params }: Ctx) {
     const nextVersion = (config.version ?? 0) + 1;
     const publishedAt = new Date();
 
+    // EMR-431 — record the manifest version this practice was published
+    // against. We resolve the LATEST manifest for the configured specialty
+    // at publish time and persist it on the row. Subsequent template edits
+    // (which ship as new manifest versions) do NOT silently re-render this
+    // practice — runtime renderers look up the manifest via
+    // `getSpecialtyTemplate(selectedSpecialty, selectedSpecialtyVersion)`.
+    //
+    // If the draft already carries a `selectedSpecialtyVersion` (e.g. set by
+    // apply-specialty), we honour it. Otherwise we resolve fresh from the
+    // registry. We tolerate a missing manifest (null) — the row publishes
+    // with a null version and the runtime falls back to "latest" rendering.
+    let selectedSpecialtyVersion: string | null =
+      (config as { selectedSpecialtyVersion?: string | null }).selectedSpecialtyVersion ?? null;
+    if (!selectedSpecialtyVersion && config.selectedSpecialty) {
+      const manifest = getSpecialtyTemplate(config.selectedSpecialty);
+      selectedSpecialtyVersion = manifest?.version ?? null;
+    }
+
     // Snapshot + flip in a single transaction so we never end up with a
     // version row pointing at a config that didn't actually flip.
     const published = await prisma.$transaction(async (tx) => {
@@ -74,7 +93,10 @@ export async function POST(_req: Request, { params }: Ctx) {
         data: {
           configurationId: config.id,
           version: nextVersion,
-          snapshot: config as unknown as object,
+          snapshot: {
+            ...(config as unknown as Record<string, unknown>),
+            selectedSpecialtyVersion,
+          } as unknown as object,
           publishedAt,
           publishedBy: admin.id,
         },
@@ -85,6 +107,7 @@ export async function POST(_req: Request, { params }: Ctx) {
         data: {
           status: "published",
           version: nextVersion,
+          selectedSpecialtyVersion,
           publishedAt,
           publishedBy: admin.id,
         },
@@ -98,7 +121,7 @@ export async function POST(_req: Request, { params }: Ctx) {
       actor: admin,
       action: "controller.config.published",
       targetId: published.id,
-      after: { version: nextVersion },
+      after: { version: nextVersion, selectedSpecialtyVersion },
     });
 
     return NextResponse.json(published);

@@ -1682,6 +1682,35 @@ model AuditLog {
   @@index([subjectType, subjectId])
 }
 
+// EMR-470 — Practice Onboarding Controller audit log (append-only).
+//
+// Every mutation on the controller surface (templates, configs, wizard
+// saves, publish/rollback, etc.) writes a row here via
+// `logControllerAction()` in src/lib/auth/audit.ts (filename retained as
+// `audit-stub.ts` for storm-time import-path stability). The DB role used
+// by the app should NOT have UPDATE / DELETE on this table; ops applies
+// `append-only.sql` from the migration directory after deploy.
+model ControllerAuditLog {
+  id              String   @id @default(cuid())
+  at              DateTime @default(now())
+  actorUserId     String
+  actorEmail      String?
+  actorRoles      Role[]
+  organizationId  String?
+  /// Dot-namespaced — e.g. "controller.config.publish"
+  action          String
+  /// Always "controller" for v1; reserved for "modality", "template" later.
+  subjectType     String   @default("controller")
+  subjectId       String
+  before          Json?
+  after           Json?
+  reason          String?
+
+  @@index([subjectId, at])
+  @@index([organizationId, at])
+  @@index([actorUserId, at])
+}
+
 // --------------------------------------------------------------
 // Agentic Memory Harness
 // --------------------------------------------------------------
@@ -3982,6 +4011,7 @@ model PracticeConfiguration {
   organizationId                String
   practiceId                    String
   selectedSpecialty             String?
+  selectedSpecialtyVersion      String?
   careModel                     String?
   enabledModalities             String[] @default([])
   disabledModalities            String[] @default([])
@@ -4013,4 +4043,30 @@ model PracticeConfigurationVersion {
 
   @@unique([configurationId, version])
   @@index([configurationId])
+}
+
+// EMR-453 — Migration profile attached to a PracticeConfiguration.
+// One profile describes the source data set + per-category mapping plan that
+// the migration job runner (EMR-456) will execute when a practice imports
+// records from a previous EMR. The `categories` JSON array carries the
+// per-domain mapping rows (see src/lib/migration/profile-types.ts for the
+// canonical TS shape). Field-mapping detail lands in EMR-454; runtime import
+// execution lands in EMR-456.
+model MigrationProfile {
+  id              String   @id @default(cuid())
+  configurationId String
+  /// "csv" | "json" | "ehr-export" | "manual" | null (greenfield)
+  sourceType      String?
+  /// Array of category rows. See type definition below.
+  categories      Json     @default("[]")
+  /// "draft" | "configured" | "completed" | "archived"
+  status          String   @default("draft")
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  /// Soft delete only. Null until archived.
+  archivedAt      DateTime?
+
+  @@index([configurationId])
+  @@index([status])
 }

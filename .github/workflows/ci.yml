@@ -45,5 +45,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint specialty manifests
+        run: npm run manifests:lint
+
       - name: Build
         run: npm run build

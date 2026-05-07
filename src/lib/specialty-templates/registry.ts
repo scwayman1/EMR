@@ -1,45 +1,53 @@
 /**
- * Specialty Template Registry — EMR-408
+ * Specialty Template Registry — EMR-408 / EMR-431 / EMR-433
  *
  * Single source of truth for the specialty manifests that the Practice
- * Onboarding Controller (EMR-409+) uses to seed a draft PracticeConfiguration.
+ * Onboarding Controller (EMR-409+) uses to seed a draft PracticeConfiguration
+ * and that published practices reference for runtime rendering.
  *
- * Architecture invariants (HARD constraints — see CLAUDE.md / Epic 2):
+ * Architecture invariants (HARD constraints):
  *   - LeafJourney is specialty-adaptive, NOT cannabis-first. The registry
  *     never branches on `slug === 'cannabis-medicine'`. Cannabis behaviour
  *     is a manifest configuration — not a controller code path.
  *   - Adding a new specialty MUST be a manifest file drop under ./manifests/.
- *     This file should not need to change.
+ *     This file should not need to change for new specialties OR new versions
+ *     of existing specialties.
  *   - Pain Management (non-cannabis) is the v1 acceptance gate: its manifest
  *     MUST list "cannabis-medicine" in default_disabled_modalities (not just
- *     omit it from enabled). The registry trusts the manifest — it does not
- *     re-derive disabled lists from absence.
+ *     omit it from enabled). The registry trusts the manifest.
  *
- * Boot behaviour:
- *   At module-init time the registry enumerates ./manifests/, validates every
- *   manifest via SpecialtyManifestSchema, and throws a descriptive error if
- *   ANY manifest is invalid. This fail-loud behaviour is intentional — a
- *   silently-skipped bad manifest could cause a practice to onboard with the
- *   wrong modality bleed and is the kind of regression that's only caught in
- *   production.
+ * Boot behaviour (EMR-433 + EMR-431):
+ *   At module-init time the registry enumerates ./manifests/ via readdirSync,
+ *   dynamic-loads every `*.ts` file (flat layout) and every `{slug}/v*.ts`
+ *   file (versioned layout) via `createRequire`, validates each with
+ *   SpecialtyManifestSchema, and indexes by `slug@version`. It throws if ANY
+ *   manifest is invalid OR if the same `(slug, version)` is registered twice.
+ *
+ *   Files matching `/test-fixture-/` are skipped UNLESS NODE_ENV === 'test',
+ *   so the test fixture specialty does not pollute production listings.
+ *
+ * Versioning model (EMR-431):
+ *   - Each manifest carries a semver `version`. Editing a template ships as a
+ *     NEW manifest at a new version — the previous version remains accessible
+ *     so any published config that recorded `(slug, version)` continues to
+ *     render against the manifest it was published with.
+ *   - Manifests can opt out of NEW onboarding by setting `deprecated: true`.
+ *     Deprecated manifests do NOT appear in `listActiveSpecialtyTemplates()`
+ *     and `applyTemplateDefaults` throws "DEPRECATED_TEMPLATE" against them.
+ *     Exact-version lookups still resolve so existing configs keep rendering.
  */
 
-import { readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
-// TODO(EMR-429): integrate once the manifest-schema branch lands.
+
 import {
   validateManifest,
   type SpecialtyManifest,
 } from "@/lib/specialty-templates/manifest-schema";
 
 // TODO(EMR-409): integrate once the practice-config types branch lands.
-// The shape below mirrors the seedable subset of PracticeConfiguration —
-// applyTemplateDefaults returns Partial<PracticeConfiguration>, so callers
-// from EMR-409 can spread the result onto a draft they're constructing.
 type PracticeConfigurationSeed = {
   selectedSpecialty: string;
+  selectedSpecialtyVersion: string;
   careModel: string;
   enabledModalities: string[];
   disabledModalities: string[];
@@ -49,66 +57,118 @@ type PracticeConfigurationSeed = {
   patientShellTemplateId: string | null;
 };
 
-// Eager static imports of every v1 manifest. Adding a new specialty = drop a
-// file under ./manifests/ AND add one line here. The directory listing below
-// is asserted at boot to catch the case where a contributor drops a file but
-// forgets the import — fail-loud, not silently skip.
-import internalMedicine from "./manifests/internal-medicine";
-import painManagementNonCannabis from "./manifests/pain-management-non-cannabis";
-import cannabisMedicine from "./manifests/cannabis-medicine";
-
-const REGISTERED_FILES: Record<string, unknown> = {
-  "internal-medicine.ts": internalMedicine,
-  "pain-management-non-cannabis.ts": painManagementNonCannabis,
-  "cannabis-medicine.ts": cannabisMedicine,
+type RegistryEntry = SpecialtyManifest & {
+  /**
+   * Legacy `active` flag from EMR-408. EMR-431 prefers the schema-level
+   * `deprecated` field, but `active: false` on the raw object remains an
+   * opt-out from listActive.
+   */
+  active: boolean;
+  /** Source path the manifest was loaded from — for error messages. */
+  source: string;
 };
 
-type RegistryEntry = SpecialtyManifest & { active: boolean };
+const TEST_FIXTURE_PATTERN = /test-fixture-/;
 
-function loadManifests(): Map<string, RegistryEntry> {
-  const map = new Map<string, RegistryEntry>();
+/**
+ * Composite key. Public callers should use `getSpecialtyTemplate(slug, version)`
+ * rather than constructing this themselves.
+ */
+function versionKey(slug: string, version: string): string {
+  return `${slug}@${version}`;
+}
 
-  // Cross-check: every .ts file in ./manifests/ MUST appear in REGISTERED_FILES.
-  // We don't dynamic-import (Next/webpack hostility), but we do enforce that
-  // the import list and the directory contents stay in sync.
-  let directoryFiles: string[] = [];
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const manifestDir = join(here, "manifests");
-    directoryFiles = readdirSync(manifestDir).filter(
-      (f) => f.endsWith(".ts") && !f.endsWith(".d.ts") && !f.endsWith(".test.ts"),
-    );
-  } catch {
-    // In some bundled / browser-side contexts fs is unavailable. The registry
-    // is a server-side concern; if fs isn't there we fall back to whatever's
-    // statically imported and skip the directory cross-check. Validation of
-    // imported manifests still runs.
-    directoryFiles = Object.keys(REGISTERED_FILES);
+/**
+ * Compare two semver strings. Negative when a < b, positive when a > b, zero
+ * when equal. Supports MAJOR.MINOR.PATCH with optional `-prerelease`.
+ */
+function compareSemver(a: string, b: string): number {
+  const [aCore, aPre] = a.split("-", 2);
+  const [bCore, bPre] = b.split("-", 2);
+
+  const aParts = aCore.split(".").map((n) => Number.parseInt(n, 10));
+  const bParts = bCore.split(".").map((n) => Number.parseInt(n, 10));
+
+  for (let i = 0; i < 3; i++) {
+    const diff = (aParts[i] ?? 0) - (bParts[i] ?? 0);
+    if (diff !== 0) return diff;
   }
 
-  for (const file of directoryFiles) {
-    if (!(file in REGISTERED_FILES)) {
+  // Per semver: a version with a pre-release tag is LOWER than the same
+  // version without one. So 1.0.0 > 1.0.0-rc.1.
+  if (aPre && !bPre) return -1;
+  if (!aPre && bPre) return 1;
+  if (aPre && bPre) return aPre.localeCompare(bPre);
+  return 0;
+}
+
+/** Registry indexed by `slug@version`. The authoritative store. */
+const REGISTRY: Map<string, RegistryEntry> = new Map();
+
+/**
+ * Latest non-deprecated version per slug. When every version of a slug is
+ * deprecated, the slug has NO entry here.
+ */
+const LATEST_BY_SLUG: Map<string, string> = new Map();
+
+/**
+ * Pull the manifest object out of a freshly-loaded module record. Manifests
+ * are exported as `export default <object>`, but we accept any non-null
+ * object export to remain forgiving of CJS/ESM interop.
+ */
+function extractManifest(mod: unknown): unknown {
+  if (mod === null || typeof mod !== "object") return mod;
+  const m = mod as Record<string, unknown>;
+  if ("default" in m && m.default && typeof m.default === "object") {
+    return m.default;
+  }
+  return mod;
+}
+
+function loadManifests(): void {
+  REGISTRY.clear();
+  LATEST_BY_SLUG.clear();
+
+  const includeTestFixtures = process.env.NODE_ENV === "test";
+
+  // Webpack require.context allows us to dynamically require files in a
+  // directory at runtime by bundling them at build time. This satisfies the
+  // architecture constraint (no hardcoded imports) while being Next.js safe.
+  // @ts-ignore - require.context is a Webpack specific API
+  const requireCtx = require.context("./manifests", true, /\.ts$/);
+  const candidateKeys = requireCtx.keys();
+
+  // First pass: validate + index every discovered manifest.
+  for (const key of candidateKeys) {
+    if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) {
+      continue;
+    }
+
+    const basename = key.slice(key.lastIndexOf("/") + 1);
+    if (!includeTestFixtures && TEST_FIXTURE_PATTERN.test(basename)) {
+      continue;
+    }
+
+    let raw: unknown;
+    try {
+      raw = extractManifest(requireCtx(key));
+    } catch (err) {
       throw new Error(
-        `[specialty-templates] manifest file "${file}" exists on disk but is ` +
-          `not imported in registry.ts. Add it to REGISTERED_FILES so the ` +
-          `registry can validate and load it.`,
+        `[specialty-templates] failed to load manifest "${key}": ` +
+          `${(err as Error).message}`,
       );
     }
-  }
 
-  for (const [file, raw] of Object.entries(REGISTERED_FILES)) {
     const result = validateManifest(raw);
     if (!result.ok) {
       throw new Error(
-        `[specialty-templates] invalid manifest in "${file}":\n  ` +
+        `[specialty-templates] invalid manifest in "${key}":\n  ` +
           result.errors.join("\n  "),
       );
     }
     const manifest = result.manifest;
 
-    // `active` is not part of the schema (per EMR-429); manifests opt OUT
-    // by exporting `active: false` on the underlying object. We read it
-    // off the raw value rather than the validated copy.
+    // Honour the legacy `active: false` opt-out from EMR-408.
     const active =
       typeof raw === "object" &&
       raw !== null &&
@@ -117,71 +177,118 @@ function loadManifests(): Map<string, RegistryEntry> {
         ? false
         : true;
 
-    if (map.has(manifest.slug)) {
+    const versionedKey = versionKey(manifest.slug, manifest.version);
+    if (REGISTRY.has(versionedKey)) {
       throw new Error(
-        `[specialty-templates] duplicate slug "${manifest.slug}" — found in ` +
-          `both an earlier manifest and "${file}". Slugs must be unique.`,
+        `[specialty-templates] duplicate manifest "${versionedKey}" — registered ` +
+          `twice. Each (slug, version) pair must be unique. Source: ${key}`,
       );
     }
-    map.set(manifest.slug, { ...manifest, active });
+    REGISTRY.set(versionedKey, { ...manifest, active, source: key });
   }
 
-  return map;
+  // Second pass: compute the latest non-deprecated version per slug.
+  for (const entry of REGISTRY.values()) {
+    if (entry.deprecated === true) continue;
+    if (entry.active === false) continue;
+
+    const current = LATEST_BY_SLUG.get(entry.slug);
+    if (!current || compareSemver(entry.version, current) > 0) {
+      LATEST_BY_SLUG.set(entry.slug, entry.version);
+    }
+  }
 }
 
 // Module-init: throws if any manifest is invalid. Intentional fail-loud.
-const REGISTRY: Map<string, RegistryEntry> = loadManifests();
+loadManifests();
 
-/** All registered manifests where `active !== false`. */
-export function listActiveSpecialtyTemplates(): SpecialtyManifest[] {
-  const out: SpecialtyManifest[] = [];
-  for (const entry of REGISTRY.values()) {
-    if (entry.active) {
-      // Strip the `active` flag from the public shape — callers see a
-      // pure SpecialtyManifest, never the registry-internal wrapper.
-      const { active: _active, ...manifest } = entry;
-      out.push(manifest as SpecialtyManifest);
-    }
-  }
-  return out;
-}
-
-/** Look up a manifest by slug. Returns null when no match (active or not). */
-export function getSpecialtyTemplate(slug: string): SpecialtyManifest | null {
-  const entry = REGISTRY.get(slug);
-  if (!entry) return null;
-  const { active: _active, ...manifest } = entry;
+/**
+ * Strip registry-internal flags before returning a manifest to a caller.
+ */
+function publicShape(entry: RegistryEntry): SpecialtyManifest {
+  const { active: _active, source: _source, ...manifest } = entry;
   return manifest as SpecialtyManifest;
 }
 
 /**
- * Default-value seed for a draft PracticeConfiguration. The controller
- * (EMR-409) spreads this onto the draft it's constructing — so this function
- * MUST NOT mutate or fetch; it's pure projection from the manifest.
+ * All registered manifests where `active !== false` AND `deprecated !== true`.
+ * Returns the LATEST non-deprecated version per slug — exactly one entry per
+ * slug, suitable for the onboarding picker UI.
+ */
+export function listActiveSpecialtyTemplates(): SpecialtyManifest[] {
+  const out: SpecialtyManifest[] = [];
+  for (const [slug, latestVersion] of LATEST_BY_SLUG.entries()) {
+    const entry = REGISTRY.get(versionKey(slug, latestVersion));
+    if (!entry) continue;
+    if (entry.active === false) continue;
+    if (entry.deprecated === true) continue;
+    out.push(publicShape(entry));
+  }
+  return out;
+}
+
+/**
+ * Look up a manifest.
  *
- * Returns an empty object when slug is unknown — onboarding flows render an
- * empty draft rather than throwing, and the UI surfaces the "specialty not
- * found" state separately.
+ *   - `version` omitted → returns the LATEST non-deprecated version, or null.
+ *   - `version` provided → returns the EXACT (slug, version) match, even if
+ *     deprecated. This is the path published configs use to render against
+ *     the manifest they were published with.
+ */
+export function getSpecialtyTemplate(
+  slug: string,
+  version?: string,
+): SpecialtyManifest | null {
+  if (version !== undefined) {
+    const entry = REGISTRY.get(versionKey(slug, version));
+    return entry ? publicShape(entry) : null;
+  }
+
+  const latest = LATEST_BY_SLUG.get(slug);
+  if (!latest) return null;
+  const entry = REGISTRY.get(versionKey(slug, latest));
+  if (!entry) return null;
+  if (entry.active === false) return null;
+  if (entry.deprecated === true) return null;
+  return publicShape(entry);
+}
+
+/**
+ * Every registered version of `slug`, sorted by semver descending. Includes
+ * deprecated versions — admin UIs use this to render the full version history.
+ */
+export function listAllManifestVersions(slug: string): SpecialtyManifest[] {
+  const out: SpecialtyManifest[] = [];
+  for (const entry of REGISTRY.values()) {
+    if (entry.slug === slug) out.push(publicShape(entry));
+  }
+  out.sort((a, b) => compareSemver(b.version, a.version));
+  return out;
+}
+
+/**
+ * Default-value seed for a draft PracticeConfiguration. Pure projection.
  *
- * Field derivation:
- *   - careModel              ← default_care_model
- *   - enabledModalities      ← default_enabled_modalities
- *   - disabledModalities     ← default_disabled_modalities (verbatim — see
- *                              the Pain Management invariant above)
- *   - workflowTemplateIds    ← default_workflows
- *   - chartingTemplateIds    ← default_charting_templates
- *   - physicianShellTemplateId ← `${slug}-physician-shell` if the manifest
- *                              declared any default_mission_control_cards
- *                              (the EMR-409 shell renderer keys off this id
- *                              and looks up the actual card list separately)
- *   - patientShellTemplateId ← `${slug}-patient-shell` when
- *                              default_patient_portal_cards is non-empty
+ *   - `slug` unknown → returns `{}`.
+ *   - `slug` resolves only to deprecated manifests → throws
+ *     `Error("DEPRECATED_TEMPLATE: ...")`. Deprecated templates may not seed
+ *     NEW configs; existing configs still render via exact-version lookup.
  */
 export function applyTemplateDefaults(
   slug: string,
 ): Partial<PracticeConfigurationSeed> {
   const manifest = getSpecialtyTemplate(slug);
-  if (!manifest) return {};
+  if (!manifest) {
+    const anyVersion = listAllManifestVersions(slug);
+    if (anyVersion.length > 0) {
+      throw new Error(
+        `DEPRECATED_TEMPLATE: specialty "${slug}" has no non-deprecated ` +
+          `version available for new onboarding. Existing configurations ` +
+          `continue to render against their published version.`,
+      );
+    }
+    return {};
+  }
 
   const physicianShellTemplateId =
     manifest.default_mission_control_cards.length > 0
@@ -195,6 +302,7 @@ export function applyTemplateDefaults(
 
   return {
     selectedSpecialty: manifest.slug,
+    selectedSpecialtyVersion: manifest.version,
     careModel: manifest.default_care_model,
     enabledModalities: [...manifest.default_enabled_modalities],
     disabledModalities: [...manifest.default_disabled_modalities],
@@ -206,12 +314,61 @@ export function applyTemplateDefaults(
 }
 
 /**
- * Test-only escape hatch: re-run boot validation. Useful when a test wants
- * to confirm that the current import-time state is still valid after
- * mutating manifests in-memory. Production callers should not need this.
+ * Test-only: re-run boot validation. Useful when toggling NODE_ENV mid-test.
  */
 export function __reloadForTests(): void {
-  const fresh = loadManifests();
-  REGISTRY.clear();
-  for (const [k, v] of fresh.entries()) REGISTRY.set(k, v);
+  loadManifests();
+}
+
+/**
+ * Test-only (EMR-431): register an additional manifest at runtime so
+ * versioning behaviour can be exercised without committing fixture manifests
+ * under ./manifests/. Returns a teardown function.
+ */
+export function __registerManifestForTests(raw: unknown): () => void {
+  const result = validateManifest(raw);
+  if (!result.ok) {
+    throw new Error(
+      `[specialty-templates] __registerManifestForTests: invalid manifest:\n  ` +
+        result.errors.join("\n  "),
+    );
+  }
+  const manifest = result.manifest;
+  const key = versionKey(manifest.slug, manifest.version);
+  if (REGISTRY.has(key)) {
+    throw new Error(
+      `[specialty-templates] __registerManifestForTests: duplicate "${key}"`,
+    );
+  }
+
+  const active =
+    typeof raw === "object" &&
+    raw !== null &&
+    "active" in raw &&
+    (raw as { active?: unknown }).active === false
+      ? false
+      : true;
+
+  REGISTRY.set(key, { ...manifest, active, source: "__test__" });
+
+  const previousLatest = LATEST_BY_SLUG.get(manifest.slug);
+  if (manifest.deprecated !== true && active !== false) {
+    if (!previousLatest || compareSemver(manifest.version, previousLatest) > 0) {
+      LATEST_BY_SLUG.set(manifest.slug, manifest.version);
+    }
+  }
+
+  return () => {
+    REGISTRY.delete(key);
+    LATEST_BY_SLUG.delete(manifest.slug);
+    for (const entry of REGISTRY.values()) {
+      if (entry.slug !== manifest.slug) continue;
+      if (entry.deprecated === true) continue;
+      if (entry.active === false) continue;
+      const current = LATEST_BY_SLUG.get(entry.slug);
+      if (!current || compareSemver(entry.version, current) > 0) {
+        LATEST_BY_SLUG.set(entry.slug, entry.version);
+      }
+    }
+  };
 }

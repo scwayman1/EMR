@@ -70,6 +70,12 @@ export default clerkMiddleware(async (auth, req) => {
   // ── EMR-428: Practice Onboarding Controller gate ─────────
   // Coarse check: require an authenticated session. Non-admins who slip past
   // here are stopped by `requireImplementationAdmin()` in the route handler.
+  //
+  // EMR-410 NOTE: Modality enforcement does NOT live here. Modality state is
+  // per-practice and requires a Prisma read against PracticeConfiguration —
+  // which is unavailable from the edge runtime. Routes that touch a modality
+  // call `requireModalityEnabled()` from `@/lib/modality/api-guard` at the
+  // top of the handler. This middleware intentionally stays modality-agnostic.
   if (isControllerSurface(req)) {
     const { userId } = await auth();
     if (!userId) {
