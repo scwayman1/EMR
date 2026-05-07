@@ -162,7 +162,7 @@ export function NoraV3Threads() {
 
                   {/* View thread link */}
                   <Link
-                    href={`/clinic/messages/${thread.threadId}`}
+                    href={`/clinic/messages?thread=${thread.threadId}`}
                     className="text-sm font-medium text-accent hover:underline shrink-0"
                   >
                     View thread
