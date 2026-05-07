@@ -243,6 +243,34 @@ const AUTHORED: Record<ModalityId, AuthoredMeta> = {
     // can't accidentally enable a storefront they can't legally fulfill.
     requires: ["cannabis-medicine"],
   },
+  psilocybin: {
+    id: "psilocybin",
+    label: "Psilocybin",
+    description: "Psilocybin protocols and therapy tracking.",
+    surfaces: ["physician-chart", "patient-portal"],
+    requires: [],
+  },
+  "integration-therapy": {
+    id: "integration-therapy",
+    label: "Integration Therapy",
+    description: "Integration therapy for post-psychedelic processing.",
+    surfaces: ["physician-chart", "patient-portal"],
+    requires: [],
+  },
+  "veterinary-medicine": {
+    id: "veterinary-medicine",
+    label: "Veterinary Medicine",
+    description: "Animal care and veterinary charting workflows.",
+    surfaces: ["physician-chart", "patient-portal"],
+    requires: [],
+  },
+  "human-pharmacology": {
+    id: "human-pharmacology",
+    label: "Human Pharmacology",
+    description: "Standard human pharmacology protocols.",
+    surfaces: ["physician-chart"],
+    requires: [],
+  },
 };
 
 /**
