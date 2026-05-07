@@ -125,6 +125,7 @@ export default async function OperatorLayout({
     {
       label: "Overview",
       pillar: "overview",
+      icon: "home",
       items: [
         { label: "Overview", href: "/ops" },
         { label: "Mission Control", href: "/ops/mission-control" },
@@ -135,22 +136,25 @@ export default async function OperatorLayout({
     },
     {
       label: "Billing",
+      pillar: "billing",
+      icon: "dollar",
       items: [
-        { label: "Billing", href: "/ops/billing" },
+        { label: "Overview", href: "/ops/billing" },
         { label: "Scrub", href: "/ops/scrub" },
         { label: "Denials", href: "/ops/denials", badge: denialsBadge },
         { label: "Aging", href: "/ops/aging", badge: agingBadge },
-        { label: "Agents", href: "/ops/billing-agents" },
-        { label: "Revenue", href: "/ops/revenue" },
         { label: "Eligibility", href: "/ops/eligibility" },
         { label: "Mail / Fax OCR", href: "/ops/mail-fax" },
+        { label: "Agents", href: "/ops/billing-agents" },
+        { label: "Revenue", href: "/ops/revenue" },
       ],
     },
     {
-      label: "Office of the CFO",
+      label: "Finance",
       pillar: "cfo",
+      icon: "chart",
       items: [
-        { label: "CFO overview", href: "/ops/cfo" },
+        { label: "Overview", href: "/ops/cfo" },
         { label: "P&L", href: "/ops/cfo/pnl" },
         { label: "Cash flow", href: "/ops/cfo/cash-flow" },
         { label: "Balance sheet", href: "/ops/cfo/balance-sheet" },
@@ -165,6 +169,8 @@ export default async function OperatorLayout({
     },
     {
       label: "Operations",
+      pillar: "operations",
+      icon: "building",
       items: [
         { label: "Staff schedule", href: "/ops/staff-schedule" },
         { label: "Time clock", href: "/ops/time-clock" },
@@ -177,33 +183,36 @@ export default async function OperatorLayout({
         { label: "Marketing", href: "/ops/marketing" },
         { label: "Announcements", href: "/ops/announcements" },
       ],
-      defaultCollapsed: true,
     },
     {
-      label: "Practice Setup",
+      label: "Insights",
+      pillar: "insights",
+      icon: "layout-grid",
+      items: [
+        { label: "Analytics", href: "/ops/analytics" },
+        { label: "Analytics Lab", href: "/ops/analytics-lab" },
+        { label: "Population", href: "/ops/population" },
+      ],
+    },
+    {
+      label: "Setup",
+      pillar: "setup",
+      icon: "clipboard-check",
       items: [
         { label: "Onboarding", href: "/ops/onboarding" },
         { label: "Practice launch", href: "/ops/launch" },
         { label: "Intake Builder", href: "/ops/intake-builder" },
         { label: "Export", href: "/ops/export" },
       ],
-      defaultCollapsed: true,
-    },
-    {
-      label: "Intelligence",
-      items: [
-        { label: "Analytics", href: "/ops/analytics" },
-        { label: "Analytics Lab", href: "/ops/analytics-lab" },
-        { label: "Population", href: "/ops/population" },
-      ],
-      defaultCollapsed: true,
     },
     {
       label: "Platform",
+      pillar: "platform",
+      icon: "server",
       items: [
         { label: "Modules", href: "/ops/platform/modules" },
-        { label: "Licensing menu", href: "/ops/platform/licensing" },
-        { label: "Pricing comparator", href: "/ops/platform/pricing" },
+        { label: "Licensing", href: "/ops/platform/licensing" },
+        { label: "Pricing", href: "/ops/platform/pricing" },
         { label: "Business plan", href: "/ops/platform/business-plan" },
         { label: "FHIR bridge", href: "/ops/platform/fhir-bridge" },
         { label: "MIPS console", href: "/ops/platform/mips" },
@@ -211,10 +220,11 @@ export default async function OperatorLayout({
         { label: "FDA Rx + Cannabis", href: "/ops/platform/fda-rx" },
         { label: "15-day launch", href: "/ops/platform/launch-15-day" },
       ],
-      defaultCollapsed: true,
     },
     {
       label: "System",
+      pillar: "system",
+      icon: "settings",
       items: [
         { label: "AI Config", href: "/ops/settings/ai-config" },
         { label: "Webhooks", href: "/ops/webhooks" },
@@ -239,6 +249,7 @@ export default async function OperatorLayout({
       activeRole="operator"
       sections={sections}
       roleLabel="Practice ops"
+      showNavPrefs={false}
     >
       <CommandPalette role="operator" />
       {children}

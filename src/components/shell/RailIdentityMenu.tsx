@@ -42,7 +42,7 @@ export function RailIdentityMenu({
       {open && (
         <div
           role="menu"
-          aria-label="Patient identity menu"
+          aria-label={`${roleLabel} identity menu`}
           className={cn(
             "absolute bottom-12 left-12 z-50 w-64 rounded-xl border border-border",
             "liquid-glass bg-surface-raised p-3 shadow-xl",
@@ -76,9 +76,9 @@ export function RailIdentityMenu({
 
       <button
         type="button"
-        aria-label="Open patient ID menu"
+        aria-label={`Open ${roleLabel} menu`}
         aria-expanded={open}
-        title="Patient ID"
+        title={roleLabel}
         onClick={() => setOpen((value) => !value)}
         className={cn(
           "flex h-11 w-11 items-center justify-center rounded-xl transition-colors",
