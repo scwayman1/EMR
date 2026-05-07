@@ -201,20 +201,21 @@ function loadManifests(): void {
   type LoadedSource = { key: string; raw: unknown };
   const loaded: LoadedSource[] = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const requireWithContext = require as unknown as {
-    context?: (
-      directory: string,
-      useSubdirectories?: boolean,
-      regExp?: RegExp,
-    ) => {
-      keys: () => string[];
-      (id: string): unknown;
-    };
-  };
+  // Webpack statically analyzes `require.context` if written literally.
+  // We use typeof require !== 'undefined' and check for require.context.
+  let hasContext = false;
+  try {
+    // @ts-expect-error Webpack specific
+    if (typeof require.context !== "undefined") {
+      hasContext = true;
+    }
+  } catch (e) {
+    // Ignore ReferenceError if require is completely undefined
+  }
 
-  if (typeof requireWithContext.context === "function") {
-    const ctx = requireWithContext.context("./manifests", true, /\.ts$/);
+  if (hasContext) {
+    // @ts-expect-error Webpack specific
+    const ctx = require.context("./manifests", true, /\.ts$/);
     for (const key of ctx.keys()) {
       if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) continue;
       try {
