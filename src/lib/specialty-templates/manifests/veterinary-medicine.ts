@@ -8,6 +8,7 @@ const manifest: SpecialtyManifest = {
   version: "1.0.0",
   name: "Veterinary Cannabis Care",
   description: "Canine and Feline endocannabinoid therapy protocols.",
+  icon: "Dog",
   default_care_model: "animal-health",
   default_enabled_modalities: ["veterinary-medicine"],
   default_disabled_modalities: ["human-pharmacology"],

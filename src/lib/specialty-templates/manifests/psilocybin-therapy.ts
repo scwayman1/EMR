@@ -8,6 +8,7 @@ const manifest: SpecialtyManifest = {
   version: "1.0.0",
   name: "Psilocybin Therapy",
   description: "Guided psychedelic therapy protocols and integration tracking.",
+  icon: "Sparkles",
   default_care_model: "psychedelic-assisted",
   default_enabled_modalities: ["psilocybin", "integration-therapy"],
   default_disabled_modalities: ["cannabis-medicine"],
