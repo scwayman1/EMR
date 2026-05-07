@@ -21,6 +21,13 @@ export const MINDFULNESS_PRACTICES = [
     nudge: "Three slow breaths count.",
   },
   {
+    id: "silence",
+    emoji: "\u{1F92B}",
+    label: "Silence",
+    minDuration: "2 min",
+    nudge: "Two minutes of quiet — phone face-down.",
+  },
+  {
     id: "gratitude",
     emoji: "\u{1F64F}",
     label: "Gratitude",
@@ -33,6 +40,13 @@ export const MINDFULNESS_PRACTICES = [
     label: "Journaling",
     minDuration: "1 line",
     nudge: "What did today feel like in one sentence?",
+  },
+  {
+    id: "sunlight",
+    emoji: "\u{2600}\u{FE0F}",
+    label: "Sunlight",
+    minDuration: "5 min",
+    nudge: "Step outside, look at something further than your screen.",
   },
   {
     id: "breathing",

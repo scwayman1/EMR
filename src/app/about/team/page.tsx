@@ -27,7 +27,7 @@ const EXECS: Executive[] = [
   {
     role: "CEO",
     title: "Chief Executive Officer",
-    name: "Dr. Neal H. Patel",
+    name: "Dr. Neal H. Patel, D.O.",
     initials: "NP",
     filled: true,
     bio: "Physician, innovator, and cannabis medicine pioneer. Decades of clinical experience, a fearless vision for patient-centered care, and the founding voice behind Leafjourney's clinical strategy.",

@@ -524,13 +524,20 @@ export default function CheckoutPage() {
           <ul className="divide-y divide-[var(--border)]">
             {confirmedSnapshot.items.map(({ product, quantity }) => (
               <li key={product.slug} className="py-4 flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden">
+                <Link
+                  href={`/leafmart/products/${product.slug}`}
+                  aria-label={`View ${product.name}`}
+                  className="w-14 h-14 rounded-xl flex-shrink-0 overflow-hidden focus:outline-none focus:ring-2 focus:ring-[var(--leaf)]"
+                >
                   <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={56} />
-                </div>
+                </Link>
                 <div className="flex-1 min-w-0">
-                  <p className="font-display text-[15px] font-medium text-[var(--ink)] truncate">
+                  <Link
+                    href={`/leafmart/products/${product.slug}`}
+                    className="font-display text-[15px] font-medium text-[var(--ink)] truncate block hover:text-[var(--leaf)] transition-colors"
+                  >
                     {product.name}
-                  </p>
+                  </Link>
                   <p className="text-[12px] text-[var(--muted)]">
                     {product.dose} · Qty {quantity}
                   </p>
@@ -933,16 +940,23 @@ export default function CheckoutPage() {
           <ul className="divide-y divide-[var(--border)] mb-5">
             {items.map(({ product, quantity }) => (
               <li key={product.slug} className="py-3 flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden relative">
+                <Link
+                  href={`/leafmart/products/${product.slug}`}
+                  aria-label={`View ${product.name}`}
+                  className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden relative block focus:outline-none focus:ring-2 focus:ring-[var(--leaf)]"
+                >
                   <ProductSilhouette shape={product.shape} bg={product.bg} deep={product.deep} height={48} />
                   <span className="absolute -top-1.5 -right-1.5 bg-[var(--ink)] text-[var(--bg)] text-[10px] font-semibold rounded-full w-5 h-5 flex items-center justify-center tabular-nums">
                     {quantity}
                   </span>
-                </div>
+                </Link>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13.5px] font-medium text-[var(--ink)] truncate leading-tight">
+                  <Link
+                    href={`/leafmart/products/${product.slug}`}
+                    className="text-[13.5px] font-medium text-[var(--ink)] truncate leading-tight block hover:text-[var(--leaf)] transition-colors"
+                  >
                     {product.name}
-                  </p>
+                  </Link>
                   <p className="text-[11.5px] text-[var(--muted)] mt-0.5">{product.dose}</p>
                 </div>
                 <span className="text-[13px] font-medium text-[var(--ink)] tabular-nums">
