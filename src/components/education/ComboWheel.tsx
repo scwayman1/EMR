@@ -220,20 +220,15 @@ export function ComboWheel({
                 <EmptyState />
               ) : (
                 <div className="flex flex-wrap gap-2">
-                  {selectedCompounds.map((c) => {
-                    const chipColor =
-                      c.type === "cannabinoid"
-                        ? CANNABINOID_COLOR
-                        : TERPENE_COLOR;
-                    return (
+                  {selectedCompounds.map((c) => (
                     <button
                       key={c.id}
                       type="button"
                       onClick={() => toggle(c.id)}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white shadow-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised"
                       style={{
-                        backgroundColor: chipColor,
-                        boxShadow: `0 4px 14px -4px ${chipColor}66`,
+                        backgroundColor: c.color,
+                        boxShadow: `0 4px 14px -4px ${c.color}66`,
                       }}
                       aria-label={`Remove ${c.name}`}
                     >
@@ -243,8 +238,7 @@ export function ComboWheel({
                         &times;
                       </span>
                     </button>
-                    );
-                  })}
+                  ))}
                 </div>
               )}
             </CardContent>
@@ -405,11 +399,12 @@ function EmptyState() {
   );
 }
 
-// Single source of truth for the two category colors used by both the wheel
-// segments and the legend swatches below it. Per-compound colors from the
-// seed are intentionally ignored — the design conveys category, not compound.
-const CANNABINOID_COLOR = "#2D8B5E";
-const TERPENE_COLOR = "#E8A838";
+// Legend swatches below the wheel use one representative color per
+// category. The wheel itself paints each slice with the compound's own
+// `c.color` so every cannabinoid and every terpene is visually distinct
+// (a Dr. Patel directive: the wheel must be colorful, not flat).
+const CANNABINOID_LEGEND = "#2D8B5E";
+const TERPENE_LEGEND = "#E8A838";
 
 // ---------------------------------------------------------------------------
 // Wheel geometry: outer ring = cannabinoids, inner ring = terpenes.
