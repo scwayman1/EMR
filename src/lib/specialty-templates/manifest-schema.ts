@@ -13,6 +13,10 @@ export const REGISTERED_MODALITIES = [
   "patient-reported-outcomes",
   "cannabis-medicine",
   "commerce-leafmart",
+  "psilocybin",
+  "integration-therapy",
+  "veterinary-medicine",
+  "human-pharmacology",
 ] as const;
 
 export type RegisteredModality = (typeof REGISTERED_MODALITIES)[number];
@@ -23,6 +27,8 @@ export const REGISTERED_CARE_MODELS = [
   "certification-longitudinal",
   "consultative",
   "procedural-only",
+  "psychedelic-assisted",
+  "animal-health",
 ] as const;
 
 export type RegisteredCareModel = (typeof REGISTERED_CARE_MODELS)[number];
