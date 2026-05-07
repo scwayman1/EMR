@@ -65,3 +65,4 @@ payload_cron.json
 payload_worker.json
 check_user.ts
 update_render_env.js
+.worktrees/
