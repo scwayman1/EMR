@@ -102,21 +102,30 @@ export default async function ClinicianLayout({
     {
       label: "Today",
       pillar: "today",
+      icon: "clipboard-check",
       items: [
-        { label: "Today", href: "/clinic" },
+        { label: "Overview", href: "/clinic" },
         { label: "Command Center", href: "/clinic/command" },
         { label: "Schedule", href: "/clinic/schedule" },
         { label: "Telehealth", href: "/telehealth" },
-        { label: "Roster", href: "/clinic/patients" },
-        { label: "Inbox", href: "/clinic/messages" },
       ],
     },
     {
-      label: "Review",
+      label: "Patients",
+      pillar: "patients",
+      icon: "users",
       items: [
+        { label: "Roster", href: "/clinic/patients" },
+      ],
+    },
+    {
+      label: "Inbox",
+      pillar: "inbox",
+      icon: "inbox",
+      items: [
+        { label: "Messages", href: "/clinic/messages" },
         // EMR-165: unified sign-off queue rolls up labs + refills +
-        // notes + messages. Pinned to the top of the Review section so
-        // a doctor can clear the day's signatures from one place.
+        // notes + messages — clinician's single place to clear the day.
         { label: "Sign-off", href: "/clinic/sign-off" },
         {
           label: "Approvals",
@@ -140,21 +149,23 @@ export default async function ClinicianLayout({
     },
     {
       label: "Reference",
+      pillar: "reference",
+      icon: "book-open",
       items: [
         { label: "Providers", href: "/clinic/providers" },
         { label: "Research", href: "/clinic/research" },
         { label: "Library", href: "/clinic/library" },
         { label: "Communications", href: "/clinic/communications" },
       ],
-      defaultCollapsed: true,
     },
     {
       label: "Admin",
+      pillar: "admin",
+      icon: "settings",
       items: [
         { label: "Audit", href: "/clinic/audit-trail" },
         { label: "Brief", href: "/clinic/morning-brief" },
       ],
-      defaultCollapsed: true,
     },
   ];
 
@@ -171,6 +182,7 @@ export default async function ClinicianLayout({
       activeRole="clinician"
       sections={sections}
       roleLabel="Provider"
+      showNavPrefs={false}
     >
       <QuoteWelcomeModal userName={user.firstName} />
       <BreathingBreak />
