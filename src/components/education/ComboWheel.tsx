@@ -520,9 +520,6 @@ function Wheel({
         ? `Deselect ${c.name}, ${c.type}, currently selected`
         : `Select ${c.name}, ${c.type}, currently unselected`;
 
-      const segColor =
-        c.type === "cannabinoid" ? CANNABINOID_COLOR : TERPENE_COLOR;
-
       return (
         <g
           key={c.id}
@@ -534,7 +531,7 @@ function Wheel({
           onTouchStart={() => handleTouchStart(c.id)}
           onKeyDown={(e) => handleKey(e, c.id)}
           className="combo-segment"
-          style={{ ["--seg-color" as string]: segColor }}
+          style={{ ["--seg-color" as string]: c.color }}
         >
           {dHit && (
             <path
@@ -546,7 +543,7 @@ function Wheel({
           )}
           <path
             d={isSelected ? dExpanded : d}
-            fill={segColor}
+            fill={c.color}
             opacity={1}
             stroke={isSelected ? "#fff" : "rgba(255,255,255,0.5)"}
             strokeWidth={isSelected ? 3 : 1.25}
@@ -554,8 +551,8 @@ function Wheel({
             style={{
               transition: "d 240ms ease, stroke-width 200ms ease, filter 300ms ease",
               filter: isSelected
-                ? `drop-shadow(0 0 10px ${segColor}) drop-shadow(0 0 22px ${segColor}cc)`
-                : `drop-shadow(0 1px 2px ${segColor}55)`,
+                ? `drop-shadow(0 0 10px ${c.color}) drop-shadow(0 0 22px ${c.color}cc)`
+                : `drop-shadow(0 1px 2px ${c.color}55)`,
               pointerEvents: dHit ? "none" : undefined,
             }}
           />
@@ -744,7 +741,7 @@ function Wheel({
         <span className="inline-flex items-center gap-2">
           <span
             className="h-3 w-5 rounded-full"
-            style={{ background: CANNABINOID_COLOR }}
+            style={{ background: CANNABINOID_LEGEND }}
             aria-hidden
           />
           Cannabinoids
@@ -752,7 +749,7 @@ function Wheel({
         <span className="inline-flex items-center gap-2">
           <span
             className="h-3 w-5 rounded-full"
-            style={{ background: TERPENE_COLOR }}
+            style={{ background: TERPENE_LEGEND }}
             aria-hidden
           />
           Terpenes
