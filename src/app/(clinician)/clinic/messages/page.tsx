@@ -13,7 +13,11 @@ import { SmartInboxView } from "./smart-inbox";
 
 export const metadata = { title: "Smart Inbox" };
 
-export default async function ClinicMessagesPage() {
+export default async function ClinicMessagesPage({
+  searchParams,
+}: {
+  searchParams?: { thread?: string };
+}) {
   const user = await requireUser();
 
   const threads = await prisma.messageThread.findMany({
@@ -109,6 +113,7 @@ export default async function ClinicMessagesPage() {
         triaged={triaged}
         threadMessages={threadMessages}
         currentUserId={user.id}
+        initialThreadId={searchParams?.thread}
       />
     </PageShell>
   );

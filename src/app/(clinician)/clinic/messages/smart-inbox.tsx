@@ -47,6 +47,7 @@ interface Props {
   triaged: TriagedMessage[];
   threadMessages: ThreadMessageData[];
   currentUserId: string;
+  initialThreadId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -291,12 +292,13 @@ export function SmartInboxView({
   triaged,
   threadMessages,
   currentUserId,
+  initialThreadId,
 }: Props) {
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "all">("all");
   const [search, setSearch] = useState("");
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
-    triaged[0]?.threadId ?? null,
+    initialThreadId ?? triaged[0]?.threadId ?? null,
   );
 
   // Compute counts per priority
