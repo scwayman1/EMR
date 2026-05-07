@@ -13,9 +13,11 @@ const manifest: SpecialtyManifest = {
   default_enabled_modalities: ["psilocybin", "integration-therapy"],
   default_disabled_modalities: ["cannabis-medicine"],
   default_workflows: ["prep-session", "journey-session", "integration-session"],
+  default_modules: [],
   default_charting_templates: ["journey-log"],
   default_mission_control_cards: ["integration-metrics"],
-  default_patient_portal_cards: ["preparation-guide"]
+  default_patient_portal_cards: ["preparation-guide"],
+  migration_mapping_defaults: {},
 };
 
 export default manifest;
