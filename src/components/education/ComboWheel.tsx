@@ -521,7 +521,7 @@ function Wheel({
         : `Select ${c.name}, ${c.type}, currently unselected`;
 
       const segColor =
-        c.type === "cannabinoid" ? CANNABINOID_COLOR : TERPENE_COLOR;
+        c.type === "cannabinoid" ? CANNABINOID_LEGEND : TERPENE_LEGEND;
 
       return (
         <g
@@ -744,7 +744,7 @@ function Wheel({
         <span className="inline-flex items-center gap-2">
           <span
             className="h-3 w-5 rounded-full"
-            style={{ background: CANNABINOID_COLOR }}
+            style={{ background: CANNABINOID_LEGEND }}
             aria-hidden
           />
           Cannabinoids
@@ -752,7 +752,7 @@ function Wheel({
         <span className="inline-flex items-center gap-2">
           <span
             className="h-3 w-5 rounded-full"
-            style={{ background: TERPENE_COLOR }}
+            style={{ background: TERPENE_LEGEND }}
             aria-hidden
           />
           Terpenes

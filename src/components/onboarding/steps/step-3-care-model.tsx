@@ -63,6 +63,14 @@ const CARE_MODEL_OPTIONS: Record<
     description:
       "Procedure-centric workflow with minimal longitudinal follow-up. Patients seen for a defined treatment course.",
   },
+  "psychedelic-assisted": {
+    label: "Psychedelic-assisted",
+    description: "Guided psychedelic therapy protocols and integration tracking.",
+  },
+  "animal-health": {
+    label: "Animal Health",
+    description: "Veterinary medicine and endocannabinoid therapy protocols for animals.",
+  },
 };
 
 export function Step3CareModel({ draft, patch, goNext, goBack }: WizardStepProps) {

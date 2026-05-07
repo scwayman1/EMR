@@ -13,9 +13,11 @@ const manifest: SpecialtyManifest = {
   default_enabled_modalities: ["veterinary-medicine"],
   default_disabled_modalities: ["human-pharmacology"],
   default_workflows: ["vet-intake"],
+  default_modules: [],
   default_charting_templates: ["soap-vet"],
   default_mission_control_cards: ["pet-vitals", "weight-tracker"],
-  default_patient_portal_cards: ["pet-profile"]
+  default_patient_portal_cards: ["pet-profile"],
+  migration_mapping_defaults: {},
 };
 
 export default manifest;

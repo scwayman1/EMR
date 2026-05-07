@@ -7,7 +7,6 @@ const config: CapacitorConfig = {
   appId: 'com.leafjourney.emr',
   appName: 'Leafjourney EMR',
   webDir: 'out', // Next.js static export directory
-  bundledWebRuntime: false,
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
