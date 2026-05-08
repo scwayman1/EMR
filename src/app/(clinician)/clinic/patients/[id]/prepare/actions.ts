@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { dispatch } from "@/lib/orchestration/dispatch";
-import { runTick } from "@/lib/orchestration/runner";
 import { preVisitIntelligenceAgent } from "@/lib/agents/pre-visit-intelligence-agent";
 import { resolveModelClient } from "@/lib/orchestration/model-client";
 import { buildToolRegistry } from "@/lib/orchestration/tool-registry";
@@ -238,7 +237,7 @@ export async function startVisitWithBriefing(
   }
 
   // Dispatch the scribe event
-  await dispatch({
+  const jobs = await dispatch({
     name: "encounter.note.draft.requested",
     encounterId: encounter.id,
     requestedBy: user.id,
@@ -247,12 +246,17 @@ export async function startVisitWithBriefing(
   // Try to run the agent inline with a 15-second timeout
   let createdNoteId: string | null = null;
   try {
-    await Promise.race([
-      runTick("inline-briefed-visit", 2),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 15000)
-      ),
-    ]);
+    if (jobs.length > 0) {
+      const jobRows = await prisma.agentJob.findMany({ where: { id: { in: jobs } } });
+      const { runJob } = await import("@/lib/orchestration/runner");
+
+      await Promise.race([
+        Promise.all(jobRows.map(job => runJob(job, "inline-briefed-visit"))),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 15000)
+        ),
+      ]);
+    }
 
     // Find the note that was just created
     const latestNote = await prisma.note.findFirst({

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { dispatch } from "@/lib/orchestration/dispatch";
-import { runTick } from "@/lib/orchestration/runner";
 
 /**
  * Start a visit: find or create an in-progress encounter for today,
@@ -60,22 +59,27 @@ export async function startVisit(patientId: string) {
   }
 
   // Dispatch the scribe event — this enqueues the job
-  await dispatch({
+  const jobs = await dispatch({
     name: "encounter.note.draft.requested",
     encounterId: encounter.id,
     requestedBy: user.id,
   });
 
   // Try to run the agent inline with a 15-second timeout.
-  // If it completes, the draft is ready when the page loads.
-  // If it times out, the job stays in the queue for the background worker.
+  // By running the specific job(s) returned by dispatch, we avoid
+  // inadvertently pulling unrelated backlogged jobs from the queue.
   try {
-    await Promise.race([
-      runTick("inline-visit", 2),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 15000)
-      ),
-    ]);
+    if (jobs.length > 0) {
+      const jobRows = await prisma.agentJob.findMany({ where: { id: { in: jobs } } });
+      const { runJob } = await import("@/lib/orchestration/runner");
+      
+      await Promise.race([
+        Promise.all(jobRows.map(job => runJob(job, "inline-visit"))),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 15000)
+        ),
+      ]);
+    }
   } catch (err) {
     // Timeout or error — the job is still in the queue.
     console.error("[startVisit] inline run:", err instanceof Error ? err.message : err);
