@@ -74,40 +74,72 @@ export async function logControllerAction(entry: ControllerAuditEntry): Promise<
   const after: Prisma.InputJsonValue | typeof Prisma.DbNull =
     entry.after == null ? Prisma.DbNull : (entry.after as Prisma.InputJsonValue);
 
-  try {
-    await prisma.controllerAuditLog.create({
-      data: {
-        actorUserId: entry.actor.id,
-        actorEmail: entry.actor.email ?? null,
-        actorRoles: entry.actor.roles ?? [],
-        organizationId: entry.actor.organizationId ?? null,
-        action: entry.action,
-        subjectType: "controller",
-        subjectId: entry.targetId,
-        before,
-        after,
-        reason: entry.reason ?? null,
-      },
-    });
-  } catch (err) {
-    // Compliance-relevant: prefer write availability of the controller over
-    // write durability of the audit row. v1 ticket scope explicitly excludes
-    // a queue/retry. Surface enough context for ops to reconstruct.
-    const fallback = {
-      at: new Date().toISOString(),
-      actorUserId: entry.actor.id,
-      actorEmail: entry.actor.email ?? null,
-      actorRoles: entry.actor.roles ?? [],
-      organizationId: entry.actor.organizationId ?? null,
-      action: entry.action,
-      subjectType: "controller",
-      subjectId: entry.targetId,
-      before: entry.before ?? null,
-      after: entry.after ?? null,
-      reason: entry.reason ?? null,
-      error: err instanceof Error ? err.message : String(err),
-    };
-    // eslint-disable-next-line no-console -- intentional fallback path
-    console.error("[audit:controller:persist_failed]", JSON.stringify(fallback));
+  const data = {
+    actorUserId: entry.actor.id,
+    actorEmail: entry.actor.email ?? null,
+    actorRoles: entry.actor.roles ?? [],
+    organizationId: entry.actor.organizationId ?? null,
+    action: entry.action,
+    subjectType: "controller" as const,
+    subjectId: entry.targetId,
+    before,
+    after,
+    reason: entry.reason ?? null,
+  };
+
+  // Retry transient failures with exponential backoff (~50, ~100, ~200ms).
+  // Total worst-case added latency ~350ms.
+  const MAX_ATTEMPTS = 3;
+  const BACKOFF_BASE_MS = 50;
+
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    try {
+      await prisma.controllerAuditLog.create({ data });
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < MAX_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, BACKOFF_BASE_MS * 2 ** attempt));
+      }
+    }
   }
+
+  const fallback = {
+    at: new Date().toISOString(),
+    attempts: MAX_ATTEMPTS,
+    actorUserId: entry.actor.id,
+    actorEmail: entry.actor.email ?? null,
+    actorRoles: entry.actor.roles ?? [],
+    organizationId: entry.actor.organizationId ?? null,
+    action: entry.action,
+    subjectType: "controller",
+    subjectId: entry.targetId,
+    before: entry.before ?? null,
+    after: entry.after ?? null,
+    reason: entry.reason ?? null,
+    error: lastErr instanceof Error ? lastErr.message : String(lastErr),
+  };
+
+  // Best-effort Sentry capture — required so log-aggregator alerts can fire
+  // when audit writes are silently failing in prod. Lazy require so this
+  // module remains testable when Sentry isn't initialized.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Sentry = require("@sentry/nextjs") as {
+      captureMessage?: (
+        m: string,
+        c?: { level?: string; extra?: Record<string, unknown> },
+      ) => void;
+    };
+    Sentry.captureMessage?.("audit:controller:persist_failed", {
+      level: "error",
+      extra: fallback,
+    });
+  } catch {
+    // Sentry not loaded — fall through to the console fallback below.
+  }
+
+  // eslint-disable-next-line no-console -- intentional fallback path
+  console.error("[audit:controller:persist_failed]", JSON.stringify(fallback));
 }
