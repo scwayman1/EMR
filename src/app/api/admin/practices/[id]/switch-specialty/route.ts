@@ -89,6 +89,13 @@ export async function POST(
     return NextResponse.json({ error: "config_not_found" }, { status: 404 });
   }
 
+  if (config.status !== "published") {
+    return NextResponse.json(
+      { error: "config_not_published", status: config.status },
+      { status: 400 },
+    );
+  }
+
   const org = await prisma.organization.findUnique({
     where: { id: config.organizationId },
     select: { id: true, name: true },
