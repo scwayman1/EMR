@@ -38,15 +38,27 @@ export default async function NoteDetailPage({ params }: PageProps) {
 
   const patient = note.encounter.patient;
 
-  // Parse blocks — they are stored as JSON
-  const blocks: { heading: string; body: string }[] = Array.isArray(note.blocks)
-    ? (note.blocks as { heading: string; body: string }[])
-    : [];
+  // Parse blocks — they are stored as JSON. Strip the internal `_guardrails`
+  // metadata block planted by the scribe agent: it carries hallucination /
+  // redaction metadata for the finalize-time snapshot, not display content,
+  // and rendering it as a regular block exposes internals to the clinician.
+  const rawBlocks: unknown[] = Array.isArray(note.blocks) ? note.blocks : [];
+  const blocks = rawBlocks.filter(
+    (b): b is { heading: string; body: string } =>
+      !!b &&
+      typeof b === "object" &&
+      typeof (b as { heading?: unknown }).heading === "string" &&
+      (b as { heading: string }).heading !== "_guardrails",
+  );
 
-  // Parse coding suggestion
+  // Parse coding suggestion. `icd10` is a JSON column — runtime-validate
+  // that it's actually an array before handing it to the client, otherwise
+  // a legacy/malformed row will crash the editor on render.
   const codingSuggestion = note.codingSuggestion
     ? {
-        icd10: note.codingSuggestion.icd10 as { code: string; label: string; confidence: number }[],
+        icd10: Array.isArray(note.codingSuggestion.icd10)
+          ? (note.codingSuggestion.icd10 as { code: string; label: string; confidence: number }[])
+          : [],
         emLevel: note.codingSuggestion.emLevel,
         rationale: note.codingSuggestion.rationale,
       }

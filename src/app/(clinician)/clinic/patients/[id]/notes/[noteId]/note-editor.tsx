@@ -92,15 +92,23 @@ export function NoteEditor({
   // JSON never reaches here.
   const [refineErrors, setRefineErrors] = useState<Record<number, string>>({});
   const [blocks, setBlocks] = useState<NoteBlock[]>(() => {
+    // Defensive: a malformed JSON payload could deliver a non-array here
+    // (the parent already filters `_guardrails`, but we don't trust the
+    // wire shape). Treat anything non-array as empty so the editor renders
+    // an empty state rather than crashing the patient chart.
+    const safe: NoteBlock[] = Array.isArray(initialBlocks) ? initialBlocks : [];
     // Sort initial blocks in APSO order
-    const sorted = [...initialBlocks].sort((a, b) => {
+    const sorted = [...safe].sort((a, b) => {
       const aIdx = a.type ? APSO_ORDER.indexOf(a.type) : APSO_ORDER.length;
       const bIdx = b.type ? APSO_ORDER.indexOf(b.type) : APSO_ORDER.length;
       return (aIdx === -1 ? APSO_ORDER.length : aIdx) - (bIdx === -1 ? APSO_ORDER.length : bIdx);
     });
-    // Apply APSO display labels to headings
+    // Apply APSO display labels to headings + coerce `body` to a string so
+    // downstream `body.split` / template-string concatenation never hit
+    // null/undefined.
     return sorted.map((block) => ({
       ...block,
+      body: typeof block.body === "string" ? block.body : "",
       heading: block.type && NOTE_BLOCK_LABELS[block.type]
         ? NOTE_BLOCK_LABELS[block.type]
         : block.heading,
