@@ -50,6 +50,22 @@ export interface RequireApiAuthOptions {
    * Set explicitly to override.
    */
   bootstrapSuperAdmin?: boolean;
+
+  /**
+   * Optional rate-limit gate. Runs AFTER successful authN/authZ and
+   * keys the limiter on the resolved actor's id. Returns 429 with
+   * Retry-After when the actor is over budget.
+   *
+   * Pass one of the pre-configured limiters from
+   * `src/lib/auth/rate-limit.ts` (adminMutationLimiter,
+   * agentInvocationLimiter) or a custom one — the helper only sees
+   * the RateLimiter shape.
+   */
+  rateLimit?: {
+    limiter: { check(id: string): { allowed: boolean; resetAt: number } };
+    /** Bucket label included in the 429 response — for client-side debugging. */
+    bucket?: string;
+  };
 }
 
 export type RequireApiAuthResult =
@@ -107,6 +123,30 @@ export async function requireApiAuth(
         { status: 403 },
       ),
     };
+  }
+
+  if (options.rateLimit) {
+    const result = options.rateLimit.limiter.check(user.id);
+    if (!result.allowed) {
+      const retryAfterSec = Math.max(
+        1,
+        Math.ceil((result.resetAt - Date.now()) / 1000),
+      );
+      return {
+        actor: null,
+        error: NextResponse.json(
+          {
+            error: "RATE_LIMITED",
+            bucket: options.rateLimit.bucket ?? null,
+            retryAfter: retryAfterSec,
+          },
+          {
+            status: 429,
+            headers: { "Retry-After": String(retryAfterSec) },
+          },
+        ),
+      };
+    }
   }
 
   return { actor: user, error: null };
