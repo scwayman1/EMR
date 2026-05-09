@@ -224,7 +224,26 @@ export default async function PatientHome() {
     );
   }
 
-  if (!patient) redirect("/portal/intake");
+  if (!patient) {
+    return (
+      <PageShell maxWidth="max-w-[1040px]">
+        <div className="py-24 text-center">
+          <Eyebrow className="mb-4 justify-center">Welcome</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl text-text tracking-tight mb-3">
+            Your account is created.
+          </h1>
+          <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed mb-8">
+            We couldn't find an active patient record linked to your email. If you are a patient, please use the invitation link sent by your clinic. If you are a staff member or administrator, please navigate to your console.
+          </p>
+          <div className="flex justify-center gap-3">
+            <Link href="/admin">
+              <Button size="lg">Go to Admin Console</Button>
+            </Link>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
 
   const plantHealth = isLocalDemo
     ? LOCAL_DEMO_PLANT_HEALTH
