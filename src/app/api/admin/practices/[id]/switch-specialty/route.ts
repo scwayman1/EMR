@@ -136,51 +136,55 @@ export async function POST(
     patientShellTemplateId: config.patientShellTemplateId,
   };
 
-  const updated = await prisma.practiceConfiguration.update({
-    where: { id: configId },
-    data: {
-      selectedSpecialty: defaults.selectedSpecialty ?? null,
-      selectedSpecialtyVersion: defaults.selectedSpecialtyVersion ?? null,
-      careModel: defaults.careModel ?? null,
-      enabledModalities: defaults.enabledModalities ?? [],
-      disabledModalities: defaults.disabledModalities ?? [],
-      workflowTemplateIds: defaults.workflowTemplateIds ?? [],
-      chartingTemplateIds: defaults.chartingTemplateIds ?? [],
-      physicianShellTemplateId: defaults.physicianShellTemplateId ?? null,
-      patientShellTemplateId: defaults.patientShellTemplateId ?? null,
-    },
-    select: {
-      id: true,
-      selectedSpecialty: true,
-      selectedSpecialtyVersion: true,
-      enabledModalities: true,
-      disabledModalities: true,
-      status: true,
-    },
-  });
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.practiceConfiguration.update({
+      where: { id: configId },
+      data: {
+        selectedSpecialty: defaults.selectedSpecialty ?? null,
+        selectedSpecialtyVersion: defaults.selectedSpecialtyVersion ?? null,
+        careModel: defaults.careModel ?? null,
+        enabledModalities: defaults.enabledModalities ?? [],
+        disabledModalities: defaults.disabledModalities ?? [],
+        workflowTemplateIds: defaults.workflowTemplateIds ?? [],
+        chartingTemplateIds: defaults.chartingTemplateIds ?? [],
+        physicianShellTemplateId: defaults.physicianShellTemplateId ?? null,
+        patientShellTemplateId: defaults.patientShellTemplateId ?? null,
+      },
+      select: {
+        id: true,
+        selectedSpecialty: true,
+        selectedSpecialtyVersion: true,
+        enabledModalities: true,
+        disabledModalities: true,
+        status: true,
+      },
+    });
 
-  await logControllerAction({
-    actor: {
-      id: actor.id,
-      email: actor.email,
-      roles: actor.roles,
-      organizationId: actor.organizationId,
-    },
-    action: "controller.config.switch_specialty",
-    targetId: configId,
-    before,
-    after: {
-      selectedSpecialty: updated.selectedSpecialty,
-      selectedSpecialtyVersion: updated.selectedSpecialtyVersion,
-      careModel: defaults.careModel,
-      enabledModalities: updated.enabledModalities,
-      disabledModalities: updated.disabledModalities,
-      workflowTemplateIds: defaults.workflowTemplateIds,
-      chartingTemplateIds: defaults.chartingTemplateIds,
-      physicianShellTemplateId: defaults.physicianShellTemplateId,
-      patientShellTemplateId: defaults.patientShellTemplateId,
-    },
-    reason: `Soft switch via super-admin console (org: ${org.name})`,
+    await logControllerAction({
+      actor: {
+        id: actor.id,
+        email: actor.email,
+        roles: actor.roles,
+        organizationId: actor.organizationId,
+      },
+      action: "controller.config.switch_specialty",
+      targetId: configId,
+      before,
+      after: {
+        selectedSpecialty: result.selectedSpecialty,
+        selectedSpecialtyVersion: result.selectedSpecialtyVersion,
+        careModel: defaults.careModel,
+        enabledModalities: result.enabledModalities,
+        disabledModalities: result.disabledModalities,
+        workflowTemplateIds: defaults.workflowTemplateIds,
+        chartingTemplateIds: defaults.chartingTemplateIds,
+        physicianShellTemplateId: defaults.physicianShellTemplateId,
+        patientShellTemplateId: defaults.patientShellTemplateId,
+      },
+      reason: `Soft switch via super-admin console (org: ${org.name})`,
+    }, tx);
+
+    return result;
   });
 
   return NextResponse.json({ ok: true, config: updated });

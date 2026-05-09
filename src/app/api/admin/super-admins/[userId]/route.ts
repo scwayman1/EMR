@@ -67,21 +67,23 @@ export async function DELETE(
     return NextResponse.json({ error: "user_not_found" }, { status: 404 });
   }
 
-  await prisma.membership.deleteMany({
-    where: { userId: targetUserId, role: "super_admin" },
-  });
+  await prisma.$transaction(async (tx) => {
+    await tx.membership.deleteMany({
+      where: { userId: targetUserId, role: "super_admin" },
+    });
 
-  await logControllerAction({
-    actor: {
-      id: actor.id,
-      email: actor.email,
-      roles: actor.roles,
-      organizationId: actor.organizationId,
-    },
-    action: "controller.super_admin.revoke",
-    targetId: targetUserId,
-    before: { email: targetUser.email },
-    reason: `Revoked super_admin from ${targetUser.email}`,
+    await logControllerAction({
+      actor: {
+        id: actor.id,
+        email: actor.email,
+        roles: actor.roles,
+        organizationId: actor.organizationId,
+      },
+      action: "controller.super_admin.revoke",
+      targetId: targetUserId,
+      before: { email: targetUser.email },
+      reason: `Revoked super_admin from ${targetUser.email}`,
+    }, tx);
   });
 
   return NextResponse.json({ ok: true });

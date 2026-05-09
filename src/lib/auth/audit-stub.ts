@@ -64,7 +64,10 @@ export interface ControllerAuditEntry {
  *   - `before` / `after`     → ControllerAuditLog.before / .after (Json)
  *   - `reason`               → ControllerAuditLog.reason
  */
-export async function logControllerAction(entry: ControllerAuditEntry): Promise<void> {
+export async function logControllerAction(
+  entry: ControllerAuditEntry,
+  tx?: Prisma.TransactionClient,
+): Promise<void> {
   // Json columns: Prisma's `JsonNull` is the in-DB JSON null; `DbNull`
   // leaves the column SQL NULL. We use SQL NULL when the caller didn't
   // supply a snapshot — keeps the column index-friendly and matches the
@@ -74,8 +77,10 @@ export async function logControllerAction(entry: ControllerAuditEntry): Promise<
   const after: Prisma.InputJsonValue | typeof Prisma.DbNull =
     entry.after == null ? Prisma.DbNull : (entry.after as Prisma.InputJsonValue);
 
+  const client = tx ?? prisma;
+
   try {
-    await prisma.controllerAuditLog.create({
+    await client.controllerAuditLog.create({
       data: {
         actorUserId: entry.actor.id,
         actorEmail: entry.actor.email ?? null,
