@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireApiAuth } from "@/lib/auth/api-gate";
+import { adminMutationLimiter } from "@/lib/auth/rate-limit";
 import { ensureLeafjourneyHq } from "@/lib/auth/super-admin-bootstrap";
 import { logControllerAction } from "@/lib/auth/audit-stub";
 
@@ -68,7 +69,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const gate = await requireApiAuth({ role: "super_admin" });
+  const gate = await requireApiAuth({
+    role: "super_admin",
+    rateLimit: { limiter: adminMutationLimiter, bucket: "admin.super_admin.grant" },
+  });
   if (gate.error) return gate.error;
   const actor = gate.actor;
 
