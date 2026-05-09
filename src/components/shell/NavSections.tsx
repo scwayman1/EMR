@@ -190,7 +190,14 @@ export function NavSections({ sections, onItemClick, variant = "rail" }: NavSect
         return null;
       }
     });
-    setCollapsed(resolveInitialCollapseState({ sections, pathname, persisted }));
+    const next = resolveInitialCollapseState({ sections, pathname, persisted });
+    setCollapsed((prev) => {
+      const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+      for (const k of keys) {
+        if (prev[k] !== next[k]) return next;
+      }
+      return prev;
+    });
     setHydrated(true);
     // We intentionally run this once per pathname change so that navigating
     // into a group auto-expands it.
