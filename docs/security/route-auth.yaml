@@ -1,0 +1,449 @@
+# API Route Auth Manifest — single source of truth for /api/** auth posture.
+#
+# Generated 2026-05-09 against origin/main HEAD e2ec08a.
+#
+# Every route under src/app/api/**/route.ts must have an entry. Adding a
+# new route without updating this file fails CI (see scripts/check-route-auth-manifest.mjs).
+#
+# Schema:
+#   routes:
+#     <route-path>:           # Path relative to /api, e.g. "admin/super-admins"
+#       methods: [GET, POST]  # Methods this route handles
+#       auth: <kind>          # See "Auth kinds" below
+#       owner: <team>         # Team responsible — drives PR review routing
+#       notes: <string>       # Optional — anything a reviewer needs to know
+#       review_due: <date>    # Optional — for routes flagged needs_review,
+#                             #   the date by which the classification must
+#                             #   be resolved.
+#
+# Auth kinds:
+#   required        — Authenticated user is a hard prerequisite.
+#                     Helper must appear in the file: requireApiAuth,
+#                     requireUser, requireRole, requireSuperAdmin,
+#                     requireImplementationAdmin, requireControllerAccess,
+#                     getCurrentUser, currentUser, or auth().
+#
+#   public          — Intentionally public. Document why in notes.
+#                     Examples: marketing pages, OG image, shared catalogs.
+#                     Use this kind ONLY when there is a deliberate product
+#                     reason to expose data without auth.
+#
+#   webhook         — Inbound webhook from a third party. Must verify the
+#                     signature/HMAC of the upstream provider. Routes that
+#                     don't are security bugs (see PR #233).
+#
+#   cron            — Inbound cron tick. Must validate a shared secret in
+#                     a header (X-Cron-Secret or equivalent) — being
+#                     callable from the open internet is the failure mode
+#                     this category is supposed to surface.
+#
+#   token_url       — Auth comes from an unguessable token in the URL or
+#                     query (emergency access, share links). Token must
+#                     be opaque, single-use or short-lived, and audited.
+#
+#   establishes_auth — Sign-in / sign-up / login / logout endpoints. Public
+#                     by definition; must rate-limit and protect the
+#                     credentials they receive.
+#
+#   needs_review    — Classification not yet determined. CI does NOT block
+#                     on these (the manifest entry exists), but `review_due`
+#                     must be filled and the date must not be past.
+#
+# Process:
+#   1. Add a new API route → add an entry here in the same PR.
+#   2. CI fails if a route lacks an entry, OR if an entry's `auth` field is
+#      `needs_review` and `review_due` is past.
+#   3. Changing a route's auth kind requires a security-review label on
+#      the PR.
+
+generated_at: 2026-05-09
+generated_against: origin/main@e2ec08a
+total_routes: 62
+
+routes:
+
+  # ── /api/admin/** ────────────────────────────────────────
+  # All admin routes use requireApiAuth({ role: "super_admin" }) per PR #239
+  # and run behind the origin-check middleware per PR #238.
+  admin/super-admins:
+    methods: [GET, POST]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. CSRF defense via /api/admin/** origin middleware."
+
+  admin/super-admins/[userId]:
+    methods: [DELETE]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. Last-admin guard + Serializable txn (PR #225)."
+
+  admin/practices:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. Read-only listing."
+
+  admin/practices/[id]/switch-specialty:
+    methods: [POST]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. Requires status=published guard (PR #225)."
+
+  # ── Onboarding controller (EMR-428) ───────────────────────
+  audit:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "implementation_admin role. ControllerAuditLog read access."
+
+  configs:
+    methods: [POST]
+    auth: required
+    owner: onboarding-controller
+
+  configs/[id]:
+    methods: [GET, PATCH]
+    auth: required
+    owner: onboarding-controller
+
+  configs/[id]/publish:
+    methods: [POST]
+    auth: required
+    owner: onboarding-controller
+
+  configs/[id]/archive:
+    methods: [POST]
+    auth: required
+    owner: onboarding-controller
+
+  configs/[id]/upgrade-template:
+    methods: [POST]
+    auth: required
+    owner: onboarding-controller
+
+  configs/[id]/apply-specialty:
+    methods: [POST]
+    auth: needs_review
+    owner: onboarding-controller
+    review_due: 2026-05-23
+    notes: "Detected NO auth helper in route. Other controller routes use requireImplementationAdmin — confirm and align or document why this is exempt."
+
+  configs/by-practice/[practiceId]:
+    methods: [GET]
+    auth: required
+    owner: onboarding-controller
+    notes: "Uses getCurrentUser. Verify it also enforces practice-scope via canViewPracticeConfig."
+
+  practices:
+    methods: [GET, POST]
+    auth: required
+    owner: onboarding-controller
+
+  migration-profiles:
+    methods: [POST]
+    auth: required
+    owner: onboarding-controller
+
+  migration-profiles/[id]:
+    methods: [GET]
+    auth: required
+    owner: onboarding-controller
+
+  orgs:
+    methods: [GET, POST]
+    auth: required
+    owner: onboarding-controller
+
+  specialty-templates:
+    methods: [GET]
+    auth: needs_review
+    owner: onboarding-controller
+    review_due: 2026-05-23
+    notes: "Read-only manifest. Probably safe public, but confirm — exposes specialty/version metadata."
+
+  # ── Agents (LLM-backed, $$ implications) ─────────────────
+  agents/pharmacology:
+    methods: [POST]
+    auth: needs_review
+    owner: agents
+    review_due: 2026-05-16
+    notes: "🚨 LLM agent endpoint, no auth detected. Unmetered prompt = unmetered cost. Must require auth + rate-limit before any prod traffic."
+
+  cindy:
+    methods: [POST]
+    auth: needs_review
+    owner: agents
+    review_due: 2026-05-16
+    notes: "🚨 LLM agent endpoint, no auth detected. Same risk as agents/pharmacology."
+
+  cfo/generate:
+    methods: [GET, POST]
+    auth: needs_review
+    owner: agents
+    review_due: 2026-05-16
+    notes: "🚨 CFO report generation, no auth detected. Both LLM cost and PHI/financial-data exposure risk."
+
+  feedback/whisper:
+    methods: [GET, POST]
+    auth: needs_review
+    owner: agents
+    review_due: 2026-05-16
+    notes: "🚨 Whisper audio transcription. Unmetered cost vector. Must require auth + rate-limit."
+
+  # ── Imaging (PHI) ────────────────────────────────────────
+  imaging/studies:
+    methods: [GET]
+    auth: needs_review
+    owner: imaging
+    review_due: 2026-05-16
+    notes: "🚨 PHI surface, no auth detected. MUST be authed before prod."
+
+  imaging/studies/[id]:
+    methods: [GET]
+    auth: needs_review
+    owner: imaging
+    review_due: 2026-05-16
+    notes: "🚨 PHI surface, no auth detected."
+
+  imaging/studies/[id]/annotations:
+    methods: [GET, POST, DELETE]
+    auth: needs_review
+    owner: imaging
+    review_due: 2026-05-16
+    notes: "🚨 PHI surface, no auth detected. State-changing on POST/DELETE."
+
+  imaging/upload:
+    methods: [GET, POST]
+    auth: required
+    owner: imaging
+    notes: "Uses getCurrentUser."
+
+  # ── Patient-facing data ───────────────────────────────────
+  appointments/ical:
+    methods: [GET]
+    auth: required
+    owner: scheduling
+    notes: "Uses getCurrentUser. Returns user's calendar."
+
+  export/outcomes:
+    methods: [GET]
+    auth: required
+    owner: research
+
+  transcribe:
+    methods: [POST]
+    auth: required
+    owner: scribe
+
+  # ── Leafmart commerce ─────────────────────────────────────
+  leafmart/me:
+    methods: [GET]
+    auth: required
+    owner: leafmart
+
+  leafmart/cart:
+    methods: [GET, POST, DELETE]
+    auth: required
+    owner: leafmart
+
+  leafmart/cart/share:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-23
+    notes: "Generates shareable cart link. Public access likely intentional; confirm rate limit + token opacity."
+
+  leafmart/addresses:
+    methods: [GET, POST]
+    auth: required
+    owner: leafmart
+
+  leafmart/addresses/[id]:
+    methods: [DELETE, PATCH]
+    auth: required
+    owner: leafmart
+
+  leafmart/checkout:
+    methods: [POST]
+    auth: required
+    owner: leafmart
+
+  leafmart/account/affirmations:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-16
+    notes: "🚨 Patient-bound POST, no auth detected. Likely needs auth."
+
+  leafmart/products/[slug]/questions:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-16
+    notes: "Posting a question — anonymous OK or requires user? Confirm."
+
+  leafmart/products/[slug]/reviews:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-16
+    notes: "Posting a review — likely require auth + verified-purchase. Confirm."
+
+  leafmart/search:
+    methods: [GET]
+    auth: public
+    owner: leafmart
+    notes: "Public product search."
+
+  leafmart/vendor-apply:
+    methods: [POST]
+    auth: public
+    owner: leafmart
+    notes: "Public vendor application form. Rate-limit recommended."
+
+  leafmart/signout:
+    methods: [POST]
+    auth: establishes_auth
+    owner: leafmart
+    notes: "Clears Leafmart session cookies."
+
+  # ── Marketplace ───────────────────────────────────────────
+  marketplace/age-gate/confirm:
+    methods: [POST]
+    auth: required
+    owner: leafmart
+
+  marketplace/coa/[documentId]:
+    methods: [GET]
+    auth: public
+    owner: leafmart
+    notes: "Certificate of Analysis viewer — intentionally public for transparency."
+
+  marketplace/tax/calculate:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-23
+    notes: "Pre-checkout tax calc. Public OK if rate-limited; otherwise an enumeration vector."
+
+  marketplace/vendors/[vendorId]/documents/coa:
+    methods: [POST]
+    auth: required
+    owner: leafmart
+
+  marketplace/vendors/[vendorId]/documents/w9:
+    methods: [GET, POST]
+    auth: required
+    owner: leafmart
+
+  # ── Webhooks (signature-verified) ─────────────────────────
+  webhooks/clerk:
+    methods: [POST]
+    auth: webhook
+    owner: platform-security
+    notes: "svix signature, fail-closed on missing secret/headers."
+
+  webhooks/payabli:
+    methods: [POST]
+    auth: webhook
+    owner: billing
+    notes: "Per PR #233: gateway must be 'payabli' in prod, signature verified unconditionally."
+
+  webhooks/payabli/marketplace:
+    methods: [POST]
+    auth: webhook
+    owner: leafmart
+    notes: "HMAC-SHA256 timing-safe verification, fail-closed on missing secret."
+
+  # ── Cron (inbound triggers) ───────────────────────────────
+  cron/coa-tracker:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-16
+    notes: "🚨 No secret-header validation detected. Public-callable cron is a remote-trigger vector."
+
+  cron/reminders:
+    methods: [GET]
+    auth: needs_review
+    owner: scheduling
+    review_due: 2026-05-16
+    notes: "🚨 No secret-header validation detected. File starts with @ts-nocheck — broader hygiene issue."
+
+  # ── Token-URL access ──────────────────────────────────────
+  emergency/[token]:
+    methods: [GET]
+    auth: token_url
+    owner: clinical-safety
+    notes: "Break-glass emergency-access token. Verify token table + expiry + audit on read."
+
+  share/og:
+    methods: [GET]
+    auth: public
+    owner: marketing
+    notes: "Open Graph image generation, public by definition."
+
+  share:
+    methods: [POST]
+    auth: needs_review
+    owner: marketing
+    review_due: 2026-05-23
+    notes: "Share-link creation. Verify it requires an authed user to mint a share token."
+
+  # ── Vendor portal auth ────────────────────────────────────
+  vendor-portal/auth/login:
+    methods: [POST]
+    auth: establishes_auth
+    owner: leafmart
+    notes: "Vendor login. Must rate-limit + audit failed attempts."
+
+  vendor-portal/auth/logout:
+    methods: [POST]
+    auth: establishes_auth
+    owner: leafmart
+
+  vendor-portal/auth/totp/enroll:
+    methods: [POST]
+    auth: needs_review
+    owner: leafmart
+    review_due: 2026-05-16
+    notes: "TOTP enrollment — must require an authenticated session before enrolling. Confirm."
+
+  # ── Public infra ──────────────────────────────────────────
+  health:
+    methods: [GET]
+    auth: public
+    owner: sre
+    notes: "Liveness check. No data, no DB query."
+
+  platform/licensing/menu.html:
+    methods: [GET]
+    auth: public
+    owner: marketing
+    notes: "Public licensing menu HTML."
+
+  platform/licensing/menu.json:
+    methods: [GET]
+    auth: public
+    owner: marketing
+    notes: "Public licensing menu JSON."
+
+  reports/competitive-analysis:
+    methods: [GET]
+    auth: needs_review
+    owner: research
+    review_due: 2026-05-16
+    notes: "🚨 'Competitive analysis report' generated without auth. Likely should be admin-only."
+
+  dispensary/ingest:
+    methods: [POST]
+    auth: needs_review
+    owner: integrations
+    review_due: 2026-05-16
+    notes: "🚨 Ingest endpoint with no auth detected. Either token-validate or require auth."
+
+  integrations/linear/issues/[identifier]:
+    methods: [GET]
+    auth: required
+    owner: integrations
+    notes: "Uses requireUser. Surfaces Linear issue context."
