@@ -41,8 +41,17 @@ function isSharedPath(pathname: string): boolean {
   return SHARED_PATHS.some((p) => pathname.startsWith(p));
 }
 
-// Ensure the sign-in / sign-up routes and APIs are public
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/api(.*)", "/(.*)"]); // Wait, everything public? The previous middleware didn't enforce auth. Wait, in Next.js app router, the pages enforce auth.
+// Auth model: Clerk's middleware attaches session state to the request,
+// but does NOT auto-protect routes. Per-page protection happens in the
+// route handlers and Server Components via requireUser() / requireRole()
+// from @/lib/auth/session and the new requireApiAuth() in @/lib/auth/api-gate.
+// The middleware below only adds two cross-cutting concerns: (1) coarse
+// auth gate on the onboarding-controller surface, (2) origin check on
+// admin mutations.
+//
+// (A previous version of this file declared `isPublicRoute = createRouteMatcher`
+// matching every path, with a confused comment. It was never invoked.
+// Removed in chore/middleware-dead-route-matcher.)
 
 // EMR-428 — Practice Onboarding Controller surfaces. Coarse gate: must be
 // signed in. The route handlers/pages do the real role check via
