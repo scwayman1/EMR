@@ -96,7 +96,7 @@ export function VitalsCard({ vitals }: { vitals?: VitalsProps }) {
           </div>
         </div>
       </div>
-      
+
       <div className="px-5 py-3 bg-neutral-50 dark:bg-neutral-800/30 border-t border-neutral-100 dark:border-neutral-800 text-xs text-neutral-500 dark:text-neutral-400 text-center">
         These signals help us understand how your body is feeling right now.
       </div>
