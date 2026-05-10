@@ -22,6 +22,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
+import { logger } from "@/lib/observability/log";
 import type { AuthedUser } from "./session";
 
 export const LEAFJOURNEY_HQ_SLUG = "leafjourney-hq";
@@ -137,12 +138,13 @@ export async function bootstrapSuperAdminIfAllowlisted(
     // Don't block the grant on a failed audit row — but make sure the
     // failure is loud. Silently-promoted super-admins with no audit
     // trail is the exact failure mode this module is supposed to avoid.
-    console.error(
-      "[super-admin-bootstrap] FAILED to write audit row for promotion of " +
-        user.email +
-        " — investigate immediately.",
+    logger.error({
+      event: "auth.bootstrap.audit_write_failed",
+      userId: user.id,
       err,
-    );
+      message:
+        "Promoted user but audit row failed to persist — investigate immediately.",
+    });
   }
 
   return true;

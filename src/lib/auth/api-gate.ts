@@ -33,6 +33,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import type { Role } from "@prisma/client";
+import { logger } from "@/lib/observability/log";
 import { type AuthedUser, requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
 
@@ -107,11 +108,11 @@ export async function requireApiAuth(
       // Bootstrap failure is unusual (DB hiccup) but shouldn't 500 the
       // request — fall through to the role check, which will 403 if the
       // user wasn't already a super-admin.
-      // eslint-disable-next-line no-console
-      console.warn(
-        "[api-gate] bootstrapSuperAdminIfAllowlisted threw — continuing to role check",
+      logger.warn({
+        event: "auth.bootstrap.threw",
+        userId: user.id,
         err,
-      );
+      });
     }
   }
 
