@@ -1,6 +1,15 @@
 {
   "extends": "next/core-web-vitals",
   "rules": {
-    "react/no-unescaped-entities": "off"
+    "react/no-unescaped-entities": "off",
+    "@typescript-eslint/ban-ts-comment": [
+      "error",
+      {
+        "ts-nocheck": true,
+        "ts-ignore": "allow-with-description",
+        "ts-expect-error": "allow-with-description",
+        "minimumDescriptionLength": 10
+      }
+    ]
   }
 }
