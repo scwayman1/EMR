@@ -41,8 +41,17 @@ function isSharedPath(pathname: string): boolean {
   return SHARED_PATHS.some((p) => pathname.startsWith(p));
 }
 
-// Ensure the sign-in / sign-up routes and APIs are public
-const isPublicRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)", "/api(.*)", "/(.*)"]); // Wait, everything public? The previous middleware didn't enforce auth. Wait, in Next.js app router, the pages enforce auth.
+// Auth model: Clerk's middleware attaches session state to the request,
+// but does NOT auto-protect routes. Per-page protection happens in the
+// route handlers and Server Components via requireUser() / requireRole()
+// from @/lib/auth/session and the new requireApiAuth() in @/lib/auth/api-gate.
+// The middleware below only adds two cross-cutting concerns: (1) coarse
+// auth gate on the onboarding-controller surface, (2) origin check on
+// admin mutations.
+//
+// (A previous version of this file declared `isPublicRoute = createRouteMatcher`
+// matching every path, with a confused comment. It was never invoked.
+// Removed in chore/middleware-dead-route-matcher.)
 
 // EMR-428 — Practice Onboarding Controller surfaces. Coarse gate: must be
 // signed in. The route handlers/pages do the real role check via
@@ -95,6 +104,48 @@ export default clerkMiddleware(async (auth, req) => {
     // Authenticated — fall through to per-route role check downstream.
   }
 
+  // ── Origin check for state-changing /api/admin requests ──
+  // Defense-in-depth against CSRF. Clerk's session cookie is SameSite=Lax,
+  // which blocks the easiest cross-site form-post attack but does NOT
+  // block fetch() from a controlled origin. The admin routes mutate
+  // privilege grants and practice config — the cost of a bypass is high
+  // enough that we want a second check beyond cookie SameSite.
+  //
+  // We accept either:
+  //   - An exact match against APP_URL (set in env), or
+  //   - The Origin matches the current request's Host (fetch-from-same-page).
+  //
+  // Webhooks under /api/webhooks/** are NOT covered here — those have
+  // signature verification and explicitly accept cross-origin posts.
+  if (
+    pathname.startsWith("/api/admin/") &&
+    req.method !== "GET" &&
+    req.method !== "HEAD" &&
+    req.method !== "OPTIONS"
+  ) {
+    const origin = req.headers.get("origin");
+    const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const sameHost = origin
+      ? (() => {
+          try {
+            return new URL(origin).host === host;
+          } catch {
+            return false;
+          }
+        })()
+      : false;
+    const matchesAppUrl = origin && appUrl && origin === appUrl.replace(/\/$/, "");
+
+    if (!origin || (!sameHost && !matchesAppUrl)) {
+      return NextResponse.json(
+        {
+          error: "FORBIDDEN",
+          message: "Origin mismatch — admin mutations require same-origin requests.",
+        },
+        { status: 403 },
+      );
+    }
+  }
 
   // ── Leafmart domain routing ──────────────────────────────
   if (isLeafmartHost(host)) {

@@ -11,9 +11,8 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/auth/session";
-import { requireSuperAdmin } from "@/lib/auth/super-admin";
-import { bootstrapSuperAdminIfAllowlisted } from "@/lib/auth/super-admin-bootstrap";
+import { requireApiAuth } from "@/lib/auth/api-gate";
+import { adminMutationLimiter } from "@/lib/auth/rate-limit";
 import { logControllerAction } from "@/lib/auth/audit-stub";
 
 export const runtime = "nodejs";
@@ -23,14 +22,12 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { userId: string } },
 ) {
-  let actor;
-  try {
-    await bootstrapSuperAdminIfAllowlisted(await requireUser());
-    actor = await requireSuperAdmin();
-  } catch (err) {
-    const code = err instanceof Error ? err.message : "FORBIDDEN";
-    return NextResponse.json({ error: code }, { status: code === "UNAUTHORIZED" ? 401 : 403 });
-  }
+  const gate = await requireApiAuth({
+    role: "super_admin",
+    rateLimit: { limiter: adminMutationLimiter, bucket: "admin.super_admin.revoke" },
+  });
+  if (gate.error) return gate.error;
+  const actor = gate.actor;
 
   const targetUserId = params.userId;
   if (!targetUserId) {

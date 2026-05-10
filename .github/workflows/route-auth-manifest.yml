@@ -1,0 +1,34 @@
+name: Security — Route Auth Manifest
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/app/api/**'
+      - 'docs/security/route-auth.yaml'
+      - 'scripts/check-route-auth-manifest.mjs'
+      - '.github/workflows/route-auth-manifest.yml'
+  push:
+    branches: [main]
+
+# Fails the build if a /api/** route lands without an entry in the manifest,
+# or if an entry's `needs_review` deadline has passed without resolution.
+#
+# This is the gate behind OPERATION-STEEL-SPINE epic 1.1 — without it, new
+# routes can ship to prod with no auth-kind classification at all.
+
+jobs:
+  check-manifest:
+    name: route-auth manifest in sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate manifest
+        run: node scripts/check-route-auth-manifest.mjs
