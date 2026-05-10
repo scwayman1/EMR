@@ -125,25 +125,93 @@ function extractManifest(mod: unknown): unknown {
   return mod;
 }
 
+/**
+ * Discover and load every manifest file under ./manifests/. Returns an
+ * iterable of `{ key, raw }` where `key` is a stable identifier for error
+ * messages and `raw` is the manifest object.
+ *
+ * Two runtime paths are supported:
+ *   1. Webpack/Next.js — uses `require.context` so manifests are discovered
+ *      at build time and statically baked into the bundle.
+ *   2. Node/Vitest — uses `fs.readdirSync` + `createRequire`. This mirrors
+ *      the original EMR-433 loader and is the path Vitest hits because
+ *      `require.context` is a Webpack-only API.
+ *
+ * We prefer (1) when present (production, `next dev`, `next build`) and
+ * fall back to (2) otherwise. The fallback is also used when `require` is
+ * an ESM bridge that doesn't expose `.context` (the symptom that breaks
+ * Vitest with "require.context is not a function").
+ */
+function discoverManifestSources(): Array<{ key: string; raw: unknown }> {
+  const out: Array<{ key: string; raw: unknown }> = [];
+
+  // Path 1: Vitest / Node runtime fallback.
+  // We use process.env.VITEST to explicitly enter the Node fs.readdirSync path
+  // without confusing Webpack's static analyzer or Next.js server components.
+  if (process.env.VITEST) {
+    // eslint-disable-next-line
+    const fs = require("node:fs") as typeof import("node:fs");
+    // eslint-disable-next-line
+    const path = require("node:path") as typeof import("node:path");
+    // Hide createRequire from Webpack's analyzer using String()
+    // eslint-disable-next-line
+    const { createRequire } = require(String("node:module")) as typeof import("node:module");
+
+    const here = typeof __dirname === "string" ? __dirname : process.cwd();
+    const manifestDir = path.join(here, "manifests");
+    const requireFn = createRequire(path.join(here, "registry.ts"));
+
+    const collect = (dir: string, prefix: string) => {
+      let entries: string[];
+      try {
+        entries = fs.readdirSync(dir);
+      } catch (err) {
+        throw new Error(
+          `[specialty-templates] cannot read manifests directory "${dir}": ${(err as Error).message}`
+        );
+      }
+      for (const entry of entries) {
+        const full = path.join(dir, entry);
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          collect(full, `${prefix}${entry}/`);
+          continue;
+        }
+        if (!entry.endsWith(".ts")) continue;
+        if (entry.endsWith(".d.ts") || entry.endsWith(".test.ts")) continue;
+        out.push({
+          key: `./${prefix}${entry}`,
+          raw: extractManifest(requireFn(full)),
+        });
+      }
+    };
+
+    collect(manifestDir, "");
+    return out;
+  }
+
+  // Path 2: Webpack / Next.js
+  // We MUST use the exact literal `require.context` for Webpack to statically analyze it.
+  // @ts-ignore - require.context is a Webpack specific API
+  const requireCtx = require.context("./manifests", true, /\.ts$/);
+  for (const key of requireCtx.keys()) {
+    if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) continue;
+    out.push({ key, raw: extractManifest(requireCtx(key)) });
+  }
+
+  return out;
+}
+
 function loadManifests(): void {
   REGISTRY.clear();
   LATEST_BY_SLUG.clear();
 
   const includeTestFixtures = process.env.NODE_ENV === "test";
 
-  // Webpack require.context allows us to dynamically require files in a
-  // directory at runtime by bundling them at build time. This satisfies the
-  // architecture constraint (no hardcoded imports) while being Next.js safe.
-  // @ts-ignore - require.context is a Webpack specific API
-  const requireCtx = require.context("./manifests", true, /\.ts$/);
-  const candidateKeys = requireCtx.keys();
+  const sources = discoverManifestSources();
 
   // First pass: validate + index every discovered manifest.
-  for (const key of candidateKeys) {
-    if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) {
-      continue;
-    }
-
+  for (const { key, raw: rawSource } of sources) {
     const basename = key.slice(key.lastIndexOf("/") + 1);
     if (!includeTestFixtures && TEST_FIXTURE_PATTERN.test(basename)) {
       continue;
@@ -151,7 +219,7 @@ function loadManifests(): void {
 
     let raw: unknown;
     try {
-      raw = extractManifest(requireCtx(key));
+      raw = rawSource;
     } catch (err) {
       throw new Error(
         `[specialty-templates] failed to load manifest "${key}": ` +
