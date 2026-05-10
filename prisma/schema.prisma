@@ -453,6 +453,10 @@ model Encounter {
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
   @@index([organizationId, status, createdAt])
+  // EMR-132 charting-time benchmark (clinic/patients/[id]/page.tsx#recentCharted).
+  // Filters by organizationId + nulls-not-null on charting timestamps, orders
+  // by chartingCompletedAt. Index audit 2026-05-09.
+  @@index([organizationId, chartingCompletedAt])
 }
 
 enum NoteStatus {
@@ -584,6 +588,10 @@ model Claim {
   @@index([patientId, serviceDate])
   @@index([providerId, serviceDate])
   @@index([status, timelyFilingDeadline])
+  // Chart-tab open-claim count (clinic/patients/[id]/page.tsx#openClaimCount).
+  // The existing patientId+serviceDate index doesn't cover a status filter
+  // efficiently when serviceDate is not in the predicate. Index audit 2026-05-09.
+  @@index([patientId, status])
 }
 
 enum PaymentSource {
@@ -1612,6 +1620,10 @@ model Task {
 
   @@index([organizationId, status])
   @@index([assigneeUserId, status])
+  // Chart-tab open-task list (clinic/patients/[id]/page.tsx#openTasks).
+  // Filters by patientId+status, orders by dueAt — covered by this composite.
+  // Index audit 2026-05-09.
+  @@index([patientId, status, dueAt])
 }
 
 // --------------------------------------------------------------
@@ -1836,6 +1848,11 @@ model ClinicalObservation {
   @@index([patientId, acknowledgedAt])
   @@index([patientId, category, createdAt])
   @@index([patientId, severity, createdAt])
+  // Chart-tab unfiltered observation list (clinic/patients/[id]/page.tsx).
+  // Existing compound indexes start with patientId but the chart tab
+  // doesn't filter by category or severity, so neither covers the
+  // ordering. Index audit 2026-05-09.
+  @@index([patientId, createdAt])
 }
 
 model AgentReasoning {
@@ -1995,6 +2012,10 @@ model DosingRegimen {
   doseLogs DoseLog[]
 
   @@index([patientId, active])
+  // Chart-tab regimen history (clinic/patients/[id]/page.tsx#dosingRegimens).
+  // Read does not filter on `active`, orders by startDate desc.
+  // Index audit 2026-05-09.
+  @@index([patientId, startDate])
 }
 
 model DoseLog {
