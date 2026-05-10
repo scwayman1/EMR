@@ -10,10 +10,10 @@ const NAV_LINKS = [
   { label: "About", href: "/about" },
   { label: "Security", href: "/security" },
   { label: "Education", href: "/education" },
-  { label: "Leafmart", href: "/leafmart" },
-  { label: "Marketplace", href: "/marketplace" },
+  { label: "LeafMart", href: "https://www.theleafmart.com/", external: true },
+  { label: "Marketplace", href: "https://www.theleafmart.com/", external: true },
   { label: "Developer", href: "/developer" },
-];
+] as const;
 
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
@@ -39,21 +39,29 @@ export function SiteHeader() {
           className="hidden md:flex flex-1 min-w-0 items-center gap-0.5 overflow-x-auto no-scrollbar"
           aria-label="Main"
         >
-          {NAV_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-xs sm:text-sm text-text-muted hover:text-text px-2 sm:px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors whitespace-nowrap shrink-0"
-            >
-              {link.label}
-            </Link>
-          ))}
-          <Link
+          {NAV_LINKS.map((link) => {
+            const isExternal = "external" in link && link.external;
+            return (
+              <Link
+                key={link.label}
+                href={link.href}
+                {...(isExternal
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+                className="text-xs sm:text-sm text-text-muted hover:text-text px-2 sm:px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors whitespace-nowrap shrink-0"
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+          {/* Use a plain <a> + prefetch={false} so each click forces a fresh
+              load of the Clerk widget — avoids stale auth state. */}
+          <a
             href="/sign-in"
             className="text-xs sm:text-sm text-text-muted hover:text-text px-2 sm:px-3 py-2 rounded-lg hover:bg-surface-muted transition-colors whitespace-nowrap shrink-0"
           >
             Sign in
-          </Link>
+          </a>
         </nav>
 
         <Link href="/sign-up" className="shrink-0">

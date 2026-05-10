@@ -225,16 +225,16 @@ export function ComboWheel({
                       key={c.id}
                       type="button"
                       onClick={() => toggle(c.id)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white shadow-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-black shadow-sm transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised"
                       style={{
                         backgroundColor: c.color,
                         boxShadow: `0 4px 14px -4px ${c.color}66`,
                       }}
                       aria-label={`Remove ${c.name}`}
                     >
-                      <span className="h-1.5 w-1.5 rounded-full bg-white/70" aria-hidden />
+                      <span className="h-1.5 w-1.5 rounded-full bg-black/60" aria-hidden />
                       {c.name}
-                      <span className="text-white/70 ml-0.5" aria-hidden>
+                      <span className="text-black/70 ml-0.5" aria-hidden>
                         &times;
                       </span>
                     </button>

@@ -2,9 +2,9 @@
 
 import React, { useRef } from "react";
 import { cn } from "@/lib/utils/cn";
-import { Users, Atom, Sparkles, BookOpen } from "lucide-react";
+import { Users, Atom, Sparkles, BookOpen, Pill } from "lucide-react";
 
-export type TabKey = "community" | "wheel" | "chatcb" | "research";
+export type TabKey = "community" | "wheel" | "chatcb" | "drugmix" | "research";
 
 // Colorful conic disc that stands in for the wheel tab's icon. Lives in
 // place of a single-tone Lucide glyph so the proprietary pharmacology
@@ -35,10 +35,11 @@ function WheelDisc({ active }: { active: boolean }) {
 }
 
 export const EDUCATION_TABS: { key: TabKey; label: string; Icon: React.ElementType }[] = [
-  { key: "community", label: "Community", Icon: Users },
   { key: "wheel", label: "Cannabis Combo Wheel", Icon: Atom },
   { key: "chatcb", label: "ChatCB", Icon: Sparkles },
+  { key: "drugmix", label: "Drug Mix", Icon: Pill },
   { key: "research", label: "Research", Icon: BookOpen },
+  { key: "community", label: "Community", Icon: Users },
 ];
 
 export const tabId = (key: TabKey) => `edu-tab-${key}`;
@@ -55,6 +56,7 @@ export function EducationTabs({
     community: null,
     wheel: null,
     chatcb: null,
+    drugmix: null,
     research: null,
   });
 
