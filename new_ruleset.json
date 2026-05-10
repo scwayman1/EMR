@@ -1,0 +1,66 @@
+{
+  "id": 15234757,
+  "name": "main protection",
+  "target": "branch",
+  "source_type": "Repository",
+  "source": "scwayman1/EMR",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ]
+    }
+  },
+  "rules": [
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "required_reviewers": [],
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false,
+        "allowed_merge_methods": [
+          "merge",
+          "squash",
+          "rebase"
+        ]
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          {
+            "context": "typecheck · lint · build",
+            "integration_id": 15368
+          }
+        ]
+      }
+    }
+  ],
+  "node_id": "RRS_lACqUmVwb3NpdG9yec5H28mzzgDodsU",
+  "created_at": "2026-04-17T22:17:14.691-07:00",
+  "updated_at": "2026-04-17T22:54:44.738-07:00",
+  "bypass_actors": [],
+  "current_user_can_bypass": "never",
+  "_links": {
+    "self": {
+      "href": "https://api.github.com/repos/scwayman1/EMR/rulesets/15234757"
+    },
+    "html": {
+      "href": "https://github.com/scwayman1/EMR/rules/15234757"
+    }
+  }
+}
