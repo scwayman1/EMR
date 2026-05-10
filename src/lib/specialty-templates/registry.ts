@@ -145,30 +145,12 @@ function extractManifest(mod: unknown): unknown {
 function discoverManifestSources(): Array<{ key: string; raw: unknown }> {
   const out: Array<{ key: string; raw: unknown }> = [];
 
-  // Path 1: Webpack require.context. Probe defensively — the call itself
-  // throws under Vitest, and `require` may not even be a function in pure
-  // ESM contexts.
-  const webpackRequire =
-    typeof require === "function"
-      ? (require as unknown as {
-          context?: (
-            dir: string,
-            recursive: boolean,
-            re: RegExp,
-          ) => {
-            keys: () => string[];
-            (key: string): unknown;
-          };
-        })
-      : null;
-
-  if (webpackRequire?.context) {
+  // Path 1: Webpack require.context.
+  // We MUST use the exact literal `require.context` for Webpack to statically analyze it.
+  // We use `typeof` checks to avoid crashing under Vitest/Node.
+  if (typeof require !== "undefined" && typeof (require as any).context === "function") {
     try {
-      const requireCtx = webpackRequire.context(
-        "./manifests",
-        true,
-        /\.ts$/,
-      );
+      const requireCtx = (require as any).context("./manifests", true, /\.ts$/);
       for (const key of requireCtx.keys()) {
         if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) continue;
         out.push({ key, raw: extractManifest(requireCtx(key)) });
