@@ -58,6 +58,8 @@ export default function EducationPage() {
     <div className="min-h-screen bg-bg">
       <SiteHeader />
 
+      <main id="main-content">
+
       {/* Hero */}
       <section className="max-w-[1320px] mx-auto px-6 lg:px-12 pt-16 pb-12 lg:pt-20 lg:pb-14 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
         <Eyebrow className="justify-center mb-6 text-accent">Evidence-based knowledge</Eyebrow>
@@ -104,6 +106,8 @@ export default function EducationPage() {
           );
         })}
       </div>
+
+      </main>
 
       <SiteFooter />
     </div>

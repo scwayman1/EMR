@@ -43,6 +43,8 @@ export default function AboutPage() {
 
       <SiteHeader />
 
+      <main id="main-content">
+
       {/* Hero */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-12 pb-16">
         <Eyebrow className="mb-6">Our story</Eyebrow>
@@ -268,6 +270,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>

@@ -54,6 +54,8 @@ export default function HomePage() {
 
       <SiteHeader />
 
+      <main id="main-content">
+
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="relative max-w-[1320px] mx-auto px-6 lg:px-12 pt-16 pb-28">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
@@ -567,6 +569,8 @@ export default function HomePage() {
           </div>
         </Reveal>
       </section>
+
+      </main>
 
       <SiteFooter />
     </div>
