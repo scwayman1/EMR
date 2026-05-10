@@ -35,5 +35,5 @@ jobs:
         env:
           BASE: origin/${{ github.base_ref }}
         run: |
-          git fetch origin "${{ github.base_ref }}" --depth=1
+          git fetch origin "${{ github.base_ref }}"
           node scripts/check-no-orphan-components.mjs
