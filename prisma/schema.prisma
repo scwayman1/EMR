@@ -4107,3 +4107,24 @@ model ChemovarRecord {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
+
+// --------------------------------------------------------------
+// Leafmart — Vendor Applications
+// --------------------------------------------------------------
+
+model VendorApplication {
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  companyName  String
+  contactName  String
+  email        String
+  phone        String?
+  website      String?
+  productTypes Json
+  hasCoa       String
+  description  String
+  ip           String?
+
+  @@index([email])
+  @@index([createdAt])
+}
