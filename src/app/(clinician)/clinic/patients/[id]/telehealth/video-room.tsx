@@ -20,7 +20,6 @@ import {
   endTelehealthVisit,
   type TelehealthVisitResult,
 } from "./actions";
-import { logger } from "@/lib/observability/log";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -113,7 +112,7 @@ export function VideoRoom({
       setVisitData(result);
       setPhase("in_progress");
     } catch (err) {
-      logger.error({ event: "clinic.telehealth.start_failed", err });
+      console.error("Failed to start telehealth visit:", err);
       alert("Failed to create video room. Please try again.");
     } finally {
       setStartingVisit(false);

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageShell } from "@/components/shell/PageHeader";
 import { Eyebrow } from "@/components/ui/ornament";
-import { logger } from "@/lib/observability/log";
 
 export default function PrepareError({
   error,
@@ -16,7 +15,7 @@ export default function PrepareError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error({ event: "clinic.prepare.boundary", err: error });
+    console.error("[prepare] error:", error);
   }, [error]);
 
   return (

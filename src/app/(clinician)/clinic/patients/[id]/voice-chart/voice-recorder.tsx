@@ -13,7 +13,6 @@ import {
   processTranscript,
   saveTranscriptToEncounter,
 } from "./actions";
-import { logger } from "@/lib/observability/log";
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -178,10 +177,9 @@ async function transcribeOrFallback(opts: {
     }
 
     if (!response.ok) {
-      logger.warn({
-        event: "clinic.voice_recorder.transcribe_non_ok",
-        status: response.status,
-      });
+      console.warn(
+        `[VoiceRecorder] /api/transcribe returned ${response.status} — using simulated transcript.`,
+      );
       return fallback();
     }
 
@@ -193,10 +191,10 @@ async function transcribeOrFallback(opts: {
     }
     return payload.segments;
   } catch (err) {
-    logger.warn({
-      event: "clinic.voice_recorder.transcribe_failed",
+    console.warn(
+      "[VoiceRecorder] transcription request failed — using simulated transcript:",
       err,
-    });
+    );
     return fallback();
   }
 }
@@ -381,7 +379,7 @@ export function VoiceRecorder({
       startTimer();
       setState("recording");
     } catch (err) {
-      logger.error({ event: "clinic.voice_recorder.start_failed", err });
+      console.error("[VoiceRecorder] start error:", err);
       setError(
         err instanceof DOMException && err.name === "NotAllowedError"
           ? "Microphone access denied. Please allow microphone access in your browser settings."
@@ -449,7 +447,7 @@ export function VoiceRecorder({
       try {
         await saveTranscriptToEncounter(encounterId, segments);
       } catch (err) {
-        logger.error({ event: "clinic.voice_recorder.save_transcript_failed", err });
+        console.error("[VoiceRecorder] save transcript error:", err);
       }
     }
 

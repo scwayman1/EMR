@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyIllustration } from "@/components/ui/ornament";
-import { logger } from "@/lib/observability/log";
 
 export default function CommandError({
   error,
@@ -13,7 +12,7 @@ export default function CommandError({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error({ event: "clinic.command_center.boundary", err: error });
+    console.error("[command-center] render failed", error);
   }, [error]);
 
   return (
