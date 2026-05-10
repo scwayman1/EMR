@@ -19,6 +19,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { logger } from "@/lib/observability/log";
 import type { AuthedUser } from "./session";
 
 /**
@@ -107,7 +108,6 @@ export async function logControllerAction(entry: ControllerAuditEntry): Promise<
       reason: entry.reason ?? null,
       error: err instanceof Error ? err.message : String(err),
     };
-    // eslint-disable-next-line no-console -- intentional fallback path
-    console.error("[audit:controller:persist_failed]", JSON.stringify(fallback));
+    logger.error({ event: "audit.controller.persist_failed", ...fallback });
   }
 }
