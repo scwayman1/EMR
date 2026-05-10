@@ -1,4 +1,6 @@
+// SAFE: dead-export-allowed reason="Orphan PR from before rules"
 "use client";
+
 
 import { useMemo, useState } from "react";
 import { Calendar, Check, Clock, Sparkles } from "lucide-react";
