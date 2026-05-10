@@ -22,8 +22,8 @@ import {
 export const runtime = "nodejs";
 
 const createDraftInput = z.object({
-  organizationId: z.string().min(1),
-  practiceId: z.string().min(1),
+  organizationId: z.string().min(1).optional(),
+  practiceId: z.string().min(1).optional(),
   // Optional specialty seed — when present we fan out template defaults via
   // EMR-408. NOT required at draft creation time; the wizard can pick a
   // specialty later (it's required at publish-time, validated by the publish
@@ -42,6 +42,9 @@ export async function POST(req: Request) {
     if (!parsed.success) return invalidInput(parsed.error);
 
     const { organizationId, practiceId, selectedSpecialty } = parsed.data;
+    
+    const finalOrgId = organizationId || admin.organizationId || "pending";
+    const finalPracticeId = practiceId || "pending";
 
     // If a specialty was provided up front, seed the draft with the template
     // defaults from the EMR-408 registry. Otherwise we create an empty draft
@@ -52,8 +55,8 @@ export async function POST(req: Request) {
 
     const created = await prisma.practiceConfiguration.create({
       data: {
-        organizationId,
-        practiceId,
+        organizationId: finalOrgId,
+        practiceId: finalPracticeId,
         status: "draft",
         selectedSpecialty: selectedSpecialty ?? null,
         // EMR-431: anchor the draft to the manifest version the registry
@@ -74,7 +77,7 @@ export async function POST(req: Request) {
       actor: admin,
       action: "controller.config.draft_created",
       targetId: created.id,
-      after: { organizationId, practiceId, selectedSpecialty: selectedSpecialty ?? null },
+      after: { organizationId: finalOrgId, practiceId: finalPracticeId, selectedSpecialty: selectedSpecialty ?? null },
     });
 
     return NextResponse.json(created, { status: 201 });

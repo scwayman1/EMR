@@ -45,7 +45,7 @@ export async function listDraftsForOrganization(
   const rows = await client.practiceConfiguration.findMany({
     where: { organizationId },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, name: true, updatedAt: true, publishedAt: true },
+    select: { id: true, updatedAt: true, publishedAt: true },
   });
 
   return rows.map((r) => ({

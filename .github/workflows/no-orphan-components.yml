@@ -1,0 +1,39 @@
+name: Code Health — No Orphan Components
+
+on:
+  pull_request:
+    branches: [main]
+
+# Fails when a PR introduces new src/components/** or src/lib/** files
+# with zero non-test importers in the same diff.
+#
+# Pairs with docs/audit/DEAD_CODE_2026-05-09.md (PR #236): 22 of 22
+# files added by the 2026-05-08 swarm had zero importers and shipped to
+# main as bundle bloat with no user value. This rule prevents recurrence.
+#
+# Allowlist escape: a new file can carry
+#   // SAFE: dead-export-allowed reason="<short justification>"
+# in its first 10 lines and the rule passes. PR reviewers scrutinize
+# those.
+
+jobs:
+  check-no-orphans:
+    name: no-orphan-components
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (need merge-base)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate
+        env:
+          BASE: origin/${{ github.base_ref }}
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          node scripts/check-no-orphan-components.mjs

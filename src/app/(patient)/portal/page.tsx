@@ -19,6 +19,10 @@ import { formatDate, formatRelative } from "@/lib/utils/format";
 import { OnboardingTour } from "@/components/ui/onboarding-tour";
 import { WellnessTipWidget } from "@/components/ui/wellness-tip-widget";
 import { QuickSymptomFab } from "@/components/ui/quick-symptom-fab";
+import { VitalsCard } from "@/components/patient/vitals-card";
+import { HealthRoadmap } from "@/components/patient/health-roadmap";
+import { PositiveInputPrompt } from "@/components/patient/positive-input-prompt";
+import { DicomViewer } from "@/components/dicom/dicom-viewer";
 import { withTimeout } from "@/lib/utils/with-timeout";
 
 // EMR-205: guard the home-page queries so a hung downstream call can
@@ -224,7 +228,26 @@ export default async function PatientHome() {
     );
   }
 
-  if (!patient) redirect("/portal/intake");
+  if (!patient) {
+    return (
+      <PageShell maxWidth="max-w-[1040px]">
+        <div className="py-24 text-center">
+          <Eyebrow className="mb-4 justify-center">Welcome</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl text-text tracking-tight mb-3">
+            Your account is created.
+          </h1>
+          <p className="text-sm text-text-muted max-w-md mx-auto leading-relaxed mb-8">
+            We couldn't find an active patient record linked to your email. If you are a patient, please use the invitation link sent by your clinic. If you are a staff member or administrator, please navigate to your console.
+          </p>
+          <div className="flex justify-center gap-3">
+            <Link href="/admin">
+              <Button size="lg">Go to Admin Console</Button>
+            </Link>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
 
   const plantHealth = isLocalDemo
     ? LOCAL_DEMO_PLANT_HEALTH
@@ -335,6 +358,11 @@ export default async function PatientHome() {
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-text-subtle mb-2">Sleep trend</p>
           <Sparkline data={sleepSeries.length > 1 ? sleepSeries : [5, 5, 6, 6, 7, 7]} width={180} height={44} />
         </div>
+      </div>
+
+      {/* ── Daily Vitals ── */}
+      <div className="mb-6 md:mb-8">
+        <VitalsCard vitals={{ heartRate: 72, bloodPressureSys: 120, bloodPressureDia: 80, respiratoryRate: 16, oxygenSaturation: 98, temperature: 98.6, lastUpdated: "Today at 9:00 AM" }} />
       </div>
 
       {/* ── Top row: Health grade + Lifestyle bars + AI tips ── */}
@@ -600,6 +628,25 @@ export default async function PatientHome() {
         </Card>
       </div>
 
+      {/* ── High-Level Health Roadmap ── */}
+      <div className="mb-6 md:mb-8">
+        <HealthRoadmap />
+      </div>
+
+      {/* ── Recent Imaging (DICOM Viewer) ── */}
+      <div className="mb-6 md:mb-8">
+        <Eyebrow className="mb-3">Recent Scan</Eyebrow>
+        <DicomViewer 
+          image={{
+            id: "scan-123",
+            name: "LUMBAR SPINE MRI",
+            date: "Oct 24, 2023",
+            modality: "MRI",
+            imageUrl: "" // empty URL shows the radar mock
+          }} 
+        />
+      </div>
+
       {/* ── Progress (goals, streaks, efficacy, recap) ── */}
       <div className="mb-3 mt-2">
         <Eyebrow>Your progress</Eyebrow>
@@ -673,6 +720,11 @@ export default async function PatientHome() {
             </CardContent>
           </Card>
         </Link>
+      </div>
+
+      {/* ── Check-in Prompt ── */}
+      <div className="mt-8 mb-4">
+        <PositiveInputPrompt />
       </div>
     </PageShell>
   );
