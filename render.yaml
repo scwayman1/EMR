@@ -97,7 +97,7 @@ services:
     branch: main
     schedule: "*/15 * * * *"
     buildCommand: npm install && npx prisma generate
-    startCommand: npx tsx src/workers/scheduler.ts
+    startCommand: npx tsx --conditions=react-server src/workers/scheduler.ts
     envVars:
       - key: NODE_ENV
         value: production
