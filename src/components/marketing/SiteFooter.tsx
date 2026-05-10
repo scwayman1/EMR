@@ -4,15 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { Wordmark } from "@/components/ui/logo";
 
-const COLUMNS = [
+type FooterLink = { label: string; href?: string; external?: boolean };
+
+const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: "Product",
     links: [
-      { label: "Clinician Portal", href: "/sign-in" },
-      { label: "Patient Portal", href: "/sign-in" },
-      { label: "Operator Dashboard", href: "/sign-in" },
-      { label: "Leafmart", href: "/leafmart" },
-      { label: "Cannabis Combo Wheel", href: "/portal/combo-wheel" },
+      { label: "Patient Portal", href: "/sign-up" },
+      { label: "Clinician Portal", href: "/sign-up" },
+      { label: "Operator Dashboard" },
+      { label: "The LeafMart", href: "https://www.theleafmart.com/", external: true },
     ],
   },
   {
@@ -20,8 +21,8 @@ const COLUMNS = [
     links: [
       { label: "About", href: "/about" },
       { label: "Security", href: "/security" },
-      { label: "Careers", href: "/about#careers" },
-      { label: "Press", href: "/about#press" },
+      { label: "Careers", href: "/contact" },
+      { label: "Press" },
     ],
   },
   {
@@ -30,16 +31,15 @@ const COLUMNS = [
       { label: "Education", href: "/education" },
       { label: "Developer", href: "/developer" },
       { label: "Status", href: "/status" },
-      { label: "Blog", href: "/education" },
+      { label: "Blog" },
     ],
   },
   {
     title: "Legal",
     links: [
       { label: "Privacy", href: "/security#privacy" },
-      { label: "Terms", href: "/security#terms" },
+      { label: "Terms", href: "/legal/terms" },
       { label: "HIPAA", href: "/security#hipaa" },
-      { label: "21+ Notice", href: "/security#age" },
     ],
   },
 ];
@@ -49,7 +49,7 @@ function FooterColumn({
   links,
 }: {
   title: string;
-  links: { label: string; href: string }[];
+  links: FooterLink[];
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -82,12 +82,19 @@ function FooterColumn({
       >
         {links.map((link) => (
           <li key={link.label}>
-            <Link
-              href={link.href}
-              className="text-sm text-text-muted hover:text-text transition-colors"
-            >
-              {link.label}
-            </Link>
+            {link.href ? (
+              <Link
+                href={link.href}
+                {...(link.external
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+                className="text-sm text-text-muted hover:text-text transition-colors"
+              >
+                {link.label}
+              </Link>
+            ) : (
+              <span className="text-sm text-text-muted">{link.label}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -209,7 +216,10 @@ export function SiteFooter() {
           Cannabis should be considered a medicine — please use it carefully and
           judiciously. Do not abuse cannabis, and respect the plant and its
           healing properties. Leafjourney is a demonstration product and is not
-          a substitute for medical advice.
+          a substitute for medical advice. All educational material on this
+          website is strictly for that — education. Any and all changes to
+          medications or treatment plans must be discussed with your healthcare
+          provider first.
         </p>
 
         {/* Bottom bar */}

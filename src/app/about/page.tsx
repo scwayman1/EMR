@@ -75,6 +75,9 @@ export default function AboutPage() {
               the right way — with heart, with soul, and with technology that
               serves the human being at its center.
             </p>
+            <p className="text-accent mt-5 text-sm font-medium tracking-wide">
+              — Dr. Neal H. Patel
+            </p>
           </div>
         </div>
       </section>
@@ -182,34 +185,25 @@ export default function AboutPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-border bg-surface px-5 py-4 mb-12 text-xs text-text-muted leading-relaxed">
-            Interested in a leadership seat? We&apos;re looking for clinicians,
-            scientists, and operators who&apos;ve already done the thing once
-            and want to do it again — better. Reach out via{" "}
-            <Link
-              href="/contact"
-              className="text-accent hover:underline font-medium"
-            >
-              contact
-            </Link>{" "}
-            with your story.
-          </div>
-
           <Eyebrow className="mb-4">Specialized teams</Eyebrow>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-10">
             {TEAMS.map((team) => (
-              <div
+              <Link
                 key={team.name}
-                className="flex items-start gap-3 px-4 py-3 rounded-lg bg-surface border border-border/60"
+                href={`/contact?role=${encodeURIComponent(team.name)}`}
+                className="group relative flex items-start gap-3 px-4 py-3 rounded-lg bg-surface border border-border/60 hover:border-accent/60 hover:bg-surface-raised transition-all"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-accent shrink-0 mt-2" />
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-text">{team.name}</p>
                   <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
                     {team.desc}
                   </p>
                 </div>
-              </div>
+                <span className="absolute top-2 right-3 text-[10px] font-semibold uppercase tracking-wider text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                  Apply →
+                </span>
+              </Link>
             ))}
           </div>
         </div>
@@ -345,12 +339,31 @@ const EXECS: {
     focus: "HIPAA compliance, security posture, and infrastructure resilience.",
   },
   {
-    role: "CHRO",
-    title: "Chief Human Resources Officer",
+    role: "CRO",
+    title: "Chief Regulatory Officer",
     name: "Open",
     initials: "+",
     filled: false,
-    focus: "Talent, culture, and clinician retention.",
+    focus:
+      "General counsel and regulatory lead. Owns HIPAA, BAA, state cannabis licensing, FDA/DEA posture, and contract review.",
+  },
+  {
+    role: "CPO",
+    title: "Chief Product Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus:
+      "Vets product validity and decides which products sit on TheLeafMart. Owns vendor diligence, COA review, and product strategy.",
+  },
+  {
+    role: "CREVO",
+    title: "Chief Revenue Officer",
+    name: "Open",
+    initials: "+",
+    filled: false,
+    focus:
+      "Owns lead generation, provider acquisition, and MRR. Builds the sales engine that brings clinicians and clients onto Leafjourney.",
   },
 ];
 

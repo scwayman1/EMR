@@ -55,8 +55,8 @@ export const DEFAULT_GROUPS: MobileNavGroup[] = [
     id: "shop",
     label: "Shop",
     tabs: [
-      { label: "Leafmart", href: "/leafmart", icon: "✿" },
-      { label: "Marketplace", href: "/marketplace", icon: "☖" },
+      { label: "LeafMart", href: "https://www.theleafmart.com/", icon: "✿" },
+      { label: "Marketplace", href: "https://www.theleafmart.com/", icon: "☖" },
       { label: "Store", href: "/store", icon: "☲" },
       { label: "Vendors", href: "/leafmart/vendors", icon: "⚘" },
     ],

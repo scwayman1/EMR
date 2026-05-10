@@ -22,6 +22,7 @@ import { ComboWheel } from "@/components/education/ComboWheel";
 import { ResearchTab } from "@/components/education/ResearchTab";
 import { CommunityTab } from "@/components/education/CommunityTab";
 import { DiscussCombination } from "@/components/education/DiscussCombination";
+import { DrugMixTab } from "@/components/education/DrugMixTab";
 
 const SUGGESTED_QUESTIONS = [
   "Is CBD good for anxiety?",
@@ -32,9 +33,26 @@ const SUGGESTED_QUESTIONS = [
   "Cannabis for PTSD",
 ];
 
+const VALID_TABS: TabKey[] = ["wheel", "chatcb", "drugmix", "research", "community"];
+
 export default function EducationPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("chatcb");
+  const [activeTab, setActiveTab] = useState<TabKey>("wheel");
   const [wheelSelection, setWheelSelection] = useState<string[]>([]);
+
+  // Honor #hash deep-links (e.g. /education#community) so other surfaces
+  // can route to a specific tab on first load.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sync = () => {
+      const hash = window.location.hash.replace("#", "");
+      if ((VALID_TABS as string[]).includes(hash)) {
+        setActiveTab(hash as TabKey);
+      }
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
 
   return (
     <div className="min-h-screen bg-bg">
@@ -44,7 +62,7 @@ export default function EducationPage() {
       <section className="max-w-[1320px] mx-auto px-6 lg:px-12 pt-16 pb-12 lg:pt-20 lg:pb-14 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
         <Eyebrow className="justify-center mb-6 text-accent">Evidence-based knowledge</Eyebrow>
         <h1 className="font-display text-5xl md:text-6xl lg:text-7xl tracking-tight text-text leading-[1.05] mb-6">
-          Chat &amp; Learn Hub
+          Chat &amp; Learn
         </h1>
         <p className="text-lg md:text-xl text-text-muted max-w-2xl md:max-w-3xl mx-auto leading-relaxed">
           The ultimate social and educational platform. Search 11,000+ studies,
@@ -74,9 +92,13 @@ export default function EducationPage() {
               {tab.key === "wheel" && (
                 <>
                   <ComboWheel onSelect={setWheelSelection} />
-                  <DiscussCombination selectedIds={wheelSelection} />
+                  <DiscussCombination
+                    selectedIds={wheelSelection}
+                    forumHref="/education#community"
+                  />
                 </>
               )}
+              {tab.key === "drugmix" && <DrugMixTab />}
               {tab.key === "research" && <ResearchTab />}
             </div>
           );
