@@ -19,8 +19,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule } from "@/components/ui/ornament";
-import { SiteHeader } from "@/components/marketing/SiteHeader";
-import { SiteFooter } from "@/components/marketing/SiteFooter";
 
 export const metadata = {
   title: "Developers — Leafjourney",
@@ -104,8 +102,6 @@ export default function DeveloperPortalPage() {
         }}
       />
 
-      <SiteHeader />
-
       {/* Hero */}
       <section className="max-w-[1100px] mx-auto px-6 lg:px-12 pt-12 pb-16">
         <Eyebrow className="mb-6">Leafjourney developers</Eyebrow>
@@ -120,11 +116,6 @@ export default function DeveloperPortalPage() {
         <div className="flex items-center gap-3 mt-8 flex-wrap">
           <Link href="/developer/docs">
             <Button size="lg">Read the docs</Button>
-          </Link>
-          <Link href="#quickstart">
-            <Button size="lg" variant="secondary">
-              Quick start
-            </Button>
           </Link>
         </div>
         <div className="mt-8 flex items-center gap-3 text-sm text-text-muted flex-wrap">
@@ -170,7 +161,13 @@ export default function DeveloperPortalPage() {
           })}
         </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="mt-12 mb-3">
+          <Eyebrow className="mb-3">Provision</Eyebrow>
+          <h3 className="font-display text-2xl md:text-3xl text-text tracking-tight leading-[1.1]">
+            Make your first call
+          </h3>
+        </div>
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-5">
           <CodeBlock label="curl" snippet={CURL_EXAMPLE} />
           <CodeBlock label="Node.js" snippet={NODE_EXAMPLE} />
         </div>
@@ -246,7 +243,7 @@ export default function DeveloperPortalPage() {
           </h2>
           <p className="text-text-muted mt-3 text-[15px] leading-relaxed">
             Full reference — including request/response schemas — lives in{" "}
-            <Link href="/developer/docs" className="text-accent hover:underline">
+            <Link href="/developer/api" className="text-accent hover:underline">
               the docs
             </Link>
             .
@@ -285,7 +282,7 @@ export default function DeveloperPortalPage() {
 
         <div className="mt-6">
           <Link
-            href="/developer/docs"
+            href="/developer/api"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
           >
             Full API reference
@@ -359,7 +356,7 @@ export default function DeveloperPortalPage() {
             Icon={BookOpen}
             title="API documentation"
             body="Full REST reference with request/response examples for every endpoint."
-            href="/developer/docs"
+            href="/developer/api"
             cta="Read docs"
           />
           <ResourceCard
@@ -367,7 +364,7 @@ export default function DeveloperPortalPage() {
             Icon={Webhook}
             title="Webhooks guide"
             body="Subscribe to patient, appointment, and billing events with verified HMAC signatures."
-            href="/developer/docs#webhooks"
+            href="/developer/webhooks"
             cta="Webhook docs"
           />
           <ResourceCard
@@ -375,7 +372,7 @@ export default function DeveloperPortalPage() {
             Icon={Sparkles}
             title="AI agent SDK"
             body="Compose chart-aware AI agents with typed tools — same primitives that power our 13 in-product agents."
-            href="/developer/docs#agents"
+            href="/developer/agent-sdk"
             cta="Agent SDK"
           />
           <ResourceCard
@@ -402,10 +399,10 @@ export default function DeveloperPortalPage() {
               integration end-to-end without ever touching real PHI.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/sign-up">
+              <Link href="/developer/sandbox">
                 <Button size="lg">Create a sandbox</Button>
               </Link>
-              <Link href="mailto:dev-support@leafjourney.com">
+              <Link href="/contact?role=Developer">
                 <Button size="lg" variant="ghost">
                   Talk to a developer
                 </Button>
@@ -415,7 +412,6 @@ export default function DeveloperPortalPage() {
         </div>
       </section>
 
-      <SiteFooter />
     </div>
   );
 }

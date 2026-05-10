@@ -29,7 +29,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
-import { AmbientMusicPlayer } from "@/components/ui/ambient-music";
 import { LiveConsole } from "@/components/marketing/live-console";
 import { Reveal } from "@/components/marketing/reveal";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
@@ -569,9 +568,6 @@ export default function HomePage() {
         </Reveal>
       </section>
 
-      {/* Ambient music player */}
-      <AmbientMusicPlayer />
-
       <SiteFooter />
     </div>
   );
@@ -797,7 +793,7 @@ const CANNABIS_FEATURES: CannabisFeature[] = [
   },
   {
     icon: BookOpen,
-    title: "Research corpus",
+    title: "Research Database",
     body:
       "50+ peer-reviewed studies indexed with structured dosing data. The Research Agent surfaces evidence at the point of care — traceable to source.",
   },
