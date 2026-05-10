@@ -145,69 +145,60 @@ function extractManifest(mod: unknown): unknown {
 function discoverManifestSources(): Array<{ key: string; raw: unknown }> {
   const out: Array<{ key: string; raw: unknown }> = [];
 
-  // Path 1: Webpack require.context.
-  // We MUST use the exact literal `require.context` for Webpack to statically analyze it.
-  // We use `typeof` checks to avoid crashing under Vitest/Node.
-  if (typeof require !== "undefined" && typeof (require as any).context === "function") {
-    try {
-      const requireCtx = (require as any).context("./manifests", true, /\.ts$/);
-      for (const key of requireCtx.keys()) {
-        if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) continue;
-        out.push({ key, raw: extractManifest(requireCtx(key)) });
+  // Path 1: Vitest / Node runtime fallback.
+  // We use process.env.VITEST to explicitly enter the Node fs.readdirSync path
+  // without confusing Webpack's static analyzer or Next.js server components.
+  if (process.env.VITEST) {
+    // eslint-disable-next-line
+    const fs = require("node:fs") as typeof import("node:fs");
+    // eslint-disable-next-line
+    const path = require("node:path") as typeof import("node:path");
+    // Hide createRequire from Webpack's analyzer using String()
+    // eslint-disable-next-line
+    const { createRequire } = require(String("node:module")) as typeof import("node:module");
+
+    const here = typeof __dirname === "string" ? __dirname : process.cwd();
+    const manifestDir = path.join(here, "manifests");
+    const requireFn = createRequire(path.join(here, "registry.ts"));
+
+    const collect = (dir: string, prefix: string) => {
+      let entries: string[];
+      try {
+        entries = fs.readdirSync(dir);
+      } catch (err) {
+        throw new Error(
+          `[specialty-templates] cannot read manifests directory "${dir}": ${(err as Error).message}`
+        );
       }
-      return out;
-    } catch {
-      // require.context exists but the bundler didn't process it (Vitest
-      // shim, ts-node, etc.) — fall through to the fs-based loader below.
-    }
+      for (const entry of entries) {
+        const full = path.join(dir, entry);
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          collect(full, `${prefix}${entry}/`);
+          continue;
+        }
+        if (!entry.endsWith(".ts")) continue;
+        if (entry.endsWith(".d.ts") || entry.endsWith(".test.ts")) continue;
+        out.push({
+          key: `./${prefix}${entry}`,
+          raw: extractManifest(requireFn(full)),
+        });
+      }
+    };
+
+    collect(manifestDir, "");
+    return out;
   }
 
-  // Path 2: Node-side fs discovery + createRequire. Used by Vitest, tsx,
-  // and any pure-Node tooling. Imports are kept inside the function so
-  // bundlers that statically analyse top-level imports can still tree-shake
-  // them out of client bundles.
-  // eslint-disable-next-line
-  const fs = require("node:fs") as typeof import("node:fs");
-  // eslint-disable-next-line
-  const path = require("node:path") as typeof import("node:path");
-  // eslint-disable-next-line
-  const { createRequire } = require("node:module") as typeof import("node:module");
+  // Path 2: Webpack / Next.js
+  // We MUST use the exact literal `require.context` for Webpack to statically analyze it.
+  // @ts-ignore - require.context is a Webpack specific API
+  const requireCtx = require.context("./manifests", true, /\.ts$/);
+  for (const key of requireCtx.keys()) {
+    if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) continue;
+    out.push({ key, raw: extractManifest(requireCtx(key)) });
+  }
 
-  // __dirname is defined under CJS (Vitest's default) and under tsx. In
-  // pure ESM Node we'd need fileURLToPath(import.meta.url), but every
-  // runtime that hits this fallback today exposes __dirname.
-  const here = typeof __dirname === "string" ? __dirname : process.cwd();
-  const manifestDir = path.join(here, "manifests");
-  const requireFn = createRequire(path.join(here, "registry.ts"));
-
-  const collect = (dir: string, prefix: string) => {
-    let entries: string[];
-    try {
-      entries = fs.readdirSync(dir);
-    } catch (err) {
-      throw new Error(
-        `[specialty-templates] cannot read manifests directory "${dir}": ${
-          (err as Error).message
-        }`,
-      );
-    }
-    for (const entry of entries) {
-      const full = path.join(dir, entry);
-      const stat = fs.statSync(full);
-      if (stat.isDirectory()) {
-        collect(full, `${prefix}${entry}/`);
-        continue;
-      }
-      if (!entry.endsWith(".ts")) continue;
-      if (entry.endsWith(".d.ts") || entry.endsWith(".test.ts")) continue;
-      out.push({
-        key: `./${prefix}${entry}`,
-        raw: extractManifest(requireFn(full)),
-      });
-    }
-  };
-
-  collect(manifestDir, "");
   return out;
 }
 
