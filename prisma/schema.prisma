@@ -4093,6 +4093,22 @@ model MigrationProfile {
 }
 
 // --------------------------------------------------------------
+// Leafly Integrations & Strain Parsers
+// --------------------------------------------------------------
+
+model ChemovarRecord {
+  id                   String   @id @default(cuid())
+  internalId           String   @unique
+  displayName          String
+  chemotype            Int      // 1: THC dominant, 2: Mixed, 3: CBD dominant
+  terpeneProfile       String
+  therapeuticTags      String[]
+  externalReferenceUrl String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// --------------------------------------------------------------
 // Leafmart — Vendor Applications
 // --------------------------------------------------------------
 
