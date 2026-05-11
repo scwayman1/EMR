@@ -1,6 +1,6 @@
-# Epic Swarm Matrix: Phase 2 (Tickets 31-60)
+# Epic Swarm Matrix: Phase 2 (Tickets 31-63)
 
-This document outlines the next 30 perfectly isolated agent tasks for Phase 2 of the Epic Swarm. 
+This document outlines the next 33 perfectly isolated agent tasks for Phase 2 of the Epic Swarm. 
 
 **CRITICAL RULE OF THE SWARM:** No two agents are allowed to edit the same file. All tasks have been specifically chosen and scoped to target separate components, utilities, or isolated pages. This guarantees 0 merge conflicts when combining the 30 PRs.
 
@@ -16,7 +16,7 @@ To execute this swarm:
 
 ---
 
-## The 30 Swarm Tasks
+## The 33 Swarm Tasks
 
 ### Wave 6: Wearables & IoT Integrations (Pure TS API Clients)
 *Building the foundation for continuous patient monitoring.*
@@ -29,6 +29,9 @@ To execute this swarm:
 | 34 | EMR-053: Whoop Strain Score Mapper | `feat/swarm-34-whoop` | `src/lib/integrations/whoop-mapper.ts` |
 | 35 | EMR-054: Garmin Vitals Ingestion | `feat/swarm-35-garmin` | `src/lib/integrations/garmin-ingestion.ts` |
 | 36 | EMR-055: Dexcom CGM API Client | `feat/swarm-36-dexcom` | `src/lib/integrations/dexcom-api.ts` |
+| 61 | EMR-080: FreeStyle Libre CGM Client | `feat/swarm-61-libre` | `src/lib/integrations/libre-api.ts` |
+| 62 | EMR-081: Medtronic Guardian Parser | `feat/swarm-62-medtronic` | `src/lib/integrations/medtronic-parser.ts` |
+| 63 | EMR-082: Eversense CGM Normalizer | `feat/swarm-63-eversense` | `src/lib/integrations/eversense-normalizer.ts` |
 
 ### Wave 7: Analytics & Reporting UI (Isolated Chart Components)
 *Practice-level insights and demographic reporting components.*
@@ -79,4 +82,4 @@ To execute this swarm:
 | 60 | EMR-079: Provider Time-off Block | `feat/swarm-60-time-off` | `src/components/scheduling/time-off-block.tsx` |
 
 ---
-*Note: As long as the swarm agents adhere strictly to their designated Target Files, Phase 2 will execute with zero merge conflicts, allowing us to roll out 30 new features seamlessly.*
+*Note: As long as the swarm agents adhere strictly to their designated Target Files, Phase 2 will execute with zero merge conflicts, allowing us to roll out 33 new features seamlessly.*
