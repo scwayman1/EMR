@@ -427,10 +427,9 @@ routes:
 
   reports/competitive-analysis:
     methods: [GET]
-    auth: needs_review
+    auth: required
     owner: research
-    review_due: 2026-05-16
-    notes: "🚨 'Competitive analysis report' generated without auth. Likely should be admin-only."
+    notes: "Closed 2026-05-12 via PR fix/competitive-analysis-route-auth. Find-and-fix pass 4 confirmed full report was returned unauthed. Now gated requireApiAuth({role:'super_admin'})."
 
   dispensary/ingest:
     methods: [POST]
