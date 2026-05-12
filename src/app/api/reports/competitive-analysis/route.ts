@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiAuth } from "@/lib/auth/api-gate";
 
 // ---------------------------------------------------------------------------
 // Competitive Analysis Report: Leafjourney vs ArfinnMed
@@ -103,6 +104,12 @@ const COMPARISON: FeatureComparison[] = [
 ];
 
 export async function GET() {
+  // Internal competitive analysis — admin-only. Find-and-fix pass 4
+  // found this route returning the full report to anonymous callers,
+  // exposing our internal feature scoring against competitors.
+  const gate = await requireApiAuth({ role: "super_admin" });
+  if (gate.error) return gate.error;
+
   // Compute summary stats
   const total = COMPARISON.length;
   const ourYes = COMPARISON.filter((c) => c.leafjourney === "yes").length;
