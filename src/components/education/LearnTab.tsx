@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils/cn";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, ArrowRight, Video, Sparkles, HelpCircle, Activity, ShieldCheck } from "lucide-react";
+import { FileText, ArrowRight, Video, Sparkles, HelpCircle, Activity, ShieldCheck, MessageCircle } from "lucide-react";
 
 // Every topic deep-links into the Educational Library (/portal/learn).
 // The library page reads ?tab to preselect the right section.
@@ -64,6 +64,16 @@ const LEARN_TOPICS = [
     color: "text-text-muted",
     bg: "bg-peach",
     border: "border-peach"
+  },
+  {
+    // EMR-301 — patient empowerment guide for cannabis-conversations.
+    title: "Talking to your provider",
+    desc: "How to bring up cannabis with a clinician who may be skeptical — scripts, decision tree, and a printable one-pager.",
+    href: "/portal/learn/talk-to-provider",
+    icon: MessageCircle,
+    color: "text-leaf",
+    bg: "bg-sage",
+    border: "border-sage"
   },
 ];
 
