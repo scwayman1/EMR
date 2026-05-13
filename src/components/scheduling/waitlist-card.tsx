@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Wave 10 scheduling scaffold (EMR-077); mounted on the scheduling workspace in a later wave"
 "use client";
 
 import React from "react";

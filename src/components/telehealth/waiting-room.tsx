@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Wave 10 telehealth scaffold (EMR-074); mounted on the visit workspace in a later wave"
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
