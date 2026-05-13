@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Wave 9 SOAP fragment scaffold (EMR-068); composed into the note workspace in a later wave"
 "use client";
 
 import React, { useState } from "react";
