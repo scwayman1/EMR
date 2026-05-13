@@ -207,6 +207,7 @@ export function mapProductToLeafmart(p: ProductWithJoins): LeafmartProduct {
     shape: dbShape ?? derivedShelf.shape,
     tag: tagFor(p),
     imageUrl: p.imageUrl,
+    images: p.images && p.images.length > 0 ? p.images : (p.imageUrl ? [p.imageUrl] : []),
     description: p.description,
     compareAtPrice: p.compareAtPrice ?? null,
     averageRating: p.averageRating,
