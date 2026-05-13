@@ -89,7 +89,7 @@ export function TrainingView({ initialModules }: { initialModules: TrainingModul
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    {m.required && <span className="text-amber-500" title="Required">★</span>}
+                    {m.required && <span className="text-[var(--leaf,#3a7d44)]" title="Required">🍃</span>}
                     <h3 className="font-medium text-text">{m.title}</h3>
                   </div>
                   <p className="text-xs text-text-muted mt-1">{m.description}</p>
@@ -171,7 +171,7 @@ export function TrainingView({ initialModules }: { initialModules: TrainingModul
 
       <div className="flex items-center justify-between">
         <p className="text-xs text-text-subtle">
-          Star (★) indicates a required module for all staff.
+          Leaf (🍃) indicates a required module for all staff.
         </p>
         <span className={cn("text-xs", progressPct === 100 ? "text-accent" : "text-text-subtle")}>
           {progressPct === 100 ? "All required training complete." : "Keep going!"}

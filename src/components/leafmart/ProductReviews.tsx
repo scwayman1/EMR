@@ -505,7 +505,7 @@ function ReviewComposer({
             key={n}
             type="button"
             onClick={() => setRating(n)}
-            aria-label={`${n} star${n === 1 ? "" : "s"}`}
+            aria-label={`${n} leaf${n === 1 ? "" : "s"}`}
             className="p-0.5"
           >
             <svg
@@ -515,8 +515,11 @@ function ReviewComposer({
               className={n <= rating ? "text-[var(--leaf)]" : "text-[var(--border)]"}
             >
               <path
-                d="M12 2.5l2.95 6.13 6.55.87-4.78 4.59 1.18 6.5L12 17.6l-6.0 2.99 1.18-6.5L2.5 9.5l6.55-.87L12 2.5z"
+                d="M12 2C12 2 10 6 8 8C6 10 4 11 2 11C4 13 6 13 8 14C6 16 5 18 5 21C7 19 9 18 11 17C11 19 11 21 12 22C13 21 13 19 13 17C15 18 17 19 19 21C19 18 18 16 16 14C18 13 20 13 22 11C20 11 18 10 16 8C14 6 12 2 12 2Z"
                 fill="currentColor"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
               />
             </svg>
           </button>
