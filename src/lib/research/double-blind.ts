@@ -193,3 +193,187 @@ export function balanceChiSquare(plan: AllocationPlan): number {
   }
   return Number(chi2.toFixed(4));
 }
+
+/* -------------------------------------------------------------------------- */
+/* Withdrawals & interim analysis                                             */
+/* -------------------------------------------------------------------------- */
+
+export type WithdrawalReason =
+  | "consent_withdrawn"
+  | "lost_to_followup"
+  | "adverse_event"
+  | "protocol_violation"
+  | "death"
+  | "other";
+
+export interface Withdrawal {
+  patientId: string;
+  withdrawnAt: string;
+  reason: WithdrawalReason;
+  /** Optional free-text from the coordinator. Not used for stats. */
+  note?: string;
+}
+
+export interface RetentionSummary {
+  /** Patients still active in the study (allocated minus withdrawn). */
+  active: Record<StudyArm, number>;
+  /** Withdrawn count by arm. */
+  withdrawn: Record<StudyArm, number>;
+  /** Withdrawal reason counts (across all arms). */
+  reasons: Record<WithdrawalReason, number>;
+  /** Retention rate per arm in [0,1]. */
+  retentionRate: Record<StudyArm, number>;
+  /**
+   * Differential dropout flag — true when any pair of arms has a
+   * retention-rate gap above the threshold. Triggers an IRB review.
+   */
+  differentialDropout: boolean;
+  differentialThreshold: number;
+}
+
+/**
+ * Roll withdrawals into a retention snapshot. The threshold controls
+ * when we flag differential dropout — default 15 percentage points,
+ * tighten via `threshold` when the protocol requires it.
+ */
+export function summarizeRetention(
+  plan: AllocationPlan,
+  withdrawals: Withdrawal[],
+  options: { differentialThreshold?: number } = {},
+): RetentionSummary {
+  const armNames = plan.spec.arms.map((a) => a.name);
+  const allocated: Record<string, number> = { ...plan.balance };
+  const withdrawn: Record<string, number> = Object.fromEntries(
+    armNames.map((a) => [a, 0]),
+  );
+  const reasons: Record<WithdrawalReason, number> = {
+    consent_withdrawn: 0,
+    lost_to_followup: 0,
+    adverse_event: 0,
+    protocol_violation: 0,
+    death: 0,
+    other: 0,
+  };
+
+  const armByPatient = new Map(plan.allocations.map((a) => [a.patientId, a.arm]));
+  for (const w of withdrawals) {
+    const arm = armByPatient.get(w.patientId);
+    if (!arm) continue; // unknown patient — ignore
+    withdrawn[arm] = (withdrawn[arm] ?? 0) + 1;
+    reasons[w.reason] = (reasons[w.reason] ?? 0) + 1;
+  }
+
+  const active: Record<string, number> = {};
+  const retentionRate: Record<string, number> = {};
+  for (const arm of armNames) {
+    const a = (allocated[arm] ?? 0) - (withdrawn[arm] ?? 0);
+    active[arm] = a;
+    retentionRate[arm] =
+      (allocated[arm] ?? 0) === 0 ? 0 : a / (allocated[arm] ?? 1);
+  }
+
+  const threshold = options.differentialThreshold ?? 0.15;
+  const rates = armNames.map((a) => retentionRate[a]);
+  const maxGap =
+    rates.length < 2 ? 0 : Math.max(...rates) - Math.min(...rates);
+  const differentialDropout = maxGap > threshold;
+
+  return {
+    active,
+    withdrawn,
+    reasons,
+    retentionRate,
+    differentialDropout,
+    differentialThreshold: threshold,
+  };
+}
+
+export interface InterimDecision {
+  /** "continue" | "stop_for_efficacy" | "stop_for_futility" | "stop_for_safety". */
+  recommendation:
+    | "continue"
+    | "stop_for_efficacy"
+    | "stop_for_futility"
+    | "stop_for_safety";
+  reasons: string[];
+  /** True when DSMB review is mandatory before the next enrollment block. */
+  dsmbReviewRequired: boolean;
+}
+
+export interface InterimInput {
+  /** Patients with primary endpoint observed at this look. */
+  observedPerArm: Record<StudyArm, number>;
+  /** Successes (binary endpoint) observed per arm. */
+  successesPerArm: Record<StudyArm, number>;
+  /** Serious adverse events per arm. */
+  saesPerArm: Record<StudyArm, number>;
+  /** Pre-specified efficacy boundary on success-rate difference (e.g., 0.2). */
+  efficacyBoundary: number;
+  /** Pre-specified futility boundary (e.g., 0.05). */
+  futilityBoundary: number;
+  /** Maximum SAE rate per arm before safety stop (e.g., 0.10). */
+  safetyBoundary: number;
+}
+
+/**
+ * Pre-specified interim analysis — purely numeric, no clinical
+ * judgement. Use this to *trigger* a DSMB review, not to replace one.
+ * Two-arm studies only (treatment + control).
+ */
+export function interimAnalysis(
+  treatmentArm: StudyArm,
+  controlArm: StudyArm,
+  input: InterimInput,
+): InterimDecision {
+  const reasons: string[] = [];
+  const t = input.observedPerArm[treatmentArm] ?? 0;
+  const c = input.observedPerArm[controlArm] ?? 0;
+  if (t === 0 || c === 0) {
+    return {
+      recommendation: "continue",
+      reasons: ["Insufficient observations to evaluate boundaries"],
+      dsmbReviewRequired: false,
+    };
+  }
+
+  const successRateT = (input.successesPerArm[treatmentArm] ?? 0) / t;
+  const successRateC = (input.successesPerArm[controlArm] ?? 0) / c;
+  const diff = successRateT - successRateC;
+
+  const saeRateT = (input.saesPerArm[treatmentArm] ?? 0) / t;
+  const saeRateC = (input.saesPerArm[controlArm] ?? 0) / c;
+
+  let recommendation: InterimDecision["recommendation"] = "continue";
+
+  if (saeRateT > input.safetyBoundary) {
+    recommendation = "stop_for_safety";
+    reasons.push(
+      `Treatment SAE rate ${(saeRateT * 100).toFixed(1)}% exceeds safety boundary ${(input.safetyBoundary * 100).toFixed(1)}%`,
+    );
+  } else if (saeRateC > input.safetyBoundary) {
+    recommendation = "stop_for_safety";
+    reasons.push(
+      `Control SAE rate ${(saeRateC * 100).toFixed(1)}% exceeds safety boundary ${(input.safetyBoundary * 100).toFixed(1)}%`,
+    );
+  } else if (diff >= input.efficacyBoundary) {
+    recommendation = "stop_for_efficacy";
+    reasons.push(
+      `Treatment-vs-control gap ${(diff * 100).toFixed(1)}pp ≥ efficacy boundary ${(input.efficacyBoundary * 100).toFixed(1)}pp`,
+    );
+  } else if (diff < input.futilityBoundary) {
+    recommendation = "stop_for_futility";
+    reasons.push(
+      `Treatment-vs-control gap ${(diff * 100).toFixed(1)}pp < futility boundary ${(input.futilityBoundary * 100).toFixed(1)}pp`,
+    );
+  } else {
+    reasons.push(
+      `Gap ${(diff * 100).toFixed(1)}pp within continuation zone (futility ${(input.futilityBoundary * 100).toFixed(1)}pp, efficacy ${(input.efficacyBoundary * 100).toFixed(1)}pp)`,
+    );
+  }
+
+  return {
+    recommendation,
+    reasons,
+    dsmbReviewRequired: recommendation !== "continue",
+  };
+}
