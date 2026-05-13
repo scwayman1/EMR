@@ -58,6 +58,13 @@ export interface LeafmartProduct {
   // (any non-zero THC flips this on); other regulated categories can extend
   // this rule in `mapProductToLeafmart`.
   requiresAgeVerification?: boolean;
+
+  // EMR-280 vendor contact surfaces — optional. When present, the PDP shows
+  // a contact card ("Visit site / Call / Email") under the clinician note.
+  // The website link goes through a leaving-site disclaimer modal.
+  partnerWebsite?: string | null;
+  partnerPhone?: string | null;
+  partnerEmail?: string | null;
 }
 
 export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {

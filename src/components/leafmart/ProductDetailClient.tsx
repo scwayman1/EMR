@@ -10,6 +10,7 @@ import { ProductReviews } from "./ProductReviews";
 import { PairsWellWith } from "./PairsWellWith";
 import { StarRating } from "./StarRating";
 import { LeafShareButton } from "./LeafShareButton";
+import { VendorContactCard } from "./VendorContactCard";
 import { useCart } from "@/lib/leafmart/cart-store";
 import { findGuideByFormat } from "@/lib/leafmart/dosing-guides";
 import { absoluteUrl } from "@/lib/leafmart/seo";
@@ -248,6 +249,16 @@ export function ProductDetailClient({ product, related }: Props) {
                 <div className="text-xs text-[var(--muted)]">Dr. N.H. Patel, DO · Medical Lead</div>
               </div>
             </div>
+
+            {/* EMR-280: vendor contact card — only renders when at least
+                 one channel (website/phone/email) is on file. */}
+            <VendorContactCard
+              partnerName={product.partner}
+              website={product.partnerWebsite}
+              phone={product.partnerPhone}
+              email={product.partnerEmail}
+              className="mt-6 sm:mt-8"
+            />
           </div>
         </div>
       </section>
