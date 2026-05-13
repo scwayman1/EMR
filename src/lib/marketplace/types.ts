@@ -29,6 +29,11 @@ export interface MarketplaceProduct {
   onsetTime?: string;
   duration?: string;
 
+  // EMR-282 — grow-accessory products (lights, tents, fans, fertilizer,
+  // trim tools) trigger a state-aware cultivation legality banner + hard
+  // disclaimer on the PDP.
+  growAccessory?: boolean;
+
   // Dosage
   dosageGuidance?: string;
   beginnerFriendly: boolean;

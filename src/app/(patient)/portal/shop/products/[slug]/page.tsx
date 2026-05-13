@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RatingStars } from "@/components/marketplace/RatingStars";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
+import { GrowAccessoryDisclaimer } from "@/components/marketplace/GrowAccessoryDisclaimer";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -400,6 +401,11 @@ export default async function ProductDetailPage({ params }: SlugPageProps) {
           <Badge tone="success" className="text-sm px-3 py-1">
             Beginner Friendly
           </Badge>
+        )}
+
+        {/* EMR-282 — grow-accessory legal disclaimer */}
+        {product.growAccessory && (
+          <GrowAccessoryDisclaimer state={patient?.state ?? null} className="mt-6" />
         )}
       </section>
 
