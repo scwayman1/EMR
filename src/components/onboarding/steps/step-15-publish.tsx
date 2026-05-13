@@ -8,8 +8,9 @@
 //
 // On click:
 //   POST /api/configs/[draftId]/publish
-//     200 → redirect to /practice-admin/dashboard?published=1 (EMR-447's
-//           dashboard reads the query param and shows the success banner)
+//     200 → redirect to /practices?published=1 — the super-admin fleet
+//           landing page surfaces a success banner and renders the newly
+//           published practice as an expandable KPI card.
 //     409 → server returned `{ missing: [...] }` — surface inline with
 //           deep-links back to the relevant earlier step.
 //
@@ -106,7 +107,7 @@ export function Step15Publish({ draft, goBack }: WizardStepProps) {
       );
 
       if (res.ok) {
-        router.push("/practice-admin/dashboard?published=1");
+        router.push("/practices?published=1");
         return;
       }
 
