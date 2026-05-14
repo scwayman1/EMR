@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { PreVisitChecklistClient } from "./pre-visit-checklist-client";
 
 export const metadata = { title: "Telehealth" };
 
@@ -292,20 +293,7 @@ export default async function TelehealthDashboardPage() {
               <CardTitle className="text-base">Pre-visit checklist</CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="space-y-2 text-sm text-text-muted">
-                <li className="flex gap-2">
-                  <span className="text-accent">•</span>Confirm camera and microphone
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-accent">•</span>Verify a stable connection
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-accent">•</span>Use a private, quiet room
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-accent">•</span>Have current medications nearby
-                </li>
-              </ul>
+              <PreVisitChecklistClient />
             </CardContent>
           </Card>
         </div>
