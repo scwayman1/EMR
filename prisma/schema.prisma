@@ -135,6 +135,8 @@ model Organization {
   state               String?
   postalCode          String?
   timeZone            String? // IANA tz, e.g. "America/Los_Angeles"
+  ExternalProvider    ExternalProvider[]
+  OutboundReferral    OutboundReferral[]
 }
 
 // EMR-420 — A Practice is a single clinical location/group under an
@@ -332,6 +334,7 @@ model Patient {
   cannabisRxs              CannabisRx[]              @relation("CannabisRxPatient")
   dispenses                DispensaryDispense[]      @relation("DispensePatient")
   pdmpChecks               CuresPdmpCheck[]          @relation("PdmpPatient")
+  OutboundReferral         OutboundReferral[]
 
   @@index([organizationId, status])
   @@index([lastName, firstName])
@@ -4641,4 +4644,76 @@ model CuresPdmpCheck {
 
   @@index([organizationId, createdAt])
   @@index([patientId, createdAt])
+}
+
+/// EMR-167 — Local cache and relationship layer for external providers.
+/// Seeds from NPPES (NPI registry) but allows practice-specific tagging
+/// (e.g., marking a provider as a "favorite" referral target).
+model ExternalProvider {
+  id             String  @id @default(cuid())
+  organizationId String
+  npi            String
+  firstName      String
+  lastName       String
+  specialty      String?
+  organization   String? // Practice or hospital name
+  faxNumber      String?
+  phone          String?
+  addressLine1   String?
+  addressLine2   String?
+  city           String?
+  state          String?
+  postalCode     String?
+  isFavorite     Boolean @default(false)
+
+  lastNppesSyncAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  org               Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  referralsReceived OutboundReferral[]
+
+  @@unique([organizationId, npi])
+  @@index([organizationId, isFavorite])
+}
+
+enum OutboundReferralStatus {
+  draft // Being assembled by AI or user
+  pending_approval // Waiting for clinician sign-off
+  approved // Clinician approved, ready for e-fax queue
+  transmitting // Currently sending via e-fax provider
+  delivered // E-fax provider confirmed delivery
+  failed // Transmission failed
+  declined // Patient declined the referral (closes loop)
+}
+
+/// EMR-167 — Tracks the state and payload of an outbound referral fax.
+model OutboundReferral {
+  id               String @id @default(cuid())
+  organizationId   String
+  patientId        String
+  targetProviderId String
+
+  status     OutboundReferralStatus @default(draft)
+  payloadUrl String? // Link to generated PDF/document
+  notes      String?
+
+  // State machine timestamps
+  approvedAt    DateTime?
+  approvedById  String?
+  transmittedAt DateTime?
+  deliveredAt   DateTime?
+  failedAt      DateTime?
+  declinedAt    DateTime?
+  declineReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  patient        Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  targetProvider ExternalProvider @relation(fields: [targetProviderId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([patientId, status])
 }
