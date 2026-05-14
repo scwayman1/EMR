@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { PageShell } from "@/components/shell/PageHeader";
 import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
+import { PrintGuideButton } from "./print-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeafSprig, Eyebrow, EditorialRule } from "@/components/ui/ornament";
 
@@ -221,15 +222,7 @@ export default function TalkToProviderPage() {
               >
                 Open your care guide →
               </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window !== "undefined") window.print();
-                }}
-                className="text-[var(--leaf,#3a7d44)] hover:underline font-medium"
-              >
-                Print this guide
-              </button>
+              <PrintGuideButton />
             </div>
           </div>
         </div>
