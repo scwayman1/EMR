@@ -1,5 +1,6 @@
 import React from "react";
-import { ExternalLink, Star, Tag, ShoppingBag } from "lucide-react";
+import { ExternalLink, Tag, ShoppingBag } from "lucide-react";
+import { LeafIcon } from "@/components/leafmart/LeafIcon";
 import { logPatientEngagement } from "@/app/(patient)/portal/wellness/actions";
 
 export interface AffiliateProductProps {
@@ -51,8 +52,8 @@ export function AffiliateProductCard({ product }: { product: AffiliateProductPro
             {product.brand}
           </span>
           {product.rating && (
-            <div className="flex items-center gap-1 text-amber-500">
-              <Star className="w-3.5 h-3.5 fill-current" />
+            <div className="flex items-center gap-1 text-[var(--leaf,#3a7d44)]">
+              <LeafIcon size={14} filled />
               <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">
                 {product.rating}
               </span>

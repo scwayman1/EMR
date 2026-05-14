@@ -153,7 +153,7 @@ export function ReviewSubmissionForm({ productSlug, onClose }: Props) {
             type="button"
             onClick={() => setRating(n)}
             className="p-0.5"
-            aria-label={`${n} stars`}
+            aria-label={`${n} leaves`}
           >
             <StarRating rating={n <= rating ? 5 : 0} size={22} />
           </button>
