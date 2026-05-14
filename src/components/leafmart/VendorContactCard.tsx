@@ -51,9 +51,8 @@ export function VendorContactCard({
   const [modalOpen, setModalOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // No contact channels → render nothing rather than an empty card.
-  if (!website && !phone && !email) return null;
-
+  // Hooks must run unconditionally — the empty-channels early return below
+  // sits after this useEffect so the hook order stays stable across renders.
   useEffect(() => {
     if (!modalOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -64,6 +63,9 @@ export function VendorContactCard({
     dialogRef.current?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [modalOpen]);
+
+  // No contact channels → render nothing rather than an empty card.
+  if (!website && !phone && !email) return null;
 
   const handleConfirmLeave = () => {
     if (!website) return;
