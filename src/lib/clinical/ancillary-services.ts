@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Unintegrated scaffold (track-9)"
 /**
  * EMR-062 — Ancillary services queue logic
  *

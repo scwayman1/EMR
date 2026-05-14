@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Unintegrated scaffold (track-9)"
 /**
  * EMR-083 — Pediatric growth-chart helpers
  *
