@@ -18,6 +18,8 @@ import { APSO_ORDER, NOTE_BLOCK_LABELS } from "@/lib/domain/notes";
 import type { NoteBlockType } from "@/lib/domain/notes";
 import { LeafSprig } from "@/components/ui/ornament";
 import { DictateButton } from "@/components/ui/dictation";
+import { NoteTemplatePicker, type PickerBlock } from "@/components/clinical/note-template-picker";
+import { NOTE_BLOCK_LABELS as NB_LABELS } from "@/lib/domain/notes";
 
 interface NoteBlock {
   type?: NoteBlockType;
@@ -145,6 +147,26 @@ export function NoteEditor({
     });
   }
 
+  // EMR-174 — applying a template overwrites the current blocks. Picker
+  // shows a confirm dialog before calling this when there's content to
+  // preserve, so we trust the call here. APSO-sort and APSO-label, same
+  // as the initial mount.
+  function applyTemplate(_templateName: string, incoming: PickerBlock[]) {
+    const sorted = [...incoming].sort((a, b) => {
+      const aIdx = a.type ? APSO_ORDER.indexOf(a.type) : APSO_ORDER.length;
+      const bIdx = b.type ? APSO_ORDER.indexOf(b.type) : APSO_ORDER.length;
+      return (aIdx === -1 ? APSO_ORDER.length : aIdx) - (bIdx === -1 ? APSO_ORDER.length : bIdx);
+    });
+    setBlocks(
+      sorted.map((b) => ({
+        type: b.type,
+        body: b.body,
+        heading: b.type && NB_LABELS[b.type] ? NB_LABELS[b.type] : b.heading,
+      })),
+    );
+    setSaveMessage(null);
+  }
+
   function handleSave() {
     startTransition(async () => {
       const result = await saveNoteBlocks(noteId, blocks);
@@ -243,26 +265,33 @@ export function NoteEditor({
         </Card>
       )}
 
-      {/* Status + AI badges */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge
-          tone={
-            currentStatus === "finalized"
-              ? "success"
-              : currentStatus === "needs_review"
-                ? "warning"
-                : "neutral"
-          }
-        >
-          {currentStatus}
-        </Badge>
-        {aiDrafted && <Badge tone="highlight">AI-drafted</Badge>}
-        {aiConfidence !== null && (
-          <Badge tone="info">
-            Confidence {Math.round(aiConfidence * 100)}%
+      {/* Status + AI badges + template picker (EMR-174) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            tone={
+              currentStatus === "finalized"
+                ? "success"
+                : currentStatus === "needs_review"
+                  ? "warning"
+                  : "neutral"
+            }
+          >
+            {currentStatus}
           </Badge>
-        )}
-        {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
+          {aiDrafted && <Badge tone="highlight">AI-drafted</Badge>}
+          {aiConfidence !== null && (
+            <Badge tone="info">
+              Confidence {Math.round(aiConfidence * 100)}%
+            </Badge>
+          )}
+          {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
+        </div>
+        <NoteTemplatePicker
+          disabled={!isEditable}
+          hasExistingContent={blocks.some((b) => b.body.trim().length > 0)}
+          onApply={(template, incoming) => applyTemplate(template.name, incoming)}
+        />
       </div>
 
       {/* Emotional vitals — EMR-134: emoji demeanor scale persisted to encounter */}
