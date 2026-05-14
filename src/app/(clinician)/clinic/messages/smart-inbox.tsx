@@ -20,6 +20,7 @@ import {
 } from "@/lib/domain/smart-inbox";
 import { sendReply } from "./actions";
 import { CallLaunchButtons } from "@/components/communications/call-launch-buttons";
+import { CallBubble, type CallLogData } from "./call-bubble";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,9 +39,11 @@ interface MessageData {
 
 interface ThreadMessageData {
   threadId: string;
+  patientId: string;
   patientName: string;
   subject: string;
   messages: MessageData[];
+  callLogs: CallLogData[];
 }
 
 interface Props {
@@ -48,6 +51,25 @@ interface Props {
   threadMessages: ThreadMessageData[];
   currentUserId: string;
   initialThreadId?: string;
+}
+
+// EMR-604 — chronological timeline that interleaves messages and call records
+// so the WhatsApp-style call bubbles land in the right spot among the texts.
+type TimelineItem =
+  | { kind: "message"; ts: string; data: MessageData }
+  | { kind: "call"; ts: string; data: CallLogData };
+
+function buildTimeline(thread: ThreadMessageData): TimelineItem[] {
+  const items: TimelineItem[] = [
+    ...thread.messages.map(
+      (m): TimelineItem => ({ kind: "message", ts: m.createdAt, data: m }),
+    ),
+    ...thread.callLogs.map(
+      (c): TimelineItem => ({ kind: "call", ts: c.startedAt, data: c }),
+    ),
+  ];
+  items.sort((a, b) => a.ts.localeCompare(b.ts));
+  return items;
 }
 
 // ---------------------------------------------------------------------------
@@ -617,9 +639,21 @@ export function SmartInboxView({
                 </div>
               </div>
 
-              {/* Message history */}
+              {/* Message history — messages and call records interleaved
+                  chronologically. EMR-604. */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-                {[...selectedThread.messages].reverse().map((msg) => {
+                {buildTimeline(selectedThread).map((item) => {
+                  if (item.kind === "call") {
+                    return (
+                      <CallBubble
+                        key={`call-${item.data.id}`}
+                        call={item.data}
+                        patientId={selectedThread.patientId}
+                        threadId={selectedThread.threadId}
+                      />
+                    );
+                  }
+                  const msg = item.data;
                   const isOwn = msg.senderUserId === currentUserId;
                   const isAgent = !!msg.senderAgent;
                   const senderName = isOwn
