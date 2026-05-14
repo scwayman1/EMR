@@ -23,7 +23,6 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { SignOutButton } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -287,11 +286,6 @@ export function WizardShell({
             >
               Exit
             </Button>
-            <SignOutButton redirectUrl="/sign-in">
-              <Button variant="ghost" size="sm">
-                Sign out
-              </Button>
-            </SignOutButton>
           </div>
         </div>
 
