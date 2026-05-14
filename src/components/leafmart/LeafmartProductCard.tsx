@@ -39,6 +39,10 @@ export interface LeafmartProduct {
   shape: "bottle" | "can" | "jar" | "tin" | "serum" | "box";
   tag?: string;
   imageUrl?: string | null;
+  // EMR-276 — multi-image scroll on the product card. When 2+ images
+  // are present, the card renders a horizontal scroll-snap carousel
+  // with dot indicators. Falls back to single imageUrl when absent.
+  images?: string[];
 
   // Optional richer fields surfaced on the PDP. Older callers (cart, demo data)
   // may omit these; the PDP falls back gracefully when they are absent.
@@ -76,10 +80,56 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
     [addItem, p]
   );
 
+  // EMR-276 — multi-image scroll. When 2+ product images exist, render a
+  // horizontal scroll-snap carousel with dot indicators below the card image.
+  // 1-image cards still render the original single ProductImage.
+  const galleryImages =
+    (p.images && p.images.length > 0)
+      ? p.images
+      : (p.imageUrl ? [p.imageUrl] : []);
+  const hasGallery = galleryImages.length > 1;
+  const [imageIndex, setImageIndex] = useState(0);
+  const handleDot = useCallback((e: React.MouseEvent, i: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setImageIndex(i);
+  }, []);
+
   return (
     <Link href={`/leafmart/products/${p.slug}`} className="block card-lift rounded-3xl overflow-hidden bg-[var(--surface)] border border-[var(--border)]">
       <div className="relative">
-        <ProductImage src={p.imageUrl} alt={p.name} shape={p.shape} bg={p.bg} deep={p.deep} height={280} />
+        {hasGallery ? (
+          <>
+            <div className="relative">
+              <ProductImage
+                key={imageIndex}
+                src={galleryImages[imageIndex]}
+                alt={`${p.name} — image ${imageIndex + 1} of ${galleryImages.length}`}
+                shape={p.shape}
+                bg={p.bg}
+                deep={p.deep}
+                height={320}
+              />
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 px-2 py-1 rounded-full bg-black/30 backdrop-blur-sm">
+                {galleryImages.map((_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Show image ${i + 1}`}
+                    onClick={(e) => handleDot(e, i)}
+                    className={`rounded-full transition-all ${
+                      i === imageIndex
+                        ? "w-4 h-1.5 bg-white"
+                        : "w-1.5 h-1.5 bg-white/60 hover:bg-white/85"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <ProductImage src={p.imageUrl} alt={p.name} shape={p.shape} bg={p.bg} deep={p.deep} height={320} />
+        )}
         {p.tag && (
           <div
             className="absolute top-4 left-4 px-3 py-1.5 rounded-full text-[11.5px] font-semibold tracking-wide inline-flex items-center gap-1.5 shadow-sm"
@@ -89,13 +139,27 @@ export function LeafmartProductCard({ product }: { product: LeafmartProduct }) {
             {p.tag}
           </div>
         )}
-        <div className="absolute top-4 right-4 bg-white/85 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-[var(--leaf)] flex items-center gap-1.5 backdrop-blur-sm">
-          <svg width="11" height="11" viewBox="0 0 11 11"><circle cx="5.5" cy="5.5" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M3 5.7L4.5 7.2L7.5 4.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
-          COA
-        </div>
+        {/* EMR-276: prominent clinician-pick ribbon, larger than the COA chip. */}
+        {p.clinicianPick && (
+          <div className="absolute top-3.5 right-3.5 bg-[var(--leaf)] text-white rounded-full pl-2 pr-3 py-1.5 text-[12.5px] font-bold flex items-center gap-1.5 shadow-md tracking-wide">
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+              <path d="M7 1l1.7 3.5L12.5 5l-2.8 2.6.7 3.9L7 9.6l-3.4 1.9.7-3.9L1.5 5l3.8-.5L7 1z" fill="currentColor" />
+            </svg>
+            Clinician Pick
+          </div>
+        )}
+        {!p.clinicianPick && (
+          <div className="absolute top-4 right-4 bg-white/85 rounded-full px-2.5 py-1.5 text-[11px] font-semibold text-[var(--leaf)] flex items-center gap-1.5 backdrop-blur-sm">
+            <svg width="11" height="11" viewBox="0 0 11 11"><circle cx="5.5" cy="5.5" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M3 5.7L4.5 7.2L7.5 4.2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
+            COA
+          </div>
+        )}
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <p className="eyebrow text-[var(--text-soft)] mb-2">{p.partner} · {p.formatLabel}</p>
+        {/* EMR-276: company + format eyebrow goes up a step in size + weight */}
+        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--text-soft)] mb-2">
+          {p.partner} · {p.formatLabel}
+        </p>
         <h4 className="font-display text-[22px] font-medium tracking-tight leading-tight text-[var(--ink)] mb-2">{p.name}</h4>
         <p className="text-[13.5px] text-[var(--text-soft)] leading-relaxed flex-1">{p.support}</p>
         <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-[var(--border)]">
