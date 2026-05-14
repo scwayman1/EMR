@@ -293,6 +293,12 @@ routes:
     owner: leafmart
     notes: "Public vendor application form. Rate-limit recommended."
 
+  leafmart/age-gate/consent:
+    methods: [POST]
+    auth: public
+    owner: leafmart
+    notes: "EMR-398. Storefront is anonymous; this audit-logs the 21+/T&C consent (IP + timestamp + UA) so we have compliance evidence without storing PII at rest."
+
   leafmart/signout:
     methods: [POST]
     auth: establishes_auth
