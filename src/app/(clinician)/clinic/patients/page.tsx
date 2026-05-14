@@ -8,11 +8,7 @@ import { logger } from "@/lib/observability/log";
 
 export const metadata = { title: "Patient Roster" };
 
-export default async function PatientsPage({
-  searchParams,
-}: {
-  searchParams: { status?: string };
-}) {
+export default async function PatientsPage() {
   const user = await requireUser();
   const orgId = user.organizationId!;
 
@@ -121,14 +117,14 @@ export default async function PatientsPage({
     firstName: p.firstName,
     lastName: p.lastName,
     status: p.status as string,
+    dob: p.dateOfBirth?.toISOString() ?? null,
+    phone: p.phone,
     presentingConcerns: p.presentingConcerns,
     completenessScore: p.chartSummary?.completenessScore ?? null,
     updatedAt: p.updatedAt.toISOString(),
     lastVisit: lastVisitByPatient.get(p.id) ?? null,
     painTrend: painByPatient.get(p.id)?.reverse() ?? [], // chronological order
   }));
-
-  const activeStatus = searchParams.status ?? "all";
 
   return (
     <PageShell maxWidth="max-w-[1280px]">
@@ -167,7 +163,6 @@ export default async function PatientsPage({
         patients={serialized}
         statusCounts={statusCounts}
         avgReadiness={avgReadiness}
-        initialStatus={activeStatus}
       />
     </PageShell>
   );

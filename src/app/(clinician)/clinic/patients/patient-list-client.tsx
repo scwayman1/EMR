@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +9,7 @@ import { MetricTile } from "@/components/ui/metric-tile";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { patientMatchesQuery } from "@/lib/search/patient-search";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -20,6 +20,8 @@ interface PatientRow {
   firstName: string;
   lastName: string;
   status: string;
+  dob: string | null;
+  phone: string | null;
   presentingConcerns: string | null;
   completenessScore: number | null;
   updatedAt: string;
@@ -38,19 +40,7 @@ interface Props {
   patients: PatientRow[];
   statusCounts: StatusCounts;
   avgReadiness: number;
-  initialStatus: string;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Status filter config                                               */
-/* ------------------------------------------------------------------ */
-
-const STATUS_FILTERS: { key: string; label: string; countKey: keyof StatusCounts }[] = [
-  { key: "all", label: "All", countKey: "all" },
-  { key: "active", label: "Active", countKey: "active" },
-  { key: "prospect", label: "In Intake", countKey: "prospect" },
-  { key: "inactive", label: "Inactive", countKey: "inactive" },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Power filter chips (EMR-clinician power-tools)                     */
@@ -227,14 +217,10 @@ export function PatientListClient({
   patients,
   statusCounts,
   avgReadiness,
-  initialStatus,
 }: Props) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [powerFilter, setPowerFilter] = useState<PowerFilter>("all");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
-  const activeStatus = searchParams.get("status") ?? initialStatus;
 
   /* Hydrate saved views from localStorage -------------------------- */
   useEffect(() => {
@@ -278,28 +264,17 @@ export function PatientListClient({
   const filtered = useMemo(() => {
     let list = patients;
 
-    // Status filter
-    if (activeStatus !== "all") {
-      list = list.filter((p) => p.status === activeStatus);
-    }
-
     // Power filter
     list = list.filter(matchesPowerFilter);
 
-    // Name search
-    const q = search.toLowerCase().trim();
-    if (q) {
-      list = list.filter(
-        (p) =>
-          p.firstName.toLowerCase().includes(q) ||
-          p.lastName.toLowerCase().includes(q) ||
-          `${p.firstName} ${p.lastName}`.toLowerCase().includes(q)
-      );
+    // Partial-match search (name / DOB / phone) — see EMR-599.
+    if (search.trim()) {
+      list = list.filter((p) => patientMatchesQuery(p, search));
     }
 
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patients, activeStatus, search, powerFilter]);
+  }, [patients, search, powerFilter]);
 
   /* Save/load views ------------------------------------------------ */
   function handleSaveView() {
@@ -333,17 +308,6 @@ export function PatientListClient({
     } catch {
       /* ignore */
     }
-  }
-
-  /* Status pill navigation ----------------------------------------- */
-  function setStatus(key: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (key === "all") {
-      params.delete("status");
-    } else {
-      params.set("status", key);
-    }
-    router.push(`?${params.toString()}`, { scroll: false });
   }
 
   /* ---------------------------------------------------------------- */
@@ -431,33 +395,6 @@ export function PatientListClient({
         </div>
       )}
 
-      {/* Status filter strip */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {STATUS_FILTERS.map((f) => {
-          const isActive = activeStatus === f.key;
-          return (
-            <button
-              key={f.key}
-              onClick={() => setStatus(f.key)}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-full border transition-colors duration-200 ${
-                isActive
-                  ? "bg-accent text-accent-ink border-accent shadow-sm"
-                  : "bg-surface-raised text-text-muted border-border hover:bg-surface-muted hover:border-border-strong"
-              }`}
-            >
-              {f.label}
-              <span
-                className={`tabular-nums ${
-                  isActive ? "text-accent-ink/70" : "text-text-subtle"
-                }`}
-              >
-                {statusCounts[f.countKey]}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* Patient list card */}
       <Card tone="raised" className="overflow-hidden">
         {/* Search bar */}
@@ -470,7 +407,7 @@ export function PatientListClient({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name..."
+              placeholder="Search name, DOB, or phone..."
               className="pl-9"
             />
           </div>
