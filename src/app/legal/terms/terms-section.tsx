@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { ChevronDown, Sparkles } from "lucide-react";
+import { BackToTop } from "./terms-layout";
 
 export function TermsSection({
   id,
@@ -17,17 +18,20 @@ export function TermsSection({
   const [showSummary, setShowSummary] = useState(true);
 
   return (
-    <section id={id} className="not-prose mb-10">
-      <h2 className="font-display text-[22px] font-medium mt-10 text-[var(--ink)]">
-        {title}
-      </h2>
+    <section id={id} className="not-prose mb-10 scroll-mt-24">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-[22px] font-medium mt-10 text-[var(--ink)]">
+          {title}
+        </h2>
+        <BackToTop />
+      </div>
 
-      <div className="mt-3 mb-4 rounded-xl border border-[var(--border)] bg-[var(--accent-soft,rgba(45,139,94,0.06))] px-4 py-3">
+      <div className="mt-3 mb-4 rounded-xl border border-[var(--border)] bg-[var(--accent-soft,rgba(45,139,94,0.06))] px-4 py-3 print:bg-transparent print:border-0 print:px-0 print:py-1">
         <button
           type="button"
           onClick={() => setShowSummary((v) => !v)}
           aria-expanded={showSummary}
-          className="flex items-center gap-2 text-[12px] uppercase tracking-wider font-semibold text-[var(--leaf,#2d8b5e)]"
+          className="flex items-center gap-2 text-[12px] uppercase tracking-wider font-semibold text-[var(--leaf,#2d8b5e)] print:hidden"
         >
           <Sparkles className="w-3.5 h-3.5" />
           AI summary
@@ -37,7 +41,7 @@ export function TermsSection({
           />
         </button>
         {showSummary && (
-          <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--text-soft)]">
+          <p className="mt-2 text-[13.5px] leading-relaxed text-[var(--text-soft)] print:text-[12px] print:italic print:mt-0">
             {summary.replace(/^AI summary:\s*/i, "")}
           </p>
         )}
