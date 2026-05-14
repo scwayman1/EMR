@@ -368,17 +368,21 @@ model ShippingAddress {
 }
 
 model Provider {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  organizationId String
-  title          String? // e.g. "MD, Integrative Oncology"
-  specialties    String[] @default([])
-  bio            String?
-  active         Boolean  @default(true)
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  organizationId       String
+  title                String? // e.g. "MD, Integrative Oncology"
+  specialties          String[] @default([])
+  bio                  String?
+  active               Boolean  @default(true)
   // EMR-220 — Production billing identifiers
-  npi            String? // 10-digit type-1 individual NPI; CMS-Luhn validated on write
-  taxonomyCode   String? // 10-char Healthcare Provider Taxonomy code (e.g. "207RI0008X")
-  createdAt      DateTime @default(now())
+  npi                  String? // 10-digit type-1 individual NPI; CMS-Luhn validated on write
+  taxonomyCode         String? // 10-char Healthcare Provider Taxonomy code (e.g. "207RI0008X")
+  // EMR-613 — directory search fields. Free-text address (multi-line ok);
+  // hospital affiliations modeled as a tag array, matching `specialties`.
+  practiceAddress      String?
+  hospitalAffiliations String[] @default([])
+  createdAt            DateTime @default(now())
 
   user         User          @relation("ProviderUser", fields: [userId], references: [id], onDelete: Cascade)
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
