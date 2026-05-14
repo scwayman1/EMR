@@ -35,6 +35,20 @@ export default async function ClinicMessagesPage({
           },
         },
       },
+      // EMR-604 — pull call records so the thread view can interleave them
+      // chronologically as WhatsApp-style bubbles.
+      callLogs: {
+        select: {
+          id: true,
+          channel: true,
+          direction: true,
+          status: true,
+          startedAt: true,
+          endedAt: true,
+          durationSeconds: true,
+        },
+        orderBy: { startedAt: "asc" },
+      },
     },
     take: 50,
   });
@@ -86,6 +100,7 @@ export default async function ClinicMessagesPage({
   // Serialize full thread messages for the detail view
   const threadMessages = threads.map((t) => ({
     threadId: t.id,
+    patientId: t.patient.id,
     patientName: `${t.patient.firstName} ${t.patient.lastName}`,
     subject: t.subject,
     messages: t.messages.map((m) => ({
@@ -99,6 +114,15 @@ export default async function ClinicMessagesPage({
         ? { firstName: m.sender.firstName, lastName: m.sender.lastName }
         : null,
       createdAt: m.createdAt.toISOString(),
+    })),
+    callLogs: t.callLogs.map((c) => ({
+      id: c.id,
+      channel: c.channel as string,
+      direction: c.direction as string,
+      status: c.status as string,
+      startedAt: c.startedAt.toISOString(),
+      endedAt: c.endedAt?.toISOString() ?? null,
+      durationSeconds: c.durationSeconds,
     })),
   }));
 
