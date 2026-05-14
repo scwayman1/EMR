@@ -440,3 +440,24 @@ routes:
     auth: public
     owner: marketing
     notes: "Public contact form submission route."
+
+  audit/report:
+    methods: [GET]
+    auth: needs_review
+    owner: platform-security
+    review_due: 2026-05-30
+    notes: "Scaffolded route for audit reporting."
+
+  foundation/grants:
+    methods: [GET, POST]
+    auth: needs_review
+    owner: marketing
+    review_due: 2026-05-30
+    notes: "Scaffolded route for foundation grants."
+
+  integrations/test-garmin:
+    methods: [POST]
+    auth: needs_review
+    owner: integrations
+    review_due: 2026-05-30
+    notes: "Scaffolded route for testing Garmin integration."

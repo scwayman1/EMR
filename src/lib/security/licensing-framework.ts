@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Unintegrated scaffold (track-9)"
 /**
  * EMR-084 — Licensing + IP framework.
  *

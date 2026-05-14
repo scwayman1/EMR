@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Unintegrated scaffold (track-9)"
 "use client";
 
 import * as React from "react";
