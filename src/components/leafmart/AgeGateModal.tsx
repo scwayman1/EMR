@@ -97,6 +97,17 @@ export function AgeGateModal({
 
   const handleConfirm = useCallback(() => {
     confirmAgeOver21();
+    // Fire-and-forget audit log — server records IP + timestamp + UA. EMR-398.
+    if (typeof window !== "undefined") {
+      void fetch("/api/leafmart/age-gate/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmedAt: new Date().toISOString() }),
+        keepalive: true,
+      }).catch(() => {
+        /* best-effort audit; failure must not block the user */
+      });
+    }
     onConfirmed?.();
     onClose();
   }, [onConfirmed, onClose]);
@@ -193,6 +204,9 @@ function PromptView({
   onConfirm: () => void;
   onDeny: () => void;
 }) {
+  const consentId = useId();
+  const [consented, setConsented] = useState(false);
+
   return (
     <>
       <div className="flex justify-center mb-5">
@@ -213,12 +227,50 @@ function PromptView({
         and agree to use these products responsibly.
       </p>
 
-      <div className="mt-7 flex flex-col gap-2.5">
+      <label
+        htmlFor={consentId}
+        className="mt-6 flex items-start gap-2.5 cursor-pointer select-none"
+      >
+        <input
+          id={consentId}
+          type="checkbox"
+          checked={consented}
+          onChange={(e) => setConsented(e.target.checked)}
+          className="mt-[3px] h-4 w-4 shrink-0 cursor-pointer rounded border-[var(--border)] text-[var(--leaf)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--leaf)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+        />
+        <span className="text-[12.5px] leading-relaxed text-[var(--muted)]">
+          I have read and agree to the{" "}
+          <Link
+            href="/legal/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[var(--leaf)] underline underline-offset-2 hover:text-[var(--ink)]"
+          >
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/legal/privacy"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-[var(--leaf)] underline underline-offset-2 hover:text-[var(--ink)]"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </span>
+      </label>
+
+      <div className="mt-5 flex flex-col gap-2.5">
         <button
           ref={primaryRef}
           type="button"
           onClick={onConfirm}
-          className="w-full rounded-full bg-[var(--ink)] text-[var(--bg)] py-3.5 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--leaf)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+          disabled={!consented}
+          aria-disabled={!consented}
+          className="w-full rounded-full bg-[var(--ink)] text-[var(--bg)] py-3.5 text-[14px] font-medium tracking-wide hover:bg-[var(--leaf)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--leaf)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--ink)]"
         >
           I am 21 or older
         </button>
