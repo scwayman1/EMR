@@ -240,9 +240,11 @@ export default async function TrialsPage({ params }: PageProps) {
                 must be confirmed by the study team.
               </p>
               <div className="ml-auto flex gap-2">
-                <Button variant="secondary" size="sm">
-                  Send to patient
-                </Button>
+                <Link href={`/clinic/patients/${params.id}/trials/deliver?nct=${trial.id}`}>
+                  <Button variant="secondary" size="sm">
+                    Preview delivery
+                  </Button>
+                </Link>
                 <a
                   href={trial.url}
                   target="_blank"
