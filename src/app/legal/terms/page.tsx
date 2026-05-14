@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { TermsSection } from "./terms-section";
 import { TermsSignature } from "./terms-signature";
+import { TermsLayout } from "./terms-layout";
 
 export const metadata: Metadata = { title: "Terms of Service" };
 
@@ -211,44 +212,60 @@ const SECTIONS: { id: string; title: string; summary: string; body: React.ReactN
 ];
 
 export default function TermsPage() {
+  const tocSections = SECTIONS.map((s) => ({ id: s.id, title: s.title }));
+
   return (
-    <>
-      <h1>Terms of Service</h1>
-      <p>
-        Last updated: 2026-05-09 (Draft v2 — pending outside-counsel review)
-      </p>
-      <p>
-        These Terms govern the practice&apos;s use of Leafjourney as an
-        electronic medical record system, AI clinical workflow tool, and
-        connected marketplace. They are based on standard EMR contracting
-        practice and the Office of the National Coordinator&apos;s{" "}
-        <a
-          href="https://healthit.gov/wp-content/uploads/2025/03/EHR_Contracts_Untangled.pdf"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          EHR Contracts Untangled
-        </a>{" "}
-        guide.
-      </p>
+    <div id="terms-top" className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10 print:px-0 print:py-0">
+      <header className="mb-10 print:mb-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--leaf,#2d8b5e)] mb-2">
+          Legal
+        </p>
+        <h1 className="font-display text-[32px] sm:text-[40px] font-normal tracking-[-1px] leading-[1.05] text-[var(--ink)]">
+          Terms of Service
+        </h1>
+        <p className="mt-3 text-[13px] text-[var(--text-subtle)]">
+          Last updated: 2026-05-09 (Draft v2 — pending outside-counsel review)
+        </p>
+        <p className="mt-4 text-[14.5px] leading-relaxed text-[var(--text-soft)] max-w-[640px]">
+          These Terms govern the practice&apos;s use of Leafjourney as an
+          electronic medical record system, AI clinical workflow tool, and
+          connected marketplace. They are based on standard EMR contracting
+          practice and the Office of the National Coordinator&apos;s{" "}
+          <a
+            href="https://healthit.gov/wp-content/uploads/2025/03/EHR_Contracts_Untangled.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--leaf,#2d8b5e)] underline-offset-2 hover:underline"
+          >
+            EHR Contracts Untangled
+          </a>{" "}
+          guide.
+        </p>
+      </header>
 
-      {SECTIONS.map((s) => (
-        <TermsSection key={s.id} id={s.id} title={s.title} summary={s.summary}>
-          {s.body}
-        </TermsSection>
-      ))}
+      <TermsLayout sections={tocSections}>
+        {SECTIONS.map((s) => (
+          <TermsSection key={s.id} id={s.id} title={s.title} summary={s.summary}>
+            {s.body}
+          </TermsSection>
+        ))}
 
-      <h2>Total summary</h2>
-      <p>
-        AI summary: You and Leafjourney both promise to take HIPAA seriously.
-        We provide the software and the AI; you provide the clinical judgment
-        and the patient consent. You own your data and can leave with it. The
-        platform is a tool, not a replacement for a clinician — and either
-        side can end the relationship cleanly with 90 days&apos; notice plus
-        a 30-day export window.
-      </p>
+        <section id="total-summary" className="not-prose mt-12 mb-10 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted,#fafaf7)] p-6 print:bg-transparent print:border-0 print:p-0">
+          <h2 className="font-display text-[20px] font-medium text-[var(--ink)] mb-2">
+            Total summary
+          </h2>
+          <p className="text-[14.5px] leading-relaxed text-[var(--text-soft)]">
+            You and Leafjourney both promise to take HIPAA seriously. We
+            provide the software and the AI; you provide the clinical judgment
+            and the patient consent. You own your data and can leave with it.
+            The platform is a tool, not a replacement for a clinician — and
+            either side can end the relationship cleanly with 90 days&apos;
+            notice plus a 30-day export window.
+          </p>
+        </section>
 
-      <TermsSignature />
-    </>
+        <TermsSignature />
+      </TermsLayout>
+    </div>
   );
 }
