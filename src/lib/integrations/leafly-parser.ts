@@ -6,7 +6,6 @@
  * into the internal Verdant Apothecary database schema.
  */
 
-import { prisma } from "@/lib/db/prisma";
 
 export interface LeaflyStrainData {
   slug: string;
@@ -55,7 +54,7 @@ export class LeaflyDataParser {
       .filter(Boolean) as string[];
 
     return {
-      internalId: `chv-${data.slug}`,
+      internalId: `chv-${data.slug}-${Date.now()}`,
       displayName: data.name,
       chemotype,
       terpeneProfile: data.dominantTerpene,
@@ -88,37 +87,6 @@ export class LeaflyDataParser {
     return null;
   }
 
-  /**
-   * Fetches data for a slug, parses it, and saves it to the database.
-   */
-  async fetchAndSaveStrain(slug: string): Promise<VerdantChemovarRecord | null> {
-    const rawData = await this.fetchStrainData(slug);
-    if (!rawData) return null;
-
-    const record = this.parseToInternalRecord(rawData);
-
-    // Save to the database
-    await prisma.chemovarRecord.upsert({
-      where: { internalId: record.internalId },
-      update: {
-        displayName: record.displayName,
-        chemotype: record.chemotype,
-        terpeneProfile: record.terpeneProfile,
-        therapeuticTags: record.therapeuticTags,
-        externalReferenceUrl: record.externalReferenceUrl,
-      },
-      create: {
-        internalId: record.internalId,
-        displayName: record.displayName,
-        chemotype: record.chemotype,
-        terpeneProfile: record.terpeneProfile,
-        therapeuticTags: record.therapeuticTags,
-        externalReferenceUrl: record.externalReferenceUrl,
-      },
-    });
-
-    return record;
-  }
 }
 
 export const leaflyParser = new LeaflyDataParser();
