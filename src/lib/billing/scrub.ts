@@ -53,6 +53,8 @@ export interface ScrubInput {
   authNumber?: string | null;
   /** true when this is a corrected-claim resubmission (frequency 7/8) */
   corrected?: boolean;
+  /** true when this claim is completely self-pay (uninsured or cash-only) */
+  selfPay?: boolean;
 }
 
 // ---------------------------------------------------------------------------
