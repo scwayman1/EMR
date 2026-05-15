@@ -22,6 +22,45 @@ import { cn } from "@/lib/utils/cn";
 
 import type { WizardStepProps } from "@/lib/onboarding/wizard-types";
 
+export function CreateOrgInlineForm({ onCreated }: { onCreated: (orgId: string) => void }) {
+  const [loading, setLoading] = React.useState(false);
+  
+  const handleCreate = async () => {
+    setLoading(true);
+    const payload = {
+      legalName: "New Inline Org",
+      brandName: "New Inline Org",
+      primaryContactName: "Admin",
+      primaryContactEmail: "admin@example.com",
+      street: "123 Main St",
+      city: "San Francisco",
+      state: "CA",
+      postalCode: "94105",
+      timeZone: "America/Los_Angeles"
+    };
+
+    try {
+      const res = await fetch("/api/orgs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onCreated(data.organization.id);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button variant="secondary" size="sm" onClick={handleCreate} disabled={loading} className="mt-2">
+      {loading ? "Creating..." : "Quick Create Org"}
+    </Button>
+  );
+}
+
 // Keep this list aligned with the API route's allow-list.
 const COMMON_US_TIME_ZONES = [
   { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
@@ -343,6 +382,11 @@ function PickExistingTab({
           autoComplete="off"
         />
       </FieldGroup>
+
+      <CreateOrgInlineForm onCreated={(orgId) => {
+        // Just trigger a re-fetch or clear the query
+        setQuery("");
+      }} />
 
       <div
         id="org-practice-results"
