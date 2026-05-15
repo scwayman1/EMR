@@ -55,7 +55,7 @@ export function CreateOrgInlineForm({ onCreated }: { onCreated: (orgId: string) 
   };
 
   return (
-    <Button variant="outline" size="sm" onClick={handleCreate} disabled={loading} className="mt-2">
+    <Button variant="secondary" size="sm" onClick={handleCreate} disabled={loading} className="mt-2">
       {loading ? "Creating..." : "Quick Create Org"}
     </Button>
   );
