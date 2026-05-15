@@ -82,9 +82,11 @@ describe("specialty-template extensibility (EMR-433)", () => {
         "cannabis-medicine",
         "internal-medicine",
         "pain-management-non-cannabis",
+        "psilocybin-therapy",
+        "veterinary-medicine",
       ].sort(),
     );
-    expect(slugs).toHaveLength(3);
+    expect(slugs).toHaveLength(5);
     expect(slugs).not.toContain("test-fixture-specialty");
     expect(getSpecialtyTemplate("test-fixture-specialty")).toBeNull();
   });

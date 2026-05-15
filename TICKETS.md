@@ -2416,7 +2416,7 @@ Two marketing polish items on the public landing page:
 ### EMR-205: P1 BUG — Patient Portal Stuck on Loading Skeleton (`/portal`)
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel (live demo environment, 2026-04-20)
-**Status:** in_progress
+**Status:** done
 
 **Symptom:**
 Hitting `/portal` (and `/clinic` per Dr. Patel) shows the shell + sidebar + authed user correctly, but the main content area is stuck on the skeleton placeholders from `src/app/(patient)/portal/loading.tsx`. Nav items do not click — hydration never completes, so client-side Link clicks are no-ops.
@@ -2566,7 +2566,7 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 202 | Education page — Justin Kander research PDF under Research tab | Normal | backlog |
 | 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
 | 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
-| 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **open** |
+| 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **done** |
 | 206 | Self-Serve Online Scheduling | **Urgent** | backlog |
 | 207 | No-Show Prediction Model + De-Risking | **Urgent** | backlog |
 | 208 | Algorithmic Follow-Up Cadence per Condition | **Urgent** | backlog |
