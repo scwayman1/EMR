@@ -27,6 +27,8 @@ export interface ScrubIssue {
   relatedCode?: string;
   /** Whether the issue blocks submission */
   blocksSubmission: boolean;
+  /** Suggested workflow action hint */
+  workflowHint?: string;
 }
 
 export interface ScrubInput {
@@ -146,7 +148,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
   }
 
   // ── Rule: payer required ──────────────────────────────────────
-  if (!input.payerName) {
+  if (!input.selfPay && !input.payerName) {
     issues.push({
       ruleCode: "MISSING_PAYER",
       severity: "error",
@@ -171,6 +173,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
 
   // ── Rule: eligibility recently checked ────────────────────────
   if (
+    !input.selfPay &&
     input.patientCoverage &&
     input.patientCoverage.eligibilityStatus !== "active"
   ) {
@@ -185,7 +188,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
   }
 
   // ── Rule: auth required but missing ──────────────────────────
-  if (input.authRequired && !input.authNumber) {
+  if (!input.selfPay && input.authRequired && !input.authNumber) {
     issues.push({
       ruleCode: "MISSING_PRIOR_AUTH",
       severity: "error",
@@ -252,49 +255,61 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
     payerId: input.payerId,
     payerName: input.payerName,
   });
-  const ageDays = Math.floor(
-    (Date.now() - input.serviceDate.getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const tfDays = input.corrected
-    ? payerRule.correctedTimelyFilingDays
-    : payerRule.timelyFilingDays;
-  if (ageDays > tfDays) {
-    issues.push({
-      ruleCode: "PAST_TIMELY_FILING",
-      severity: "error",
-      message: `Service date is ${ageDays} days old. ${payerRule.displayName}'s timely filing window is ${tfDays} days.`,
-      suggestion:
-        "Past timely filing. If there's proof of timely intent (clearinghouse acceptance log, prior correspondence) appeal with documentation; otherwise write off.",
-      blocksSubmission: true,
-    });
-  } else if (ageDays > tfDays * 0.8) {
-    issues.push({
-      ruleCode: "APPROACHING_TIMELY_FILING",
-      severity: "warning",
-      message: `Service date is ${ageDays} days old, approaching ${payerRule.displayName}'s ${tfDays}-day timely filing limit.`,
-      suggestion: "Submit today. Once submitted, keep the clearinghouse acceptance record on file as proof of timely intent.",
-      blocksSubmission: false,
-    });
+  if (!input.selfPay) {
+    const ageDays = Math.floor(
+      (Date.now() - input.serviceDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const tfDays = input.corrected
+      ? payerRule.correctedTimelyFilingDays
+      : payerRule.timelyFilingDays;
+    if (ageDays > tfDays) {
+      issues.push({
+        ruleCode: "PAST_TIMELY_FILING",
+        severity: "error",
+        message: `Service date is ${ageDays} days old. ${payerRule.displayName}'s timely filing window is ${tfDays} days.`,
+        suggestion:
+          "Past timely filing. If there's proof of timely intent (clearinghouse acceptance log, prior correspondence) appeal with documentation; otherwise write off.",
+        blocksSubmission: true,
+      });
+    } else if (ageDays > tfDays * 0.8) {
+      issues.push({
+        ruleCode: "APPROACHING_TIMELY_FILING",
+        severity: "warning",
+        message: `Service date is ${ageDays} days old, approaching ${payerRule.displayName}'s ${tfDays}-day timely filing limit.`,
+        suggestion: "Submit today. Once submitted, keep the clearinghouse acceptance record on file as proof of timely intent.",
+        blocksSubmission: false,
+      });
+    }
   }
 
   // ── Rule: NCCI procedure-to-procedure edit pairs ─────────────
   const cptCodeSet = new Set(input.cptCodes.map((c) => c.code));
   for (const pair of NCCI_PAIRS) {
     if (!cptCodeSet.has(pair.componentCode) || !cptCodeSet.has(pair.comprehensiveCode)) continue;
-    const componentLine = input.cptCodes.find((c) => c.code === pair.componentCode);
-    const hasAllowedModifier =
+    const comprehensiveLine = input.cptCodes.find((c) => c.code === pair.comprehensiveCode);
+    let hasAllowedModifier =
       pair.allowedModifier != null &&
-      (componentLine?.modifiers ?? []).includes(pair.allowedModifier);
+      (comprehensiveLine?.modifiers ?? []).includes(pair.allowedModifier);
+    
+    // UnitedHealthcare ignores mod-25 on Z71 counseling
+    if (
+      pair.allowedModifier === "25" && 
+      input.payerName === "UnitedHealthcare" && 
+      pair.componentCode.startsWith("9940")
+    ) {
+      hasAllowedModifier = false;
+    }
+
     if (!hasAllowedModifier) {
       issues.push({
         ruleCode: "NCCI_BUNDLED_PAIR",
-        severity: pair.allowedModifier ? "warning" : "error",
+        severity: pair.allowedModifier && input.payerName !== "UnitedHealthcare" ? "warning" : "error",
         message: `NCCI bundling: ${pair.componentCode} billed with ${pair.comprehensiveCode}. ${pair.description}`,
-        suggestion: pair.allowedModifier
-          ? `Attach modifier ${pair.allowedModifier} to ${pair.componentCode} if the service is truly separately identifiable, or drop the line.`
+        suggestion: pair.allowedModifier && input.payerName !== "UnitedHealthcare"
+          ? `Attach modifier ${pair.allowedModifier} to ${pair.comprehensiveCode} if the service is truly separately identifiable, or drop the line.`
           : "Drop the component line — it is incidental to the comprehensive service.",
         relatedCode: pair.componentCode,
-        blocksSubmission: !pair.allowedModifier,
+        blocksSubmission: !pair.allowedModifier || input.payerName === "UnitedHealthcare",
       });
     }
   }
@@ -322,7 +337,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
   const hasCannabisDx = input.icd10Codes.some(
     (c) => c.code.startsWith("F12") || c.code.startsWith("Z71"),
   );
-  if (hasCannabisDx && payerRule.excludesCannabis) {
+  if (!input.selfPay && hasCannabisDx && payerRule.excludesCannabis) {
     issues.push({
       ruleCode: "CANNABIS_PAYER_EXCLUDES",
       severity: "error",
@@ -330,16 +345,18 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
       suggestion:
         "Route this encounter to self-pay using the practice's published rate. Issue a written ABN for the next visit.",
       blocksSubmission: true,
+      workflowHint: "route_to_self_pay",
     });
   }
-  if (hasCannabisDx && payerRule.requiresPriorAuthForCannabis && !input.authNumber) {
+  if (!input.selfPay && hasCannabisDx && payerRule.requiresPriorAuthForCannabis && !input.authNumber) {
     issues.push({
-      ruleCode: "CANNABIS_PAYER_PA_REQUIRED",
+      ruleCode: "CANNABIS_PA_HOLD",
       severity: "error",
       message: `${payerRule.displayName} requires prior authorization for cannabis services and none is on file.`,
       suggestion:
         "Obtain PA before submission. PA packet should include DSM-5 severity, prior treatment failures, and a written treatment plan.",
       blocksSubmission: true,
+      workflowHint: "create_pa_task",
     });
   }
 
