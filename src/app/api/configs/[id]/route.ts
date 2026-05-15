@@ -14,6 +14,7 @@ import { logControllerAction } from "@/lib/auth/audit-stub";
 // re-export from src/lib/practice-config/types.ts once that file lands. For
 // now we accept the partial JSON-blob shape EMR-409 documents.
 import type { DraftPracticeConfigurationInput } from "@/lib/practice-config/types";
+import { draftPracticeConfigSchema } from "@/lib/practice-config/schema";
 import {
   readJson,
   invalidInput,
@@ -28,24 +29,16 @@ interface Ctx {
   params: { id: string };
 }
 
-// We deliberately keep this schema *open* on top-level draft fields and let
-// EMR-429 own the strict per-field validators. The only invariant we enforce
-// here is the protected-fields rule from the ticket.
-//
-// TODO(EMR-429): once the canonical Zod schema for draft updates lands,
-// import it and intersect with `.refine` to enforce the protected-field
-// rejection — do not duplicate per-field validators here.
-const patchInput = z
-  .record(z.unknown())
-  .refine(
-    (obj) =>
-      PROTECTED_PATCH_FIELDS.every(
-        (key) => !Object.prototype.hasOwnProperty.call(obj, key),
-      ),
-    {
-      message: `PATCH may not modify protected fields: ${PROTECTED_PATCH_FIELDS.join(", ")}`,
-    },
-  );
+// We use draftPracticeConfigSchema and ensure protected fields aren't modified.
+const patchInput = draftPracticeConfigSchema.refine(
+  (obj) =>
+    PROTECTED_PATCH_FIELDS.every(
+      (key) => !Object.prototype.hasOwnProperty.call(obj, key),
+    ),
+  {
+    message: `PATCH may not modify protected fields: ${PROTECTED_PATCH_FIELDS.join(", ")}`,
+  },
+);
 
 export async function GET(_req: Request, { params }: Ctx) {
   return (await withAuthErrors(async () => {
