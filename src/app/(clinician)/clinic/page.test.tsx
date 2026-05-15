@@ -37,8 +37,8 @@ describe("ClinicHomePage Server Component", () => {
     vi.mocked(session.requireUser).mockResolvedValue({ id: "user-123", organizationId: "org-123", firstName: "Test" } as any);
 
     // Mock Prisma to return a Promise that NEVER resolves
-    vi.mocked(prisma.encounter.findMany).mockImplementation(() => new Promise(() => {}));
-    vi.mocked(prisma.note.count).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(prisma.encounter.findMany).mockImplementation(() => new Promise(() => {}) as any);
+    vi.mocked(prisma.note.count).mockImplementation(() => new Promise(() => {}) as any);
 
     const start = Date.now();
     const result = await ClinicHomePage();

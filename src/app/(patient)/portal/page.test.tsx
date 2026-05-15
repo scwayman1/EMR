@@ -32,7 +32,7 @@ describe("PatientHome Server Component", () => {
   it("renders the 'Taking a moment' fallback when the database query hangs (EMR-205 regression test)", async () => {
     vi.mocked(session.requireRole).mockResolvedValue({ id: "user-123", roles: ["patient"] } as any);
 
-    vi.mocked(prisma.patient.findUnique).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(prisma.patient.findUnique).mockImplementation(() => new Promise(() => {}) as any);
 
     const start = Date.now();
     const result = await PatientHome();
