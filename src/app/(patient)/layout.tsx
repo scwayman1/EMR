@@ -5,6 +5,7 @@ import { ROLE_HOME } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { AskCindyWidget } from "@/components/ask-cindy/AskCindyWidget";
+import { PortalCustomizationProvider } from "@/components/portal/portal-customization-provider";
 
 const PATIENT_SECTIONS: NavSection[] = [
   {
@@ -116,17 +117,19 @@ export default async function PatientLayout({
   }
 
   return (
-    <AppShell
-      user={user}
-      activeRole="patient"
-      sections={PATIENT_SECTIONS}
-      roleLabel="Patient portal"
-      showNavPrefs={false}
-    >
-      <QuoteWelcomeModal userName={user.firstName} />
-      <CommandPalette role="patient" />
-      <AskCindyWidget mode="patient" />
-      {children}
-    </AppShell>
+    <PortalCustomizationProvider patientId={user.id}>
+      <AppShell
+        user={user}
+        activeRole="patient"
+        sections={PATIENT_SECTIONS}
+        roleLabel="Patient portal"
+        showNavPrefs={false}
+      >
+        <QuoteWelcomeModal userName={user.firstName} />
+        <CommandPalette role="patient" />
+        <AskCindyWidget mode="patient" />
+        {children}
+      </AppShell>
+    </PortalCustomizationProvider>
   );
 }
