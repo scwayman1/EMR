@@ -237,11 +237,11 @@ export default async function StorybookPage() {
 
       <ControlBar patientName={patientName} />
 
-      <PageShell maxWidth="max-w-[700px]">
+      <PageShell maxWidth="max-w-5xl">
         <PatientSectionNav section="journey" />
 
         {/* ── COVER PAGE ────────────────────────────────── */}
-        <div className="story-cover text-center py-20 md:py-28">
+        <div className="story-cover text-center py-20 md:py-28 max-w-[700px] mx-auto">
           <LeafSprig size={40} className="text-accent mx-auto mb-8" />
           <h1 className="font-display text-4xl md:text-5xl text-text tracking-tight leading-[1.1] mb-4">
             {patientName}
@@ -260,7 +260,7 @@ export default async function StorybookPage() {
         </div>
 
         {/* ── CH 1: Your health, in simple words ────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={1} title="Your health, in simple words" />
           <div className="prose-clinical space-y-4">
             {concernTerms.length > 0 || patient.treatmentGoals ? (
@@ -313,7 +313,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── CH 2: About Me ────────────────────────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={2} title="About Me" />
           <div className="prose-clinical space-y-4">
             <p>{buildConcernsNarrative(patient.presentingConcerns ?? null)}</p>
@@ -329,7 +329,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── CH 3: My Cannabis Journey ─────────────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={3} title="My Cannabis Journey" />
           <div className="prose-clinical">
             <p>
@@ -348,7 +348,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── CH 4: How I've Been Feeling ───────────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={4} title="How I've Been Feeling" />
           {Object.keys(metricGroups).length > 0 ? (
             <div className="space-y-6 mb-8">
@@ -391,7 +391,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── CH 5: My Visits ───────────────────────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={5} title="My Visits" />
           {patient.encounters.length === 0 ? (
             <div className="prose-clinical">
@@ -427,7 +427,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── CH 6: What My Assessments Show ─────────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={6} title="What My Assessments Show" />
           {Object.keys(latestBySlug).length === 0 ? (
             <div className="prose-clinical">
@@ -464,7 +464,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── CH 7: Messages with My Care Team ──────────── */}
-        <section className="story-chapter my-16 print:my-0">
+        <section className="story-chapter my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={7} title="Messages with My Care Team" />
           {recentMessages.length === 0 ? (
             <div className="prose-clinical">
@@ -524,7 +524,7 @@ export default async function StorybookPage() {
         <EditorialRule className="my-16 print:my-8" />
 
         {/* ── Reflection pages ──────────────────────────── */}
-        <section className="story-reflection my-16 print:my-0">
+        <section className="story-reflection my-16 print:my-0 max-w-[700px] mx-auto">
           <ChapterHeader number={9} title="My Reflections" />
           <p className="prose-clinical text-text-muted mb-10">
             The pages that follow are yours. Use them however feels right &mdash;
@@ -578,7 +578,7 @@ export default async function StorybookPage() {
         </section>
 
         {/* ── BACK COVER ────────────────────────────────── */}
-        <div className="story-back-cover text-center py-20 md:py-28 border-t border-border/40 print:border-0">
+        <div className="story-back-cover text-center py-20 md:py-28 border-t border-border/40 print:border-0 max-w-[700px] mx-auto">
           <p className="font-display text-xl text-text tracking-tight italic mb-2">
             This story belongs to
           </p>
