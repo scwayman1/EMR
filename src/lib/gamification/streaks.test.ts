@@ -29,32 +29,34 @@ describe("Daily Streaks & Freeze Tokens", () => {
   });
 
   it("should create a new streak on first check-in", async () => {
-    const timestamp = new Date("2026-05-16T12:00:00Z");
-    const streak = await recordDailyCheckIn(patientId, timestamp);
-    
-    expect(streak.currentStreak).toBe(1);
-    expect(streak.longestStreak).toBe(1);
-    expect(streak.lastCheckInDate).toBe("2026-05-16");
-  });
+    const result1 = await recordDailyCheckIn(patientId, new Date("2024-01-01T12:00:00Z"));
+    const streak1 = result1.streak;
+    expect(streak1.currentStreak).toBe(1);
+    expect(streak1.longestStreak).toBe(1);
+    expect(streak1.lastCheckInDate).toBe("2024-01-01");
 
-  it("should increment streak if checked in the next day", async () => {
-    await recordDailyCheckIn(patientId, new Date("2026-05-16T12:00:00Z"));
-    const streak = await recordDailyCheckIn(patientId, new Date("2026-05-17T12:00:00Z"));
-    
-    expect(streak.currentStreak).toBe(2);
-    expect(streak.longestStreak).toBe(2);
+    // Next day check-in
+    const result2 = await recordDailyCheckIn(patientId, new Date("2024-01-02T12:00:00Z"));
+    const streak2 = result2.streak;
+    expect(streak2.currentStreak).toBe(2);
+    expect(streak2.longestStreak).toBe(2);
+
+    // Skip a day
+    const result3 = await recordDailyCheckIn(patientId, new Date("2024-01-04T12:00:00Z"));
+    const streak3 = result3.streak;
+    expect(streak3.currentStreak).toBe(1); // Reset
+    expect(streak3.longestStreak).toBe(2); // Retained
   });
 
   it("should NOT increment streak if checked in the same day", async () => {
     await recordDailyCheckIn(patientId, new Date("2026-05-16T08:00:00Z"));
-    const streak = await recordDailyCheckIn(patientId, new Date("2026-05-16T20:00:00Z"));
-    
+    const { streak } = await recordDailyCheckIn(patientId, new Date("2026-05-16T20:00:00Z"));
     expect(streak.currentStreak).toBe(1);
   });
 
   it("should reset streak if missed a day", async () => {
     await recordDailyCheckIn(patientId, new Date("2026-05-16T12:00:00Z"));
-    const streak = await recordDailyCheckIn(patientId, new Date("2026-05-18T12:00:00Z"));
+    const { streak } = await recordDailyCheckIn(patientId, new Date("2026-05-18T12:00:00Z"));
     
     expect(streak.currentStreak).toBe(1);
     expect(streak.longestStreak).toBe(1);

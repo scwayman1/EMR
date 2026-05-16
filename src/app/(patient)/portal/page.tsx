@@ -30,6 +30,7 @@ import { StreakFlame } from "@/components/portal/streak-flame";
 import { HealthRings } from "@/components/portal/health-rings";
 import { FreezeTokenStore } from "@/components/portal/freeze-token-store";
 import { applyFreezeTokenAction } from "@/app/(patient)/portal/apply-freeze-action";
+import { BadgeShowcase, type BadgeData } from "@/components/portal/badge-showcase";
 
 // EMR-205: guard the home-page queries so a hung downstream call can
 // never wedge the Suspense boundary again. Tight timeouts give the user
@@ -202,6 +203,10 @@ export default async function PatientHome() {
           dailyStreak: true,
           freezeTokens: {
             where: { isUsed: false },
+          },
+          patientBadges: {
+            include: { badge: true },
+            orderBy: { earnedAt: "desc" },
           },
         },
       }).catch((err) => {
@@ -769,6 +774,21 @@ export default async function PatientHome() {
       {/* ── Check-in Prompt ── */}
       <div className="mt-8 mb-4">
         <PositiveInputPrompt />
+      </div>
+
+      {/* ── Badges ── */}
+      <div className="mt-8">
+        <BadgeShowcase 
+          badges={
+            patient.patientBadges?.map((pb: any) => ({
+              id: pb.badge.id,
+              name: pb.badge.name,
+              description: pb.badge.description,
+              tier: pb.badge.tier,
+              earnedAt: pb.earnedAt.toISOString(),
+            })) || []
+          } 
+        />
       </div>
     </PageShell>
   );

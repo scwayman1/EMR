@@ -29,7 +29,7 @@ const quickLogSchema = z.object({
 import { recordDailyCheckIn } from "@/lib/gamification/streaks";
 
 export type QuickLogResult =
-  | { ok: true }
+  | { ok: true; newlyEarnedBadges?: any[] }
   | { ok: false; error: string };
 
 export async function quickLogSymptom(input: {
@@ -60,10 +60,10 @@ export async function quickLogSymptom(input: {
     });
   });
   
-  await recordDailyCheckIn(patient.id);
+  const result = await recordDailyCheckIn(patient.id);
 
   revalidatePath("/portal");
   revalidatePath("/portal/outcomes");
 
-  return { ok: true };
+  return { ok: true, newlyEarnedBadges: result.newlyEarnedBadges };
 }

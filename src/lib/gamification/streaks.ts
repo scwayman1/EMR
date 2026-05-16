@@ -9,7 +9,7 @@ export async function recordDailyCheckIn(patientId: string, timestamp: Date = ne
 
   if (!streak) {
     // First time checking in
-    return prisma.dailyCheckInStreak.create({
+    const newStreak = await prisma.dailyCheckInStreak.create({
       data: {
         patientId,
         currentStreak: 1,
@@ -17,11 +17,20 @@ export async function recordDailyCheckIn(patientId: string, timestamp: Date = ne
         lastCheckInDate: dateStr,
       },
     });
+    
+    let newlyEarnedBadges: any[] = [];
+    try {
+      const { evaluateBadges } = await import("./badges");
+      newlyEarnedBadges = await evaluateBadges(patientId);
+    } catch (err) {
+      console.error("Badge evaluation failed", err);
+    }
+    return { streak: newStreak, newlyEarnedBadges };
   }
 
   if (streak.lastCheckInDate === dateStr) {
     // Already checked in today
-    return streak;
+    return { streak, newlyEarnedBadges: [] };
   }
 
   // Determine if it was exactly yesterday
@@ -41,7 +50,7 @@ export async function recordDailyCheckIn(patientId: string, timestamp: Date = ne
   });
 
   // If they hit a 7-day perfect week, grant a Freeze Token
-  if (isConsecutive && newCurrent > 0 && newCurrent % 7 === 0) {
+  if (isConsecutive && newCurrent === 7) {
     await prisma.freezeToken.create({
       data: {
         patientId,
@@ -50,7 +59,16 @@ export async function recordDailyCheckIn(patientId: string, timestamp: Date = ne
     });
   }
 
-  return updatedStreak;
+  // 6. Evaluate Badges (EMR-101)
+  let newlyEarnedBadges: any[] = [];
+  try {
+    const { evaluateBadges } = await import("./badges");
+    newlyEarnedBadges = await evaluateBadges(patientId);
+  } catch (err) {
+    console.error("Badge evaluation failed", err);
+  }
+
+  return { streak: updatedStreak, newlyEarnedBadges };
 }
 
 export async function getActiveFreezeTokens(patientId: string) {

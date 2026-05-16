@@ -343,6 +343,9 @@ model Patient {
   // EMR-107 — ChatCB AI Coach
   aiCoachThreads AICoachThread[]
 
+  // EMR-098 — Gamification Badges
+  patientBadges PatientBadge[]
+
   @@index([organizationId, status])
   @@index([lastName, firstName])
 }
@@ -4822,4 +4825,31 @@ model AICoachMessage {
   thread AICoachThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
+}
+
+// --------------------------------------------------------------
+// EMR-098 — Gamification Engine (Badges)
+// --------------------------------------------------------------
+
+model Badge {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String
+  tier        String // 'bronze' | 'silver' | 'gold' | 'diamond'
+  iconUrl     String? // Optional custom SVG/PNG
+
+  patients PatientBadge[]
+}
+
+model PatientBadge {
+  id        String   @id @default(cuid())
+  patientId String
+  badgeId   String
+  earnedAt  DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  badge   Badge   @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([patientId, badgeId])
 }

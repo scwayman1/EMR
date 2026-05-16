@@ -12,7 +12,7 @@ const metricSchema = z.coerce.number().int().min(0).max(10);
 
 import { recordDailyCheckIn } from "@/lib/gamification/streaks";
 
-export type OutcomeResult = { ok: true } | { ok: false; error: string };
+export type OutcomeResult = { ok: true; newlyEarnedBadges?: any[] } | { ok: false; error: string };
 
 export async function submitOutcomeAction(
   _prev: OutcomeResult | null,
@@ -63,10 +63,10 @@ export async function submitOutcomeAction(
     )
   );
 
-  await recordDailyCheckIn(patient.id);
+  const result = await recordDailyCheckIn(patient.id);
 
   revalidatePath("/portal/outcomes");
   revalidatePath("/portal");
 
-  return { ok: true };
+  return { ok: true, newlyEarnedBadges: result.newlyEarnedBadges };
 }

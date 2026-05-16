@@ -6,6 +6,7 @@ import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { ChatCBInterface } from "@/components/ask-cindy/ChatCBInterface";
 import { PortalCustomizationProvider } from "@/components/portal/portal-customization-provider";
+import { ConfettiCanvas } from "@/components/portal/confetti-canvas";
 
 const PATIENT_SECTIONS: NavSection[] = [
   {
@@ -128,6 +129,7 @@ export default async function PatientLayout({
         <QuoteWelcomeModal userName={user.firstName} />
         <CommandPalette role="patient" />
         <ChatCBInterface />
+        <ConfettiCanvas />
         {children}
       </AppShell>
     </PortalCustomizationProvider>
