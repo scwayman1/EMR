@@ -340,6 +340,9 @@ model Patient {
   dailyStreak  DailyCheckInStreak?
   freezeTokens FreezeToken[]
 
+  // EMR-107 — ChatCB AI Coach
+  aiCoachThreads AICoachThread[]
+
   @@index([organizationId, status])
   @@index([lastName, firstName])
 }
@@ -4789,4 +4792,34 @@ model FreezeToken {
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId, isUsed])
+}
+
+// --------------------------------------------------------------
+// EMR-107 — ChatCB AI Coach
+// --------------------------------------------------------------
+
+model AICoachThread {
+  id        String   @id @default(cuid())
+  patientId String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient  Patient          @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  messages AICoachMessage[]
+
+  @@index([patientId])
+}
+
+model AICoachMessage {
+  id        String   @id @default(cuid())
+  threadId  String
+  role      String // 'user' | 'assistant'
+  content   String
+  metadata  Json? // For tool calls, functional UI elements (e.g. log_dose modal trigger)
+  createdAt DateTime @default(now())
+
+  thread AICoachThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
 }
