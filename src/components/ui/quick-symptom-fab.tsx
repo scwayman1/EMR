@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { cn } from "@/lib/utils/cn";
 import { quickLogSymptom } from "@/app/(patient)/portal/outcomes/quick-log-action";
+import { confettiEmitter } from "@/components/portal/confetti-canvas";
 
 type Symptom = {
   key: "pain" | "sleep" | "anxiety" | "nausea" | "energy" | "mood";
@@ -65,6 +66,15 @@ export function QuickSymptomFab() {
       const res = await quickLogSymptom({ metric: symptom.key, value: rating });
       if (res.ok) {
         setView("saved");
+        
+        if (res.newlyEarnedBadges && res.newlyEarnedBadges.length > 0) {
+          confettiEmitter.emit({
+            id: `badge-${Date.now()}`,
+            type: "badge_earned",
+            message: "You earned a new badge!",
+          });
+        }
+
         setTimeout(close, 1600);
       } else {
         setErrorMsg(res.error);
