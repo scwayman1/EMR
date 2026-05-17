@@ -20,6 +20,8 @@ import { formatRelative } from "@/lib/utils/format";
 import { RecentPatients } from "@/components/shell/recent-patients";
 import { withTimeout } from "@/lib/utils/with-timeout";
 import { logger } from "@/lib/observability/log";
+import { NewVisitModal } from "@/components/clinic/NewVisitModal";
+import { RelaxPopup } from "@/components/clinic/RelaxPopup";
 
 // EMR-205: guard the mission-control fan-out so a single hung query
 // can never wedge the Suspense boundary and strand clinicians on the
@@ -610,6 +612,7 @@ export default async function ClinicHomePage() {
               color="var(--text-subtle)"
               count={activeThreads}
               label="Threads"
+              href="/clinic/messages"
             />
           </div>
 
@@ -630,9 +633,9 @@ export default async function ClinicHomePage() {
                 Search
               </Button>
             </form>
-            <Link href="/clinic/patients?new=1">
+            <NewVisitModal>
               <Button size="sm">New visit</Button>
-            </Link>
+            </NewVisitModal>
           </div>
         </div>
       </Card>
@@ -810,9 +813,10 @@ export default async function ClinicHomePage() {
               <p className="font-display text-lg text-text">
                 Clear schedule.
               </p>
-              <p className="text-sm text-text-muted mt-1">
+              <p className="text-sm text-text-muted mt-1 mb-6">
                 A good day to catch up on notes.
               </p>
+              <RelaxPopup />
             </div>
           </Card>
         ) : (
