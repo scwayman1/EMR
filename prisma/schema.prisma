@@ -1797,6 +1797,27 @@ model ControllerAuditLog {
   @@index([actorUserId, at])
 }
 
+// EMR-726 — Bootstrap allowlist rotation audit.
+//
+// One row per *change* of SUPER_ADMIN_BOOTSTRAP_EMAILS as observed at boot.
+// The boot-audit helper computes a SHA-256 over the sorted/normalised email
+// list and inserts a snapshot only when the hash differs from the most
+// recent row. That makes idempotent reboots silent while still catching a
+// silent expansion of the allowlist between deploys — which is the whole
+// point of EMR-726.
+model BootstrapAllowlistSnapshot {
+  id        String   @id @default(cuid())
+  /// SHA-256 hex of `sorted(lowercased(trimmed(emails))).join(",")`.
+  hash      String
+  /// The parsed allowlist at the moment of capture.
+  emails    String[]
+  /// Resolved from RENDER_GIT_COMMIT / GIT_SHA at boot. Null in dev.
+  deploySha String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+}
+
 // EMR-730 — Per-actor mutation budget alarm ledger.
 //
 // One row per (actor, alarm-fire). The cron at

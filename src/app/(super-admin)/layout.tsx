@@ -36,7 +36,10 @@ const SUPER_ADMIN_SECTIONS: NavSection[] = [
     pillar: "admin",
     icon: "settings",
     label: "Admin",
-    items: [{ label: "Console", href: "/admin/console" }],
+    items: [
+      { label: "Console", href: "/admin/console" },
+      { label: "Bootstrap allowlist", href: "/admin/bootstrap" },
+    ],
   },
 ];
 
