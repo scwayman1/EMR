@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import Link from "next/link";
+import { PdfExportButton } from "./pdf-export-button";
 
 export const metadata = { title: "Clinical Library" };
 
@@ -13,6 +14,7 @@ export default function LibraryPage() {
         eyebrow="Library"
         title="Clinical reference"
         description="Quick-reference pharmacology, dosing guidelines, coding, and research for cannabis medicine."
+        actions={<PdfExportButton />}
       />
 
       {/* Cannabinoid pharmacology */}
@@ -58,6 +60,56 @@ export default function LibraryPage() {
                   <td className="py-3 pr-4 text-text-muted">CB1, CB2, 5-HT1A, TRPV1</td>
                   <td className="py-3 pr-4 font-mono text-xs text-text-muted">Limited data</td>
                   <td className="py-3 text-text-muted">Anxiolytic, anti-inflammatory, neuroprotective (emerging)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Terpene pharmacology */}
+      <Card tone="raised" className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LeafSprig size={16} className="text-accent/80" />
+            Terpene pharmacology
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="prose-clinical">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left">
+                  <th className="py-2 pr-4 font-medium text-text-subtle text-xs uppercase tracking-wide">Terpene</th>
+                  <th className="py-2 pr-4 font-medium text-text-subtle text-xs uppercase tracking-wide">Aroma Profile</th>
+                  <th className="py-2 font-medium text-text-subtle text-xs uppercase tracking-wide">Clinical effects</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-text">Myrcene</td>
+                  <td className="py-3 pr-4 text-text-muted">Earthy, musky, herbal</td>
+                  <td className="py-3 text-text-muted">Sedating, muscle relaxant, enhances THC psychoactivity (blood-brain barrier permeability)</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-text">Limonene</td>
+                  <td className="py-3 pr-4 text-text-muted">Citrus, lemon, orange</td>
+                  <td className="py-3 text-text-muted">Elevated mood, stress relief, anxiolytic, mild antidepressant</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-text">Pinene</td>
+                  <td className="py-3 pr-4 text-text-muted">Pine, sharp, sweet</td>
+                  <td className="py-3 text-text-muted">Alertness, memory retention (acetylcholinesterase inhibitor), bronchodilator</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-text">Linalool</td>
+                  <td className="py-3 pr-4 text-text-muted">Floral, lavender, spicy</td>
+                  <td className="py-3 text-text-muted">Anxiolytic, sedative, anticonvulsant, pain relief</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4 font-medium text-text">Beta-Caryophyllene</td>
+                  <td className="py-3 pr-4 text-text-muted">Pepper, spicy, woody</td>
+                  <td className="py-3 text-text-muted">CB2 agonist, anti-inflammatory, analgesic, gastroprotective</td>
                 </tr>
               </tbody>
             </table>
