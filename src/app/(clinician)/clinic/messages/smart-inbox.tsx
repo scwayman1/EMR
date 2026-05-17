@@ -258,14 +258,45 @@ function SparklesIcon() {
 }
 
 // ---------------------------------------------------------------------------
+// Hover Meds
+// ---------------------------------------------------------------------------
+
+const KNOWN_MEDS = ["Lisinopril", "Adderall", "Metformin", "Atorvastatin", "Amlodipine", "Omeprazole", "Sertraline"];
+
+function HoverMedsText({ text }: { text: string }) {
+  // Simple regex to find known meds and wrap them
+  const regex = new RegExp(`\\b(${KNOWN_MEDS.join("|")})\\b`, "gi");
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (KNOWN_MEDS.some(m => m.toLowerCase() === part.toLowerCase())) {
+          return (
+            <span key={i} className="group relative inline-block text-accent underline decoration-accent/30 decoration-dashed cursor-help">
+              {part}
+              <span className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-surface-raised border border-border text-text text-xs rounded-md p-2 shadow-xl z-50">
+                <strong className="block mb-1">{part}</strong>
+                <span className="text-text-muted">No interactions detected. Standard dosage: 10mg - 40mg.</span>
+              </span>
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Reply compose (inline)
 // ---------------------------------------------------------------------------
 
-function ReplySubmitButton() {
+function ReplySubmitButton({ isDraft }: { isDraft?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="sm" disabled={pending}>
-      {pending ? "Sending..." : "Send"}
+    <Button type="submit" size="sm" variant={isDraft ? "secondary" : "primary"} disabled={pending}>
+      {pending ? (isDraft ? "Saving..." : "Sending...") : (isDraft ? "Save Draft" : "Send")}
     </Button>
   );
 }
@@ -280,29 +311,64 @@ function InlineReplyCompose({ threadId }: { threadId: string }) {
     }
   }, [state]);
 
+  const [text, setText] = useState("");
+  const [showSlashCommands, setShowSlashCommands] = useState(false);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "/") {
+      setShowSlashCommands(true);
+    } else if (e.key === "Escape") {
+      setShowSlashCommands(false);
+    }
+  };
+
+  const insertCommand = (cmd: string) => {
+    setText((prev) => prev.replace(/\/$/, "") + cmd);
+    setShowSlashCommands(false);
+  };
+
   return (
-    <form
-      ref={formRef}
-      action={formAction}
-      className="border-t border-border p-4 bg-surface"
-    >
-      <input type="hidden" name="threadId" value={threadId} />
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <Textarea
-            name="body"
-            rows={2}
-            placeholder="Type your reply..."
-            required
-            className="resize-none"
-          />
+    <div className="relative border-t border-border p-4 bg-surface">
+      {showSlashCommands && (
+        <div className="absolute bottom-[calc(100%-10px)] left-4 w-64 bg-surface border border-border rounded-lg shadow-lg z-10 p-2">
+          <p className="text-xs font-semibold text-text-subtle mb-2 px-2 uppercase">Quick Inserts</p>
+          <button type="button" onClick={() => insertCommand("Please schedule a referral with [Specialist]. ")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-surface-muted rounded-md">/ref (Referral)</button>
+          <button type="button" onClick={() => insertCommand("Rx sent to pharmacy: [Medication]. ")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-surface-muted rounded-md">/rx (Prescription)</button>
+          <button type="button" onClick={() => insertCommand("Memo: Please follow up in 2 weeks. ")} className="w-full text-left px-2 py-1.5 text-sm hover:bg-surface-muted rounded-md">/memo (Quick Note)</button>
         </div>
-        <ReplySubmitButton />
-      </div>
-      {state?.ok === false && (
-        <p className="text-xs text-danger mt-2">{state.error}</p>
       )}
-    </form>
+      <form
+        ref={formRef}
+        action={formAction}
+        className="flex flex-col gap-2"
+      >
+        <input type="hidden" name="threadId" value={threadId} />
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <Textarea
+              name="body"
+              rows={2}
+              value={text}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (!e.target.value.includes("/")) setShowSlashCommands(false);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Type your reply... (Type '/' for quick inserts)"
+              required
+              className="resize-none"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <ReplySubmitButton />
+            <ReplySubmitButton isDraft />
+          </div>
+        </div>
+        {state?.ok === false && (
+          <p className="text-xs text-danger">{state.error}</p>
+        )}
+      </form>
+    </div>
   );
 }
 
@@ -322,6 +388,7 @@ export function SmartInboxView({
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     initialThreadId ?? triaged[0]?.threadId ?? null,
   );
+  const [composeOpen, setComposeOpen] = useState(false);
 
   // Compute counts per priority
   const priorityCounts = useMemo(() => {
@@ -496,6 +563,10 @@ export function SmartInboxView({
               {needsClinicianCount} needs clinician
             </span>
           )}
+          <Button onClick={() => setComposeOpen(true)} size="sm" className="ml-4 shadow-sm hover:shadow-md transition-shadow bg-accent hover:bg-accent-light text-white font-medium px-4 py-2 rounded-full">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M12 5v14M5 12h14"/></svg>
+            Compose
+          </Button>
         </div>
       </div>
 
@@ -593,11 +664,19 @@ export function SmartInboxView({
                     </p>
                   </div>
                   {selectedTriage && (
-                    <CallLaunchButtons
-                      patientId={selectedTriage.patientId}
-                      messageThreadId={selectedTriage.threadId}
-                      counterpartyName={selectedThread.patientName}
-                    />
+                    <div className="flex items-center gap-2">
+                      <CallLaunchButtons
+                        patientId={selectedTriage.patientId}
+                        messageThreadId={selectedTriage.threadId}
+                        counterpartyName={selectedThread.patientName}
+                      />
+                      <Button variant="ghost" size="sm" onClick={() => alert("Thread exported to PDF.")}>
+                        Export
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => alert("Thread marked as resolved.")}>
+                        Resolve
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -701,7 +780,7 @@ export function SmartInboxView({
                                   : "bg-surface-raised text-text border border-border/60",
                             )}
                           >
-                            {msg.body}
+                            <HoverMedsText text={msg.body} />
                           </div>
                           <div
                             className={cn(
@@ -752,6 +831,32 @@ export function SmartInboxView({
           )}
         </Card>
       </div>
+
+      {/* Gmail-style floating compose window */}
+      {composeOpen && (
+        <div className="fixed bottom-0 right-8 w-[400px] bg-surface border border-border rounded-t-xl shadow-2xl z-50 flex flex-col">
+          <div className="bg-surface-raised px-4 py-2 border-b border-border rounded-t-xl flex justify-between items-center cursor-pointer">
+            <h3 className="text-sm font-semibold text-text">New Message</h3>
+            <button onClick={() => setComposeOpen(false)} className="text-text-muted hover:text-text">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div className="p-4 flex flex-col gap-3">
+            <Input placeholder="To: Patient Name" className="text-sm border-0 border-b border-border rounded-none px-0 shadow-none focus-visible:ring-0" />
+            <Input placeholder="Subject" className="text-sm border-0 border-b border-border rounded-none px-0 shadow-none focus-visible:ring-0" />
+            <Textarea placeholder="Type message... (type '/' for shortcuts)" className="min-h-[150px] border-0 focus-visible:ring-0 px-0 shadow-none text-sm resize-none" />
+          </div>
+          <div className="bg-surface-muted px-4 py-3 border-t border-border flex justify-between items-center">
+            <div className="flex gap-2 text-text-muted">
+              <button title="Format" className="p-1.5 hover:bg-surface rounded-md"><SparklesIcon /></button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setComposeOpen(false)}>Save Draft</Button>
+              <Button size="sm" onClick={() => setComposeOpen(false)}>Send</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

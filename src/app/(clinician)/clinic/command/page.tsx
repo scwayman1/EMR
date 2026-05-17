@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
-import { TileGrid } from "@/components/ui/tile-grid";
+import { CommandLayout } from "./command-layout";
 import { ScheduleTile } from "@/components/command/schedule-tile";
 import { MessagesTile } from "@/components/command/messages-tile";
 import { ClinicalFlowTile } from "@/components/command/clinical-flow-tile";
@@ -37,13 +37,13 @@ export default async function CommandCenterPage() {
         description="Your day at a glance — what's happening, what you uncovered, and where you're needed next."
       />
 
-      <TileGrid>
+      <CommandLayout>
         <ScheduleTile user={user} />
         <MessagesTile user={user} />
         <ClinicalFlowTile user={user} />
         <ClinicalDiscoveryTile user={user} />
         <PatientImpactTile user={user} />
-      </TileGrid>
+      </CommandLayout>
     </PageShell>
   );
 }
