@@ -9,6 +9,12 @@ export const dynamic = "force-dynamic";
 
 const SUPER_ADMIN_SECTIONS: NavSection[] = [
   {
+    pillar: "admin",
+    icon: "layout-grid",
+    label: "HQ",
+    items: [{ label: "Dashboard", href: "/admin/hq" }],
+  },
+  {
     pillar: "onboarding",
     icon: "clipboard-check",
     label: "Onboarding",
@@ -30,7 +36,7 @@ const SUPER_ADMIN_SECTIONS: NavSection[] = [
     pillar: "admin",
     icon: "settings",
     label: "Admin",
-    items: [{ label: "Console", href: "/admin" }],
+    items: [{ label: "Console", href: "/admin/console" }],
   },
 ];
 
