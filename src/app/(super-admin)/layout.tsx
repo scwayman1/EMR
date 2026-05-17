@@ -14,6 +14,15 @@ const SUPER_ADMIN_SECTIONS: NavSection[] = [
     label: "HQ",
     items: [{ label: "Dashboard", href: "/admin/hq" }],
   },
+  // EMR-738 — standalone cross-tenant search. The HQ search-bar
+  // integration (TODO(EMR-738-hq-integration)) is deferred to avoid
+  // conflict with PR #344.
+  {
+    pillar: "admin",
+    icon: "layout-grid",
+    label: "Search",
+    items: [{ label: "Search", href: "/admin/search" }],
+  },
   {
     pillar: "onboarding",
     icon: "clipboard-check",
