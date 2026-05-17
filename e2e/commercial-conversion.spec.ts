@@ -32,7 +32,33 @@ async function loadHydrated(page: Page, path: string) {
   await page.goto(path, { waitUntil: "networkidle", timeout: 30_000 });
 }
 
+// Leafmart mounts a cannabis 21+ age-confirmation modal on first
+// visit; it blocks all interaction until dismissed. The hook
+// (src/lib/leafmart/age-confirmation.ts) reads
+// `sessionStorage["leafmart:age-confirmed-21:v1"]`, so we can
+// pre-set it through an init script and Playwright never sees
+// the modal. This isn't a test-only backdoor — it's the same
+// state the modal sets when a real user clicks "I am 21+".
+async function preConfirmAgeGate(page: Page) {
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.setItem("leafmart:age-confirmed-21:v1", "1");
+    } catch {
+      // sessionStorage unavailable — fall through; the modal will
+      // appear and the test will fail loudly, which is fine.
+    }
+  });
+}
+
 test.describe("Commercial conversion smoke — pass 9", () => {
+  test.beforeEach(async ({ page }) => {
+    // Every test in this pass touches /leafmart at some point (either
+    // directly or via the marketplace hub which shares the gate). Pre-
+    // confirming once in beforeEach keeps the body of each test focused
+    // on the conversion flow itself.
+    await preConfirmAgeGate(page);
+  });
+
   test("landing → book-demo → form submit", async ({ page }) => {
     await loadHydrated(page, "/");
 
