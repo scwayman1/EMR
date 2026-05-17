@@ -739,3 +739,10 @@ routes:
     auth: webhook
     owner: integrations
     notes: "EMR-078 scaffold. Bearer STATE_REGISTRY_SECRET check, prod-only. Outbound METRC/BioTrack/PDMP compliance reporting."
+
+  cron/mutation-budget-sweep:
+    methods: [POST]
+    auth: cron
+    rate_limit_bucket: cron.mutation-budget
+    owner: platform-security
+    notes: "EMR-730. Bearer CRON_SECRET check, prod-only. Sweeps ControllerAuditLog over a 5-minute window, fires a logger.error alarm (event: super_admin.mutation_budget_exceeded) when any actor exceeds 30 mutations/min OR 100 mutations/5min. Per-actor dedupe ledger: MutationBudgetAlarm, 10-minute window. Threshold env knobs: SUPER_ADMIN_ALARM_PER_MIN, SUPER_ADMIN_ALARM_PER_5MIN."

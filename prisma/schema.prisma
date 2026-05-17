@@ -1797,6 +1797,24 @@ model ControllerAuditLog {
   @@index([actorUserId, at])
 }
 
+// EMR-730 — Per-actor mutation budget alarm ledger.
+//
+// One row per (actor, alarm-fire). The cron at
+// /api/cron/mutation-budget-sweep reads the most-recent row per actor to
+// dedupe re-fires inside a 10-minute window. We don't UPDATE existing rows
+// — every alarm fire is its own row so on-call has a forensic history of
+// when an account tripped the budget and how badly.
+model MutationBudgetAlarm {
+  id             String   @id @default(cuid())
+  actorUserId    String
+  firstSeenAt    DateTime
+  lastAlertedAt  DateTime
+  perMinAtAlert  Int
+  per5MinAtAlert Int
+
+  @@index([actorUserId, lastAlertedAt(sort: Desc)])
+}
+
 // --------------------------------------------------------------
 // Agentic Memory Harness
 // --------------------------------------------------------------
