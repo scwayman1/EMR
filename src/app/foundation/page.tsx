@@ -219,8 +219,12 @@ export default function FoundationPage() {
             >
               Donate via member portal
             </Link>
+            {/* Donor FAQ page hasn't shipped yet (EMR-717). Route the CTA
+                through the marketing contact form with a role tag so any
+                donor with a question still reaches the founders' inbox
+                instead of a 404. */}
             <Link
-              href="/legal/donor-faq"
+              href="/contact?role=foundation-donor-faq"
               className="rounded-full border border-zinc-300 bg-white px-5 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
             >
               Donor FAQ
