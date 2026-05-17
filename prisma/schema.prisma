@@ -4216,7 +4216,7 @@ model ChemovarRecord {
   internalId           String   @unique
   displayName          String
   chemotype            Int // 1: THC dominant, 2: Mixed, 3: CBD dominant
-  terpeneProfile       String
+  terpeneProfile       String?
   therapeuticTags      String[]
   externalReferenceUrl String?
   createdAt            DateTime @default(now())
@@ -4853,3 +4853,5 @@ model PatientBadge {
 
   @@unique([patientId, badgeId])
 }
+
+
