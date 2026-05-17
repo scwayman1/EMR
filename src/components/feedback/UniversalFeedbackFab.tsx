@@ -94,7 +94,7 @@ export function UniversalFeedbackFab() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-end md:justify-center bg-black/40 backdrop-blur-sm p-4" onClick={close}>
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-end md:justify-center bg-black/60 p-4" onClick={close}>
       <div
         className="w-full max-w-xl bg-surface-raised rounded-xl border border-border shadow-xl flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}

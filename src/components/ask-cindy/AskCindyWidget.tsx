@@ -142,7 +142,7 @@ export function AskCindyWidget({ mode = "public" }: { mode?: CindyMode }) {
           "flex items-center justify-center",
           "hover:scale-105 active:scale-95 transition-all",
           patientMode
-            ? "left-6 liquid-glass text-accent shadow-xl"
+            ? "left-24 liquid-glass text-accent shadow-xl"
             : "right-6 bg-accent text-white shadow-xl",
         )}
       >
@@ -156,7 +156,7 @@ export function AskCindyWidget({ mode = "public" }: { mode?: CindyMode }) {
           aria-label="Ask Cindy"
           className={cn(
             "fixed bottom-24 z-40 w-[min(380px,calc(100vw-3rem))]",
-            patientMode ? "left-6 liquid-glass" : "right-6 bg-white/95 backdrop-blur-xl border border-slate-200",
+            patientMode ? "left-24 liquid-glass" : "right-6 bg-white/95 backdrop-blur-xl border border-slate-200",
             "rounded-3xl shadow-2xl",
             "animate-in fade-in slide-in-from-bottom-4 duration-300",
             "flex flex-col max-h-[70vh]",
