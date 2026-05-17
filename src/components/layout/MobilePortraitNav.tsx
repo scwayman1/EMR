@@ -55,8 +55,15 @@ export const DEFAULT_GROUPS: MobileNavGroup[] = [
     id: "shop",
     label: "Shop",
     tabs: [
-      { label: "LeafMart", href: "https://www.theleafmart.com/", icon: "✿" },
-      { label: "Marketplace", href: "https://www.theleafmart.com/", icon: "☖" },
+      // LeafMart and Marketplace previously both pointed at the legacy
+      // external storefront, which (a) defeated the in-app nav intent
+      // and (b) gave the <li key={t.href}> map two children with the
+      // same key — duplicate-key React warnings on every page that
+      // mounts MobilePortraitNav. Both surfaces exist as real internal
+      // routes now (/leafmart consumer storefront, /marketplace
+      // editorial catalog including PDPs as of EMR-712).
+      { label: "LeafMart", href: "/leafmart", icon: "✿" },
+      { label: "Marketplace", href: "/marketplace", icon: "☖" },
       { label: "Store", href: "/store", icon: "☲" },
       { label: "Vendors", href: "/leafmart/vendors", icon: "⚘" },
     ],
