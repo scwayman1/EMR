@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="Foundation utility; consumers land in follow-up EMR-749 PRs (Practices/Audit/Providers export buttons)."
 // EMR-749 — Streaming CSV export utility for fleet-ops list views.
 //
 // Used by every super-admin list surface that needs to dump its currently
