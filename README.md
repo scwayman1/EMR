@@ -89,6 +89,14 @@ The app is now at [http://localhost:3000](http://localhost:3000).
 | Clinician  | `clinician@demo.health` | *(ask team lead)* |
 | Owner/ops  | `owner@demo.health`     | *(ask team lead)* |
 
+### Optional: install the Gemini CLI
+
+```bash
+./scripts/install-gemini-cli.sh
+```
+
+Installs `@google/gemini-cli` globally. Requires Node 20+. After install, run `gemini` to start.
+
 ### Running the agent worker
 
 In a second terminal:
