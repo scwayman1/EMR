@@ -100,7 +100,7 @@ export default async function SignOffPage() {
       hint: l.abnormalFlag
         ? "Abnormal — review and route"
         : "Within reference range",
-      href: `/clinic/labs-review`,
+      href: `/clinic/sign-off/labs`,
     })),
     ...refills.map<Row>((r) => ({
       id: `refill-${r.id}`,
@@ -116,7 +116,7 @@ export default async function SignOffPage() {
             ? "normal"
             : "low",
       hint: r.rationale ?? `Qty ${r.requestedQty} · ${r.pharmacyName}`,
-      href: `/clinic/refills`,
+      href: `/clinic/sign-off/refills`,
     })),
     ...notes.map<Row>((n) => ({
       id: `note-${n.id}`,
@@ -147,7 +147,7 @@ export default async function SignOffPage() {
             ? "high"
             : "normal",
       hint: m.thread.triageSummary ?? "AI-drafted reply awaiting review",
-      href: `/clinic/approvals`,
+      href: `/clinic/sign-off/messages`,
     })),
   ];
 
