@@ -4,7 +4,7 @@
 **Date captured:** 2026-05-16
 **Doc type:** Heterogeneous product feedback (patient chart pages walkthrough)
 **Scope:** Desktop only. Patient chart main page + voice-chart (recording/insights/draft note) + voice-chart Prepare For Visit. Example patient: Maya Reyes (`cmo37j5gt000el82q44u6x1sv`).
-**Status:** TRUNCATED — original message ended at the header `For page: .../voice-chart (PREPARE FOR VISIT)` with no body content. Remainder to be appended when received.
+**Status:** Captured as-written. The `voice-chart (PREPARE FOR VISIT)` section is intentionally a header-only placeholder — body content is a **WIP on Dr. Patel's end**, not a paste/truncation error. Append the body when she writes it.
 
 **Cross-references:**
 - Doc 2 covers the rest of `/clinic/*` (saved 2026-05-16). Doc 3 dives specifically into the patient chart.
@@ -136,4 +136,4 @@ Clicking produces a full APSO or SOAP note draft. Format target = the SOAP Progr
 
 ## Page: `https://leafjourney.com/clinic/patients/cmo37j5gt000el82q44u6x1sv/voice-chart` (PREPARE FOR VISIT)
 
-⚠️ **DOC TRUNCATED HERE.** The header was present but no body content was received. Append remainder when received.
+📝 **WIP on Dr. Patel's end.** The header was authored intentionally; body content not yet written. Append when she completes the section.
