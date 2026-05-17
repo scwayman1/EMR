@@ -203,8 +203,20 @@ const SECTIONS: { id: string; title: string; summary: string; body: React.ReactN
         </p>
         <p>
           Questions or concerns about these Terms may be directed to{" "}
-          <a href="mailto:neal@leafjourney.com">neal@leafjourney.com</a> and{" "}
-          <a href="mailto:scott@leafjourney.com">scott@leafjourney.com</a>.
+          <a
+            href="mailto:neal@leafjourney.com"
+            className="underline underline-offset-2 decoration-[var(--accent)]/40 hover:decoration-[var(--accent)]"
+          >
+            neal@leafjourney.com
+          </a>{" "}
+          and{" "}
+          <a
+            href="mailto:scott@leafjourney.com"
+            className="underline underline-offset-2 decoration-[var(--accent)]/40 hover:decoration-[var(--accent)]"
+          >
+            scott@leafjourney.com
+          </a>
+          .
         </p>
       </>
     ),
