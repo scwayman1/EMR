@@ -29,7 +29,7 @@ type Props = {
   initialView?: View;
 };
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 const FIRST_HOUR = 7;
 const LAST_HOUR = 19;
 const SLOT_MIN = 30;
@@ -42,6 +42,7 @@ export function ScheduleCalendar({ weekStartIso, appointments, initialView = "we
   const [view, setView] = React.useState<View>(initialView);
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const [newBlockTime, setNewBlockTime] = React.useState<Date | null>(null);
 
   const weekStart = React.useMemo(() => new Date(weekStartIso), [weekStartIso]);
   const dayStart = React.useMemo(() => {
@@ -73,6 +74,14 @@ export function ScheduleCalendar({ weekStartIso, appointments, initialView = "we
     const next = addDays(weekStart, delta * 7);
     const iso = next.toISOString().slice(0, 10);
     router.push(`/clinic/schedule?week=${iso}&view=${view}`);
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, dayIdx: number, slotIdx: number) => {
+    e.preventDefault();
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + dayIdx);
+    d.setMinutes(FIRST_HOUR * 60 + slotIdx * SLOT_MIN);
+    setNewBlockTime(d);
   };
 
   return (
@@ -119,6 +128,7 @@ export function ScheduleCalendar({ weekStartIso, appointments, initialView = "we
           weekStart={weekStart}
           appointments={appointments}
           onDrop={onDrop}
+          onContextMenu={handleContextMenu}
           pending={pending}
         />
       )}
@@ -137,6 +147,21 @@ export function ScheduleCalendar({ weekStartIso, appointments, initialView = "we
           pending={pending}
         />
       )}
+
+      {newBlockTime && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-surface p-6 rounded-xl shadow-xl w-[400px]">
+            <h2 className="text-lg font-display text-text mb-4">New Appointment Block</h2>
+            <p className="text-sm text-text-muted mb-4">
+              Time: {newBlockTime.toLocaleString()}
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setNewBlockTime(null)}>Cancel</Button>
+              <Button onClick={() => setNewBlockTime(null)}>Create Block</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -147,11 +172,13 @@ function WeekGrid({
   weekStart,
   appointments,
   onDrop,
+  onContextMenu,
   pending,
 }: {
   weekStart: Date;
   appointments: AppointmentDTO[];
   onDrop: (apptId: string, dayIdx: number, slotIdx: number) => void;
+  onContextMenu: (e: React.MouseEvent, dayIdx: number, slotIdx: number) => void;
   pending: boolean;
 }) {
   return (
@@ -202,6 +229,7 @@ function WeekGrid({
                     slotIdx={slotIdx}
                     appointment={findAppt(appointments, weekStart, dayIdx, slotIdx)}
                     onDrop={(apptId) => onDrop(apptId, dayIdx, slotIdx)}
+                    onContextMenu={(e) => onContextMenu(e, dayIdx, slotIdx)}
                     pending={pending}
                     hourMark={isHourMark}
                   />
@@ -220,6 +248,7 @@ function Slot({
   slotIdx,
   appointment,
   onDrop,
+  onContextMenu,
   pending,
   hourMark,
 }: {
@@ -227,6 +256,7 @@ function Slot({
   slotIdx: number;
   appointment: AppointmentDTO | null;
   onDrop: (apptId: string) => void;
+  onContextMenu: (e: React.MouseEvent) => void;
   pending: boolean;
   hourMark: boolean;
 }) {
@@ -244,8 +274,9 @@ function Slot({
         const apptId = e.dataTransfer.getData("text/appt-id");
         if (apptId) onDrop(apptId);
       }}
+      onContextMenu={onContextMenu}
       className={cn(
-        "border-r border-border/40",
+        "border-r border-border/40 hover:bg-surface-muted transition-colors cursor-context-menu",
         hourMark && "border-t border-border/60",
         isOver && "bg-accent-soft/50",
         pending && "opacity-70",

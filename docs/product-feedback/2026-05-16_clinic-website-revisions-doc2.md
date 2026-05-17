@@ -333,8 +333,98 @@ These apply across the entire EMR (patient portal, clinician portal, owner/pract
 - **Recent Activity box:**
   - Rename "Last 50 inbound and outbound transmissions" → "Last 50 inbound and outbound faxes."
   - After 50 messages → archive older entries for 7 full years (2,555 days) per medical records statute of limitations.
-  - Both inbound and outbound fax …
+  - Both inbound and outbound faxes organized by **timestamp** (sent or received)
+  - Toggle **ascending / descending** order
+  - Two buttons on the right side of the box: `Sent` and `Received`
+    - `Sent` → organize all sent faxes by send timestamp
+    - `Received` → organize all received faxes by receive timestamp
+  - **Status bubbles** on the right side of each fax:
+    - `Queued` — blue
+    - `Received` — red
+    - `Error` — black
+    - `Sent` — red
+  - *Note: original doc lists both `Received` and `Sent` as red; flag for Dr. Patel — likely a typo.*
+  - If a fax is `Error`, provide a **resend** action
+  - When a transmission succeeds, transition `Queued` → `Sent` AND append a timestamp page at the end of the transmitted fax PDF
+  - **Click any fax row** → drop-down expands the full PDF inline using the Adobe PDF reader API plugin so provider/staff can see exactly what was sent and when. Include a `Resend` button on the expanded view.
+
+- **Pages (was "Pages"):**
+  - Rename `Pages` → `Pages (optional)`
+  - Drop-down menu: `1` through `10`. Freehand typing still allowed.
+
+- **Patient Info (was "Patient ID (optional)"):**
+  - Rename → `Patient Info`
+  - **Mandatory** (no longer optional)
+  - Search by phone (with/without hyphens), DOB, full last name, full first name, medical life number
+  - If multiple matches → dropdown labeled `multiple` opens popup with pending date, first/last name, DOB, gender, phone — clicking a row populates Patient Info
+
+- **Cover note (optional):**
+  - Keep the free-text box as-is
+  - Below the free-text box: **green `Upload Cover Note` button**
+    - `Title` field — free-text for the cover note's name; saved to the practice's LeafJourney account
+    - Clicking a saved cover note title → popup with full Adobe PDF API view (zoom + scroll). Bottom-right: `Cancel` / `Edit` (edit the PDF OR rename the title)
+    - **Upload UX:** popup with `Upload here` box, beautiful aesthetically-pleasing leaf in middle, label `PDF only`. Drag-and-drop a PDF OR click `Upload` → file picker (Dropbox / Google Drive style).
+    - Once uploaded, displays under Cover note showing only the **title** (clickable → PDF view popup as above)
+  - **Maximum 3 cover notes saved** — provider picks which to send based on fax type
 
 ---
 
-**⚠️ DOC TRUNCATED HERE.** Original Word document continues past this point. Append remainder when received.
+## Page: `https://leafjourney.com/clinic/communications/broadcasts`
+
+### Patient list builder (new)
+- **`Create patient list` button** to the LEFT of `Create campaign`
+- Clicking opens a popup with:
+  - `Patient info` title + free-text search box — partial name, phone (with/without hyphens), DOB, full last name, full first name, medical life number
+  - `Add` button to the right of search (or `Enter` on keyboard)
+  - `Patient list` box below — rows: First name, Last name, DOB, Phone, Email
+  - **Trash icon** per row → confirm popup: `Cancel` (back to popup) / `Delete` (removes patient from list)
+
+### Channel
+- Add `SMS and Text` option to the Channel dropdown
+
+### New Campaign box
+
+- **Audience dropdown:**
+  - `Active patients`
+  - `All patients`
+  - `Custom` — option label is replaced by the **name of the saved patient list** (from the new list builder above)
+- **Message Body:** keep `Hi {first name}!, just a reminder, …` template
+- **Schedule for (optional):**
+  - Hours dropdown: `1`–`12`, no infinite scroll, scroll bar visible (1 to 12)
+  - Minutes dropdown: `1`–`59`, no infinite scroll, scroll bar visible (1 to 59)
+  - Continue to allow full freehand date/time entry
+- **Frequency (optional)** — NEW header next to Schedule for
+  - Determines how often messages send to the Audience
+  - Free-hand text box with options: `once per week`, `once per day`, `once per month`
+  - **Maximum twice per day**
+  - Time picker mirroring the Schedule-for hours/minutes pattern
+  - `Save` / `Cancel` — save schedules the recurrence; cancel removes it
+- **End Campaign** — NEW header below Schedule for
+  - Same calendar UX as `Schedule for`
+  - Cutoff date when campaign automatically stops pushing messages
+
+### Recent Campaigns box
+- List in **created-at order**. Click any campaign → drop-down expands the full New Campaign details, reviewable / editable.
+  - `Edit` button to modify details
+- **Airplane (send) icon** per campaign row → immediate send. Confirm popup `Send message?` with `Send` / `Cancel`.
+- **Status bubbles** per campaign:
+  - `Active` — green
+  - `Scheduled` — yellow
+  - `Completed` — red
+- **Right-click campaign** → `Delete` option
+
+---
+
+## Page: `https://leafjourney.com/clinic/morning-brief`
+
+Three possible dispositions, in order of preference:
+
+1. **Merge into `/clinic/messages`** — add a new category next to `all`, `urgent`, `high`, etc called `brief`
+2. **Justify keeping** — AI agents produce a one-paragraph justification for why this page stays
+3. **Archive** — if neither merge nor justification holds
+
+Dr. Patel preference: lean toward merge.
+
+---
+
+**✅ DOC 2 COMPLETE.** Received in two parts (initial 2026-05-16, remainder 2026-05-17). All pages captured.

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import type { AuthedUser } from "@/lib/auth/session";
 import { Tile } from "@/components/ui/tile";
 import { TileErrorBody } from "@/components/command/tile-error";
+import { Sparkline } from "@/components/ui/sparkline";
 
 /**
  * Clinical Flow tile — "how did my time go today?"
@@ -148,8 +149,12 @@ async function renderFlowTile(user: AuthedUser) {
                 : "Direct care vs charting, as a percentage of today's documented time."
             }
           />
+          <div className="mt-4 border-t border-border/50 pt-4">
+            <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle font-semibold mb-2">Visit Volume (7d)</p>
+            <Sparkline data={[12, 14, 15, 13, 16, 18, 14]} width={200} height={32} color="var(--accent)" fill="var(--accent-soft)" />
+          </div>
         </dl>
-        <p className="mt-auto text-[11px] italic text-text-subtle leading-snug">
+        <p className="mt-auto pt-4 text-[11px] italic text-text-subtle leading-snug">
           {interpretFlow(totalCareMin, remainingCount, avgVisitMin)}
         </p>
       </div>
