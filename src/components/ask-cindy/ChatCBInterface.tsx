@@ -68,7 +68,7 @@ export function ChatCBInterface() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-accent text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+        className="fixed bottom-[88px] right-6 z-40 h-14 w-14 rounded-full bg-accent text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
         aria-label="Open ChatCB"
       >
         <Bot size={24} />
