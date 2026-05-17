@@ -23,6 +23,7 @@ import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/observability/log";
+import { runBootstrapAllowlistAudit } from "./bootstrap-audit";
 import type { AuthedUser } from "./session";
 
 export const LEAFJOURNEY_HQ_SLUG = "leafjourney-hq";
@@ -90,6 +91,10 @@ export async function ensureLeafjourneyHq(): Promise<string> {
 export async function bootstrapSuperAdminIfAllowlisted(
   user: AuthedUser,
 ): Promise<boolean> {
+  // Fire-and-forget the rotation audit. Memoised in bootstrap-audit.ts so
+  // this is effectively zero-cost after the first request per process.
+  void runBootstrapAllowlistAudit();
+
   if (user.roles.includes("super_admin")) return false;
   const allowlist = bootstrapAllowlist();
   if (allowlist.size === 0) return false;
