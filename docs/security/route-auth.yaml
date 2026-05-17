@@ -92,6 +92,12 @@ routes:
     owner: platform-security
     notes: "super_admin role. Read-only listing."
 
+  admin/search:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. EMR-738 cross-tenant search. Query `q` is redacted before audit persistence: emails (contain '@') and phone-shaped strings (>=7 digits) are truncated to first 3 chars + '***'. Indexed columns only; no full-text. Emits controller.super_admin.cross_tenant_search audit row per request."
+
   admin/practices/[id]/switch-specialty:
     methods: [POST]
     auth: required
