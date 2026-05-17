@@ -7,14 +7,21 @@
 #
 # Schema:
 #   routes:
-#     <route-path>:           # Path relative to /api, e.g. "admin/super-admins"
-#       methods: [GET, POST]  # Methods this route handles
-#       auth: <kind>          # See "Auth kinds" below
-#       owner: <team>         # Team responsible — drives PR review routing
-#       notes: <string>       # Optional — anything a reviewer needs to know
-#       review_due: <date>    # Optional — for routes flagged needs_review,
-#                             #   the date by which the classification must
-#                             #   be resolved.
+#     <route-path>:               # Path relative to /api, e.g. "admin/super-admins"
+#       methods: [GET, POST]      # Methods this route handles
+#       auth: <kind>              # See "Auth kinds" below
+#       owner: <team>             # Team responsible — drives PR review routing
+#       notes: <string>           # Optional — anything a reviewer needs to know
+#       review_due: <date>        # Optional — for routes flagged needs_review,
+#                                 #   the date by which the classification must
+#                                 #   be resolved.
+#       rate_limit_bucket: <name> # Optional — bucket label passed to
+#                                 #   withAdminMutation (EMR-728). Required de
+#                                 #   facto for every mutation route under
+#                                 #   /api/admin/** and /api/configs/**;
+#                                 #   scripts/check-admin-mutation-coverage.mjs
+#                                 #   enforces the helper wrapping at the source
+#                                 #   level. Field here exists for legibility.
 #
 # Auth kinds:
 #   required        — Authenticated user is a hard prerequisite.
@@ -69,13 +76,15 @@ routes:
     methods: [GET, POST]
     auth: required
     owner: platform-security
-    notes: "super_admin role. CSRF defense via /api/admin/** origin middleware."
+    notes: "super_admin role. CSRF defense via /api/admin/** origin middleware. POST behind withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.super_admin.grant
 
   admin/super-admins/[userId]:
     methods: [DELETE]
     auth: required
     owner: platform-security
-    notes: "super_admin role. Last-admin guard + Serializable txn (PR #225)."
+    notes: "super_admin role. Last-admin guard + Serializable txn (PR #225). DELETE behind withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.super_admin.revoke
 
   admin/practices:
     methods: [GET]
@@ -87,7 +96,8 @@ routes:
     methods: [POST]
     auth: required
     owner: platform-security
-    notes: "super_admin role. Requires status=published guard (PR #225)."
+    notes: "super_admin role. Requires status=published guard (PR #225). POST behind withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.config.switch_specialty
 
   # ── Onboarding controller (EMR-428) ───────────────────────
   audit:
@@ -100,32 +110,43 @@ routes:
     methods: [POST]
     auth: required
     owner: onboarding-controller
+    notes: "implementation_admin via withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.config.draft_create
 
   configs/[id]:
     methods: [GET, PATCH]
     auth: required
     owner: onboarding-controller
+    notes: "PATCH wrapped by withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.config.update
 
   configs/[id]/publish:
     methods: [POST]
     auth: required
     owner: onboarding-controller
+    notes: "implementation_admin via withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.config.publish
 
   configs/[id]/archive:
     methods: [POST]
     auth: required
     owner: onboarding-controller
+    notes: "implementation_admin via withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.config.archive
 
   configs/[id]/upgrade-template:
     methods: [POST]
     auth: required
     owner: onboarding-controller
+    notes: "implementation_admin via withAdminMutation (EMR-728)."
+    rate_limit_bucket: admin.config.upgrade_template
 
   configs/[id]/apply-specialty:
     methods: [POST]
     auth: required
     owner: onboarding-controller
-    notes: "Closed 2026-05-12 via find-and-fix pass 4 evidence. Probe returned 403 FORBIDDEN — middleware coarse-gates /api/configs as a controller surface, route handler trusts middleware."
+    notes: "implementation_admin via withAdminMutation (EMR-728). Earlier 2026-05-12 entry noted middleware coarse-gating; the route is now self-gated too."
+    rate_limit_bucket: admin.config.apply_specialty
 
   configs/by-practice/[practiceId]:
     methods: [GET]
@@ -353,6 +374,12 @@ routes:
     notes: "HMAC-SHA256 timing-safe verification, fail-closed on missing secret."
 
   # ── Cron (inbound triggers) ───────────────────────────────
+  cron/audit-export:
+    methods: [POST]
+    auth: cron
+    owner: platform-security
+    notes: "EMR-750. Bearer CRON_SECRET check, prod-only (non-prod falls through — same pattern as cron/credential-check). Exports previous UTC day of ControllerAuditLog as gzipped JSONL to audit/controller/YYYY/MM/DD.jsonl.gz. Idempotent via ControllerAuditExport.coveredDate unique key."
+
   cron/coa-tracker:
     methods: [POST]
     auth: cron
@@ -364,6 +391,12 @@ routes:
     auth: cron
     owner: scheduling
     notes: "Closed via PR #243 — prod hard-refuses without CRON_SECRET, non-prod logs and falls through (200 in dev). Find-and-fix pass 4 confirmed dev fall-through; prod path is gated by NODE_ENV check."
+
+  cron/practice-health:
+    methods: [POST]
+    auth: cron
+    owner: super-admin
+    notes: "EMR-732. Bearer CRON_SECRET, prod-only fail-closed, dev fall-through (matches cron/credential-check). Per-org cooldown via PRACTICE_HEALTH_MIN_AGE_SECONDS (default 300s); batch capped at 200 organizations per invocation."
 
   # ── Token-URL access ──────────────────────────────────────
   emergency/[token]:
@@ -712,3 +745,10 @@ routes:
     auth: webhook
     owner: integrations
     notes: "EMR-078 scaffold. Bearer STATE_REGISTRY_SECRET check, prod-only. Outbound METRC/BioTrack/PDMP compliance reporting."
+
+  cron/mutation-budget-sweep:
+    methods: [POST]
+    auth: cron
+    rate_limit_bucket: cron.mutation-budget
+    owner: platform-security
+    notes: "EMR-730. Bearer CRON_SECRET check, prod-only. Sweeps ControllerAuditLog over a 5-minute window, fires a logger.error alarm (event: super_admin.mutation_budget_exceeded) when any actor exceeds 30 mutations/min OR 100 mutations/5min. Per-actor dedupe ledger: MutationBudgetAlarm, 10-minute window. Threshold env knobs: SUPER_ADMIN_ALARM_PER_MIN, SUPER_ADMIN_ALARM_PER_5MIN."

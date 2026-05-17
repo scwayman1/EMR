@@ -1818,6 +1818,24 @@ model BootstrapAllowlistSnapshot {
   @@index([createdAt(sort: Desc)])
 }
 
+// EMR-730 — Per-actor mutation budget alarm ledger.
+//
+// One row per (actor, alarm-fire). The cron at
+// /api/cron/mutation-budget-sweep reads the most-recent row per actor to
+// dedupe re-fires inside a 10-minute window. We don't UPDATE existing rows
+// — every alarm fire is its own row so on-call has a forensic history of
+// when an account tripped the budget and how badly.
+model MutationBudgetAlarm {
+  id             String   @id @default(cuid())
+  actorUserId    String
+  firstSeenAt    DateTime
+  lastAlertedAt  DateTime
+  perMinAtAlert  Int
+  per5MinAtAlert Int
+
+  @@index([actorUserId, lastAlertedAt(sort: Desc)])
+}
+
 // --------------------------------------------------------------
 // Agentic Memory Harness
 // --------------------------------------------------------------
@@ -4228,6 +4246,31 @@ model MigrationProfile {
   @@index([status])
 }
 
+// EMR-732 — Per-practice composite health score (0–100).
+//
+// Denormalized snapshot recomputed at most every 5 minutes by the
+// cron at `src/app/api/cron/practice-health/route.ts`. The HQ
+// dashboard (E1) reads `score` and `breakdown` directly off this
+// table rather than running aggregate queries at request time.
+//
+// `breakdown` is a stable JSON shape:
+//   { publish: number, agentErrors: number, billing: number, loginFailures: number }
+// Any change to the keys is a contract break for the HQ dashboard.
+//
+// PHI posture: rates and integer subscores only — never names, IDs
+// beyond `organizationId`, claim numbers, or any patient field.
+model PracticeHealth {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  score          Int
+  breakdown      Json
+  computedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([score])
+}
+
 // --------------------------------------------------------------
 // Leafly Integrations & Strain Parsers
 // --------------------------------------------------------------
@@ -4875,4 +4918,31 @@ model PatientBadge {
   @@unique([patientId, badgeId])
 }
 
+// EMR-750 — verification ledger for the nightly ControllerAuditLog JSONL
+// export. One row per (covered) UTC day. Re-running the export for the
+// same day upserts the row, so `coveredDate` is the natural primary key
+// for idempotency. Stats are content-addressable: `sha256` is over the
+// gzipped bytes uploaded to `storageKey`, so compliance reviewers can
+// verify the artefact hasn't drifted by re-hashing the object.
+//
+// Failure case: if the upload fails we do NOT write a row here — a missing
+// row for a date IS the alarm signal that the export didn't land. The
+// cron route also emits a structured error log (Sentry-bound downstream).
+model ControllerAuditExport {
+  id          String   @id @default(cuid())
+  /// UTC calendar day covered by this export (midnight UTC).
+  coveredDate DateTime @unique
+  /// Object-storage key, e.g. "audit/controller/2026/05/17.jsonl.gz".
+  storageKey  String
+  /// Number of ControllerAuditLog rows included in the export.
+  rowCount    Int
+  /// Size of the uploaded gzipped artefact in bytes.
+  byteCount   Int
+  /// Hex-encoded SHA-256 of the uploaded gzipped artefact.
+  sha256      String
+  /// When this export run completed (and uploaded).
+  runAt       DateTime @default(now())
+
+  @@index([runAt])
+}
 
