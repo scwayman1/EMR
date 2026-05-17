@@ -6,7 +6,7 @@
 
 # Test info
 
-- Name: link-integrity.spec.ts >> Link integrity — find-and-fix pass 6 >> crawl /
+- Name: link-integrity.spec.ts >> Link integrity — find-and-fix pass 6 >> crawl /leafmart/shop
 - Location: e2e/link-integrity.spec.ts:98:9
 
 # Error details

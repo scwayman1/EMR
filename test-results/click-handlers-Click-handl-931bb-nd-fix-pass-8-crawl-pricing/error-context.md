@@ -6,7 +6,7 @@
 
 # Test info
 
-- Name: click-handlers.spec.ts >> Click handlers — find-and-fix pass 8 >> crawl /features
+- Name: click-handlers.spec.ts >> Click handlers — find-and-fix pass 8 >> crawl /pricing
 - Location: e2e/click-handlers.spec.ts:406:9
 
 # Error details
