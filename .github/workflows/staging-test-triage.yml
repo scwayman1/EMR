@@ -68,9 +68,9 @@ jobs:
 
           # Which job(s) failed inside the run?
           gh api "repos/${{ github.repository }}/actions/runs/${RUN_ID}/jobs" \
-            --jq '.jobs[] | select(.conclusion=="failure") | {name, id}' \
+            --jq '[.jobs[] | select(.conclusion=="failure") | {name, id}]' \
             > /tmp/failed_jobs.json
-          FAILED_JOB_NAME="$(jq -r 'first | .name // empty' /tmp/failed_jobs.json)"
+          FAILED_JOB_NAME="$(jq -r '.[0].name // empty' /tmp/failed_jobs.json)"
           echo "failed_job=${FAILED_JOB_NAME}" >> "$GITHUB_OUTPUT"
           echo "Failed job: ${FAILED_JOB_NAME:-<none>}"
 
