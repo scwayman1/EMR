@@ -86,6 +86,19 @@ routes:
     notes: "super_admin role. Last-admin guard + Serializable txn (PR #225). DELETE behind withAdminMutation (EMR-728)."
     rate_limit_bucket: admin.super_admin.revoke
 
+  admin/impersonate/[practiceId]:
+    methods: [POST]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. EMR-742 — open 'view as practice' impersonation. Signed HMAC cookie, 30-min TTL, bound to actor user id. Emits super_admin.impersonation.enter audit row."
+    rate_limit_bucket: admin.super_admin.impersonate
+
+  admin/impersonate/exit:
+    methods: [POST]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. EMR-742 — clear impersonation cookie. Always allowed (even during impersonation read-only) so user can exit."
+
   admin/practices:
     methods: [GET]
     auth: required
