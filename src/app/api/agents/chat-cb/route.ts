@@ -11,7 +11,7 @@ const CANNABIS_CANCER_BOOK_EXCERPTS = [
 
 export async function POST(req: Request) {
   try {
-    const authHeader = req.headers ? req.headers.get("authorization") : (request ? request.headers.get("authorization") : "");
+    const authHeader = req.headers.get("authorization") ?? "";
     const secret = process.env.WEBHOOK_SECRET ?? "";
     
     if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${secret}`) {

@@ -8,7 +8,7 @@ import { logger } from "@/lib/observability/log";
 
 export async function POST(req: Request) {
   try {
-    const authHeader = req.headers ? req.headers.get("authorization") : (request ? request.headers.get("authorization") : "");
+    const authHeader = req.headers.get("authorization") ?? "";
     const secret = process.env.WEBHOOK_SECRET ?? "";
     
     if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${secret}`) {
@@ -16,7 +16,6 @@ export async function POST(req: Request) {
     }
 
     // 1. Verify User Session (JWT from Mobile App)
-    const authHeader = req.headers.get("authorization") ?? "";
     if (!authHeader.startsWith("Bearer ")) {
       return new NextResponse("Unauthorized", { status: 401 });
     }

@@ -9,7 +9,7 @@ import type { StrainClassification } from "@prisma/client";
 // Can be hit manually from the Admin UI.
 export async function POST(req: Request) {
   try {
-    const authHeader = req.headers ? req.headers.get("authorization") : (request ? request.headers.get("authorization") : "");
+    const authHeader = req.headers.get("authorization") ?? "";
     const secret = process.env.CRON_SECRET ?? "";
     
     if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${secret}`) {
