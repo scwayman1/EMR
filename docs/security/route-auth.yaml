@@ -98,6 +98,18 @@ routes:
     owner: platform-security
     notes: "super_admin role. EMR-738 cross-tenant search. Query `q` is redacted before audit persistence: emails (contain '@') and phone-shaped strings (>=7 digits) are truncated to first 3 chars + '***'. Indexed columns only; no full-text. Emits controller.super_admin.cross_tenant_search audit row per request."
 
+  admin/audit:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. EMR-747 ControllerAuditLog viewer. Cursor-paginated (no offset). Reads only — does NOT emit an audit row per request (would create a feedback loop with the table it lists). Filters: actor, action (case-insensitive contains), target, from/to. Metadata preview masks email/phone shapes; full JSON on expand renders verbatim (super-admin surface only)."
+
+  admin/audit/export:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role. EMR-747 streaming CSV export of ControllerAuditLog. Uses streamCsvResponse from src/lib/admin/csv-export.ts (EMR-749) — one super_admin.csv_export audit row emitted BEFORE the stream begins; rows pulled lazily via async iterator so a 100k-row export never materialises in memory. Includes a practice_id column to satisfy the utility's requirePracticeIdColumn enforcement."
+
   admin/practices/[id]/switch-specialty:
     methods: [POST]
     auth: required

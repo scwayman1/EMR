@@ -23,6 +23,15 @@ const SUPER_ADMIN_SECTIONS: NavSection[] = [
     label: "Search",
     items: [{ label: "Search", href: "/admin/search" }],
   },
+  // EMR-747 — ControllerAuditLog viewer. Placed between Search and
+  // Onboarding so the cross-tenant ops triad (search → audit →
+  // onboarding) reads top-to-bottom in the nav.
+  {
+    pillar: "admin",
+    icon: "layout-grid",
+    label: "Audit Log",
+    items: [{ label: "Audit Log", href: "/admin/audit" }],
+  },
   {
     pillar: "onboarding",
     icon: "clipboard-check",
