@@ -5,9 +5,9 @@ import { useClerk } from "@clerk/nextjs";
 import type { Role } from "@prisma/client";
 import { Button } from "@/components/ui/button";
 import {
-  ABSOLUTE_SESSION_MS,
-  IDLE_WARNING_MS,
+  evaluateSession,
   idleLimitForRoles,
+  type SessionTimeoutReason,
 } from "@/lib/auth/idle-timeouts";
 
 // EMR session-timeout guard. Mounts inside the authenticated AppShell so
@@ -52,7 +52,7 @@ const ACTIVITY_EVENTS: Array<keyof DocumentEventMap> = [
   "click",
 ];
 
-type Reason = "idle" | "session_max";
+type Reason = SessionTimeoutReason;
 
 export interface IdleTimeoutGuardProps {
   roles: Role[];
@@ -185,72 +185,48 @@ export function IdleTimeoutGuard({ roles }: IdleTimeoutGuardProps) {
     [signOut],
   );
 
-  // ── Watchdog tick. Evaluates both clocks every TICK_MS and either
-  // opens the warning dialog, updates the countdown, or forces sign-out.
+  // Single decision routine — used by both the watchdog (every TICK_MS)
+  // and the smooth countdown (every 1s while the modal is up). Both
+  // intervals route through the same pure evaluator so they can never
+  // disagree about state.
+  const evaluate = React.useCallback(() => {
+    if (signingOutRef.current) return;
+    const decision = evaluateSession({
+      now: nowMs(),
+      lastActivityAt: lastActivityRef.current,
+      sessionStartedAt: sessionStartRef.current,
+      idleLimitMs,
+    });
+    if (decision.kind === "force_signout") {
+      void forceSignOut(decision.reason);
+      return;
+    }
+    if (decision.kind === "ok") {
+      setWarning((prev) => (prev ? null : prev));
+      return;
+    }
+    setWarning((prev) =>
+      prev &&
+      prev.reason === decision.reason &&
+      prev.secondsLeft === decision.secondsLeft
+        ? prev
+        : { reason: decision.reason, secondsLeft: decision.secondsLeft },
+    );
+  }, [idleLimitMs, forceSignOut]);
+
+  // ── Watchdog tick.
   React.useEffect(() => {
-    const tick = () => {
-      if (signingOutRef.current) return;
-
-      const now = nowMs();
-      const idleFor = now - lastActivityRef.current;
-      const idleRemaining = idleLimitMs - idleFor;
-      const sessionAge = now - sessionStartRef.current;
-      const sessionRemaining = ABSOLUTE_SESSION_MS - sessionAge;
-
-      if (sessionRemaining <= 0) {
-        void forceSignOut("session_max");
-        return;
-      }
-      if (idleRemaining <= 0) {
-        void forceSignOut("idle");
-        return;
-      }
-
-      const reason: Reason =
-        sessionRemaining < idleRemaining ? "session_max" : "idle";
-      const remaining = Math.min(idleRemaining, sessionRemaining);
-
-      if (remaining <= IDLE_WARNING_MS) {
-        const secondsLeft = Math.max(1, Math.ceil(remaining / 1000));
-        setWarning((prev) =>
-          prev && prev.reason === reason && prev.secondsLeft === secondsLeft
-            ? prev
-            : { reason, secondsLeft },
-        );
-      } else if (warning) {
-        setWarning(null);
-      }
-    };
-    tick();
-    const id = window.setInterval(tick, TICK_MS);
+    evaluate();
+    const id = window.setInterval(evaluate, TICK_MS);
     return () => window.clearInterval(id);
-  }, [idleLimitMs, forceSignOut, warning]);
+  }, [evaluate]);
 
   // ── Smooth countdown while the warning is up.
   React.useEffect(() => {
     if (!warning) return;
-    const id = window.setInterval(() => {
-      const now = nowMs();
-      const idleRemaining = idleLimitMs - (now - lastActivityRef.current);
-      const sessionRemaining =
-        ABSOLUTE_SESSION_MS - (now - sessionStartRef.current);
-      const remaining = Math.min(idleRemaining, sessionRemaining);
-
-      if (remaining <= 0) {
-        void forceSignOut(warning.reason);
-        return;
-      }
-      const reason: Reason =
-        sessionRemaining < idleRemaining ? "session_max" : "idle";
-      const secondsLeft = Math.max(1, Math.ceil(remaining / 1000));
-      setWarning((prev) =>
-        prev && prev.reason === reason && prev.secondsLeft === secondsLeft
-          ? prev
-          : { reason, secondsLeft },
-      );
-    }, 1000);
+    const id = window.setInterval(evaluate, 1000);
     return () => window.clearInterval(id);
-  }, [warning, idleLimitMs, forceSignOut]);
+  }, [warning, evaluate]);
 
   const handleStay = React.useCallback(() => {
     // "Stay signed in" only extends the IDLE clock — the absolute clock
