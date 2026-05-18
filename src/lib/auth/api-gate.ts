@@ -36,6 +36,7 @@ import type { Role } from "@prisma/client";
 import { logger } from "@/lib/observability/log";
 import { type AuthedUser, requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
+import { isUserRevoked } from "./session-kill-list";
 import {
   buildMfaRequiredResponse,
   loadSuperAdminMfaState,
@@ -103,6 +104,38 @@ export async function requireApiAuth(
         { status: 401 },
       ),
     };
+  }
+
+  // EMR-727: emergency-revoke kill-list. Consulted on every authenticated
+  // request via a 1s in-process TTL cache (≤1s fleet-wide propagation).
+  // If the actor is on the list, refuse with a structured 401 so clients
+  // can distinguish "your session was killed" from "you were never signed
+  // in" and force the user back to the sign-in flow.
+  try {
+    if (await isUserRevoked(user.id)) {
+      return {
+        actor: null,
+        error: NextResponse.json(
+          {
+            error: "UNAUTHORIZED",
+            code: "session_revoked",
+            message: "Your session has been revoked. Please sign in again.",
+          },
+          { status: 401 },
+        ),
+      };
+    }
+  } catch (err) {
+    // A kill-list lookup failure must NOT silently grant access — but it
+    // also can't block the entire fleet during a DB hiccup. Log loud and
+    // fail open: the worst case is the existing JWT-TTL window we had
+    // before this feature. The structured log makes the regression
+    // visible to on-call.
+    logger.error({
+      event: "auth.kill_list.lookup_failed",
+      userId: user.id,
+      err: err instanceof Error ? err.message : String(err),
+    });
   }
 
   if (wantsBootstrap) {

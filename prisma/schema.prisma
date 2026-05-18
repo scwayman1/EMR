@@ -1841,6 +1841,30 @@ model MutationBudgetAlarm {
   @@index([actorUserId, lastAlertedAt(sort: Desc)])
 }
 
+// EMR-727 — Fleet-wide session kill-list for emergency revoke.
+//
+// One row per actively-killed user. The auth gate consults this on every
+// authenticated request (with a 1s in-process TTL cache layered on top to
+// keep p99 latency under budget) so a revoke takes effect on the *next*
+// request across every replica — not whenever the JWT/cookie expires.
+//
+// `userId` is the PK because at most one kill exists per user at a time.
+// A subsequent emergency-revoke UPSERTs, refreshing `revokedAt` /
+// `expiresAt`. `expiresAt` MUST exceed the longest possible session
+// lifetime; the endpoint sets it to now + 90d.
+//
+// See: prisma/migrations/20260517140000_add_session_kill_list/migration.sql
+// and src/lib/auth/session-kill-list.ts.
+model SessionKillList {
+  userId      String   @id
+  revokedAt   DateTime @default(now())
+  expiresAt   DateTime
+  reason      String
+  revokedById String
+
+  @@index([expiresAt])
+}
+
 // --------------------------------------------------------------
 // Agentic Memory Harness
 // --------------------------------------------------------------
