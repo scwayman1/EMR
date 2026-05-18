@@ -1,18 +1,17 @@
 // EMR-734 — Anomaly detector registry.
 //
-// Concrete detectors register themselves by importing this module's
-// `registerDetector` helper and calling it at module top-level. The sweep
-// cron imports the registry getter and iterates all registered detectors.
-//
-// THIS FILE INTENTIONALLY DOES NOT REGISTER ANY DETECTORS. The framework
-// + sweep cron + Anomaly model are landing alone in EMR-734 so that
-// EMR-737 (4 detectors), EMR-740 (webhook health), and EMR-741 (stale
-// config) can land independently against a stable surface.
-//
-// When EMR-737/740/741 land, each adds a `import "./detectors/<slug>"`
-// line to the section below — the side-effecting import registers the
-// detector with the framework. Co-locating registration here gives PR
-// reviewers a single file to scan for "what does the sweep run?".
+// Concrete detectors are imported here and registered via
+// `registerDetector`. The sweep cron imports `getRegisteredDetectors` and
+// iterates the list. Centralising registration in one file gives PR
+// reviewers a single place to scan for "what does the sweep run?".
+
+import { registerDetector } from "./framework";
+import { stuckPublishDetector } from "./detectors/stuck-publish";
+import { billingDropDetector } from "./detectors/billing-drop";
+import { agentFailureDetector } from "./detectors/agent-failure";
+import { loginFailureDetector } from "./detectors/login-failure";
+import { webhookHealthDetector } from "./detectors/webhook-health";
+import { staleConfigDetector } from "./detectors/stale-config";
 
 export {
   registerDetector,
@@ -24,18 +23,16 @@ export {
 
 // ── Detector registrations ────────────────────────────────
 //
-// Each concrete detector module is expected to call `registerDetector`
-// at import time. The registry is intentionally empty until those
-// modules land.
-//
-// EMR-737:
-//   import "./detectors/stuck-publish";
-//   import "./detectors/template-regression";
-//   import "./detectors/auth-failure-spike";
-//   import "./detectors/cron-stall";
-//
-// EMR-740:
-//   import "./detectors/webhook-health";
-//
-// EMR-741:
-//   import "./detectors/stale-config";
+// EMR-737 (four detectors): stuck-publish, billing-drop, agent-failure,
+// and a login-failure no-op stub (real source pending — see header in
+// login-failure.ts).
+registerDetector(stuckPublishDetector);
+registerDetector(billingDropDetector);
+registerDetector(agentFailureDetector);
+registerDetector(loginFailureDetector);
+
+// EMR-740 — fleet-wide webhook delivery health.
+registerDetector(webhookHealthDetector);
+
+// EMR-741 — stale specialty manifest version.
+registerDetector(staleConfigDetector);
