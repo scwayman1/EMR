@@ -13,7 +13,9 @@
 
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
-import { IMPERSONATION_COOKIE } from "@/lib/auth/impersonation";
+// Redefined here because importing from impersonation.ts pulls in node crypto 
+// which crashes the Edge runtime.
+const IMPERSONATION_COOKIE = "lj_impersonation";
 
 /** Hostnames that should resolve to the Leafmart storefront */
 const LEAFMART_HOSTS = [
