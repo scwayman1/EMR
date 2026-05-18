@@ -7,55 +7,53 @@ import { ROLE_LABELS } from "@/lib/rbac/roles";
 
 export const dynamic = "force-dynamic";
 
+// Four rail pillars, each with multiple destinations so the drawer reads
+// as a real workspace map rather than one-link rooms. PillarNav returns
+// the FIRST section whose pillar key matches the active rail icon, so
+// sharing a pillar key across sections silently hides every section
+// after the first — every pillar here is unique.
+//
+//   HQ          — KPI / dashboard read surface (chart)
+//   Operations  — what a super-admin does all day (building)
+//   Audit       — observability + the audit log (inbox)
+//   Security    — hardening / MFA / revoke / bootstrap (shield)
 const SUPER_ADMIN_SECTIONS: NavSection[] = [
   {
-    pillar: "admin",
-    icon: "layout-grid",
+    pillar: "hq",
+    icon: "chart",
     label: "HQ",
-    items: [{ label: "Dashboard", href: "/admin/hq" }],
-  },
-  // EMR-738 — standalone cross-tenant search. The HQ search-bar
-  // integration (TODO(EMR-738-hq-integration)) is deferred to avoid
-  // conflict with PR #344.
-  {
-    pillar: "admin",
-    icon: "layout-grid",
-    label: "Search",
-    items: [{ label: "Search", href: "/admin/search" }],
-  },
-  // EMR-747 — ControllerAuditLog viewer. Placed between Search and
-  // Onboarding so the cross-tenant ops triad (search → audit →
-  // onboarding) reads top-to-bottom in the nav.
-  {
-    pillar: "admin",
-    icon: "layout-grid",
-    label: "Audit Log",
-    items: [{ label: "Audit Log", href: "/admin/audit" }],
-  },
-  {
-    pillar: "onboarding",
-    icon: "clipboard-check",
-    label: "Onboarding",
-    items: [{ label: "Onboarding", href: "/onboarding" }],
-  },
-  {
-    pillar: "practices",
-    icon: "building",
-    label: "Practices",
-    items: [{ label: "Practices", href: "/practices" }],
-  },
-  {
-    pillar: "templates",
-    icon: "layout-grid",
-    label: "Templates",
-    items: [{ label: "Templates", href: "/templates" }],
-  },
-  {
-    pillar: "admin",
-    icon: "settings",
-    label: "Admin",
     items: [
-      { label: "Console", href: "/admin/console" },
+      { label: "Dashboard", href: "/admin/hq" },
+      { label: "Leaderboards", href: "/admin/hq#leaderboards-heading" },
+      { label: "24h activity", href: "/admin/hq#activity-heading" },
+    ],
+  },
+  {
+    pillar: "operations",
+    icon: "building",
+    label: "Operations",
+    items: [
+      { label: "Practices", href: "/practices" },
+      { label: "Onboarding", href: "/onboarding" },
+      { label: "Templates", href: "/templates" },
+      { label: "Cross-tenant search", href: "/admin/search" },
+    ],
+  },
+  {
+    pillar: "audit",
+    icon: "inbox",
+    label: "Audit",
+    items: [
+      { label: "Audit log", href: "/admin/audit" },
+      { label: "Audit export (CSV)", href: "/api/admin/audit/export" },
+    ],
+  },
+  {
+    pillar: "security",
+    icon: "shield",
+    label: "Security",
+    items: [
+      { label: "Super-admin console", href: "/admin/console" },
       { label: "Bootstrap allowlist", href: "/admin/bootstrap" },
     ],
   },
