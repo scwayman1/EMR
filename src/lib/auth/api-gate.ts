@@ -190,7 +190,19 @@ export async function requireApiAuth(
   // active impersonation is refused with a stable error envelope.
   if (options.request) {
     const method = options.request.method?.toUpperCase() ?? "GET";
-    if (!READ_ONLY_METHODS.has(method)) {
+    // The impersonation-exit route MUST always be allowed even during an
+    // active impersonation — otherwise the user can't terminate the
+    // session they're trying to end. middleware.ts has the same
+    // exemption at the edge layer.
+    const isImpersonationExit = (() => {
+      try {
+        return new URL(options.request.url).pathname ===
+          "/api/admin/impersonate/exit";
+      } catch {
+        return false;
+      }
+    })();
+    if (!READ_ONLY_METHODS.has(method) && !isImpersonationExit) {
       let session = null;
       try {
         session = await readImpersonationFromCookies(user.id);

@@ -12,21 +12,16 @@
 //   3. Return a small JSON body the client can read to know where to
 //      land — usually the practice's home dashboard.
 //
-// Why this route deliberately does NOT use `withAdminMutation`:
-//
-//   `withAdminMutation` forwards the Request into requireApiAuth's
-//   impersonation read-only gate. That gate would refuse THIS route as
-//   a mutation if an impersonation cookie were somehow already set —
-//   which is exactly the wrong behaviour for an enter route. (The user
-//   should be able to re-enter impersonation against a different
-//   practice without exiting first; the cookie is overwritten in
-//   place.) So we call requireApiAuth directly without `request` and
-//   accept that we lose the rate-limit + auto-audit conveniences here.
-//   This route writes its own (richer) audit row anyway.
+// Wrapped with `withAdminMutation` for parity with every other admin
+// mutation (rate limit + audit + EMR-728 coverage). The wrapper's
+// impersonation read-only gate is intentionally permissive on the
+// enter route: api-gate.ts treats `/api/admin/impersonate/exit` as
+// the only exit point, so an active session does NOT block re-entry
+// here — the cookie is simply overwritten in place.
 
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { requireApiAuth } from "@/lib/auth/api-gate";
+import { withAdminMutation } from "@/lib/auth/with-admin-mutation";
 import { requireRecentMfa } from "@/lib/auth/mfa-gate";
 import { logControllerAction } from "@/lib/auth/audit-stub";
 import {
@@ -39,104 +34,96 @@ import { logger } from "@/lib/observability/log";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: { practiceId: string } },
-) {
-  const gate = await requireApiAuth({ role: "super_admin" });
-  if (gate.error) return gate.error;
-  const actor = gate.actor;
+export const POST = withAdminMutation<{ practiceId: string }>(
+  { bucket: "admin.super_admin.impersonate" },
+  async (_req, { actor, params }) => {
+    const { practiceId } = params;
+    if (!practiceId) {
+      return NextResponse.json(
+        { error: "missing_practice_id" },
+        { status: 400 },
+      );
+    }
 
-  const { practiceId } = params;
-  if (!practiceId) {
-    return NextResponse.json(
-      { error: "missing_practice_id" },
-      { status: 400 },
-    );
-  }
+    // MFA gate. EMR-725 will fill in the body of requireRecentMfa;
+    // until then it returns ok-true. The denial branch is wired so the
+    // swap is a one-line change.
+    const mfa = await requireRecentMfa(actor, { purpose: "impersonation" });
+    if (!mfa.ok) {
+      return NextResponse.json(
+        {
+          error: "mfa_required",
+          reason: mfa.reason,
+          message:
+            "A recent MFA challenge is required before entering impersonation.",
+        },
+        { status: 403 },
+      );
+    }
 
-  // MFA gate. EMR-725 will fill in the body of requireRecentMfa; until
-  // then it returns ok-true. The denial branch is wired so the swap
-  // is a one-line change.
-  const mfa = await requireRecentMfa(actor, { purpose: "impersonation" });
-  if (!mfa.ok) {
-    return NextResponse.json(
-      {
-        error: "mfa_required",
-        reason: mfa.reason,
-        message:
-          "A recent MFA challenge is required before entering impersonation.",
-      },
-      { status: 403 },
-    );
-  }
+    // Resolve the target practice. The drill-in page accepts both
+    // PracticeConfiguration.id and Organization.id; we mirror that here
+    // so the "View as practice" button can pass whichever it has.
+    const org = await resolveOrgFromPracticeOrConfigId(practiceId);
+    if (!org) {
+      return NextResponse.json(
+        { error: "practice_not_found" },
+        { status: 404 },
+      );
+    }
 
-  // Resolve the target practice. The drill-in page accepts both
-  // PracticeConfiguration.id and Organization.id; we mirror that here
-  // so the "View as practice" button can pass whichever it has.
-  const org = await resolveOrgFromPracticeOrConfigId(practiceId);
-  if (!org) {
-    return NextResponse.json(
-      { error: "practice_not_found" },
-      { status: 404 },
-    );
-  }
+    const startedAt = Date.now();
+    const expiresAt = startedAt + IMPERSONATION_TTL_MS;
+    const session: ImpersonationSession = {
+      impersonatorUserId: actor.id,
+      practiceOrgId: org.id,
+      practiceName: org.name,
+      startedAt,
+      expiresAt,
+    };
 
-  const startedAt = Date.now();
-  const expiresAt = startedAt + IMPERSONATION_TTL_MS;
-  const session: ImpersonationSession = {
-    impersonatorUserId: actor.id,
-    practiceOrgId: org.id,
-    practiceName: org.name,
-    startedAt,
-    expiresAt,
-  };
+    await setImpersonationCookie(session);
 
-  await setImpersonationCookie(session);
+    // Audit row — written AFTER the cookie is set so the audit reflects
+    // a state that is actually live.
+    try {
+      await logControllerAction({
+        actor: {
+          id: actor.id,
+          email: actor.email,
+          roles: actor.roles,
+          organizationId: actor.organizationId,
+        },
+        action: "super_admin.impersonation_start",
+        targetId: org.id,
+        after: {
+          practiceOrgId: org.id,
+          practiceName: org.name,
+          startedAt,
+          expiresAt,
+        },
+        reason: `Super-admin entered impersonation of ${org.name}.`,
+      });
+    } catch (err) {
+      logger.error({
+        event: "impersonation.audit_start_failed",
+        actorId: actor.id,
+        orgId: org.id,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
 
-  // Audit row — written AFTER the cookie is set so the audit reflects
-  // a state that is actually live. If the audit insert fails, the
-  // logControllerAction helper logs to Sentry + structured log and
-  // resolves; the impersonation session still exists (consistent with
-  // every other admin mutation surface). That trade-off is documented
-  // in audit-stub.ts.
-  try {
-    await logControllerAction({
-      actor: {
-        id: actor.id,
-        email: actor.email,
-        roles: actor.roles,
-        organizationId: actor.organizationId,
-      },
-      action: "super_admin.impersonation_start",
-      targetId: org.id,
-      after: {
+    return NextResponse.json({
+      ok: true,
+      session: {
         practiceOrgId: org.id,
         practiceName: org.name,
         startedAt,
         expiresAt,
       },
-      reason: `Super-admin entered impersonation of ${org.name}.`,
     });
-  } catch (err) {
-    logger.error({
-      event: "impersonation.audit_start_failed",
-      actorId: actor.id,
-      orgId: org.id,
-      err: err instanceof Error ? err.message : String(err),
-    });
-  }
-
-  return NextResponse.json({
-    ok: true,
-    session: {
-      practiceOrgId: org.id,
-      practiceName: org.name,
-      startedAt,
-      expiresAt,
-    },
-  });
-}
+  },
+);
 
 /**
  * The drill-in page accepts either a PracticeConfiguration.id or an
