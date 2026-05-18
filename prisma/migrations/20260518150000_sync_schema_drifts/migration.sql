@@ -1,21 +1,21 @@
 -- -----------------------------------------------------------------------------
--- Cumulative Schema Sync
+-- Cumulative Schema Sync (Idempotent)
 -- Recovers orphaned schema additions that were merged without migration files.
--- Includes clerkId (EMR-205), Anomaly framework, and PracticeHealth.
+-- Safe to run even if 'prisma db push' was previously used.
 -- -----------------------------------------------------------------------------
 
--- CreateEnum
-CREATE TYPE "AnomalySeverity" AS ENUM ('INFO', 'WARNING', 'CRITICAL');
+DO $$ BEGIN
+    CREATE TYPE "AnomalySeverity" AS ENUM ('INFO', 'WARNING', 'CRITICAL');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
--- AlterTable
-ALTER TABLE "Membership" ADD COLUMN     "mfaGraceUntil" TIMESTAMP(3);
+ALTER TABLE "Membership" ADD COLUMN IF NOT EXISTS "mfaGraceUntil" TIMESTAMP(3);
 
--- AlterTable: User (Clerk Auth Fields)
-ALTER TABLE "User" ADD COLUMN     "clerkId" TEXT,
-ALTER COLUMN "passwordHash" SET DEFAULT '';
+ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "clerkId" TEXT;
+ALTER TABLE "User" ALTER COLUMN "passwordHash" SET DEFAULT '';
 
--- CreateTable
-CREATE TABLE "BootstrapAllowlistSnapshot" (
+CREATE TABLE IF NOT EXISTS "BootstrapAllowlistSnapshot" (
     "id" TEXT NOT NULL,
     "hash" TEXT NOT NULL,
     "emails" TEXT[],
@@ -25,8 +25,7 @@ CREATE TABLE "BootstrapAllowlistSnapshot" (
     CONSTRAINT "BootstrapAllowlistSnapshot_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "MutationBudgetAlarm" (
+CREATE TABLE IF NOT EXISTS "MutationBudgetAlarm" (
     "id" TEXT NOT NULL,
     "actorUserId" TEXT NOT NULL,
     "firstSeenAt" TIMESTAMP(3) NOT NULL,
@@ -37,8 +36,7 @@ CREATE TABLE "MutationBudgetAlarm" (
     CONSTRAINT "MutationBudgetAlarm_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "SessionKillList" (
+CREATE TABLE IF NOT EXISTS "SessionKillList" (
     "userId" TEXT NOT NULL,
     "revokedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "expiresAt" TIMESTAMP(3) NOT NULL,
@@ -48,8 +46,7 @@ CREATE TABLE "SessionKillList" (
     CONSTRAINT "SessionKillList_pkey" PRIMARY KEY ("userId")
 );
 
--- CreateTable
-CREATE TABLE "PracticeHealth" (
+CREATE TABLE IF NOT EXISTS "PracticeHealth" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,
     "score" INTEGER NOT NULL,
@@ -61,8 +58,7 @@ CREATE TABLE "PracticeHealth" (
     CONSTRAINT "PracticeHealth_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "ControllerAuditExport" (
+CREATE TABLE IF NOT EXISTS "ControllerAuditExport" (
     "id" TEXT NOT NULL,
     "coveredDate" TIMESTAMP(3) NOT NULL,
     "storageKey" TEXT NOT NULL,
@@ -74,8 +70,7 @@ CREATE TABLE "ControllerAuditExport" (
     CONSTRAINT "ControllerAuditExport_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Anomaly" (
+CREATE TABLE IF NOT EXISTS "Anomaly" (
     "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "kind" TEXT NOT NULL,
@@ -94,41 +89,16 @@ CREATE TABLE "Anomaly" (
     CONSTRAINT "Anomaly_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "User_clerkId_key" ON "User"("clerkId");
-
--- CreateIndex
-CREATE INDEX "BootstrapAllowlistSnapshot_createdAt_idx" ON "BootstrapAllowlistSnapshot"("createdAt" DESC);
-
--- CreateIndex
-CREATE INDEX "MutationBudgetAlarm_actorUserId_lastAlertedAt_idx" ON "MutationBudgetAlarm"("actorUserId", "lastAlertedAt" DESC);
-
--- CreateIndex
-CREATE INDEX "SessionKillList_expiresAt_idx" ON "SessionKillList"("expiresAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "PracticeHealth_organizationId_key" ON "PracticeHealth"("organizationId");
-
--- CreateIndex
-CREATE INDEX "PracticeHealth_score_idx" ON "PracticeHealth"("score");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ControllerAuditExport_coveredDate_key" ON "ControllerAuditExport"("coveredDate");
-
--- CreateIndex
-CREATE INDEX "ControllerAuditExport_runAt_idx" ON "ControllerAuditExport"("runAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Anomaly_slug_key" ON "Anomaly"("slug");
-
--- CreateIndex
-CREATE INDEX "Anomaly_resolvedAt_severity_lastSeenAt_idx" ON "Anomaly"("resolvedAt", "severity", "lastSeenAt" DESC);
-
--- CreateIndex
-CREATE INDEX "Anomaly_practiceId_resolvedAt_idx" ON "Anomaly"("practiceId", "resolvedAt");
-
--- CreateIndex
-CREATE INDEX "Anomaly_kind_resolvedAt_idx" ON "Anomaly"("kind", "resolvedAt");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Anomaly_kind_idempotencyKey_key" ON "Anomaly"("kind", "idempotencyKey");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_clerkId_key" ON "User"("clerkId");
+CREATE INDEX IF NOT EXISTS "BootstrapAllowlistSnapshot_createdAt_idx" ON "BootstrapAllowlistSnapshot"("createdAt" DESC);
+CREATE INDEX IF NOT EXISTS "MutationBudgetAlarm_actorUserId_lastAlertedAt_idx" ON "MutationBudgetAlarm"("actorUserId", "lastAlertedAt" DESC);
+CREATE INDEX IF NOT EXISTS "SessionKillList_expiresAt_idx" ON "SessionKillList"("expiresAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "PracticeHealth_organizationId_key" ON "PracticeHealth"("organizationId");
+CREATE INDEX IF NOT EXISTS "PracticeHealth_score_idx" ON "PracticeHealth"("score");
+CREATE UNIQUE INDEX IF NOT EXISTS "ControllerAuditExport_coveredDate_key" ON "ControllerAuditExport"("coveredDate");
+CREATE INDEX IF NOT EXISTS "ControllerAuditExport_runAt_idx" ON "ControllerAuditExport"("runAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "Anomaly_slug_key" ON "Anomaly"("slug");
+CREATE INDEX IF NOT EXISTS "Anomaly_resolvedAt_severity_lastSeenAt_idx" ON "Anomaly"("resolvedAt", "severity", "lastSeenAt" DESC);
+CREATE INDEX IF NOT EXISTS "Anomaly_practiceId_resolvedAt_idx" ON "Anomaly"("practiceId", "resolvedAt");
+CREATE INDEX IF NOT EXISTS "Anomaly_kind_resolvedAt_idx" ON "Anomaly"("kind", "resolvedAt");
+CREATE UNIQUE INDEX IF NOT EXISTS "Anomaly_kind_idempotencyKey_key" ON "Anomaly"("kind", "idempotencyKey");
