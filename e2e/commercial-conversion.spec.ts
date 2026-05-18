@@ -62,12 +62,13 @@ test.describe("Commercial conversion smoke — pass 9", () => {
   test("landing → book-demo → form submit", async ({ page }) => {
     await loadHydrated(page, "/");
 
-    // The hero CTA should reach /book-demo. There are several places
-    // that say "Book a demo" on the landing; the visible top-of-page
-    // CTA is the one we care about. Constrain to the first match
-    // visible above the fold.
+    // The hero CTA reads "Request a demo" — landing renders two such
+    // links (hero + footer band). Click the first one. The link
+    // target is /book-demo (earlier it incorrectly pointed at
+    // /sign-up; the smoke spec caught the regression and the fix
+    // ships alongside this test).
     const bookDemoLink = page
-      .locator('a[href="/book-demo"], a[href^="/book-demo"]')
+      .getByRole("link", { name: /request a demo/i })
       .first();
     await expect(bookDemoLink).toBeVisible();
     await bookDemoLink.click();
@@ -108,9 +109,13 @@ test.describe("Commercial conversion smoke — pass 9", () => {
   test("landing → marketplace → product detail renders", async ({ page }) => {
     await loadHydrated(page, "/");
 
-    // The site header has a "Marketplace" link. Click it.
+    // The site header has a Marketplace link (desktop nav). Use a
+    // role-based query so we naturally pick the visible link — the
+    // mobile-portrait nav also has a Marketplace tab but is
+    // `md:hidden`, so it won't match `getByRole(...visible)`.
     const marketplaceLink = page
-      .locator('header a[href="/marketplace"]')
+      .getByRole("link", { name: /marketplace/i })
+      .filter({ visible: true })
       .first();
     await expect(marketplaceLink).toBeVisible();
     await marketplaceLink.click();

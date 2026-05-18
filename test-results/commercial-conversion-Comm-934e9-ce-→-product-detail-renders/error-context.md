@@ -7,30 +7,23 @@
 # Test info
 
 - Name: commercial-conversion.spec.ts >> Commercial conversion smoke — pass 9 >> landing → marketplace → product detail renders
-- Location: e2e/commercial-conversion.spec.ts:108:7
+- Location: e2e/commercial-conversion.spec.ts:109:7
 
 # Error details
 
 ```
-Error: expect(locator).toBeVisible() failed
-
-Locator:  locator('header a[href="/marketplace"]').first()
-Expected: visible
-Received: hidden
-Timeout:  5000ms
-
-Call log:
-  - Expect "toBeVisible" with timeout 5000ms
-  - waiting for locator('header a[href="/marketplace"]').first()
-    9 × locator resolved to <a href="/marketplace" class="flex flex-col items-center justify-center gap-1 rounded-xl bg-surface border border-border/60 px-2 py-3 hover:bg-surface-muted hover:border-accent/40 transition-all">…</a>
-      - unexpected value "hidden"
-
+TimeoutError: page.waitForURL: Timeout 15000ms exceeded.
+=========================== logs ===========================
+waiting for navigation until "load"
+  navigated to "http://localhost:3000/"
+  navigated to "http://localhost:3000/"
+============================================================
 ```
 
 # Page snapshot
 
 ```yaml
-- generic [active] [ref=e1]:
+- generic [ref=e1]:
   - link "Skip to content" [ref=e2] [cursor=pointer]:
     - /url: "#main-content"
   - generic [ref=e3]:
@@ -52,7 +45,7 @@ Call log:
             - /url: /education
           - link "LeafMart" [ref=e19] [cursor=pointer]:
             - /url: https://www.theleafmart.com/
-          - link "Marketplace" [ref=e20] [cursor=pointer]:
+          - link "Marketplace" [active] [ref=e20] [cursor=pointer]:
             - /url: https://www.theleafmart.com/
           - link "Developer" [ref=e21] [cursor=pointer]:
             - /url: /developer
@@ -76,7 +69,7 @@ Call log:
             - text: .
           - generic [ref=e36]:
             - link "Request a demo" [ref=e37] [cursor=pointer]:
-              - /url: /sign-up
+              - /url: /book-demo
               - button "Request a demo" [ref=e38]
             - link "See our story" [ref=e39] [cursor=pointer]:
               - /url: /about
@@ -518,7 +511,7 @@ Call log:
         - paragraph [ref=e750]: Leafjourney is in active development with partner practices. If you're a clinician, an investor, or a patient who believes healthcare deserves better — we'd love to talk.
         - generic [ref=e751]:
           - link "Request a demo" [ref=e752] [cursor=pointer]:
-            - /url: /sign-up
+            - /url: /book-demo
             - button "Request a demo" [ref=e753]
           - link "Meet the team" [ref=e754] [cursor=pointer]:
             - /url: /about
@@ -623,14 +616,6 @@ Call log:
 # Test source
 
 ```ts
-  15  | //   4. /contact form lands inbound message to ops inbox
-  16  | //
-  17  | // Why a separate spec instead of folding into pass 5/7/8?  Those
-  18  | // passes are surface scans — they catch problems on individual
-  19  | // pages. This pass catches problems in transitions BETWEEN pages,
-  20  | // which is where flow regressions hide. A button that compiles and
-  21  | // renders fine but navigates to the wrong URL is invisible to
-  22  | // pass-level scans and lethal to conversion.
   23  | 
   24  | import { test, expect, type Page } from "@playwright/test";
   25  | 
@@ -673,156 +658,164 @@ Call log:
   62  |   test("landing → book-demo → form submit", async ({ page }) => {
   63  |     await loadHydrated(page, "/");
   64  | 
-  65  |     // The hero CTA should reach /book-demo. There are several places
-  66  |     // that say "Book a demo" on the landing; the visible top-of-page
-  67  |     // CTA is the one we care about. Constrain to the first match
-  68  |     // visible above the fold.
-  69  |     const bookDemoLink = page
-  70  |       .locator('a[href="/book-demo"], a[href^="/book-demo"]')
-  71  |       .first();
-  72  |     await expect(bookDemoLink).toBeVisible();
-  73  |     await bookDemoLink.click();
-  74  | 
-  75  |     await page.waitForURL(/\/book-demo(\?.*)?$/, { timeout: 15_000 });
-  76  |     await page.waitForLoadState("networkidle");
-  77  | 
-  78  |     // Fill the form and submit. Stub /api/contact so we don't generate
-  79  |     // founder-inbox noise but still confirm the request fires.
-  80  |     let posted = false;
-  81  |     await page.route("**/api/contact**", async (route) => {
-  82  |       posted = true;
-  83  |       await route.fulfill({
-  84  |         status: 200,
-  85  |         contentType: "application/json",
-  86  |         body: JSON.stringify({ ok: true, stubbed: true }),
-  87  |       });
-  88  |     });
-  89  | 
-  90  |     await page.locator('input[name="firstName"]').fill(STAMP);
-  91  |     await page.locator('input[name="lastName"]').fill("Smoke");
-  92  |     await page.locator('input[name="email"]').fill(`${STAMP}@example.com`);
-  93  |     await page.locator('input[name="organization"]').fill("Smoke Health");
-  94  |     await page.locator('input[name="phone"]').fill("555-555-5555");
-  95  |     await page.locator('select[name="teamSize"]').selectOption({ index: 1 });
-  96  |     await page
-  97  |       .locator('textarea[name="message"]')
-  98  |       .fill(`commercial conversion smoke ${STAMP}`);
-  99  | 
-  100 |     await page.locator('button[type="submit"]').first().click();
-  101 |     await page.waitForTimeout(2500);
-  102 | 
-  103 |     expect(posted, "expected POST to /api/contact after Book demo submit").toBe(
-  104 |       true,
-  105 |     );
-  106 |   });
-  107 | 
-  108 |   test("landing → marketplace → product detail renders", async ({ page }) => {
-  109 |     await loadHydrated(page, "/");
-  110 | 
-  111 |     // The site header has a "Marketplace" link. Click it.
-  112 |     const marketplaceLink = page
-  113 |       .locator('header a[href="/marketplace"]')
-  114 |       .first();
-> 115 |     await expect(marketplaceLink).toBeVisible();
-      |                                   ^ Error: expect(locator).toBeVisible() failed
-  116 |     await marketplaceLink.click();
-  117 | 
-  118 |     await page.waitForURL(/\/marketplace(\?.*)?$/, { timeout: 15_000 });
-  119 |     await page.waitForLoadState("networkidle");
-  120 | 
-  121 |     // The first product card should be clickable. Marketplace cards
-  122 |     // link to /marketplace/products/<slug> per
-  123 |     // src/app/marketplace/marketplace-client.tsx:308.
-  124 |     const firstProductLink = page
-  125 |       .locator('a[href^="/marketplace/products/"]')
-  126 |       .first();
-  127 |     await expect(firstProductLink).toBeVisible();
-  128 | 
-  129 |     const href = await firstProductLink.getAttribute("href");
-  130 |     expect(
-  131 |       href,
-  132 |       "first marketplace product card should link to a real /marketplace/products/<slug>",
-  133 |     ).toMatch(/^\/marketplace\/products\/[a-z0-9-]+$/);
-  134 | 
-  135 |     await firstProductLink.click();
-  136 |     await page.waitForURL(/\/marketplace\/products\//, { timeout: 15_000 });
-  137 |     await page.waitForLoadState("networkidle");
-  138 | 
-  139 |     // PDP must show: an <h1> (product name), the brand eyebrow, and a
-  140 |     // price. If any of these aren't visible, the page is structurally
-  141 |     // broken even if the route returns 200.
-  142 |     await expect(page.locator("h1")).toBeVisible();
-  143 |     await expect(page.getByText(/\$\d/).first()).toBeVisible();
-  144 |     // Look for the "About this product" section header that the PDP
-  145 |     // always renders — a stable structural marker.
-  146 |     await expect(
-  147 |       page.getByRole("heading", { name: /about this product/i }),
-  148 |     ).toBeVisible();
-  149 |   });
-  150 | 
-  151 |   test("landing → leafmart shop → category → product detail", async ({
-  152 |     page,
-  153 |   }) => {
-  154 |     await loadHydrated(page, "/leafmart");
+  65  |     // The hero CTA reads "Request a demo" — landing renders two such
+  66  |     // links (hero + footer band). Click the first one. The link
+  67  |     // target is /book-demo (earlier it incorrectly pointed at
+  68  |     // /sign-up; the smoke spec caught the regression and the fix
+  69  |     // ships alongside this test).
+  70  |     const bookDemoLink = page
+  71  |       .getByRole("link", { name: /request a demo/i })
+  72  |       .first();
+  73  |     await expect(bookDemoLink).toBeVisible();
+  74  |     await bookDemoLink.click();
+  75  | 
+  76  |     await page.waitForURL(/\/book-demo(\?.*)?$/, { timeout: 15_000 });
+  77  |     await page.waitForLoadState("networkidle");
+  78  | 
+  79  |     // Fill the form and submit. Stub /api/contact so we don't generate
+  80  |     // founder-inbox noise but still confirm the request fires.
+  81  |     let posted = false;
+  82  |     await page.route("**/api/contact**", async (route) => {
+  83  |       posted = true;
+  84  |       await route.fulfill({
+  85  |         status: 200,
+  86  |         contentType: "application/json",
+  87  |         body: JSON.stringify({ ok: true, stubbed: true }),
+  88  |       });
+  89  |     });
+  90  | 
+  91  |     await page.locator('input[name="firstName"]').fill(STAMP);
+  92  |     await page.locator('input[name="lastName"]').fill("Smoke");
+  93  |     await page.locator('input[name="email"]').fill(`${STAMP}@example.com`);
+  94  |     await page.locator('input[name="organization"]').fill("Smoke Health");
+  95  |     await page.locator('input[name="phone"]').fill("555-555-5555");
+  96  |     await page.locator('select[name="teamSize"]').selectOption({ index: 1 });
+  97  |     await page
+  98  |       .locator('textarea[name="message"]')
+  99  |       .fill(`commercial conversion smoke ${STAMP}`);
+  100 | 
+  101 |     await page.locator('button[type="submit"]').first().click();
+  102 |     await page.waitForTimeout(2500);
+  103 | 
+  104 |     expect(posted, "expected POST to /api/contact after Book demo submit").toBe(
+  105 |       true,
+  106 |     );
+  107 |   });
+  108 | 
+  109 |   test("landing → marketplace → product detail renders", async ({ page }) => {
+  110 |     await loadHydrated(page, "/");
+  111 | 
+  112 |     // The site header has a Marketplace link (desktop nav). Use a
+  113 |     // role-based query so we naturally pick the visible link — the
+  114 |     // mobile-portrait nav also has a Marketplace tab but is
+  115 |     // `md:hidden`, so it won't match `getByRole(...visible)`.
+  116 |     const marketplaceLink = page
+  117 |       .getByRole("link", { name: /marketplace/i })
+  118 |       .filter({ visible: true })
+  119 |       .first();
+  120 |     await expect(marketplaceLink).toBeVisible();
+  121 |     await marketplaceLink.click();
+  122 | 
+> 123 |     await page.waitForURL(/\/marketplace(\?.*)?$/, { timeout: 15_000 });
+      |                ^ TimeoutError: page.waitForURL: Timeout 15000ms exceeded.
+  124 |     await page.waitForLoadState("networkidle");
+  125 | 
+  126 |     // The first product card should be clickable. Marketplace cards
+  127 |     // link to /marketplace/products/<slug> per
+  128 |     // src/app/marketplace/marketplace-client.tsx:308.
+  129 |     const firstProductLink = page
+  130 |       .locator('a[href^="/marketplace/products/"]')
+  131 |       .first();
+  132 |     await expect(firstProductLink).toBeVisible();
+  133 | 
+  134 |     const href = await firstProductLink.getAttribute("href");
+  135 |     expect(
+  136 |       href,
+  137 |       "first marketplace product card should link to a real /marketplace/products/<slug>",
+  138 |     ).toMatch(/^\/marketplace\/products\/[a-z0-9-]+$/);
+  139 | 
+  140 |     await firstProductLink.click();
+  141 |     await page.waitForURL(/\/marketplace\/products\//, { timeout: 15_000 });
+  142 |     await page.waitForLoadState("networkidle");
+  143 | 
+  144 |     // PDP must show: an <h1> (product name), the brand eyebrow, and a
+  145 |     // price. If any of these aren't visible, the page is structurally
+  146 |     // broken even if the route returns 200.
+  147 |     await expect(page.locator("h1")).toBeVisible();
+  148 |     await expect(page.getByText(/\$\d/).first()).toBeVisible();
+  149 |     // Look for the "About this product" section header that the PDP
+  150 |     // always renders — a stable structural marker.
+  151 |     await expect(
+  152 |       page.getByRole("heading", { name: /about this product/i }),
+  153 |     ).toBeVisible();
+  154 |   });
   155 | 
-  156 |     // Click any category tile — the leafmart hub renders 17 of them,
-  157 |     // all linking to /leafmart/category/<slug>. Pick the first one,
-  158 |     // which is the curated "rest" shelf.
-  159 |     const categoryLink = page
-  160 |       .locator('a[href^="/leafmart/category/"]')
-  161 |       .first();
-  162 |     await expect(categoryLink).toBeVisible();
-  163 |     await categoryLink.click();
-  164 | 
-  165 |     await page.waitForURL(/\/leafmart\/category\//, { timeout: 15_000 });
-  166 |     await page.waitForLoadState("networkidle");
-  167 | 
-  168 |     // Category page should show a shelf header (<h1>) and product cards.
-  169 |     await expect(page.locator("h1")).toBeVisible();
-  170 | 
-  171 |     // Click the first leafmart product card.
-  172 |     const productLink = page
-  173 |       .locator('a[href^="/leafmart/products/"]')
-  174 |       .first();
-  175 |     await expect(productLink).toBeVisible();
-  176 |     await productLink.click();
-  177 | 
-  178 |     await page.waitForURL(/\/leafmart\/products\//, { timeout: 15_000 });
-  179 |     await page.waitForLoadState("networkidle");
-  180 | 
-  181 |     // PDP renders.
-  182 |     await expect(page.locator("h1, h2").first()).toBeVisible();
-  183 |   });
-  184 | 
-  185 |   test("contact form delivers to /api/contact", async ({ page }) => {
-  186 |     // Direct test that the contact-form pipeline is intact. Pass 5
-  187 |     // covers this against a stub; this version verifies the path is
-  188 |     // observable end-to-end through to the dev API logger.
-  189 |     let posted = false;
-  190 |     await page.route("**/api/contact**", async (route) => {
-  191 |       posted = true;
-  192 |       await route.fulfill({
-  193 |         status: 200,
-  194 |         contentType: "application/json",
-  195 |         body: JSON.stringify({ ok: true, stubbed: true }),
-  196 |       });
-  197 |     });
-  198 | 
-  199 |     await loadHydrated(page, "/contact");
-  200 | 
-  201 |     await page.locator('input[name="name"]').fill(`${STAMP} smoke`);
-  202 |     await page.locator('input[name="email"]').fill(`${STAMP}@example.com`);
-  203 |     await page
-  204 |       .locator('textarea[name="message"]')
-  205 |       .fill(`commercial conversion smoke probe ${STAMP}`);
-  206 | 
-  207 |     await page.locator('button[type="submit"]').first().click();
-  208 |     await page.waitForTimeout(2500);
-  209 | 
-  210 |     expect(posted, "expected POST to /api/contact after /contact submit").toBe(
-  211 |       true,
-  212 |     );
-  213 | 
-  214 |     // Confirm the success state actually renders — silent-drop bugs
-  215 |     // can leave a spinner spinning forever. The form swaps in a
+  156 |   test("landing → leafmart shop → category → product detail", async ({
+  157 |     page,
+  158 |   }) => {
+  159 |     await loadHydrated(page, "/leafmart");
+  160 | 
+  161 |     // Click any category tile — the leafmart hub renders 17 of them,
+  162 |     // all linking to /leafmart/category/<slug>. Pick the first one,
+  163 |     // which is the curated "rest" shelf.
+  164 |     const categoryLink = page
+  165 |       .locator('a[href^="/leafmart/category/"]')
+  166 |       .first();
+  167 |     await expect(categoryLink).toBeVisible();
+  168 |     await categoryLink.click();
+  169 | 
+  170 |     await page.waitForURL(/\/leafmart\/category\//, { timeout: 15_000 });
+  171 |     await page.waitForLoadState("networkidle");
+  172 | 
+  173 |     // Category page should show a shelf header (<h1>) and product cards.
+  174 |     await expect(page.locator("h1")).toBeVisible();
+  175 | 
+  176 |     // Click the first leafmart product card.
+  177 |     const productLink = page
+  178 |       .locator('a[href^="/leafmart/products/"]')
+  179 |       .first();
+  180 |     await expect(productLink).toBeVisible();
+  181 |     await productLink.click();
+  182 | 
+  183 |     await page.waitForURL(/\/leafmart\/products\//, { timeout: 15_000 });
+  184 |     await page.waitForLoadState("networkidle");
+  185 | 
+  186 |     // PDP renders.
+  187 |     await expect(page.locator("h1, h2").first()).toBeVisible();
+  188 |   });
+  189 | 
+  190 |   test("contact form delivers to /api/contact", async ({ page }) => {
+  191 |     // Direct test that the contact-form pipeline is intact. Pass 5
+  192 |     // covers this against a stub; this version verifies the path is
+  193 |     // observable end-to-end through to the dev API logger.
+  194 |     let posted = false;
+  195 |     await page.route("**/api/contact**", async (route) => {
+  196 |       posted = true;
+  197 |       await route.fulfill({
+  198 |         status: 200,
+  199 |         contentType: "application/json",
+  200 |         body: JSON.stringify({ ok: true, stubbed: true }),
+  201 |       });
+  202 |     });
+  203 | 
+  204 |     await loadHydrated(page, "/contact");
+  205 | 
+  206 |     await page.locator('input[name="name"]').fill(`${STAMP} smoke`);
+  207 |     await page.locator('input[name="email"]').fill(`${STAMP}@example.com`);
+  208 |     await page
+  209 |       .locator('textarea[name="message"]')
+  210 |       .fill(`commercial conversion smoke probe ${STAMP}`);
+  211 | 
+  212 |     await page.locator('button[type="submit"]').first().click();
+  213 |     await page.waitForTimeout(2500);
+  214 | 
+  215 |     expect(posted, "expected POST to /api/contact after /contact submit").toBe(
+  216 |       true,
+  217 |     );
+  218 | 
+  219 |     // Confirm the success state actually renders — silent-drop bugs
+  220 |     // can leave a spinner spinning forever. The form swaps in a
+  221 |     // "Message sent." heading on success.
+  222 |     await expect(
+  223 |       page.getByRole("heading", { name: /message sent/i }),
 ```
