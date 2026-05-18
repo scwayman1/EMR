@@ -23,16 +23,20 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
     },
-    {
-      name: 'chromium-authed',
-      // Only run tests matching *authed*
-      testMatch: /.*authed.*/,
-      dependencies: ['setup'],
-      use: {
-        ...devices['Desktop Chrome'],
-        // Inject the auth state saved by auth.setup.ts
-        storageState: STORAGE_STATE,
-      },
-    },
+    ...(process.env.TEST_USER_EMAIL && process.env.TEST_USER_PASSWORD
+      ? [
+          {
+            name: 'chromium-authed',
+            // Only run tests matching *authed*
+            testMatch: /.*authed.*/,
+            dependencies: ['setup'],
+            use: {
+              ...devices['Desktop Chrome'],
+              // Inject the auth state saved by auth.setup.ts
+              storageState: STORAGE_STATE,
+            },
+          },
+        ]
+      : []),
   ],
 });
