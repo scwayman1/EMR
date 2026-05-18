@@ -36,11 +36,25 @@ import type { Role } from "@prisma/client";
 import { logger } from "@/lib/observability/log";
 import { type AuthedUser, requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
+import { readImpersonationFromCookies } from "./impersonation";
 import { isUserRevoked } from "./session-kill-list";
 import {
   buildMfaRequiredResponse,
   loadSuperAdminMfaState,
 } from "./super-admin-mfa";
+
+/**
+ * HTTP methods we consider "read-only." Anything else is treated as a
+ * mutation and refused during impersonation. OPTIONS is included
+ * because CORS preflights are required to succeed even on routes whose
+ * non-preflight method would 403 — refusing the preflight breaks the
+ * client error UI before the user ever sees the 403 body.
+ */
+const READ_ONLY_METHODS: ReadonlySet<string> = new Set([
+  "GET",
+  "HEAD",
+  "OPTIONS",
+]);
 
 export interface RequireApiAuthOptions {
   /**
@@ -72,6 +86,23 @@ export interface RequireApiAuthOptions {
     /** Bucket label included in the 429 response — for client-side debugging. */
     bucket?: string;
   };
+
+  /**
+   * Optional Request handle. When supplied, the gate enforces the
+   * EMR-742 impersonation read-only rule: if an impersonation session
+   * is active and the request method is NOT in READ_ONLY_METHODS, the
+   * gate returns 403 with body `{ error: "impersonation_read_only" }`.
+   *
+   * Why is this opt-in? Some routes (the impersonation exit route
+   * itself, plus the bootstrap-grant audit row) need to mutate state
+   * *during* impersonation to terminate or attribute the session. They
+   * deliberately omit `request` to bypass the gate. Every other admin
+   * mutation MUST pass `request` so the gate can enforce read-only.
+   *
+   * `withAdminMutation()` passes this automatically — most routes
+   * inherit the enforcement for free.
+   */
+  request?: Request;
 }
 
 export type RequireApiAuthResult =
@@ -180,6 +211,78 @@ export async function requireApiAuth(
         userId: user.id,
         graceUntil: mfaState.graceUntil.toISOString(),
       });
+    }
+  }
+
+  // ── EMR-742: impersonation read-only enforcement ─────────────
+  // Runs AFTER authN/authZ + MFA gate but BEFORE rate limiting (we
+  // don't want a refused mutation to also burn budget).
+  //
+  // The gate is opt-in via `options.request` — see RequireApiAuthOptions
+  // for the rationale. When opted in, ANY non-GET method during an
+  // active impersonation is refused with a stable error envelope.
+  if (options.request) {
+    const method = options.request.method?.toUpperCase() ?? "GET";
+    // The impersonation-exit route MUST always be allowed even during an
+    // active impersonation — otherwise the user can't terminate the
+    // session they're trying to end. middleware.ts has the same
+    // exemption at the edge layer.
+    const isImpersonationExit = (() => {
+      try {
+        return new URL(options.request.url).pathname ===
+          "/api/admin/impersonate/exit";
+      } catch {
+        return false;
+      }
+    })();
+    if (!READ_ONLY_METHODS.has(method) && !isImpersonationExit) {
+      let session = null;
+      try {
+        session = await readImpersonationFromCookies(user.id);
+      } catch (err) {
+        // readImpersonationFromCookies throws outside a request scope.
+        // Inside one it shouldn't, but be defensive — a thrown cookie
+        // read must NEVER be interpreted as "no session" because that
+        // would silently unlock the read-only gate.
+        logger.error({
+          event: "auth.impersonation.cookie_read_failed",
+          userId: user.id,
+          err: err instanceof Error ? err.message : String(err),
+        });
+        return {
+          actor: null,
+          error: NextResponse.json(
+            {
+              error: "impersonation_check_failed",
+              message:
+                "Could not verify impersonation state — request refused.",
+            },
+            { status: 500 },
+          ),
+        };
+      }
+
+      if (session) {
+        logger.warn({
+          event: "auth.impersonation.mutation_blocked",
+          actorId: user.id,
+          method,
+          practiceOrgId: session.practiceOrgId,
+        });
+        return {
+          actor: null,
+          error: NextResponse.json(
+            {
+              error: "impersonation_read_only",
+              message:
+                "Mutations are not permitted while viewing as a practice. " +
+                "Exit impersonation to make changes.",
+              impersonatedPracticeId: session.practiceOrgId,
+            },
+            { status: 403 },
+          ),
+        };
+      }
     }
   }
 
