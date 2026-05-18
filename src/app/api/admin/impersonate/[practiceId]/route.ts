@@ -154,12 +154,16 @@ async function resolveOrgFromPracticeOrConfigId(
   });
   if (org) return org;
 
-  // Fall back: PracticeConfiguration.id → Organization.
+  // Fall back: PracticeConfiguration.id → Organization (no relation field
+  // on PracticeConfiguration, so look up the Organization by id in a
+  // second step).
   const config = await prisma.practiceConfiguration.findUnique({
     where: { id },
-    select: {
-      organization: { select: { id: true, name: true } },
-    },
+    select: { organizationId: true },
   });
-  return config?.organization ?? null;
+  if (!config) return null;
+  return prisma.organization.findUnique({
+    where: { id: config.organizationId },
+    select: { id: true, name: true },
+  });
 }
