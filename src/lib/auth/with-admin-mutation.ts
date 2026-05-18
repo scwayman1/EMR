@@ -86,9 +86,17 @@ export function withAdminMutation<P = Record<string, string>>(
   const acceptsControllerWrite = options.role === "implementation_admin";
 
   return async (req: Request, ctx: NextRouteContext<P>) => {
+    // EMR-742 — pass `request` so requireApiAuth enforces the
+    // impersonation read-only rule. Every route wrapped in
+    // withAdminMutation is by definition a mutation, so this is always
+    // the correct behaviour. Routes that legitimately need to mutate
+    // *during* impersonation (the exit route in particular) must not
+    // use this wrapper and instead call requireApiAuth directly without
+    // `request`.
     const gate = await requireApiAuth({
       role: acceptsControllerWrite ? undefined : gateRole,
       rateLimit: { limiter: adminMutationLimiter, bucket: options.bucket },
+      request: req,
     });
     if (gate.error) {
       // Best-effort denial audit. We only have an actor for 429 / non-role
