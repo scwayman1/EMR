@@ -21,6 +21,8 @@ export interface AuditRowView {
   id: string;
   at: string;
   atRelative: string;
+  /** Drill-in path for this row (/admin/audit/[id]). */
+  detailHref: string;
   actorLabel: string;
   actorHref: string | null;
   action: string;
@@ -135,7 +137,13 @@ export function AuditTableIsland({
                   onClick={() => toggleExpanded(row.id)}
                 >
                   <td className="px-3 py-2 align-top" title={row.at}>
-                    {row.atRelative}
+                    <a
+                      href={row.detailHref}
+                      className="text-accent underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {row.atRelative}
+                    </a>
                   </td>
                   <td className="px-3 py-2 align-top">
                     {row.actorHref ? (
@@ -212,6 +220,7 @@ export function AuditTableIsland({
       </table>
       <div className="px-3 py-2 text-xs text-text-muted border-t border-border">
         Navigate with j/k (or arrow keys); Enter expands the focused row;
+        click the timestamp to open the row&apos;s detail page;
         &quot;/&quot; jumps to the action filter.
       </div>
     </div>
