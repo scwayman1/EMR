@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
+import { EmergencyRevokeDialog } from "@/components/admin/emergency-revoke-dialog";
 
 type SpecialtyManifest = {
   slug: string;
@@ -511,14 +512,11 @@ function AdminsTab() {
                     <Button variant="ghost" size="sm" onClick={() => revoke(a.userId, a.email)}>
                       Revoke
                     </Button>
-                    <Button
-                      variant="danger"
-                      size="sm"
+                    <EmergencyRevokeTrigger
+                      label="Emergency revoke"
+                      ariaLabel={`Emergency revoke ${a.email}`}
                       onClick={() => setEmergencyTarget(a)}
-                      aria-label={`Emergency revoke ${a.email}`}
-                    >
-                      Emergency revoke
-                    </Button>
+                    />
                   </div>
                 </li>
               ))}
@@ -528,10 +526,11 @@ function AdminsTab() {
       </Card>
 
       {emergencyTarget && (
-        <EmergencyRevokeModal
-          target={emergencyTarget}
+        <EmergencyRevokeDialog
+          targetUserId={emergencyTarget.userId}
+          targetEmail={emergencyTarget.email}
           onCancel={() => setEmergencyTarget(null)}
-          onRevoked={onEmergencyRevoked}
+          onSuccess={onEmergencyRevoked}
         />
       )}
     </div>
@@ -539,123 +538,63 @@ function AdminsTab() {
 }
 
 // -----------------------------------------------------------------------------
-// EMR-727 — Emergency revoke modal
+// EMR-727 — Emergency revoke row trigger
 // -----------------------------------------------------------------------------
 //
-// Double-confirmation modal for the destructive emergency-revoke action.
-// Two friction gates before the POST goes out:
-//   1. Operator must type the target's email exactly (server re-checks).
-//   2. Operator must supply a non-empty reason (server requires 1..500).
-//
-// The server is the source of truth on both — this UI is just a friction
-// barrier. A clever attacker who could call the API directly still has to
-// satisfy the same server-side schema + last-admin guard + adminMutationLimiter.
+// Red destructive button with a small "?" tooltip next to it. The tooltip
+// is intentionally lightweight (CSS-only hover/focus reveal — no
+// JS-driven popper) because the row already has its own visual weight and
+// we don't want a heavyweight tooltip primitive added to the bundle just
+// for this one explainer. The "?" pill is keyboard-focusable so screen-
+// reader users can read the explanation via aria-describedby.
+// -----------------------------------------------------------------------------
 
-function EmergencyRevokeModal({
-  target,
-  onCancel,
-  onRevoked,
+function EmergencyRevokeTrigger({
+  label,
+  ariaLabel,
+  onClick,
 }: {
-  target: AdminRow;
-  onCancel: () => void;
-  onRevoked: () => void;
+  label: string;
+  ariaLabel: string;
+  onClick: () => void;
 }) {
-  const [confirmEmail, setConfirmEmail] = React.useState("");
-  const [reason, setReason] = React.useState("");
-  const [submitState, setSubmitState] = React.useState<"idle" | "submitting" | "error">("idle");
-  const [error, setError] = React.useState<string | null>(null);
-
-  const emailMatches = confirmEmail.trim().toLowerCase() === target.email.trim().toLowerCase();
-  const reasonOk = reason.trim().length > 0 && reason.trim().length <= 500;
-  const canSubmit = emailMatches && reasonOk && submitState !== "submitting";
-
-  async function submit() {
-    if (!canSubmit) return;
-    setSubmitState("submitting");
-    setError(null);
-    try {
-      const res = await fetch(
-        `/api/admin/super-admins/${encodeURIComponent(target.userId)}/emergency-revoke`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: reason.trim(), confirmEmail: confirmEmail.trim() }),
-        },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || `HTTP ${res.status}`);
-      }
-      onRevoked();
-    } catch (e: unknown) {
-      setSubmitState("error");
-      setError(e instanceof Error ? e.message : "Failed to emergency-revoke");
-    }
-  }
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Emergency revoke super-admin"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    >
-      <div className="w-full max-w-md rounded-lg border border-danger/40 bg-surface p-6 shadow-xl">
-        <h3 className="text-lg font-semibold text-danger">Emergency revoke</h3>
-        <p className="mt-2 text-sm text-text">
-          This will immediately strip <span className="font-medium">{target.email}</span>&rsquo;s
-          super-admin role AND terminate every active session within ~1 second across the fleet.
-        </p>
-        <p className="mt-2 text-xs text-text-muted">
-          Use this if the account is compromised. Routine revocations should use the regular
-          &ldquo;Revoke&rdquo; button.
-        </p>
-
-        <div className="mt-4 space-y-3">
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-wide text-text-muted">
-              Type <code className="rounded bg-surface-muted px-1 py-0.5">{target.email}</code> to confirm
-            </label>
-            <Input
-              value={confirmEmail}
-              onChange={(e) => setConfirmEmail(e.target.value)}
-              placeholder={target.email}
-              aria-label="Confirm target email"
-              className="mt-1"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium uppercase tracking-wide text-text-muted">
-              Reason (required, logged to audit trail)
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Compromised at 14:02 PT, see #incident-413"
-              aria-label="Revocation reason"
-              maxLength={500}
-              rows={3}
-              className="mt-1 w-full rounded-md border border-border-strong bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:border-danger focus:ring-2 focus:ring-danger/20"
-            />
-            <p className="mt-1 text-xs text-text-muted">{reason.trim().length}/500</p>
-          </div>
-        </div>
-
-        {submitState === "error" && error && (
-          <p role="alert" className="mt-3 text-sm text-danger">
-            {error}
-          </p>
-        )}
-
-        <div className="mt-5 flex items-center justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel} disabled={submitState === "submitting"}>
-            Cancel
-          </Button>
-          <Button variant="danger" size="sm" disabled={!canSubmit} onClick={submit}>
-            {submitState === "submitting" ? "Revoking…" : "Emergency revoke"}
-          </Button>
-        </div>
-      </div>
+    <div className="flex items-center gap-1">
+      <Button
+        variant="danger"
+        size="sm"
+        onClick={onClick}
+        aria-label={ariaLabel}
+      >
+        {label}
+      </Button>
+      <span className="group relative inline-flex">
+        <button
+          type="button"
+          aria-label="What does emergency revoke do?"
+          aria-describedby="emergency-revoke-help"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border-strong bg-surface text-[10px] font-bold text-text-muted hover:text-danger hover:border-danger focus:outline-none focus-visible:ring-2 focus-visible:ring-danger/40"
+          // No onClick — purely informational. Stops the row's revoke
+          // button from accidentally firing if the user mis-clicks the "?".
+          onClick={(e) => e.preventDefault()}
+        >
+          ?
+        </button>
+        <span
+          id="emergency-revoke-help"
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full right-0 z-40 mb-2 hidden w-64 rounded-lg border border-border bg-surface-raised p-3 text-xs text-text shadow-lg group-hover:block group-focus-within:block"
+        >
+          Strips super-admin AND terminates every active session for this user
+          within ~1 second across the fleet. Requires a typed email
+          confirmation. Used for compromised accounts.
+        </span>
+      </span>
     </div>
   );
 }
+
+// EMR-727 — Emergency revoke modal lives in
+// `./emergency-revoke-dialog.tsx` and is rendered above. The trigger
+// `<EmergencyRevokeTrigger>` is co-located here because it is tightly
+// coupled to the per-row layout.
