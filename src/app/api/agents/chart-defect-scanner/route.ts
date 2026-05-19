@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // 1. Fetch recently signed encounters that haven't been billed yet
     const encounters = await prisma.encounter.findMany({
       where: {
-        status: "completed",
+        status: "complete",
         chartingCompletedAt: { not: null },
       },
       take: 50

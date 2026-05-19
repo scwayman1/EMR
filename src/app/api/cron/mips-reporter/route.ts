@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     // Mocking finding completed encounters for patients > 65
     const eligibleEncounters = await prisma.encounter.findMany({
       where: {
-        status: "completed",
+        status: "complete",
         // patient: { dateOfBirth: { lte: sixtyFiveYearsAgo } }
       },
       take: 200

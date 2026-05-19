@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       await prisma.encounter.update({
         where: { id: event.encounterId },
         data: {
-          status: "completed", // Locks it
+          status: "complete", // Locks it
           // In a real schema, we'd set a hard `isLegallyLocked: true` flag
         }
       });

@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const recentEncounters = await prisma.encounter.findMany({
       where: {
         patientId: payload.patientId,
-        status: "completed",
+        status: "complete",
         completedAt: { gte: sixMonthsAgo }
       }
     });

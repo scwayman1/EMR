@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const upcomingFollowUps = await prisma.encounter.findMany({
       where: {
         // Mock: Follow ups due in 14 days
-        status: "completed"
+        status: "complete"
       },
       take: 50
     });

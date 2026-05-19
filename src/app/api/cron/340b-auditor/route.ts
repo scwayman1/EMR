@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
     const recentDispenses = await prisma.dispensaryDispense.findMany({
       where: {
-        status: "completed",
+        status: "complete",
         dispensedAt: { gte: yesterday }
       },
       take: 100
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       const eligibleEncounter = await prisma.encounter.findFirst({
         where: {
           patientId: dispense.patientId,
-          status: "completed",
+          status: "complete",
           // In reality, dates would need to match closely
         }
       });
