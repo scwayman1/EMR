@@ -233,6 +233,24 @@ model Membership {
   @@index([organizationId, role])
 }
 
+// EMR-727 / EMR-760 — Session kill-list (server-side session revocation).
+//
+// When an operator presses "emergency revoke" on a user, a row gets
+// stamped here with an `expiresAt` matching the longest legitimate
+// session TTL the platform allows. `src/lib/auth/session-kill-list.ts`
+// consults this on every session check; if a live (non-expired) row
+// exists for the user, the request is rejected with a forced sign-out.
+// The sweep cron reclaims expired tombstones.
+model SessionKillList {
+  userId       String   @id
+  revokedAt    DateTime
+  expiresAt    DateTime
+  reason       String
+  revokedById  String
+
+  @@index([expiresAt])
+}
+
 // --------------------------------------------------------------
 // Patient & Provider
 // --------------------------------------------------------------
