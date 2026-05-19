@@ -233,6 +233,38 @@ model Membership {
   @@index([organizationId, role])
 }
 
+// EMR-737 / EMR-760 — Cross-tenant anomaly detector framework.
+//
+// Detectors emit normalized findings (something exceeded a threshold,
+// something is missing, something looks suspicious) into this single
+// table. The framework deduplicates on (kind, idempotencyKey) so the
+// same detector re-emitting the same condition just bumps lastSeenAt
+// instead of piling up rows. `expiresAt` is honored by a sweep cron
+// that flips stale rows to resolved.
+//
+// Source: `src/lib/anomaly/framework.ts` reads/writes the model on
+// every detector tick.
+model Anomaly {
+  id              String    @id @default(cuid())
+  slug            String
+  kind            String
+  severity        String
+  practiceId      String?
+  message         String
+  deeplinkUrl     String?
+  context         Json
+  idempotencyKey  String
+  ttlSeconds      Int
+  firstSeenAt     DateTime
+  lastSeenAt      DateTime
+  expiresAt       DateTime
+  resolvedAt      DateTime?
+
+  @@unique([kind, idempotencyKey])
+  @@index([practiceId, lastSeenAt])
+  @@index([resolvedAt, expiresAt])
+}
+
 // EMR-727 / EMR-760 — Session kill-list (server-side session revocation).
 //
 // When an operator presses "emergency revoke" on a user, a row gets
