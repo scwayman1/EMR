@@ -1,6 +1,6 @@
-// EMR-143 — HIPAA-compliant Zoom meetings.
+// EMR-143 — HIPAA-compliant Beam telehealth meetings.
 //
-// Lists scheduled and recent Zoom telehealth visits and exposes a
+// Lists scheduled and recent Beam telehealth visits and exposes a
 // scheduling form. Each meeting is created with HIPAA-safe defaults
 // (E2EE, waiting room, no cloud recording) and the passcode is stored
 // encrypted at rest — only the host's view ever shows the plaintext.
@@ -20,13 +20,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { decryptMessageBodySafe } from "@/lib/communications/message-crypto";
-import { formatZoomMeetingId } from "@/lib/communications/zoom";
+import { formatBeamMeetingId } from "@/lib/communications/beam";
 import { formatRelative } from "@/lib/utils/format";
-import { ZoomScheduleForm } from "./schedule-form";
+import { BeamScheduleForm } from "./beam-schedule-form";
 
-export const metadata = { title: "Zoom telehealth" };
+export const metadata = { title: "Beam telehealth" };
 
-export default async function ZoomPage() {
+export default async function BeamPage() {
   const user = await requireUser();
   const orgId = user.organizationId;
   if (!orgId) {
@@ -93,7 +93,7 @@ export default async function ZoomPage() {
     <PageShell maxWidth="max-w-[1280px]">
       <PageHeader
         eyebrow="Communications"
-        title="Zoom telehealth"
+        title="Beam telehealth"
         description="HIPAA-compliant video visits. End-to-end encryption, waiting rooms, and disabled cloud recording are enforced on every meeting."
       />
 
@@ -103,12 +103,12 @@ export default async function ZoomPage() {
             <CardHeader>
               <CardTitle className="text-base">Schedule a visit</CardTitle>
               <CardDescription>
-                A Zoom meeting is created with HIPAA defaults; the passcode is
+                A Beam meeting is created with HIPAA defaults; the passcode is
                 stored encrypted at rest. Hosts get a one-click join link.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ZoomScheduleForm providerOptions={recipientOptions} />
+              <BeamScheduleForm providerOptions={recipientOptions} />
             </CardContent>
           </Card>
 
@@ -123,7 +123,7 @@ export default async function ZoomPage() {
               <p>· Passcode required, AES-256-GCM at rest</p>
               <p>· Join-before-host disabled, mute on entry on</p>
               <p className="pt-1 italic">
-                BAA must be on file with Zoom Healthcare for production use.
+                BAA must be on file with the telehealth provider for production use.
               </p>
             </CardContent>
           </Card>
@@ -140,7 +140,7 @@ export default async function ZoomPage() {
             <CardContent className="space-y-3">
               {upcoming.length === 0 ? (
                 <EmptyState
-                  title="No upcoming Zoom visits"
+                  title="No upcoming Beam visits"
                   description="Use the form to schedule one — patient or provider."
                 />
               ) : (
@@ -162,7 +162,7 @@ export default async function ZoomPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-text truncate">
-                            {call.zoomTopic ?? "Zoom visit"}
+                            {call.zoomTopic ?? "Beam visit"}
                           </p>
                           <p className="text-[11px] text-text-subtle mt-0.5">
                             {counterparty} ·{" "}
@@ -184,7 +184,7 @@ export default async function ZoomPage() {
                             Meeting ID:{" "}
                             <span className="tabular-nums">
                               {call.zoomMeetingId
-                                ? formatZoomMeetingId(call.zoomMeetingId)
+                                ? formatBeamMeetingId(call.zoomMeetingId)
                                 : "—"}
                             </span>
                             {passcode && (
@@ -195,7 +195,7 @@ export default async function ZoomPage() {
                             )}
                           </p>
                         </div>
-                        <Badge tone="success">HIPAA Zoom</Badge>
+                        <Badge tone="success">HIPAA Beam</Badge>
                       </div>
                       <div className="flex items-center gap-2 mt-3">
                         {call.zoomJoinUrl && (
@@ -231,13 +231,13 @@ export default async function ZoomPage() {
           <Card tone="raised">
             <CardHeader>
               <CardTitle className="text-base">Recent visits</CardTitle>
-              <CardDescription>Last 12 completed or past Zoom visits.</CardDescription>
+              <CardDescription>Last 12 completed or past Beam visits.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {recent.length === 0 ? (
                 <EmptyState
                   title="No past visits"
-                  description="Completed and missed Zoom visits will appear here."
+                  description="Completed and missed Beam visits will appear here."
                 />
               ) : (
                 recent.map((call) => {
@@ -253,7 +253,7 @@ export default async function ZoomPage() {
                     >
                       <div className="min-w-0">
                         <p className="text-sm text-text truncate">
-                          {call.zoomTopic ?? "Zoom visit"} · {counterparty}
+                          {call.zoomTopic ?? "Beam visit"} · {counterparty}
                         </p>
                         <p className="text-[11px] text-text-subtle">
                           {call.zoomScheduledAt

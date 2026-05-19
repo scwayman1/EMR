@@ -2525,9 +2525,9 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 161 | Merge Achievements + Lifestyle + Wearable Integration | High | backlog |
 | 162 | Rework My Story → Focus on Storybook | High | backlog |
 | 163 | Create "My Results" Patient Tab | High | backlog |
-| 164 | Imaging Access with Radiologist Report + Image Toggle | High | backlog |
+| 164 | Imaging Access with Radiologist Report + Image Toggle | High | **done** |
 | 165 | Doctor Sign-Off Workflow for Patient Results | High | backlog |
-| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | backlog |
+| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | **done** |
 | 167 | Full Offline + Airplane Mode Operation | High | aspirational |
 | 168 | International Access Regardless of Country | High | aspirational |
 | 169 | Full Dentistry Module | Normal | aspirational |
@@ -2539,12 +2539,12 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 175 | Military-Grade Cybersecurity + AI Self-Audit Suite | High | aspirational |
 | 176 | Make EMR Fun and Engaging for ALL Users | Normal | backlog |
 | 177 | Patient Chart Tab Ribbon — Two Rows, No Scroll | High | backlog |
-| 178 | Billing Tab → Redirect to Financial Cockpit | High | backlog |
+| 178 | Billing Tab → Redirect to Financial Cockpit | High | **done** |
 | 179 | Research Articles Hyperlinked + Open in New Tab | High | backlog |
 | 180 | Patient Chart Task List / To-Do on Open | High | backlog |
 | 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | backlog |
 | 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | backlog |
-| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | backlog |
+| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | **done** |
 | 184 | Patient Home Page: Next Appointment Card | High | **done** |
 | 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | backlog |
 | 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | backlog |

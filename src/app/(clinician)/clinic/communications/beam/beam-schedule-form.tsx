@@ -5,8 +5,8 @@ import { useRef, useState, useEffect } from "react";
 import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  scheduleZoomMeetingAction,
-  type ScheduleZoomResult,
+  scheduleBeamMeetingAction,
+  type ScheduleBeamResult,
 } from "./actions";
 
 interface ProviderOption {
@@ -15,13 +15,13 @@ interface ProviderOption {
   title: string | null;
 }
 
-export function ZoomScheduleForm({
+export function BeamScheduleForm({
   providerOptions,
 }: {
   providerOptions: ProviderOption[];
 }) {
-  const [state, formAction] = useFormState<ScheduleZoomResult | null, FormData>(
-    scheduleZoomMeetingAction,
+  const [state, formAction] = useFormState<ScheduleBeamResult | null, FormData>(
+    scheduleBeamMeetingAction,
     null,
   );
   const formRef = useRef<HTMLFormElement>(null);
@@ -34,9 +34,9 @@ export function ZoomScheduleForm({
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
       <div className="space-y-1">
-        <Label htmlFor="zoom-topic">Topic</Label>
+        <Label htmlFor="beam-topic">Topic</Label>
         <Input
-          id="zoom-topic"
+          id="beam-topic"
           name="topic"
           required
           maxLength={200}
@@ -46,18 +46,18 @@ export function ZoomScheduleForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <Label htmlFor="zoom-when">Start time</Label>
+          <Label htmlFor="beam-when">Start time</Label>
           <Input
-            id="zoom-when"
+            id="beam-when"
             name="scheduledFor"
             type="datetime-local"
             required
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="zoom-duration">Duration (minutes)</Label>
+          <Label htmlFor="beam-duration">Duration (minutes)</Label>
           <Input
-            id="zoom-duration"
+            id="beam-duration"
             name="durationMinutes"
             type="number"
             min={15}
@@ -98,9 +98,9 @@ export function ZoomScheduleForm({
 
       {target === "patient" ? (
         <div className="space-y-1">
-          <Label htmlFor="zoom-patient">Patient ID</Label>
+          <Label htmlFor="beam-patient">Patient ID</Label>
           <Input
-            id="zoom-patient"
+            id="beam-patient"
             name="patientId"
             placeholder="Patient ID"
             required
@@ -108,9 +108,9 @@ export function ZoomScheduleForm({
         </div>
       ) : (
         <div className="space-y-1">
-          <Label htmlFor="zoom-provider">Provider</Label>
+          <Label htmlFor="beam-provider">Provider</Label>
           <select
-            id="zoom-provider"
+            id="beam-provider"
             name="providerUserId"
             required
             className="h-9 px-3 text-sm rounded-md border border-border-strong bg-surface w-full"
@@ -132,12 +132,12 @@ export function ZoomScheduleForm({
       {state?.ok && (
         <p className="text-xs text-success">
           Meeting scheduled.
-          {state.mode === "dev-shim" && " (dev shim — no Zoom API call)"}
+          {state.mode === "dev-shim" && " (dev shim — no Beam API call)"}
         </p>
       )}
 
       <div className="flex justify-end">
-        <Button type="submit">Schedule HIPAA Zoom</Button>
+        <Button type="submit">Schedule HIPAA Beam</Button>
       </div>
     </form>
   );
