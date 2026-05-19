@@ -215,11 +215,16 @@ model User {
 }
 
 model Membership {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   userId         String
   organizationId String
   role           Role
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
+  // EMR-441 / EMR-760 — super-admin MFA grace window. Stamped on first
+  // sign-in without MFA enrolled; cleared once enrollment completes.
+  // `src/lib/auth/super-admin-mfa.ts` reads/writes this on every
+  // super-admin session check.
+  mfaGraceUntil  DateTime?
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
