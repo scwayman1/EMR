@@ -50,9 +50,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "ABNORMAL_RADIOLOGY_REPORT_RECEIVED",
-          entity: "Document",
-          entityId: report.id,
-          details: { patientId, accessionNumber }
+          subjectType: "Document",
+          subjectId: report.id,
+          metadata: { patientId, accessionNumber }
         }
       });
     } else {

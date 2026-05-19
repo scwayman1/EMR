@@ -50,9 +50,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: encounter.organizationId,
         action: "NO_SHOW_TELEHEALTH_CONVERSION_SMS_SENT",
-        entity: "Encounter",
-        entityId: encounterId,
-        details: { message: smsMessage }
+        subjectType: "Encounter",
+        subjectId: encounterId,
+        metadata: { message: smsMessage }
       }
     });
 

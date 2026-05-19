@@ -49,9 +49,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "PHARMACY_DEPRESCRIBING_CONSULT_REQUIRED",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { reason: "Polypharmacy Risk", activeMedCount }
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { reason: "Polypharmacy Risk", activeMedCount }
           }
         });
 

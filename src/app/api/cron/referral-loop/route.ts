@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: referral.organizationId,
           action: "REFERRAL_LOOP_REMINDER_FAXED",
-          entity: "Document",
-          entityId: referral.id,
-          details: { specialistFax, daysPending: 30 }
+          subjectType: "Document",
+          subjectId: referral.id,
+          metadata: { specialistFax, daysPending: 30 }
         }
       });
 

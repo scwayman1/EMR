@@ -56,9 +56,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "RAPID_RESPONSE_SEPSIS_ALERT",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { sirsPoints, protocolsInitiated: ["Lactate", "Blood Cultures", "Broad-spectrum IV ABX"] }
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { sirsPoints, protocolsInitiated: ["Lactate", "Blood Cultures", "Broad-spectrum IV ABX"] }
           }
         });
 

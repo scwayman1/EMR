@@ -50,9 +50,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "DISCHARGE_MED_RECONCILIATION_DRAFTED",
-        entity: "Encounter",
-        entityId: encounterId,
-        details: { 
+        subjectType: "Encounter",
+        subjectId: encounterId,
+        metadata: { 
           duplicationsFlagged: duplications, 
           recommendations,
           status: "Pending Attending Signature"

@@ -49,9 +49,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: encounter.organizationId,
             action: "NO_SHOW_FEE_PROCESSED",
-            entity: "Patient",
-            entityId: encounter.patientId,
-            details: { encounterId: encounter.id, amountCents: feeAmountCents, status: "paid" }
+            subjectType: "Patient",
+            subjectId: encounter.patientId,
+            metadata: { encounterId: encounter.id, amountCents: feeAmountCents, status: "paid" }
           }
         });
 

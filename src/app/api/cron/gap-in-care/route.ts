@@ -50,9 +50,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "CLINICAL_ORDER_DRAFTED",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { 
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { 
               orderType: "Screening Mammography Bilateral", 
               reason: "HEDIS Gap Closure",
               requiresProviderSignature: true

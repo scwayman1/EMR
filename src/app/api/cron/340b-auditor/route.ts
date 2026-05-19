@@ -63,9 +63,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: dispense.organizationId,
             action: "HRSA_340B_COMPLIANCE_VIOLATION",
-            entity: "Dispense",
-            entityId: dispense.id,
-            details: { reason: "No qualifying provider encounter found for dispensed drug" }
+            subjectType: "Dispense",
+            subjectId: dispense.id,
+            metadata: { reason: "No qualifying provider encounter found for dispensed drug" }
           }
         });
 

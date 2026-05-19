@@ -52,9 +52,9 @@ export async function POST(req: Request) {
             data: {
               organizationId: claim.organizationId,
               action: "NO_SURPRISES_ACT_ADJUSTMENT",
-              entity: "Claim",
-              entityId: claim.id,
-              details: { writeOffAmountCents: writeOffAmount, finalPatientBalance: inNetworkCopay }
+              subjectType: "Claim",
+              subjectId: claim.id,
+              metadata: { writeOffAmountCents: writeOffAmount, finalPatientBalance: inNetworkCopay }
             }
           });
 

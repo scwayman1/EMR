@@ -43,9 +43,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "ASTHMA_RESCUE_OVERUSE_ALERT",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             reason: `Patient used rescue inhaler ${puffs24h} times in 24h`,
             recommendedAction: "Evaluate for ICS steroid step-up" 
           }

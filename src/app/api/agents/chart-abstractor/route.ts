@@ -60,9 +60,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "CHART_ABSTRACTION_RECONCILIATION_QUEUED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { documentId, extractedData, status: "Pending Provider Approval" }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { documentId, extractedData, status: "Pending Provider Approval" }
         }
       });
     }

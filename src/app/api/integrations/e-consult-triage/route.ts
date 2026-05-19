@@ -51,9 +51,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "E_CONSULT_RECEIVED",
-        entity: "Patient",
-        entityId: patientId,
-        details: { complexity: isComplex ? "High" : "Low", assignedTo: routedTo }
+        subjectType: "Patient",
+        subjectId: patientId,
+        metadata: { complexity: isComplex ? "High" : "Low", assignedTo: routedTo }
       }
     });
 

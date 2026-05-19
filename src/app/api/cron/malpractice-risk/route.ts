@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: "DEFAULT",
           action: "SENTINEL_EVENT_CHART_LOCKED",
-          entity: "Encounter",
-          entityId: event.encounterId,
-          details: { 
+          subjectType: "Encounter",
+          subjectId: event.encounterId,
+          metadata: { 
             reason: event.reason, 
             action: "Chart locked to preserve legal integrity. Risk Management paged." 
           }

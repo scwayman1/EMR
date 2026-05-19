@@ -60,9 +60,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: patient.organizationId,
           action: "CTMS_SUBJECT_ENROLLED",
-          entity: "Patient",
-          entityId: patient.id,
-          details: { protocol: payload.trialProtocolId, subjectId: ctmsPayload.subjectId }
+          subjectType: "Patient",
+          subjectId: patient.id,
+          metadata: { protocol: payload.trialProtocolId, subjectId: ctmsPayload.subjectId }
         }
       });
     }

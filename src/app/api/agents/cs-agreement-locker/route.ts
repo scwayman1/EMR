@@ -57,9 +57,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "CONTROLLED_SUBSTANCE_RX_BLOCKED",
-          entity: "Patient",
-          entityId: payload.patientId,
-          details: { providerId: payload.providerId, reason: blockReason }
+          subjectType: "Patient",
+          subjectId: payload.patientId,
+          metadata: { providerId: payload.providerId, reason: blockReason }
         }
       });
 

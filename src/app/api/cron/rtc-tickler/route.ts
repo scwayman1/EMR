@@ -50,9 +50,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: encounter.organizationId,
             action: "RTC_FOLLOWUP_INVITE_SENT",
-            entity: "Patient",
-            entityId: encounter.patientId,
-            details: { message }
+            subjectType: "Patient",
+            subjectId: encounter.patientId,
+            metadata: { message }
           }
         });
 

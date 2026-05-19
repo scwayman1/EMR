@@ -58,9 +58,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: claim.organizationId,
             action: "ACCOUNT_SENT_TO_COLLECTIONS",
-            entity: "Claim",
-            entityId: claim.id,
-            details: { amountCents: claim.billedAmountCents, agency: "Third_Party_Agency" }
+            subjectType: "Claim",
+            subjectId: claim.id,
+            metadata: { amountCents: claim.billedAmountCents, agency: "Third_Party_Agency" }
           }
         });
 

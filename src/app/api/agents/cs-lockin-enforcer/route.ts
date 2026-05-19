@@ -61,9 +61,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: payload.organizationId || "DEFAULT",
             action: "CS_LOCKIN_PRESCRIPTION_BLOCKED",
-            entity: "Patient",
-            entityId: patientId,
-            details: { reason, providerId, pharmacyNCPDP }
+            subjectType: "Patient",
+            subjectId: patientId,
+            metadata: { reason, providerId, pharmacyNCPDP }
           }
         });
 

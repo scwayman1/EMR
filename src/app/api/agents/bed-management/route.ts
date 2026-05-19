@@ -38,9 +38,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "EVS_CLEANING_REQUIRED",
-          entity: "Room",
-          entityId: roomNumber,
-          details: { patientId, priority: "high" }
+          subjectType: "Room",
+          subjectId: roomNumber,
+          metadata: { patientId, priority: "high" }
         }
       });
 

@@ -56,9 +56,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "CRITICAL_LAB_CASCADE_CALL_INITIATED",
-          entity: "LabResult",
-          entityId: labResultId,
-          details: { 
+          subjectType: "LabResult",
+          subjectId: labResultId,
+          metadata: { 
             test: labTestName, 
             value: resultValue, 
             cascade: cascadeSequence.map(c => c.role) 

@@ -46,9 +46,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "DME_NON_COMPLIANCE_ALERT",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { 
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { 
               device: "CPAP", 
               averageNightlyHours, 
               issue: "Risk of Medicare DME billing clawback. Dispatch RT to assist patient." 

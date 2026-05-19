@@ -53,9 +53,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: claim.organizationId,
         action: "APPEAL_LETTER_GENERATED",
-        entity: "Claim",
-        entityId: claim.id,
-        details: { carcCode: payload.carcCode, draftText: draftAppealText }
+        subjectType: "Claim",
+        subjectId: claim.id,
+        metadata: { carcCode: payload.carcCode, draftText: draftAppealText }
       }
     });
 

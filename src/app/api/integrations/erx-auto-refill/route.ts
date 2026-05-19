@@ -69,9 +69,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "REFILL_REQUEST_PENDING_REVIEW",
-          entity: "Patient",
-          entityId: payload.patientId,
-          details: { medication: payload.medicationName, reason }
+          subjectType: "Patient",
+          subjectId: payload.patientId,
+          metadata: { medication: payload.medicationName, reason }
         }
       });
     }

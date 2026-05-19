@@ -41,9 +41,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "CODE_BLUE_FLOWSHEET_ENTRY",
-        entity: "Encounter",
-        entityId: encounterId,
-        details: { event: codeEvent, time: eventTime.toISOString() }
+        subjectType: "Encounter",
+        subjectId: encounterId,
+        metadata: { event: codeEvent, time: eventTime.toISOString() }
       }
     });
 

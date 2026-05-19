@@ -51,9 +51,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: item.organizationId,
             action: "PURCHASE_ORDER_SUBMITTED",
-            entity: "Product",
-            entityId: item.id,
-            details: { poNumber, quantityToOrder, status: "pending_shipment" }
+            subjectType: "Product",
+            subjectId: item.id,
+            metadata: { poNumber, quantityToOrder, status: "pending_shipment" }
           }
         });
 

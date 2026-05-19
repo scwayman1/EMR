@@ -41,9 +41,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "TUMOR_BOARD_CASE_QUEUED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { reason: "New Malignant Pathology Detected", reportId }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { reason: "New Malignant Pathology Detected", reportId }
         }
       });
 

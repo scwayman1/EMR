@@ -50,9 +50,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: encounter.organizationId,
             action: "MIPS_MEASURE_FAILED",
-            entity: "Encounter",
-            entityId: encounter.id,
-            details: { reason: "Missing PHQ-9 Depression Screen or BP > 140/90" }
+            subjectType: "Encounter",
+            subjectId: encounter.id,
+            metadata: { reason: "Missing PHQ-9 Depression Screen or BP > 140/90" }
           }
         });
       }

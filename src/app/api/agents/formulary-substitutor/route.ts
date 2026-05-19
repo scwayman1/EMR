@@ -54,9 +54,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "INPATIENT_FORMULARY_SUBSTITUTION",
-          entity: "Patient", // Should be MedicationOrder in full schema
-          entityId: patientId,
-          details: { original: medicationOrder, substituted: substitutedDrug, reason: "P&T Committee Therapeutic Interchange Protocol" }
+          subjectType: "Patient", // Should be MedicationOrder in full schema
+          subjectId: patientId,
+          metadata: { original: medicationOrder, substituted: substitutedDrug, reason: "P&T Committee Therapeutic Interchange Protocol" }
         }
       });
 

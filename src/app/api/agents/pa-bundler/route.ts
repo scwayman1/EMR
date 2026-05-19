@@ -63,9 +63,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "PRIOR_AUTH_BUNDLE_GENERATED",
-        entity: "PriorAuthorization",
-        entityId: paRequestId,
-        details: { bundleId: bundleReferenceId, documentsIncluded: documentIds.length }
+        subjectType: "PriorAuthorization",
+        subjectId: paRequestId,
+        metadata: { bundleId: bundleReferenceId, documentsIncluded: documentIds.length }
       }
     });
 

@@ -47,9 +47,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "PATIENT_WAIT_TIME_SLA_BREACH",
-          entity: "Patient",
-          entityId: patientId || badgeId,
-          details: { location: locationId, waitTime: dwellTimeMinutes, actionRequired: "Check on Patient" }
+          subjectType: "Patient",
+          subjectId: patientId || badgeId,
+          metadata: { location: locationId, waitTime: dwellTimeMinutes, actionRequired: "Check on Patient" }
         }
       });
 

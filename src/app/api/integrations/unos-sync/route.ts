@@ -46,9 +46,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "UNOS_WAITLIST_STATUS_DOWNGRADED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { organ: organType, newStatus: unosStatus, reason: changeReason, actionTaken: "Transplant Coordinator Alerted" }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { organ: organType, newStatus: unosStatus, reason: changeReason, actionTaken: "Transplant Coordinator Alerted" }
         }
       });
     }

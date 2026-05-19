@@ -58,9 +58,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: "DEFAULT",
             action: "STATE_PDMP_DAILY_REPORT_TRANSMITTED",
-            entity: "Organization",
-            entityId: "DEFAULT",
-            details: { recordsReported: pdmpPayloads.length, status: "Accepted by State Gateway" }
+            subjectType: "Organization",
+            subjectId: "DEFAULT",
+            metadata: { recordsReported: pdmpPayloads.length, status: "Accepted by State Gateway" }
           }
         });
 

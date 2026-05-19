@@ -36,9 +36,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "NEWBORN_HEARING_SCREEN_LOGGED",
-        entity: "Patient",
-        entityId: patientId,
-        details: { result: hearingResult, testMethod: testMethod || "OAE" }
+        subjectType: "Patient",
+        subjectId: patientId,
+        metadata: { result: hearingResult, testMethod: testMethod || "OAE" }
       }
     });
 
@@ -50,9 +50,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "STATE_EHDI_REGISTRY_SYNCED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { status: "Transmitted to Department of Health" }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { status: "Transmitted to Department of Health" }
         }
       });
     }

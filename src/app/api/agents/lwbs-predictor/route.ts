@@ -53,9 +53,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "ED_LWBS_INTERVENTION_ALERT",
-            entity: "Encounter",
-            entityId: patient.id,
-            details: { 
+            subjectType: "Encounter",
+            subjectId: patient.id,
+            metadata: { 
               waitTimeMinutes, 
               esiLevel, 
               action: "Patient at extreme risk of elopement. Initiate comfort rounding or fast-track rooming." 
