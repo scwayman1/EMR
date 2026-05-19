@@ -114,6 +114,7 @@ export default async function AuditLogPage({
       id: r.id,
       at: r.at,
       atRelative: relativeTime(r.at),
+      detailHref: `/admin/audit/${encodeURIComponent(r.id)}`,
       actorLabel: r.actorEmail ?? r.actorUserId,
       actorHref: `/admin/console/users/${encodeURIComponent(r.actorUserId)}`,
       action: r.action,
