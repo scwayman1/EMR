@@ -70,3 +70,11 @@ jobs:
             --include="*.ts" --include="*.tsx" 2>/dev/null | wc -l | tr -d ' ')
           echo "TypeScript \`any\` count: $count (target: <100; see EMR-763)"
           echo "any_count=$count" >> $GITHUB_OUTPUT
+
+      # Audit-log coverage on mutating API routes (EMR-779 #20). Today's
+      # baseline: ~76/86 mutation routes are missing `auditLog.create`.
+      # The step is informational so the count is visible on every PR;
+      # flip to `--strict` once the backlog is closed.
+      - name: audit-log coverage (informational)
+        if: always()
+        run: npm run lint:audit
