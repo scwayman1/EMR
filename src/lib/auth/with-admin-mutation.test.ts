@@ -9,6 +9,10 @@ import { vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+vi.mock("./impersonation", () => ({
+  readImpersonationFromCookies: () => Promise.resolve(null),
+}));
+
 vi.mock("./session", () => ({
   requireUser: vi.fn(),
 }));
@@ -23,6 +27,15 @@ vi.mock("./audit-stub", () => ({
 
 vi.mock("./rate-limit", () => ({
   adminMutationLimiter: { check: vi.fn().mockReturnValue({ allowed: true, resetAt: Date.now() + 60_000 }) },
+}));
+
+vi.mock("./session-kill-list", () => ({
+  isUserRevoked: () => Promise.resolve(false),
+}));
+
+vi.mock("./super-admin-mfa", () => ({
+  loadSuperAdminMfaState: () => Promise.resolve({ status: "enrolled" }),
+  buildMfaRequiredResponse: () => new Response(null, { status: 403 }),
 }));
 
 vi.mock("@/lib/observability/log", () => ({
