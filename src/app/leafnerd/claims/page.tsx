@@ -1,9 +1,11 @@
-import { requireUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import Link from "next/link";
 
 export default async function ClaimsAnomalyPage() {
-  await requireUser();
+  const user = await getCurrentUser();
+  if (!user) redirect("/sign-in");
   
   const anomalies = await prisma.claimScrubResult.findMany({
     where: { status: { in: ['warnings', 'blocked'] } },

@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth/session";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { OutcomeVelocityChart } from "@/components/leafnerd/OutcomeVelocityChart";
 import Link from "next/link";
 
 export default async function LeafNerdDashboard() {
   // 1. Auth check
-  const user = await requireUser();
+  const user = await getCurrentUser();
+  if (!user) redirect("/sign-in");
   
   // 2. Permission gate
   // Fetch memberships to see if they have the 'leafnerd' role we just added to the DB.

@@ -159,7 +159,7 @@ function discoverManifestSources(): Array<{ key: string; raw: unknown }> {
 
     const here = typeof __dirname === "string" ? __dirname : process.cwd();
     const manifestDir = path.join(here, "manifests");
-    const requireFn = createRequire(path.join(here, "registry.ts"));
+    const requireFn = (id: string) => require(/* webpackIgnore: true */ id);
 
     const collect = (dir: string, prefix: string) => {
       let entries: string[];
