@@ -19,6 +19,7 @@
 
 import "server-only";
 
+import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/observability/log";
 
 // ---------------------------------------------------------------------------
@@ -109,14 +110,41 @@ async function resolveModel(args: BrokerInvokeArgs): Promise<string> {
 /**
  * Check whether the practice's AI usage is currently throttled. Returns
  * `null` when allowed, or the structured throttle response when blocked.
+ *
+ * Reads PracticeSubscription.throttled, which is reconciled by
+ * cost-guardrails.reconcileThrottleState() on a cron + can be flipped
+ * manually via the override action.
  */
 async function checkThrottle(
-  _practiceId: string,
+  practiceId: string,
 ): Promise<Extract<BrokerResult, { ok: false }> | null> {
-  // TODO(EMR-756): wire PracticeAiConfig.throttled here. Today every
-  // practice is treated as allowed — the only short-circuit is missing
-  // API key, handled below.
-  return null;
+  const delegate = (prisma as unknown as Record<string, unknown>)[
+    "practiceSubscription"
+  ] as
+    | undefined
+    | {
+        findUnique: (args: {
+          where: { organizationId: string };
+          select: { throttled: true };
+        }) => Promise<{ throttled: boolean } | null>;
+      };
+  if (!delegate) return null;
+
+  const sub = await delegate
+    .findUnique({
+      where: { organizationId: practiceId },
+      select: { throttled: true },
+    })
+    .catch(() => null);
+
+  if (!sub || !sub.throttled) return null;
+  return {
+    ok: false,
+    code: "throttled",
+    message:
+      "AI usage is currently throttled for this practice — token cap exceeded.",
+    retryAfterSeconds: 300,
+  };
 }
 
 /**
