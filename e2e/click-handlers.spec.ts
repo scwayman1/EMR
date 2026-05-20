@@ -154,6 +154,7 @@ async function probeElements(page: Page): Promise<ElementProbe[]> {
       document.querySelectorAll(sel).forEach((el) => {
         if (!(el instanceof HTMLElement)) return;
         if (seen.has(el)) return;
+        if (el.classList.contains("sr-only")) return;
         // Skip elements hidden via CSS — Playwright can't click them
         // anyway and findings would be misleading.
         const rect = el.getBoundingClientRect();

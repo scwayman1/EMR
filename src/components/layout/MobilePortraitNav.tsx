@@ -147,7 +147,7 @@ export function MobilePortraitNav({
           >
             <ul className="grid grid-cols-4 gap-2">
               {g.tabs.map((t) => (
-                <li key={t.href}>
+                <li key={t.label}>
                   <Link
                     href={t.href}
                     className="flex flex-col items-center justify-center gap-1 rounded-xl bg-surface border border-border/60 px-2 py-3 hover:bg-surface-muted hover:border-accent/40 transition-all"
