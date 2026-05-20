@@ -36,6 +36,7 @@ enum Role {
   implementation_admin
   super_admin
   system
+  leafnerd
 }
 
 model Organization {
