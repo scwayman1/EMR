@@ -1,19 +1,14 @@
-import { redirect } from "next/navigation";
-
-// EMR-708 — disposition: merge into /clinic/messages?filter=brief.
+// EMR-708 — /clinic/morning-brief is folded into /clinic/messages as the
+// `brief` category. We keep this route alive as a permanent redirect so
+// existing bookmarks, agent links, and shortcut surfaces keep working.
 //
 // The morning-brief content (unsigned notes, no-shows, unanswered messages,
 // incomplete intake, worsening patients, high-risk appointments) is being
 // folded into the Smart Inbox as a new "brief" category. The standalone
 // page is replaced by a redirect so inbound bookmarks, agent outputs, and
 // any link in historical notes still land somewhere useful.
-//
-// The actual migration of brief items into MessageThread rows is tracked in
-// a follow-up ticket; this redirect ships the disposition decision today
-// per the EMR-708 acceptance.
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Morning Brief" };
-
-export default function MorningBriefPage() {
+export default function MorningBriefRedirectPage(): never {
   redirect("/clinic/messages?filter=brief");
 }
