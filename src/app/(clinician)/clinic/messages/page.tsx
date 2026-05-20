@@ -16,7 +16,10 @@ export const metadata = { title: "Smart Inbox" };
 export default async function ClinicMessagesPage({
   searchParams,
 }: {
-  searchParams?: { thread?: string };
+  // EMR-708 — `filter=brief` is the inbound filter from the redirected
+  // /clinic/morning-brief route. The inbox shows a Brief banner + scopes
+  // the list to brief-flagged threads.
+  searchParams?: { thread?: string; filter?: string };
 }) {
   const user = await requireUser();
 
@@ -138,6 +141,7 @@ export default async function ClinicMessagesPage({
         threadMessages={threadMessages}
         currentUserId={user.id}
         initialThreadId={searchParams?.thread}
+        initialFilter={searchParams?.filter}
       />
     </PageShell>
   );
