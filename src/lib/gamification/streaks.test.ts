@@ -1,7 +1,98 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import { recordDailyCheckIn, applyFreezeToken } from "./streaks";
 import { prisma } from "@/lib/db/prisma";
 import { randomUUID } from "crypto";
+
+const dailyCheckInStreakStore = new Map<string, any>();
+const freezeTokenStore = new Map<string, any>();
+
+vi.mock("@/lib/db/prisma", () => {
+  const dailyCheckInStreakStore = new Map<string, any>();
+  const freezeTokenStore = new Map<string, any>();
+
+  return {
+    prisma: {
+      dailyCheckInStreak: {
+        findUnique: vi.fn(async ({ where: { patientId } }) => {
+          return dailyCheckInStreakStore.get(patientId) || null;
+        }),
+        create: vi.fn(async ({ data }) => {
+          dailyCheckInStreakStore.set(data.patientId, { ...data });
+          return data;
+        }),
+        update: vi.fn(async ({ where: { patientId }, data }) => {
+          const prev = dailyCheckInStreakStore.get(patientId) || {};
+          const updated = { ...prev, ...data };
+          dailyCheckInStreakStore.set(patientId, updated);
+          return updated;
+        }),
+        deleteMany: vi.fn(async () => {
+          dailyCheckInStreakStore.clear();
+        }),
+      },
+      freezeToken: {
+        count: vi.fn(async ({ where: { patientId, isUsed } }) => {
+          let count = 0;
+          for (const token of freezeTokenStore.values()) {
+            if (token.patientId === patientId && token.isUsed === isUsed) {
+              count++;
+            }
+          }
+          return count;
+        }),
+        findFirst: vi.fn(async ({ where: { patientId, isUsed } }) => {
+          for (const token of freezeTokenStore.values()) {
+            if (token.patientId === patientId && token.isUsed === isUsed) {
+              return token;
+            }
+          }
+          return null;
+        }),
+        create: vi.fn(async ({ data }) => {
+          const id = `token-${Math.random()}`;
+          const token = { id, isUsed: false, ...data, createdAt: new Date() };
+          freezeTokenStore.set(id, token);
+          return token;
+        }),
+        update: vi.fn(async ({ where: { id }, data }) => {
+          const prev = freezeTokenStore.get(id) || {};
+          const updated = { ...prev, ...data };
+          freezeTokenStore.set(id, updated);
+          return updated;
+        }),
+        deleteMany: vi.fn(async () => {
+          freezeTokenStore.clear();
+        }),
+      },
+      organization: {
+        create: vi.fn(async ({ data }) => data),
+        delete: vi.fn(async () => {}),
+      },
+      patient: {
+        create: vi.fn(async ({ data }) => data),
+        delete: vi.fn(async () => {}),
+        findUnique: vi.fn(async ({ where: { id } }) => ({
+          id,
+          organizationId: "org-123",
+          firstName: "Test",
+          lastName: "Patient",
+          dailyStreak: dailyCheckInStreakStore.get(id) || null,
+          patientBadges: [],
+        })),
+      },
+      badge: {
+        findMany: vi.fn(async () => []),
+        createMany: vi.fn(async () => {}),
+      },
+      patientBadge: {
+        create: vi.fn(async ({ data }) => data),
+      },
+      $transaction: vi.fn(async (promises) => {
+        return Promise.all(promises);
+      }),
+    },
+  };
+});
 
 describe("Daily Streaks & Freeze Tokens", () => {
   const orgId = `test-org-${randomUUID()}`;
