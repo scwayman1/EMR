@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { OutcomeVelocityChart } from "@/components/leafnerd/OutcomeVelocityChart";
+import { InsightChat } from "@/components/leafnerd/InsightChat";
 import Link from "next/link";
 
 export default async function LeafNerdDashboard() {
@@ -49,29 +50,10 @@ export default async function LeafNerdDashboard() {
           </div>
         </div>
 
-        {/* AI Assistant Overlay Placeholder */}
-        <div className="bg-bg-surface border border-border/10 rounded-2xl p-6 h-[400px] flex flex-col relative overflow-hidden group hover:border-accent-strong/30 transition-colors shadow-sm">
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-accent-strong/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-          <div className="flex items-center space-x-3 mb-4 relative z-10">
-            <div className="w-10 h-10 rounded-xl bg-accent-strong flex items-center justify-center shadow-lg shadow-accent-strong/20">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-bg"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-text-strong">Insight Assistant</h3>
-              <p className="text-xs text-accent-strong font-semibold">Active</p>
-            </div>
-          </div>
-          
-          <div className="flex-1 flex flex-col justify-end space-y-4 relative z-10 mt-auto">
-            <div className="bg-bg p-4 rounded-2xl rounded-tl-sm border border-border/10 text-sm text-text-strong shadow-sm leading-relaxed">
-              I noticed a <span className="text-accent-strong font-bold">14% anomaly</span> in dosing efficacy for Cohort A today. Specifically, patients on SSRIs are reporting diminished effects. Would you like me to extrapolate the root cause?
-            </div>
-            <button className="w-full py-3.5 bg-accent-strong text-bg rounded-xl font-bold text-sm shadow-md hover:shadow-lg hover:bg-accent-strong/90 hover:-translate-y-0.5 transition-all">
-              Dive Deeper
-            </button>
-          </div>
-        </div>
+        {/* AI Assistant Overlay */}
+        <InsightChat />
       </div>
+
       
       {/* Secondary Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

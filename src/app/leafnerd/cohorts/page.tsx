@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
+import { CohortSimulator } from "@/components/leafnerd/CohortSimulator";
 import Link from "next/link";
 
 export default async function CohortsPage() {
@@ -29,16 +30,8 @@ export default async function CohortsPage() {
         ))}
       </div>
 
-      <div className="bg-bg-surface border border-border/10 rounded-2xl p-16 text-center shadow-sm relative overflow-hidden group">
-        <div className="absolute inset-0 bg-gradient-to-r from-accent-strong/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-        <div className="w-20 h-20 rounded-full bg-accent-strong/10 border border-accent-strong/20 flex items-center justify-center mx-auto mb-6 shadow-inner relative z-10">
-          <span className="text-3xl animate-bounce">🧬</span>
-        </div>
-        <h3 className="text-2xl font-bold text-text-strong relative z-10">Simulation Engine Ready</h3>
-        <p className="text-text-muted mt-4 max-w-lg mx-auto leading-relaxed relative z-10">
-          The Monte Carlo simulation engine has loaded the demographic vectors. Select a cohort segment above to begin running hypothetical dosing regimens against historical baselines.
-        </p>
-      </div>
+      <CohortSimulator statusCounts={statusCounts} />
     </div>
   );
 }
+

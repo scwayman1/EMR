@@ -25,6 +25,13 @@ vi.mock("./super-admin-bootstrap", () => ({
   bootstrapSuperAdminIfAllowlisted: vi.fn(),
 }));
 
+vi.mock("./super-admin-mfa", () => ({
+  loadSuperAdminMfaState: async () => ({ status: "enrolled" }),
+  buildMfaRequiredResponse: () => new Response(JSON.stringify({}), { status: 403 }),
+}));
+
+
+
 vi.mock("@/lib/observability/log", () => ({
   logger: {
     debug: vi.fn(),
