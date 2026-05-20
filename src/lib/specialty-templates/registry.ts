@@ -41,6 +41,7 @@
 
 import {
   validateManifest,
+  type AgentDescriptor,
   type SpecialtyManifest,
 } from "@/lib/specialty-templates/manifest-schema";
 
@@ -386,6 +387,45 @@ export function applyTemplateDefaults(
  */
 export function __reloadForTests(): void {
   loadManifests();
+}
+
+/**
+ * EMR-778 — Effective agent set for a practice.
+ *
+ * Merges the Specialty Template's `agents[]` default with the practice's
+ * `agent_enable_overrides`, then drops every modality-gated agent whose
+ * modality is not in `enabledModalities`.
+ *
+ * Mirror semantics: identical to the upstream `<ModalityGate>` rule from
+ * EMR-411. An agent with `modality: "cannabis-medicine"` is hidden for any
+ * practice that has not enabled the `cannabis-medicine` modality, even if
+ * the practice explicitly overrides the agent to `enabled`.
+ *
+ * Pure function — keeps the modality lookup at the caller so this stays
+ * trivially testable.
+ */
+export function resolveEffectiveAgents(input: {
+  slug: string;
+  version?: string;
+  enabledModalities: ReadonlySet<string> | readonly string[];
+  practiceOverrides?: Record<string, "enabled" | "disabled"> | undefined;
+}): AgentDescriptor[] {
+  const manifest = getSpecialtyTemplate(input.slug, input.version);
+  if (!manifest?.agents || manifest.agents.length === 0) return [];
+
+  const enabled =
+    input.enabledModalities instanceof Set
+      ? (input.enabledModalities as ReadonlySet<string>)
+      : new Set(input.enabledModalities as readonly string[]);
+  const overrides = input.practiceOverrides ?? {};
+
+  return manifest.agents.filter((agent) => {
+    const override = overrides[agent.id];
+    if (override === "disabled") return false;
+    // Modality gate ALWAYS wins, even against explicit `enabled` override.
+    if (agent.modality && !enabled.has(agent.modality)) return false;
+    return true;
+  });
 }
 
 /**
