@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db/prisma";
 
 export default async function LeafNerdDashboard() {
   // 1. Auth check
@@ -14,7 +14,7 @@ export default async function LeafNerdDashboard() {
   
   // Temporarily bypass the redirect in local dev if they don't have it yet, 
   // but in prod this would enforce the gate:
-  const hasAccess = memberships.some(m => m.role === 'leafnerd' || m.role === 'super_admin');
+  const hasAccess = memberships.some((m: { role: string }) => m.role === 'leafnerd' || m.role === 'super_admin');
   
   // if (!hasAccess) {
   //   redirect("/upgrade-leafnerd"); // Or to an access denied page

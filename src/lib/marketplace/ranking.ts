@@ -45,11 +45,6 @@ const METRIC_TO_TARGETS: Record<
   energy: { direction: "low-bad", labels: ["Energy", "Focus"] },
   appetite: { direction: "low-bad", labels: ["Appetite"] },
   adherence: { direction: "low-bad", labels: [] },
-  // EMR-760 — wearable-derived metrics. No marketplace labels yet (we
-  // don't rank products by step-count or heart-rate trends), but the
-  // OutcomeMetric enum requires every key to be present.
-  steps: { direction: "low-bad", labels: [] },
-  heart_rate: { direction: "high-bad", labels: [] },
 };
 
 export interface RankedProduct {
