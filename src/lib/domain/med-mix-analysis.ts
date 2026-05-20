@@ -1,6 +1,8 @@
 // EMR-757 — Bolster Med Mix analysis with OTC, physical exam, and
 // history sources.
 //
+// SAFE: dead-export-allowed reason="Clinical helper function for Med Mix analysis (will be imported by upcoming pages)"
+//
 // The legacy Drug Interaction Checker (src/lib/domain/drug-interactions.ts)
 // looks at prescription medications + cannabinoids only. The Med Mix
 // surface needs richer signal:
