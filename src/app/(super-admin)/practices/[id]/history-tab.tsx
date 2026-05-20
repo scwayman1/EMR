@@ -22,6 +22,7 @@ import {
   type PracticeHistoryRow,
 } from "../loaders";
 import { humanizeAction, summarizeChange } from "./history-humanize";
+import { RollbackButton } from "./rollback-button";
 
 const ROLE_TONE: Record<string, "accent" | "info" | "neutral" | "warning"> = {
   super_admin: "accent",
@@ -62,12 +63,19 @@ function formatRelative(iso: string): string {
 export async function HistoryTab({
   practiceRouteId,
   organizationId,
+  configurationId,
+  practiceName,
   alsoSubjectIds,
   cursor,
 }: {
   /** The `[id]` from the URL (config id OR org id) — used to build paging links. */
   practiceRouteId: string;
   organizationId: string;
+  /** PracticeConfiguration id used by the rollback action. May be null
+   *  for orgs that don't yet have a configuration row. */
+  configurationId: string | null;
+  /** Verbatim practice name — used by the rollback double-confirm. */
+  practiceName: string;
   alsoSubjectIds?: string[];
   cursor?: string | null;
 }) {
@@ -114,7 +122,12 @@ export async function HistoryTab({
           className="absolute left-1.5 top-1.5 bottom-1.5 w-px bg-border/70"
         />
         {rows.map((row) => (
-          <HistoryEntry key={row.id} row={row} />
+          <HistoryEntry
+            key={row.id}
+            row={row}
+            configurationId={configurationId}
+            practiceName={practiceName}
+          />
         ))}
       </ol>
 
@@ -139,7 +152,15 @@ export async function HistoryTab({
   );
 }
 
-function HistoryEntry({ row }: { row: PracticeHistoryRow }) {
+function HistoryEntry({
+  row,
+  configurationId,
+  practiceName,
+}: {
+  row: PracticeHistoryRow;
+  configurationId: string | null;
+  practiceName: string;
+}) {
   const headline = humanizeAction(row.action);
   const summary = summarizeChange(
     row.before as Record<string, unknown> | null,
@@ -147,6 +168,17 @@ function HistoryEntry({ row }: { row: PracticeHistoryRow }) {
   );
   const actorLabel = row.actorEmail ?? row.actorUserId;
   const hasDetails = row.before != null || row.after != null;
+
+  // EMR-748 — only publish events with a numeric version on the after
+  // snapshot are rollback-targets.
+  const after = row.after as { version?: unknown } | null | undefined;
+  const targetVersion =
+    row.action === "controller.config.publish" &&
+    after &&
+    typeof after.version === "number"
+      ? (after.version as number)
+      : null;
+  const canRollback = Boolean(targetVersion && configurationId);
 
   return (
     <li className="relative pb-5 last:pb-0">
@@ -194,6 +226,16 @@ function HistoryEntry({ row }: { row: PracticeHistoryRow }) {
         {row.reason && (
           <div className="mt-2 text-[12px] text-text-muted italic">
             “{row.reason}”
+          </div>
+        )}
+
+        {canRollback && targetVersion != null && configurationId && (
+          <div className="mt-2 flex justify-end">
+            <RollbackButton
+              configurationId={configurationId}
+              targetVersion={targetVersion}
+              practiceName={practiceName}
+            />
           </div>
         )}
 

@@ -159,6 +159,8 @@ export default async function PracticeDrillInPage({
         <HistoryTab
           practiceRouteId={id}
           organizationId={practice.organizationId}
+          configurationId={practice.configId}
+          practiceName={practice.practiceName}
           alsoSubjectIds={[
             practice.configId,
             practice.practiceId,
