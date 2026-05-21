@@ -410,7 +410,10 @@ async function clickAndObserve(
 // hook callback). `test.describe.configure({ timeout })` is the
 // supported API for raising the budget for every test in a describe
 // group, and it actually works.
-test.describe.configure({ timeout: 180_000 });
+// Heavy marketing routes (/leafmart, /leafmart/shop) consistently brushed
+// up against 180s on staging and timed out — see issue #371. Lifting to
+// 300s gives those pages enough headroom while still bounding the suite.
+test.describe.configure({ timeout: 300_000 });
 
 test.describe("Click handlers — find-and-fix pass 8", () => {
   for (const route of ROUTES) {
