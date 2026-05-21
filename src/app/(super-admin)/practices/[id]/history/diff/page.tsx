@@ -1,14 +1,3 @@
-// EMR-746 — Semantic version diff viewer.
-//
-// /practices/[id]/history/diff?from=v3&to=v5
-//
-// Loads two PracticeConfigurationVersion rows by their version numbers
-// and renders a semantic diff using the labelFor() map. Falls back to a
-// raw-JSON view when a field has no humanizing label and isn't a flat
-// scalar.
-//
-// Server component. Auth gating inherits from (super-admin)/layout.tsx.
-
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -19,6 +8,7 @@ import { Breadcrumbs } from "@/components/super-admin/breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 
 import { labelFor } from "@/lib/practice-config/labels";
+import { DiffToolbar } from "./toolbar";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Configuration diff — Leafjourney" };
@@ -41,7 +31,6 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   );
 }
 
-/** Recursively collect leaf paths from a snapshot. */
 function flatten(value: unknown, prefix = ""): Array<[string, unknown]> {
   if (isPlainObject(value)) {
     const out: Array<[string, unknown]> = [];
@@ -103,12 +92,13 @@ export default async function PracticeConfigDiffPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ from?: string; to?: string }>;
+  searchParams?: Promise<{ from?: string; to?: string; layout?: string }>;
 }) {
   const { id } = await params;
   const sp = (await searchParams) ?? {};
   const fromVersion = parseVersion(sp.from);
   const toVersion = parseVersion(sp.to);
+  const layout = sp.layout === "unified" ? "unified" : "split";
 
   if (!fromVersion || !toVersion) notFound();
 
@@ -117,6 +107,13 @@ export default async function PracticeConfigDiffPage({
     select: { id: true, organizationId: true },
   });
   if (!config) notFound();
+
+  // Load all available versions for toolbar
+  const versions = await prisma.practiceConfigurationVersion.findMany({
+    where: { configurationId: id },
+    select: { version: true, publishedAt: true },
+    orderBy: { version: "desc" },
+  });
 
   const [fromRow, toRow] = await Promise.all([
     prisma.practiceConfigurationVersion.findFirst({
@@ -148,29 +145,41 @@ export default async function PracticeConfigDiffPage({
         ]}
       />
 
-      <Eyebrow>Configuration diff</Eyebrow>
-      <h1 className="font-display text-2xl md:text-3xl text-text tracking-tight leading-[1.1] mt-2">
-        v{fromVersion} → v{toVersion}
-      </h1>
-      <p className="text-[12px] text-text-muted mt-2">
-        Published by {toRow.publishedBy} on{" "}
-        {new Date(toRow.publishedAt).toLocaleString()}
-      </p>
-
-      <div className="flex items-center gap-2 my-5 text-[12px]">
-        <Badge tone="success">{rows.filter((r) => r.kind === "added").length} added</Badge>
-        <Badge tone="warning">{rows.filter((r) => r.kind === "changed").length} changed</Badge>
-        <Badge tone="danger">{rows.filter((r) => r.kind === "removed").length} removed</Badge>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-2 mb-6">
+        <div>
+          <Eyebrow>Configuration diff</Eyebrow>
+          <h1 className="font-display text-2xl md:text-3xl text-text tracking-tight leading-[1.1] mt-2">
+            v{fromVersion} &rarr; v{toVersion}
+          </h1>
+          <p className="text-[12px] text-text-muted mt-2">
+            Published by {toRow.publishedBy} on{" "}
+            {new Date(toRow.publishedAt).toLocaleString()}
+          </p>
+        </div>
         <Link
           href={`/practices/${id}?tab=history`}
-          className="ml-auto text-text-muted hover:text-text"
+          className="text-[13px] text-text-muted hover:text-text flex items-center gap-1.5 transition-colors"
         >
-          ← Back to history
+          &larr; Back to history
         </Link>
       </div>
 
+      <DiffToolbar
+        practiceId={id}
+        versions={versions}
+        fromVersion={fromVersion}
+        toVersion={toVersion}
+        layout={layout}
+      />
+
+      <div className="flex items-center gap-2 mb-5 text-[12px]">
+        <Badge tone="success">{rows.filter((r) => r.kind === "added").length} added</Badge>
+        <Badge tone="warning">{rows.filter((r) => r.kind === "changed").length} changed</Badge>
+        <Badge tone="danger">{rows.filter((r) => r.kind === "removed").length} removed</Badge>
+      </div>
+
       {rows.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
+        <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center bg-surface/50">
           <div className="font-display text-base text-text tracking-tight">
             No semantic differences
           </div>
@@ -179,14 +188,14 @@ export default async function PracticeConfigDiffPage({
           </div>
         </div>
       ) : (
-        <ol className="space-y-2">
+        <ol className="space-y-4">
           {rows.map((row) => (
             <li
               key={row.path}
-              className="rounded-lg border border-border/70 bg-surface px-4 py-3"
+              className="rounded-xl border border-border/60 bg-surface/80 backdrop-blur-md p-4 shadow-sm hover:border-border/80 transition-all"
             >
-              <div className="flex items-baseline justify-between gap-4 flex-wrap">
-                <div className="font-display text-[14px] text-text tracking-tight">
+              <div className="flex items-baseline justify-between gap-4 flex-wrap pb-3 border-b border-border/40">
+                <div className="font-display text-[15px] font-semibold text-text tracking-tight">
                   {row.label}
                 </div>
                 <Badge
@@ -201,25 +210,44 @@ export default async function PracticeConfigDiffPage({
                   {row.kind}
                 </Badge>
               </div>
-              <div className="mt-2 grid gap-1 sm:grid-cols-2 text-[12px]">
-                <div className="rounded-md border border-border/60 bg-surface-muted/40 p-2">
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted">
-                    Before
+
+              {layout === "split" ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 text-[12.5px]">
+                  <div className="rounded-lg border border-border/40 bg-rose-500/[0.02] p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                      Before
+                    </div>
+                    <div className="font-mono text-rose-600 dark:text-rose-400 mt-1.5 whitespace-pre-wrap break-words">
+                      {formatValue(row.before)}
+                    </div>
                   </div>
-                  <div className="font-mono text-text mt-1 whitespace-pre-wrap break-words">
-                    {formatValue(row.before)}
+                  <div className="rounded-lg border border-border/40 bg-emerald-500/[0.02] p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+                      After
+                    </div>
+                    <div className="font-mono text-emerald-600 dark:text-emerald-400 mt-1.5 whitespace-pre-wrap break-words">
+                      {formatValue(row.after)}
+                    </div>
                   </div>
                 </div>
-                <div className="rounded-md border border-border/60 bg-surface-muted/40 p-2">
-                  <div className="text-[10px] uppercase tracking-wider text-text-muted">
-                    After
+              ) : (
+                <div className="mt-3 rounded-lg border border-border/40 bg-surface-muted/30 p-3 text-[12.5px]">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-2">
+                    Changes
                   </div>
-                  <div className="font-mono text-text mt-1 whitespace-pre-wrap break-words">
-                    {formatValue(row.after)}
-                  </div>
+                  {row.kind !== "added" && (
+                    <div className="font-mono text-rose-600 dark:text-rose-400 whitespace-pre-wrap break-words bg-rose-500/10 px-2 py-1.5 rounded mb-1.5">
+                      - {formatValue(row.before)}
+                    </div>
+                  )}
+                  {row.kind !== "removed" && (
+                    <div className="font-mono text-emerald-600 dark:text-emerald-400 whitespace-pre-wrap break-words bg-emerald-500/10 px-2 py-1.5 rounded">
+                      + {formatValue(row.after)}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="mt-2 text-[10px] text-text-subtle font-mono">{row.path}</div>
+              )}
+              <div className="mt-3 text-[10px] text-text-subtle font-mono">{row.path}</div>
             </li>
           ))}
         </ol>
