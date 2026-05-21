@@ -351,8 +351,27 @@ export function VoiceRecorder({
       setDuration(0);
       startTimer();
       setState("recording");
-    } catch (err) {
-      setError("Microphone access denied. Please allow microphone access in your browser settings.");
+    } catch (err: any) {
+      console.error("Microphone access error:", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setError(
+          "Microphone access blocked. Please click the settings/tune icon in the browser address bar (to the left of localhost:3000) and change Microphone to 'Allow'."
+        );
+      } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+        setError(
+          "No microphone device detected. Please connect a microphone or verify your input hardware settings and retry."
+        );
+      } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+        setError(
+          "Microphone is currently in use by another application or system utility. Please close other recording apps and retry."
+        );
+      } else if (err.name === "SecurityError") {
+        setError(
+          "Microphone access is blocked because the page is not served over a secure connection (HTTPS) or localhost."
+        );
+      } else {
+        setError(`Microphone access failed: ${err.message || "Unknown error"}. Please check your browser hardware settings.`);
+      }
     }
   };
 
