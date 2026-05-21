@@ -43,9 +43,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "BILLING_LEDGER_ISOLATED_LIABILITY",
-          entity: "Encounter",
-          entityId: encounterId,
-          details: { 
+          subjectType: "Encounter",
+          subjectId: encounterId,
+          metadata: { 
             reason: liabilityType, 
             instruction: "DO NOT BILL PRIMARY COMMERCIAL INSURANCE" 
           }

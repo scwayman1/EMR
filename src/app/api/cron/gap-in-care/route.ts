@@ -24,7 +24,6 @@ export async function POST(req: Request) {
 
     const eligiblePatients = await prisma.patient.findMany({
       where: {
-        sexAtBirth: "FEMALE",
         dateOfBirth: { lte: fortyYearsAgo }
       },
       take: 100
@@ -50,9 +49,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "CLINICAL_ORDER_DRAFTED",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { 
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { 
               orderType: "Screening Mammography Bilateral", 
               reason: "HEDIS Gap Closure",
               requiresProviderSignature: true

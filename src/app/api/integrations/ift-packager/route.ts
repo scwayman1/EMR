@@ -59,9 +59,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "IFT_PACKET_FAXED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { destinationFax: receivingFacilityFax, docsTransmitted: docIds }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { destinationFax: receivingFacilityFax, docsTransmitted: docIds }
         }
       });
     }

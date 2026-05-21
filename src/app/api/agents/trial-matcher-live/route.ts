@@ -61,9 +61,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: encounter.organizationId,
           action: "CLINICAL_TRIAL_MATCH_SUGGESTED",
-          entity: "Encounter",
-          entityId: encounter.id,
-          details: { trialId: matchedTrial.id, message: `Patient may be eligible for Trial ${matchedTrial.id}. Discuss enrollment.` }
+          subjectType: "Encounter",
+          subjectId: encounter.id,
+          metadata: { trialId: matchedTrial.id, message: `Patient may be eligible for Trial ${matchedTrial.id}. Discuss enrollment.` }
         }
       });
 

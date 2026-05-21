@@ -47,9 +47,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "CGM_ANOMALY_CLINICAL_ALERT",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             reason: "Repeated Hypoglycemia (< 70 mg/dL)", 
             events: hypoglycemicEvents,
             recommendedAction: "Review basal insulin dosing" 

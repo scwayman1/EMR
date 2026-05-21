@@ -45,9 +45,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "PA_APPROVAL_SCHEDULING_LINK_SENT",
-        entity: "PriorAuthorization",
-        entityId: paRequestId,
-        details: { procedureCode, messageSent: smsMessage }
+        subjectType: "PriorAuthorization",
+        subjectId: paRequestId,
+        metadata: { procedureCode, messageSent: smsMessage }
       }
     });
 

@@ -45,9 +45,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: paRequest.organizationId,
         action: "P2P_APPEAL_SCHEDULED",
-        entity: "PriorAuthorization",
-        entityId: paRequest.id,
-        details: { 
+        subjectType: "PriorAuthorization",
+        subjectId: paRequest.id,
+        metadata: { 
           scheduledTime: p2pSlotTime, 
           payer: paRequest.payerId, 
           reference: p2pReference 

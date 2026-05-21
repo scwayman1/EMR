@@ -52,9 +52,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: "DEFAULT",
             action: "MAMMOGRAPHY_ABNORMAL_FOLLOW_UP_QUEUED",
-            entity: "Patient",
-            entityId: report.patientId,
-            details: { biradsScore, action, reportId: report.id }
+            subjectType: "Patient",
+            subjectId: report.patientId,
+            metadata: { biradsScore, action, reportId: report.id }
           }
         });
 

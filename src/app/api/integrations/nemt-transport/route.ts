@@ -53,9 +53,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: encounter.organizationId,
           action: "NEMT_RIDE_DISPATCHED",
-          entity: "Patient",
-          entityId: encounter.patientId,
-          details: { rideId: rideReference, provider: "Uber Health", pickupTime }
+          subjectType: "Patient",
+          subjectId: encounter.patientId,
+          metadata: { rideId: rideReference, provider: "Uber Health", pickupTime }
         }
       });
     }

@@ -62,9 +62,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "FALL_PREVENTION_PROTOCOL_ACTIVATED",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { riskScore, requiredAction: "Place Bed Alarm" }
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { riskScore, requiredAction: "Place Bed Alarm" }
           }
         });
 

@@ -54,9 +54,9 @@ export async function POST(req: Request) {
             data: {
               organizationId: patient.organizationId,
               action: "MOBILE_PHLEBOTOMY_DISPATCHED",
-              entity: "Patient",
-              entityId: patient.id,
-              details: { provider: "Getlabs API", dispatchRef, targetDate }
+              subjectType: "Patient",
+              subjectId: patient.id,
+              metadata: { provider: "Getlabs API", dispatchRef, targetDate }
             }
           });
 

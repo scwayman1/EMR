@@ -46,9 +46,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "TELEHEALTH_SESSION_DOWNGRADED",
-          entity: "Encounter", // Assuming sessionId maps to encounter
-          entityId: telehealthSessionId,
-          details: { 
+          subjectType: "Encounter", // Assuming sessionId maps to encounter
+          subjectId: telehealthSessionId,
+          metadata: { 
             reason: `Severe network degradation (${packetLossPercent}% packet loss). Auto-switched to Audio-Only to preserve encounter.` 
           }
         }

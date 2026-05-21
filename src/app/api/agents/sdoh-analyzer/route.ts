@@ -48,9 +48,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "SDOH_RISK_IDENTIFIED",
-          entity: "Patient",
-          entityId: payload.patientId,
-          details: { flags: sdohFlags }
+          subjectType: "Patient",
+          subjectId: payload.patientId,
+          metadata: { flags: sdohFlags }
         }
       });
     }

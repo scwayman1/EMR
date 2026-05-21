@@ -42,9 +42,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: "SYSTEM",
         action: "EMR_INFRASTRUCTURE_HEARTBEAT_CHECK",
-        entity: "Organization",
-        entityId: "SYSTEM",
-        details: { 
+        subjectType: "Organization",
+        subjectId: "SYSTEM",
+        metadata: { 
           dbLatencyMs: dbLatency, 
           overallStatus: "Optimal. All 200 autonomous agents fully operational." 
         }

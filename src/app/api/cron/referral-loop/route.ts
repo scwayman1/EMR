@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     // Mock query logic: assuming a Document table tracks referrals
     const pendingReferrals = await prisma.document.findMany({
       where: {
-        type: "referral_outbound",
+        kind: "letter",
         createdAt: { lte: thirtyDaysAgo },
         // A real system would have a 'loopClosed' boolean or similar
       },
@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: referral.organizationId,
           action: "REFERRAL_LOOP_REMINDER_FAXED",
-          entity: "Document",
-          entityId: referral.id,
-          details: { specialistFax, daysPending: 30 }
+          subjectType: "Document",
+          subjectId: referral.id,
+          metadata: { specialistFax, daysPending: 30 }
         }
       });
 

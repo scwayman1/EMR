@@ -46,9 +46,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "ASTHMA_POOR_CONTROL_ALERT",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             rescueUsage: rescuePuffsLast7Days, 
             actionRequired: "Review controller medication (e.g., ICS dose increase). Contact family." 
           }

@@ -55,9 +55,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "CDISC_TRIAL_DATA_EXPORTED",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { domain: "VS/LB", status: "Transmitted to EDC System" }
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { domain: "VS/LB", status: "Transmitted to EDC System" }
           }
         });
 

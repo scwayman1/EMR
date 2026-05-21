@@ -46,9 +46,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "PATIENT_PORTAL_LAB_SUMMARY_PUBLISHED",
-        entity: "LabResult",
-        entityId: labId,
-        details: { patientId, summary: translatedSummary }
+        subjectType: "LabResult",
+        subjectId: labId,
+        metadata: { patientId, summary: translatedSummary }
       }
     });
 

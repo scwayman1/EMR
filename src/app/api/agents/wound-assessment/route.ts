@@ -49,9 +49,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "WOUND_ASSESSMENT_COMPLETED",
-        entity: "Patient",
-        entityId: patientId,
-        details: { 
+        subjectType: "Patient",
+        subjectId: patientId,
+        metadata: { 
           location: woundLocation, 
           surfaceArea: cvAnalysis.surfaceAreaSqCm, 
           necroticPct: cvAnalysis.necroticTissuePercentage,

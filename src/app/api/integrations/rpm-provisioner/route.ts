@@ -55,9 +55,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "RPM_HARDWARE_DISPATCHED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { hardware: hardwareToShip, tracking: trackingNumber, address: shippingAddress }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { hardware: hardwareToShip, tracking: trackingNumber, address: shippingAddress }
         }
       });
     }

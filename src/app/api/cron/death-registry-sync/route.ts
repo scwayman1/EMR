@@ -51,9 +51,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: patient.organizationId,
           action: "PATIENT_DECEASED_PROTOCOL_ACTIVATED",
-          entity: "Patient",
-          entityId: match.patientId,
-          details: { dateOfDeath: match.dateOfDeath, actions: ["Appointments Cancelled", "Ledger Frozen"] }
+          subjectType: "Patient",
+          subjectId: match.patientId,
+          metadata: { dateOfDeath: match.dateOfDeath, actions: ["Appointments Cancelled", "Ledger Frozen"] }
         }
       });
 

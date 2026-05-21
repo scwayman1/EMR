@@ -49,9 +49,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: encounter.organizationId,
             action: "FALL_PREVENTION_PROTOCOL_INITIATED",
-            entity: "Encounter",
-            entityId: encounter.id,
-            details: { 
+            subjectType: "Encounter",
+            subjectId: encounter.id,
+            metadata: { 
               score: morseFallScore, 
               triggers: ["Sedatives", "High Morse Score"],
               action: "Bed alarm activated. Yellow non-slip socks ordered." 

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       await prisma.encounter.update({
         where: { id: event.encounterId },
         data: {
-          status: "completed", // Locks it
+          status: "complete", // Locks it
           // In a real schema, we'd set a hard `isLegallyLocked: true` flag
         }
       });
@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: "DEFAULT",
           action: "SENTINEL_EVENT_CHART_LOCKED",
-          entity: "Encounter",
-          entityId: event.encounterId,
-          details: { 
+          subjectType: "Encounter",
+          subjectId: event.encounterId,
+          metadata: { 
             reason: event.reason, 
             action: "Chart locked to preserve legal integrity. Risk Management paged." 
           }

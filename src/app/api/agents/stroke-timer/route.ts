@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "STROKE_TPA_WINDOW_WARNING",
-          entity: "Encounter",
-          entityId: encounterId,
-          details: { 
+          subjectType: "Encounter",
+          subjectId: encounterId,
+          metadata: { 
             elapsedMinutes, 
             action: "Door-to-needle window closing in 15 mins. Paged ED Attending and Neurology." 
           }

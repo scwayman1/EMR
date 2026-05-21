@@ -56,9 +56,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "ADVANCE_DIRECTIVE_RECORDED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { documentId, codeStatus }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { documentId, codeStatus }
         }
       });
 

@@ -55,9 +55,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: "DEFAULT", // Requires org mapping in full schema
           action: "PROVIDER_SCHEDULING_LOCKED",
-          entity: "Provider",
-          entityId: providerId,
-          details: { reason: ">72 hours charting delinquency. JCAHO Compliance Risk." }
+          subjectType: "Provider",
+          subjectId: providerId,
+          metadata: { reason: ">72 hours charting delinquency. JCAHO Compliance Risk." }
         }
       });
     }

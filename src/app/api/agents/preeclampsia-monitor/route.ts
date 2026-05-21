@@ -46,9 +46,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "SEVERE_PREECLAMPSIA_ALERT_DISPATCHED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             bloodPressure: `${systolic}/${diastolic}`, 
             actionTaken: "Paged OB Triage. Instruct patient to report to L&D immediately." 
           }

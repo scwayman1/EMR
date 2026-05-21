@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     // 1. Fetch pending patient statements for Out-of-Network claims
     const pendingOonClaims = await prisma.claim.findMany({
       where: {
-        status: "patient_responsibility",
+        status: "partial",
         // isOutOfNetwork: true (Mocked field)
       },
       take: 50
@@ -52,9 +52,9 @@ export async function POST(req: Request) {
             data: {
               organizationId: claim.organizationId,
               action: "NO_SURPRISES_ACT_ADJUSTMENT",
-              entity: "Claim",
-              entityId: claim.id,
-              details: { writeOffAmountCents: writeOffAmount, finalPatientBalance: inNetworkCopay }
+              subjectType: "Claim",
+              subjectId: claim.id,
+              metadata: { writeOffAmountCents: writeOffAmount, finalPatientBalance: inNetworkCopay }
             }
           });
 

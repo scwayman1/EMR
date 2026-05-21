@@ -55,9 +55,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "P2P_CHEAT_SHEET_GENERATED",
-        entity: "PriorAuthorization",
-        entityId: paRequestId,
-        details: { providerId, cheatSheetGenerated: true }
+        subjectType: "PriorAuthorization",
+        subjectId: paRequestId,
+        metadata: { providerId, cheatSheetGenerated: true }
       }
     });
 

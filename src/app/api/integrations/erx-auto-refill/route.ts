@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const recentEncounters = await prisma.encounter.findMany({
       where: {
         patientId: payload.patientId,
-        status: "completed",
+        status: "complete",
         completedAt: { gte: sixMonthsAgo }
       }
     });
@@ -69,9 +69,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "REFILL_REQUEST_PENDING_REVIEW",
-          entity: "Patient",
-          entityId: payload.patientId,
-          details: { medication: payload.medicationName, reason }
+          subjectType: "Patient",
+          subjectId: payload.patientId,
+          metadata: { medication: payload.medicationName, reason }
         }
       });
     }

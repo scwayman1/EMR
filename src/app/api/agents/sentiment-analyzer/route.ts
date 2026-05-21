@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "SERVICE_RECOVERY_REQUIRED",
-          entity: "Patient",
-          entityId: payload.patientId,
-          details: { feedback: payload.feedbackText, sentiment }
+          subjectType: "Patient",
+          subjectId: payload.patientId,
+          metadata: { feedback: payload.feedbackText, sentiment }
         }
       });
     } else {

@@ -52,9 +52,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "CHEMO_DOSE_ROUNDED_FOR_WASTE_REDUCTION",
-          entity: "Patient", // In schema, should link to MedicationOrder
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient", // In schema, should link to MedicationOrder
+          subjectId: patientId,
+          metadata: { 
             medication: medicationName, 
             originalDose: orderedDoseMg, 
             roundedDose: nearestVialMultiple,

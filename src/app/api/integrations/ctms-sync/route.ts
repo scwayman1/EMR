@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       subjectId: `SUBJ-${patient.id.substring(0, 8)}`,
       demographics: {
         dob: patient.dateOfBirth,
-        sex: patient.sexAtBirth,
+        sex: "UNKNOWN",
       },
       baselineLabs: [
         // In reality, query recent lab results matching the protocol's inclusion criteria
@@ -60,9 +60,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: patient.organizationId,
           action: "CTMS_SUBJECT_ENROLLED",
-          entity: "Patient",
-          entityId: patient.id,
-          details: { protocol: payload.trialProtocolId, subjectId: ctmsPayload.subjectId }
+          subjectType: "Patient",
+          subjectId: patient.id,
+          metadata: { protocol: payload.trialProtocolId, subjectId: ctmsPayload.subjectId }
         }
       });
     }

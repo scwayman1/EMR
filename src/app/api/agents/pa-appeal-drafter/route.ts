@@ -62,9 +62,11 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         patientId: patientId,
-        title: `Draft Appeal Letter - PA ${paRequestId}`,
-        type: "administrative",
-        url: "draft_document_placeholder", // Stores the text or PDF
+        originalName: `Draft Appeal Letter - PA ${paRequestId}.pdf`,
+        kind: "letter",
+        storageKey: "draft_document_placeholder",
+        mimeType: "application/pdf",
+        sizeBytes: 1024,
       }
     });
 
@@ -78,9 +80,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "APPEAL_LETTER_DRAFTED_BY_AI",
-        entity: "PriorAuthorization",
-        entityId: paRequestId,
-        details: { documentId: document.id, status: "Pending Provider Signature" }
+        subjectType: "PriorAuthorization",
+        subjectId: paRequestId,
+        metadata: { documentId: document.id, status: "Pending Provider Signature" }
       }
     });
 

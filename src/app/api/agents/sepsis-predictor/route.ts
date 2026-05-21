@@ -52,9 +52,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "SEPSIS_BUNDLE_TRIGGERED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             qSofaScore, 
             ordersDrafted: ["Lactate Level", "Blood Cultures x2", "IV Fluids (30mL/kg)", "Broad-Spectrum IV Antibiotics"]
           }

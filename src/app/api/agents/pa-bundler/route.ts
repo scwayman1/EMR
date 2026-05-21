@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const recentClinicalDocs = await prisma.document.findMany({
       where: { 
         patientId,
-        type: "clinical" // Grabs progress notes and imaging
+        kind: { in: ["note", "image"] }
       },
       orderBy: { createdAt: "desc" },
       take: 3
@@ -63,9 +63,9 @@ export async function POST(req: Request) {
       data: {
         organizationId: payload.organizationId || "DEFAULT",
         action: "PRIOR_AUTH_BUNDLE_GENERATED",
-        entity: "PriorAuthorization",
-        entityId: paRequestId,
-        details: { bundleId: bundleReferenceId, documentsIncluded: documentIds.length }
+        subjectType: "PriorAuthorization",
+        subjectId: paRequestId,
+        metadata: { bundleId: bundleReferenceId, documentsIncluded: documentIds.length }
       }
     });
 

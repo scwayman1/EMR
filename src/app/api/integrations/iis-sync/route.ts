@@ -50,9 +50,9 @@ RXA|0|1|${administrationDate}||${vaccineCvxCode}^MMR||0.5|mL|||00||||${lotNumber
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "STATE_IMMUNIZATION_REGISTRY_SYNCED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { cvx: vaccineCvxCode, lot: lotNumber, status: "HL7 VXU Accepted" }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { cvx: vaccineCvxCode, lot: lotNumber, status: "HL7 VXU Accepted" }
         }
       });
 

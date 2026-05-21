@@ -50,9 +50,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "MEDICARE_AWV_INVITE_SENT",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { message }
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { message }
           }
         });
 

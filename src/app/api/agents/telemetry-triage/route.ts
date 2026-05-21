@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "EMERGENCY_TELEMETRY_ALERT",
-          entity: "Patient",
-          entityId: payload.patientId,
-          details: { reason: alertReason, heartRate, source }
+          subjectType: "Patient",
+          subjectId: payload.patientId,
+          metadata: { reason: alertReason, heartRate, source }
         }
       });
       

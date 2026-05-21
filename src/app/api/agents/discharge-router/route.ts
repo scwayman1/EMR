@@ -44,9 +44,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "DISCHARGE_ORDER_ROUTED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { type: "Home Health", vendor: "Preferred_VNA", status: "Transmitted" }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { type: "Home Health", vendor: "Preferred_VNA", status: "Transmitted" }
         }
       });
       itemsRouted++;
@@ -65,9 +65,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "DISCHARGE_ORDER_ROUTED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { type: "DME", vendor: "Preferred_DME", status: "Transmitted" }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { type: "DME", vendor: "Preferred_DME", status: "Transmitted" }
         }
       });
       itemsRouted++;

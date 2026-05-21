@@ -55,9 +55,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "NEWBORN_PHOTOTHERAPY_ALERT",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             bilirubinLevel: bilirubinMgDl, 
             ageHours: ageInHours, 
             action: "Bilirubin exceeds Bhutani nomogram threshold. Initiate phototherapy immediately." 

@@ -51,9 +51,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: encounter.organizationId,
             action: "TELEHEALTH_CREDIT_ISSUED",
-            entity: "Patient",
-            entityId: encounter.patientId,
-            details: { reason: "Poor Video Quality", qosScore, amount: "$25.00" }
+            subjectType: "Patient",
+            subjectId: encounter.patientId,
+            metadata: { reason: "Poor Video Quality", qosScore, amount: "$25.00" }
           }
         });
 

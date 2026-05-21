@@ -46,9 +46,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: patient.organizationId,
           action: "POST_OP_DAY_1_CHECK_IN_SENT",
-          entity: "Encounter",
-          entityId: patient.id,
-          details: { message: smsMessage, status: "Awaiting Patient Reply" }
+          subjectType: "Encounter",
+          subjectId: patient.id,
+          metadata: { message: smsMessage, status: "Awaiting Patient Reply" }
         }
       });
 

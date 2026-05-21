@@ -47,9 +47,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: order.organizationId,
           action: "ANTIMICROBIAL_STEWARDSHIP_REVIEW_REQUIRED",
-          entity: "Dispense",
-          entityId: order.id,
-          details: { reason: "72-hour Broad Spectrum Time-Out", requiredAction: "ID Consult / De-escalation" }
+          subjectType: "Dispense",
+          subjectId: order.id,
+          metadata: { reason: "72-hour Broad Spectrum Time-Out", requiredAction: "ID Consult / De-escalation" }
         }
       });
 

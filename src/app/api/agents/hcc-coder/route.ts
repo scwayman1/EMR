@@ -64,9 +64,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "HCC_CODING_OPPORTUNITY_FLAGGED",
-          entity: "Encounter",
-          entityId: encounterId,
-          details: { suggestions: hccSuggestions, status: "Pending Provider Acceptance" }
+          subjectType: "Encounter",
+          subjectId: encounterId,
+          metadata: { suggestions: hccSuggestions, status: "Pending Provider Acceptance" }
         }
       });
     }

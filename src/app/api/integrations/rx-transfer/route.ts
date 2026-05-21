@@ -36,8 +36,7 @@ export async function POST(req: Request) {
     const activePrescriptions = await prisma.dispensaryDispense.findMany({
       where: {
         patientId,
-        status: "completed" // Mocking active Rx
-      },
+              },
       take: 5
     });
 
@@ -69,9 +68,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: rx.organizationId,
             action: "SURESCRIPTS_RX_TRANSFER",
-            entity: "Dispense", // Proxy for Prescription
-            entityId: rx.id,
-            details: { targetPharmacy: targetPharmacyNCPDP, status: "Transmitted" }
+            subjectType: "Dispense", // Proxy for Prescription
+            subjectId: rx.id,
+            metadata: { targetPharmacy: targetPharmacyNCPDP, status: "Transmitted" }
           }
         });
 

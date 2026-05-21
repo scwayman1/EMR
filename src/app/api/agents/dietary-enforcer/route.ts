@@ -67,9 +67,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: patient.organizationId,
           action: "DIETARY_ORDER_BLOCKED_FOR_ALLERGY",
-          entity: "Patient",
-          entityId: patientId,
-          details: { originalOrder: dietOrder, reason: blockReason }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { originalOrder: dietOrder, reason: blockReason }
         }
       });
 

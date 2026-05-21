@@ -54,9 +54,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: payload.organizationId || "DEFAULT",
             action: "RTE_DEMOGRAPHIC_AUTO_FIXED",
-            entity: "Patient",
-            entityId: patientId,
-            details: { correctedField: "firstName", previousValue: emrFirstName, newValue: payerFirstName, action: "Re-queuing RTE 270 Transaction" }
+            subjectType: "Patient",
+            subjectId: patientId,
+            metadata: { correctedField: "firstName", previousValue: emrFirstName, newValue: payerFirstName, action: "Re-queuing RTE 270 Transaction" }
           }
         });
 

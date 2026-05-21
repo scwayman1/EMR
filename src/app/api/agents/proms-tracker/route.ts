@@ -44,9 +44,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: patient.organizationId,
             action: "PROM_SURVEY_DISPATCHED",
-            entity: "Patient",
-            entityId: patient.id,
-            details: { type: "Weekly Pain Scale", channel: "SMS" }
+            subjectType: "Patient",
+            subjectId: patient.id,
+            metadata: { type: "Weekly Pain Scale", channel: "SMS" }
           }
         });
 

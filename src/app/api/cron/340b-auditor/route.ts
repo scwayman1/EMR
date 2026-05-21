@@ -24,8 +24,7 @@ export async function POST(req: Request) {
 
     const recentDispenses = await prisma.dispensaryDispense.findMany({
       where: {
-        status: "completed",
-        dispensedAt: { gte: yesterday }
+                dispensedAt: { gte: yesterday }
       },
       take: 100
     });
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
       const eligibleEncounter = await prisma.encounter.findFirst({
         where: {
           patientId: dispense.patientId,
-          status: "completed",
+          status: "complete",
           // In reality, dates would need to match closely
         }
       });
@@ -63,9 +62,9 @@ export async function POST(req: Request) {
           data: {
             organizationId: dispense.organizationId,
             action: "HRSA_340B_COMPLIANCE_VIOLATION",
-            entity: "Dispense",
-            entityId: dispense.id,
-            details: { reason: "No qualifying provider encounter found for dispensed drug" }
+            subjectType: "Dispense",
+            subjectId: dispense.id,
+            metadata: { reason: "No qualifying provider encounter found for dispensed drug" }
           }
         });
 

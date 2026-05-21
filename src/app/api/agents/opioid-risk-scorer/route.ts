@@ -67,9 +67,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: patient.organizationId,
           action: "OPIOID_HIGH_RISK_WARNING_DISPLAYED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { score: riskScore, riskLevel, factors: ["Substance Abuse Hx", "Depression"] }
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { score: riskScore, riskLevel, factors: ["Substance Abuse Hx", "Depression"] }
         }
       });
     }

@@ -49,9 +49,9 @@ export async function POST(req: Request) {
         data: {
           organizationId: payload.organizationId || "DEFAULT",
           action: "CGM_SEVERE_HYPOGLYCEMIA_ALERT_DISPATCHED",
-          entity: "Patient",
-          entityId: patientId,
-          details: { 
+          subjectType: "Patient",
+          subjectId: patientId,
+          metadata: { 
             glucose: currentValue, 
             trend: trendArrow, 
             action: "Automated phone call dispatched to Patient and Emergency Contact to consume fast-acting carbs." 
