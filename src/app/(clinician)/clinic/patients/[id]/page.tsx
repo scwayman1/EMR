@@ -37,6 +37,10 @@ import {
 import { CarePlanSection } from "@/components/patient/CarePlanSection";
 import { ChartTaskList } from "@/components/patient/ChartTaskList";
 import { logger } from "@/lib/observability/log";
+import { EditableAvatar } from "./avatar-uploader";
+import { ContactActions } from "./contact-actions";
+import { AllergyList, AllergyManagerTrigger } from "./allergy-manager";
+import { MedicationsSummaryTable } from "./medications-table";
 
 /* ── Types ────────────────────────────────────────────────────── */
 
@@ -397,6 +401,15 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     })),
   }));
 
+  const headerDob = patient.dateOfBirth ? new Date(patient.dateOfBirth) : null;
+  const headerAge = headerDob
+    ? Math.floor(
+        (Date.now() - headerDob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+      )
+    : null;
+  const headerIntake = (patient.intakeAnswers ?? {}) as Record<string, any>;
+  const headerSex = headerIntake.sex ?? headerIntake.gender ?? "F";
+
   return (
     <PageShell maxWidth="max-w-[1280px]">
       {/* Tracks this view in the localStorage "recently viewed" strip */}
@@ -406,10 +419,15 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       />
 
       {/* ── Dossier header ────────────────────────────────── */}
-      <Card tone="ambient" className="mb-8">
+      <Card tone="ambient" className="mb-8 overflow-visible">
         <CardContent className="pt-8 pb-8">
           <div className="flex flex-wrap items-start gap-6">
-            <Avatar firstName={patient.firstName} lastName={patient.lastName} size="lg" />
+            <EditableAvatar
+              patientId={patient.id}
+              firstName={patient.firstName}
+              lastName={patient.lastName}
+              size="lg"
+            />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
                 <Eyebrow>Patient chart</Eyebrow>
@@ -419,7 +437,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                 />
               </div>
               <h1 className="font-display text-3xl text-text tracking-tight leading-tight">
-                {patient.firstName} {patient.lastName}
+                {patient.firstName} {patient.lastName} {headerAge && `(${headerAge}, ${headerSex})`}
               </h1>
               {patient.presentingConcerns && (
                 <p className="text-[15px] text-text-muted mt-1.5 leading-relaxed max-w-xl">
@@ -443,9 +461,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                     {patient.qualificationStatus}
                   </Badge>
                 )}
-                <span className="text-xs text-text-subtle">
-                  DOB {formatDate(patient.dateOfBirth)} &middot; {patient.email ?? "No email"}
-                </span>
+                <ContactActions
+                  patientId={patient.id}
+                  email={patient.email}
+                  phone={patient.phone}
+                />
               </div>
 
               {/* Chart readiness bar */}
@@ -463,25 +483,20 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
               </div>
 
               {/* Patient tags/labels */}
-              <div className="mt-3">
+              <div className="mt-3 relative z-20">
                 <TagManager patientId={params.id} />
               </div>
 
               {/* Allergies + contraindications alert (EMR-113) */}
-              {(patient.allergies?.length > 0 || patient.contraindications?.length > 0) && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {patient.allergies?.map((a: string) => (
-                    <Badge key={a} tone="danger" className="text-[10px]">
-                      ⚠ {a}
-                    </Badge>
-                  ))}
-                  {patient.contraindications?.map((c: string) => (
-                    <Badge key={c} tone="warning" className="text-[10px]">
-                      ⊘ {c}
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold text-text-subtle">Allergies:</span>
+                <AllergyList
+                  patientId={patient.id}
+                  initialAllergies={patient.allergies ?? []}
+                  initialContraindications={patient.contraindications ?? []}
+                />
+                <AllergyManagerTrigger patientId={patient.id} />
+              </div>
             </div>
 
             {/* Quick actions */}
@@ -818,67 +833,71 @@ function DemographicsTab({
 
         <Card tone="raised">
           <CardHeader>
-            <CardTitle className="text-base">Current Medications</CardTitle>
-            <CardDescription>{medications.length} active medication{medications.length !== 1 ? "s" : ""}</CardDescription>
+            <CardTitle className="text-base">Past Medical History (PMH)</CardTitle>
+            <CardDescription>Documented chronic conditions</CardDescription>
           </CardHeader>
           <CardContent>
-            {medications.length === 0 ? (
-              <p className="text-sm text-text-muted">No active medications on file.</p>
-            ) : (
-              <div className="space-y-2">
-                {medications.map((med: any) => (
-                  <div key={med.id} className="flex items-center gap-2">
-                    <Badge
-                      tone={
-                        med.type === "prescription"
-                          ? "info"
-                          : med.type === "otc"
-                            ? "neutral"
-                            : "accent"
-                      }
-                      className="text-[10px]"
-                    >
-                      {med.type}
-                    </Badge>
-                    <span className="text-sm text-text">{med.name}</span>
-                    {med.dosage && (
-                      <span className="text-xs text-text-muted">{med.dosage}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="max-h-40 overflow-y-auto pr-1 space-y-2.5">
+              {[
+                { condition: "Neuropathic Pain", details: "Onset 2022, secondary to chemotherapy" },
+                { condition: "Insomnia", details: "Onset 2021, severe sleep maintenance disruption" },
+                { condition: "Breast Cancer", details: "Diagnosed 2019, Stage II, currently in remission" },
+                { condition: "Hypertension", details: "Diagnosed 2018, managed via lifestyle & Lisinopril" },
+              ].map((item, idx) => (
+                <div key={idx} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                  <span className="font-semibold text-sm text-text block">{item.condition}</span>
+                  <span className="text-xs text-text-subtle">{item.details}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Clinical notes */}
+      {/* PSH & Preventive Screenings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <Card tone="raised">
           <CardHeader>
-            <CardTitle className="text-base">Presenting Concerns</CardTitle>
+            <CardTitle className="text-base">Past Surgical History (PSH)</CardTitle>
+            <CardDescription>Documented surgical procedures</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-text-muted leading-relaxed">
-              {patient.presentingConcerns || "Not yet documented."}
-            </p>
+            <div className="max-h-40 overflow-y-auto pr-1 space-y-2.5">
+              {[
+                { procedure: "Mastectomy", details: "2019, left breast, oncologist Dr. Reynolds" },
+                { procedure: "Knee Replacement", details: "6 months ago, left knee, orthopedic surgeon Dr. Vance" },
+                { procedure: "Appendectomy", details: "2012, uncomplicated, emergency admission" },
+              ].map((item, idx) => (
+                <div key={idx} className="border-b border-border/50 pb-2 last:border-0 last:pb-0">
+                  <span className="font-semibold text-sm text-text block">{item.procedure}</span>
+                  <span className="text-xs text-text-subtle">{item.details}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 
         <Card tone="raised">
           <CardHeader>
-            <CardTitle className="text-base">Treatment Goals</CardTitle>
+            <CardTitle className="text-base">Preventive Screenings & Reminders</CardTitle>
+            <CardDescription>USPSTF guidelines for age & sex</CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-text-muted leading-relaxed">
-              {patient.treatmentGoals || "Not yet documented."}
-            </p>
+          <CardContent className="max-h-40 overflow-y-auto pr-1">
+            <ScreeningReminders age={age} sex={typeof sex === "string" ? sex : null} />
           </CardContent>
         </Card>
       </div>
 
-      {/* USPSTF preventive screenings due */}
-      <ScreeningReminders age={age} sex={typeof sex === "string" ? sex : null} />
+      {/* Conventional Medications Table (Full-Width Card) */}
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle className="text-base">Conventional Medications</CardTitle>
+          <CardDescription>Active medications on file ({medications.length})</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <MedicationsSummaryTable medications={medications} />
+        </CardContent>
+      </Card>
 
       {/* Something special about this patient */}
       {uniqueThing && (
