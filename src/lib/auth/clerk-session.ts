@@ -40,6 +40,15 @@ export const getCurrentUserFromClerk = cache(async (): Promise<AuthedUser | null
     const session = await auth();
     clerkUserId = session.userId;
   } catch (err) {
+    // Rethrow Next.js dynamic rendering signals so the builder knows this page is dynamic
+    if (
+      err instanceof Error &&
+      ((err as any).digest === "DYNAMIC_SERVER_USAGE" ||
+        err.message.includes("Dynamic server usage") ||
+        err.name === "DynamicServerError")
+    ) {
+      throw err;
+    }
     console.warn("[auth] Clerk auth() failed:", err);
   }
 
