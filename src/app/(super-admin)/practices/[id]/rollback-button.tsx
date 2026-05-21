@@ -1,10 +1,3 @@
-// EMR-748 — One-click rollback button (client).
-//
-// Rendered next to each non-current entry on the History tab. Opens a
-// confirmation modal that requires the operator to (a) type the
-// practice name verbatim and (b) provide a reason. On submit, calls the
-// `rollbackPracticeConfig` server action.
-
 "use client";
 
 import { useState, useTransition } from "react";
@@ -17,7 +10,6 @@ export function RollbackButton({
 }: {
   configurationId: string;
   targetVersion: number;
-  /** Practice name the operator must type verbatim to confirm. */
   practiceName: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -45,7 +37,6 @@ export function RollbackButton({
       if (result.ok === false) {
         setError(result.message);
       }
-      // On success, the action redirects so we never get here.
     });
   }
 
@@ -58,7 +49,7 @@ export function RollbackButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-[11px] text-text-muted hover:text-text underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm"
+        className="text-[12px] font-medium text-text-muted hover:text-text underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-sm transition-colors"
       >
         Rollback to v{targetVersion}
       </button>
@@ -68,61 +59,81 @@ export function RollbackButton({
           role="dialog"
           aria-modal="true"
           aria-labelledby="rollback-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4 transition-all"
         >
-          <div className="w-full max-w-md rounded-2xl bg-surface shadow-2xl border border-border p-5">
-            <h2
-              id="rollback-title"
-              className="font-display text-lg text-text tracking-tight"
-            >
-              Rollback to v{targetVersion}?
-            </h2>
-            <p className="text-[12px] text-text-muted mt-2 leading-relaxed">
-              This creates a new draft snapshot from v{targetVersion} and
-              records a <code>controller.config.rollback</code> audit row.
-              To proceed, type the practice name verbatim and provide a
-              reason.
+          <div className="w-full max-w-md rounded-2xl bg-surface shadow-2xl border border-border/85 p-6 animate-in fade-in-50 zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 text-red-650 dark:text-red-500">
+              <span className="text-xl" aria-hidden="true">&#9888;</span>
+              <h2
+                id="rollback-title"
+                className="font-display text-lg font-bold text-text tracking-tight"
+              >
+                Rollback to v{targetVersion}?
+              </h2>
+            </div>
+            
+            <p className="text-[13px] text-text-muted mt-3 leading-relaxed">
+              This will create a new draft configuration cloned from version <strong>v{targetVersion}</strong> and log a <code>controller.config.rollback</code> audit entry.
             </p>
 
-            <label className="block mt-4 text-[11px] uppercase tracking-wider text-text-muted">
-              Practice name
+            <div className="mt-4">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                To confirm, type practice name verbatim
+              </label>
+              <div className="text-[12px] text-text-subtle mt-0.5 font-medium italic">
+                Required: "{practiceName}"
+              </div>
               <input
                 type="text"
                 value={confirmName}
                 onChange={(e) => setConfirmName(e.target.value)}
                 placeholder={practiceName}
-                className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-[13px] text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className={`mt-2 w-full rounded-lg border bg-bg px-3 py-2 text-[13px] text-text focus:outline-none focus:ring-2 transition-all ${
+                  nameMatches
+                    ? "border-emerald-550 focus:ring-emerald-550/20"
+                    : "border-border focus:ring-accent/20"
+                }`}
               />
-            </label>
-            {confirmName && !nameMatches && (
-              <div className="text-[11px] text-red-600 mt-1">
-                Name does not match.
-              </div>
-            )}
+              {confirmName && (
+                <div className="mt-1.5 flex items-center gap-1 text-[11px]">
+                  {nameMatches ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                      &#10003; Practice name matched
+                    </span>
+                  ) : (
+                    <span className="text-rose-600 dark:text-rose-400 font-medium">
+                      &#10007; Name does not match yet
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
 
-            <label className="block mt-3 text-[11px] uppercase tracking-wider text-text-muted">
-              Reason
+            <div className="mt-4">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Reason for rollback
+              </label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
-                placeholder="Why are you rolling back?"
-                className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-[13px] text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                placeholder="Minimum 4 characters required"
+                className="mt-2 w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] text-text focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
               />
-            </label>
+            </div>
 
             {error && (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50/50 dark:bg-red-950/20 dark:border-red-900/50 px-3 py-2.5 text-[12px] text-red-755 dark:text-red-400">
                 {error}
               </div>
             )}
 
-            <div className="flex items-center justify-end gap-2 mt-5">
+            <div className="flex items-center justify-end gap-2 mt-6">
               <button
                 type="button"
                 onClick={close}
                 disabled={isPending}
-                className="rounded-md px-3 py-1.5 text-[13px] text-text-muted hover:text-text"
+                className="rounded-lg px-4 py-2 text-[13px] font-semibold text-text-muted hover:text-text hover:bg-surface-muted/50 transition-colors"
               >
                 Cancel
               </button>
@@ -130,7 +141,7 @@ export function RollbackButton({
                 type="button"
                 onClick={submit}
                 disabled={!canSubmit}
-                className="rounded-md bg-accent px-3 py-1.5 text-[13px] text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold shadow-sm px-4 py-2 text-[13px] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending ? "Rolling back…" : `Rollback to v${targetVersion}`}
               </button>
