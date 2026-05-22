@@ -779,6 +779,18 @@ routes:
     owner: agents
     notes: "EMR-075 scaffold. Bearer CRON_SECRET check, prod-only. Drafts 6-month step-therapy protocols from a primary diagnosis."
 
+  leafnerd/chat:
+    methods: [POST]
+    auth: required
+    owner: agents
+    notes: "AI Insight Engine for LeafNerd dashboard. Uses requireUser + explicit leafnerd role check."
+
+  terminology/[system]/[code]:
+    methods: [GET]
+    auth: public
+    owner: integrations
+    notes: "EMR-766 terminology lookup endpoint. Pure public reference data (LOINC, SNOMED, RxNorm, ICD10 lookup), no PHI, safe public."
+
   cron/cs-reconciliation:
     methods: [POST]
     auth: cron
@@ -1509,5 +1521,3 @@ routes:
     owner: integrations
     review_due: 2026-07-31
     notes: "wave-9-sprint scaffold. In-code Bearer secret gate confirmed; auth kind (webhook|cron|required) not yet categorized."
-
->>>>>>> main
