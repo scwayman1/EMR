@@ -137,6 +137,22 @@ export default async function ClinicMessagesPage({
     };
   });
 
+  // EMR-657 — fetch active meds for all patients so the avatar tooltip can
+  // show "Current Meds" on hover without a separate round-trip.
+  const uniquePatientIds = [...new Set(threads.map((t) => t.patient.id))];
+  const activeMeds = uniquePatientIds.length > 0
+    ? await prisma.patientMedication.findMany({
+        where: { patientId: { in: uniquePatientIds }, active: true },
+        select: { patientId: true, name: true, dosage: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
+  const patientMeds: Record<string, { name: string; dosage: string | null }[]> = {};
+  for (const med of activeMeds) {
+    (patientMeds[med.patientId] ??= []).push({ name: med.name, dosage: med.dosage });
+  }
+
   // Serialize full thread messages for the detail view
   const threadMessages = threads.map((t) => ({
     threadId: t.id,
@@ -191,6 +207,7 @@ export default async function ClinicMessagesPage({
         currentUserId={user.id}
         initialThreadId={searchParams?.thread}
         initialFilter={searchParams?.filter}
+        patientMeds={patientMeds}
       />
     </PageShell>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Card } from "@/components/ui/card";
@@ -46,6 +47,11 @@ interface ThreadMessageData {
   callLogs: CallLogData[];
 }
 
+interface PatientMed {
+  name: string;
+  dosage: string | null;
+}
+
 interface Props {
   triaged: TriagedMessage[];
   threadMessages: ThreadMessageData[];
@@ -54,6 +60,8 @@ interface Props {
   /** EMR-708 — supports `?filter=brief` from the redirected morning-brief
    *  route. Unknown values fall back to "all". */
   initialFilter?: string;
+  /** EMR-657 — map of patientId → active meds for the hover tooltip. */
+  patientMeds?: Record<string, PatientMed[]>;
 }
 
 // EMR-604 — chronological timeline that interleaves messages and call records
@@ -297,6 +305,50 @@ function HoverMedsText({ text }: { text: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// EMR-657 — Avatar meds tooltip
+// Wraps any child with a hover popover listing the patient's active meds.
+// ---------------------------------------------------------------------------
+
+function MedsTooltip({ meds, children }: { meds: PatientMed[]; children: React.ReactNode }) {
+  return (
+    <span className="relative group/meds inline-flex">
+      {children}
+      {meds.length > 0 && (
+        <span
+          role="tooltip"
+          className={cn(
+            "pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50",
+            "w-52 rounded-lg border border-border bg-surface-raised shadow-xl p-3",
+            "opacity-0 group-hover/meds:opacity-100 transition-opacity duration-150",
+          )}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle mb-1.5">
+            Current Meds
+          </p>
+          <ul className="space-y-1">
+            {meds.slice(0, 6).map((m) => (
+              <li key={m.name} className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-medium text-text truncate">{m.name}</span>
+                {m.dosage && (
+                  <span className="text-[10px] text-text-muted whitespace-nowrap shrink-0">
+                    {m.dosage}
+                  </span>
+                )}
+              </li>
+            ))}
+            {meds.length > 6 && (
+              <li className="text-[10px] text-text-subtle pt-0.5">
+                +{meds.length - 6} more
+              </li>
+            )}
+          </ul>
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Reply compose (inline)
 // ---------------------------------------------------------------------------
 
@@ -309,18 +361,36 @@ function ReplySubmitButton({ isDraft }: { isDraft?: boolean }) {
   );
 }
 
+const DRAFT_KEY = (threadId: string) => `msg-draft:${threadId}`;
+
 function InlineReplyCompose({ threadId }: { threadId: string }) {
   const [state, formAction] = useFormState(sendReply, null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // EMR-657 — restore saved draft on mount; save on every keystroke.
+  const [text, setText] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem(DRAFT_KEY(threadId)) ?? "";
+  });
+  const [showSlashCommands, setShowSlashCommands] = useState(false);
+
+  // Persist draft on every change.
+  useEffect(() => {
+    if (text) {
+      localStorage.setItem(DRAFT_KEY(threadId), text);
+    } else {
+      localStorage.removeItem(DRAFT_KEY(threadId));
+    }
+  }, [threadId, text]);
+
+  // Clear draft + form after successful send.
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
+      setText("");
+      localStorage.removeItem(DRAFT_KEY(threadId));
     }
-  }, [state]);
-
-  const [text, setText] = useState("");
-  const [showSlashCommands, setShowSlashCommands] = useState(false);
+  }, [state, threadId]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "/") {
@@ -384,12 +454,28 @@ function InlineReplyCompose({ threadId }: { threadId: string }) {
 // Main component
 // ---------------------------------------------------------------------------
 
+// EMR-657 — Assign a numeric score so urgent+unread threads always surface
+// first regardless of recency. Lower score = higher in list.
+const PRIORITY_SCORE: Record<MessagePriority, number> = {
+  urgent: 0,
+  high: 2,
+  routine: 4,
+  low: 6,
+};
+
+function smartScore(t: TriagedMessage): number {
+  const base = PRIORITY_SCORE[t.priority];
+  // Unread bump: −1 so unread urgent beats read urgent, etc.
+  return t.unreadCount > 0 ? base - 1 : base;
+}
+
 export function SmartInboxView({
   triaged,
   threadMessages,
   currentUserId,
   initialThreadId,
   initialFilter,
+  patientMeds = {},
 }: Props) {
   const initialPriority: PriorityFilter =
     initialFilter === "brief" ||
@@ -465,6 +551,14 @@ export function SmartInboxView({
           t.summary.toLowerCase().includes(q),
       );
     }
+
+    // EMR-657 — smart sort: urgent+unread first, then high+unread, etc.;
+    // within the same score bucket, fall back to recency (newest first).
+    list = [...list].sort((a, b) => {
+      const scoreDiff = smartScore(a) - smartScore(b);
+      if (scoreDiff !== 0) return scoreDiff;
+      return b.lastMessageAt.localeCompare(a.lastMessageAt);
+    });
 
     return list;
   }, [triaged, priorityFilter, categoryFilter, search]);
@@ -675,18 +769,25 @@ export function SmartInboxView({
               {/* Thread header */}
               <div className="px-5 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <Avatar
-                    firstName={selectedThread.patientName.split(" ")[0] ?? ""}
-                    lastName={selectedThread.patientName.split(" ")[1] ?? ""}
-                    size="sm"
-                  />
+                  {/* EMR-657 — hover avatar to see patient's current meds */}
+                  <MedsTooltip meds={patientMeds[selectedThread.patientId] ?? []}>
+                    <Avatar
+                      firstName={selectedThread.patientName.split(" ")[0] ?? ""}
+                      lastName={selectedThread.patientName.split(" ")[1] ?? ""}
+                      size="sm"
+                    />
+                  </MedsTooltip>
                   <div className="flex-1 min-w-0">
                     <h2 className="font-display text-lg text-text leading-tight truncate">
                       {selectedThread.subject}
                     </h2>
-                    <p className="text-xs text-text-muted">
+                    {/* EMR-657 — clicking name opens the patient chart */}
+                    <Link
+                      href={`/clinic/patients/${selectedThread.patientId}`}
+                      className="text-xs text-text-muted hover:text-accent hover:underline transition-colors"
+                    >
                       {selectedThread.patientName}
-                    </p>
+                    </Link>
                   </div>
                   {selectedTriage && (
                     <div className="flex items-center gap-2">
