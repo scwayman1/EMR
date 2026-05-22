@@ -1,3 +1,10 @@
+// EMR-748 — One-click rollback button (client).
+//
+// Rendered next to each non-current entry on the History tab. Opens a
+// confirmation modal that requires the operator to (a) type the
+// practice name verbatim and (b) provide a reason. On submit, calls the
+// `rollbackPracticeConfig` server action.
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -10,6 +17,7 @@ export function RollbackButton({
 }: {
   configurationId: string;
   targetVersion: number;
+  /** Practice name the operator must type verbatim to confirm. */
   practiceName: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -37,6 +45,7 @@ export function RollbackButton({
       if (result.ok === false) {
         setError(result.message);
       }
+      // On success, the action redirects so we never get here.
     });
   }
 

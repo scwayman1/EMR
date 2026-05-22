@@ -1,3 +1,14 @@
+// EMR-746 — Semantic version diff viewer.
+//
+// /practices/[id]/history/diff?from=v3&to=v5
+//
+// Loads two PracticeConfigurationVersion rows by their version numbers
+// and renders a semantic diff using the labelFor() map. Falls back to a
+// raw-JSON view when a field has no humanizing label and isn't a flat
+// scalar.
+//
+// Server component. Auth gating inherits from (super-admin)/layout.tsx.
+
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -31,6 +42,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   );
 }
 
+/** Recursively collect leaf paths from a snapshot. */
 function flatten(value: unknown, prefix = ""): Array<[string, unknown]> {
   if (isPlainObject(value)) {
     const out: Array<[string, unknown]> = [];
