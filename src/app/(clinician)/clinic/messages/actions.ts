@@ -63,7 +63,15 @@ export async function sendClinicReplyAction(
   return { ok: true };
 }
 
-// ---------- Compose new thread (EMR-656) ----------
+// ---------- Compose new thread ----------
+//
+// Two server actions exist because two UIs (with two different auth surfaces)
+// both open a fresh patient thread:
+//   - composeMessage (EMR-656) is invoked from the New Message modal on
+//     /clinic/messages. Open to any signed-in EMR user.
+//   - composePatientMessage (EMR-658) is invoked from the Gmail-style docked
+//     composer that mounts on a patient chart. Restricted to clinician /
+//     practice_owner roles since the compose UI is embedded in the chart.
 
 const composeSchema = z.object({
   patientId: z.string().min(1),
@@ -112,6 +120,54 @@ export async function composeMessage(
           sentAt: now,
         },
       },
+    },
+  });
+
+  revalidatePath("/clinic/messages");
+  return { ok: true, threadId: thread.id };
+}
+
+export async function composePatientMessage(
+  _prev: ComposeResult | null,
+  formData: FormData,
+): Promise<ComposeResult> {
+  const user = await requireUser();
+
+  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
+    return { ok: false, error: "Unauthorized — clinician role required." };
+  }
+
+  const parsed = composeSchema.safeParse({
+    patientId: formData.get("patientId") as string,
+    subject: (formData.get("subject") as string)?.trim(),
+    body: (formData.get("body") as string)?.trim(),
+  });
+
+  if (!parsed.success) return { ok: false, error: "Please complete all fields." };
+
+  const patient = await prisma.patient.findFirst({
+    where: { id: parsed.data.patientId, organizationId: user.organizationId! },
+    select: { id: true },
+  });
+  if (!patient) return { ok: false, error: "Patient not found." };
+
+  const now = new Date();
+  const thread = await prisma.messageThread.create({
+    data: {
+      patientId: parsed.data.patientId,
+      subject: parsed.data.subject,
+      lastMessageAt: now,
+    },
+    select: { id: true },
+  });
+
+  await prisma.message.create({
+    data: {
+      threadId: thread.id,
+      senderUserId: user.id,
+      status: "sent",
+      body: parsed.data.body,
+      sentAt: now,
     },
   });
 
