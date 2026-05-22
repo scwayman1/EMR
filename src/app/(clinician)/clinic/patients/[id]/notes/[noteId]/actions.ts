@@ -12,6 +12,7 @@ import {
 } from "@/lib/orchestration/model-client";
 import { z } from "zod";
 import { freezeNoteSnapshot } from "@/lib/agents/guardrails/note-guardrails";
+import { ensureConsentDisclaimerBlock } from "@/lib/clinical/ai-consent-disclaimer";
 import { logger } from "@/lib/observability/log";
 
 const blockSchema = z.object({
@@ -52,9 +53,16 @@ export async function saveNoteBlocks(
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  // EMR-784: AI-drafted notes (voice/ambient scribe) must keep the
+  // patient verbal-consent disclaimer even if the clinician edited the
+  // draft. Re-inject if it was stripped.
+  const blocksToSave = note.aiDrafted
+    ? ensureConsentDisclaimerBlock(blocks)
+    : blocks;
+
   await prisma.note.update({
     where: { id: noteId },
-    data: { blocks: blocks as any },
+    data: { blocks: blocksToSave as any },
   });
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
@@ -82,9 +90,20 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  // EMR-784: Before finalizing, ensure an AI-drafted note still carries
+  // the patient verbal-consent disclaimer. Defends against a clinician
+  // deleting it during cleanup before signing.
+  const blocksAtFinalize =
+    note.aiDrafted && Array.isArray(note.blocks)
+      ? ensureConsentDisclaimerBlock(
+          note.blocks as unknown as { heading?: string; body?: string }[],
+        )
+      : null;
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
+      ...(blocksAtFinalize ? { blocks: blocksAtFinalize as any } : {}),
       status: "finalized",
       finalizedAt: new Date(),
       authorUserId: user.id,
@@ -167,15 +186,22 @@ export async function saveAndFinalizeNote(
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  // EMR-784: AI-drafted notes (voice/ambient scribe) must keep the
+  // patient verbal-consent disclaimer through finalize, even if the
+  // clinician edited it out.
+  const blocksToFinalize = note.aiDrafted
+    ? ensureConsentDisclaimerBlock(blocks)
+    : blocks;
+
   // EMR-131: Freeze a snapshot of the AI draft + transcript at sign
   // time. Hashes go to AuditLog so we can prove provenance later
   // (defense against "the AI made that up" complaints).
-  const snapshot = buildSnapshotFromNoteBlocks(note.blocks, blocks);
+  const snapshot = buildSnapshotFromNoteBlocks(note.blocks, blocksToFinalize);
 
   await prisma.note.update({
     where: { id: noteId },
     data: {
-      blocks: blocks as any,
+      blocks: blocksToFinalize as any,
       status: "finalized",
       finalizedAt: new Date(),
       authorUserId: user.id,
