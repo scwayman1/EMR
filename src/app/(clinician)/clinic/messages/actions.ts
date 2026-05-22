@@ -63,6 +63,62 @@ export async function sendClinicReplyAction(
   return { ok: true };
 }
 
+// ---------- Compose new thread (EMR-656) ----------
+
+const composeSchema = z.object({
+  patientId: z.string().min(1),
+  subject: z.string().min(1).max(200),
+  body: z.string().min(1).max(5000),
+});
+
+export type ComposeResult =
+  | { ok: true; threadId: string }
+  | { ok: false; error: string };
+
+export async function composeMessage(
+  _prev: ComposeResult | null,
+  formData: FormData
+): Promise<ComposeResult> {
+  const user = await requireUser();
+
+  const parsed = composeSchema.safeParse({
+    patientId: formData.get("patientId") as string,
+    subject: (formData.get("subject") as string)?.trim(),
+    body: (formData.get("body") as string)?.trim(),
+  });
+
+  if (!parsed.success) {
+    return { ok: false, error: "All fields are required." };
+  }
+
+  const patient = await prisma.patient.findFirst({
+    where: { id: parsed.data.patientId, organizationId: user.organizationId! },
+    select: { id: true },
+  });
+  if (!patient) return { ok: false, error: "Patient not found." };
+
+  const now = new Date();
+
+  const thread = await prisma.messageThread.create({
+    data: {
+      patientId: parsed.data.patientId,
+      subject: parsed.data.subject,
+      lastMessageAt: now,
+      messages: {
+        create: {
+          senderUserId: user.id,
+          status: "sent",
+          body: parsed.data.body,
+          sentAt: now,
+        },
+      },
+    },
+  });
+
+  revalidatePath("/clinic/messages");
+  return { ok: true, threadId: thread.id };
+}
+
 // ---------- Send reply (Smart Inbox — EMR-153) ----------
 
 const sendReplySchema = z.object({
