@@ -13,11 +13,9 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MetricTile } from "@/components/ui/metric-tile";
-import { EmptyState } from "@/components/ui/empty-state";
-import { formatRelative } from "@/lib/utils/format";
+import { CommsRecentClient } from "./comms-recent-client";
 
 export const metadata = { title: "Communications" };
 
@@ -79,7 +77,7 @@ export default async function CommunicationsPage() {
       orderBy: { startedAt: "desc" },
       take: 8,
       include: {
-        patient: { select: { firstName: true, lastName: true } },
+        patient: { select: { id: true, firstName: true, lastName: true } },
         providerUser: { select: { firstName: true, lastName: true } },
       },
     }),
@@ -88,7 +86,7 @@ export default async function CommunicationsPage() {
       orderBy: { createdAt: "desc" },
       take: 6,
       include: {
-        patient: { select: { firstName: true, lastName: true } },
+        patient: { select: { id: true, firstName: true, lastName: true } },
       },
     }),
     prisma.outreachCampaign.findMany({
@@ -108,42 +106,60 @@ export default async function CommunicationsPage() {
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        <MetricTile
-          label="Calls (7 days)"
-          value={callsThisWeek}
-          accent="forest"
-          hint="Phone + video sessions logged"
-        />
-        <MetricTile
-          label="Zoom upcoming"
-          value={upcomingZoom}
-          accent={upcomingZoom > 0 ? "forest" : "none"}
-          hint="HIPAA-compliant Zoom visits"
-        />
-        <MetricTile
-          label="New voicemails"
-          value={newVoicemails}
-          accent={newVoicemails > 0 ? "amber" : "none"}
-          hint="Awaiting clinician review"
-        />
-        <MetricTile
-          label="Transcripts to review"
-          value={pendingTranscripts}
-          accent={pendingTranscripts > 0 ? "amber" : "none"}
-          hint="Pertinent-info-only summaries"
-        />
-        <MetricTile
-          label="Faxes in flight"
-          value={pendingFaxes}
-          accent={pendingFaxes > 0 ? "amber" : "none"}
-          hint="Queued or sending"
-        />
-        <MetricTile
-          label="Active outreach"
-          value={activeCampaigns}
-          accent="forest"
-          hint="SMS + email campaigns"
-        />
+        <Link href="/clinic/communications/transcripts" className="block group">
+          <MetricTile
+            label="Calls (7 days)"
+            value={callsThisWeek}
+            accent="forest"
+            hint="Phone + video sessions logged"
+            className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
+          />
+        </Link>
+        <Link href="/clinic/communications/zoom" className="block group">
+          <MetricTile
+            label="Zoom upcoming"
+            value={upcomingZoom}
+            accent={upcomingZoom > 0 ? "forest" : "none"}
+            hint="HIPAA-compliant Zoom visits"
+            className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
+          />
+        </Link>
+        <Link href="/clinic/communications/voicemail" className="block group">
+          <MetricTile
+            label="New voicemails"
+            value={newVoicemails}
+            accent={newVoicemails > 0 ? "amber" : "none"}
+            hint="Awaiting clinician review"
+            className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
+          />
+        </Link>
+        <Link href="/clinic/communications/transcripts" className="block group">
+          <MetricTile
+            label="Transcripts to review"
+            value={pendingTranscripts}
+            accent={pendingTranscripts > 0 ? "amber" : "none"}
+            hint="Pertinent-info-only summaries"
+            className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
+          />
+        </Link>
+        <Link href="/clinic/communications/fax" className="block group">
+          <MetricTile
+            label="Faxes in flight"
+            value={pendingFaxes}
+            accent={pendingFaxes > 0 ? "amber" : "none"}
+            hint="Queued or sending"
+            className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
+          />
+        </Link>
+        <Link href="/clinic/communications/broadcasts" className="block group">
+          <MetricTile
+            label="Active outreach"
+            value={activeCampaigns}
+            accent="forest"
+            hint="SMS + email campaigns"
+            className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
@@ -194,128 +210,41 @@ export default async function CommunicationsPage() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card tone="raised">
-          <CardHeader>
-            <CardTitle className="text-base">Recent calls</CardTitle>
-            <CardDescription>
-              Last 8 phone or video sessions across the practice.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentCalls.length === 0 ? (
-              <EmptyState
-                title="No calls yet"
-                description="Calls launched from the inbox or chart will appear here."
-              />
-            ) : (
-              recentCalls.map((call) => {
-                const counterparty =
-                  call.patient
-                    ? `${call.patient.firstName} ${call.patient.lastName}`
-                    : call.providerUser
-                      ? `${call.providerUser.firstName} ${call.providerUser.lastName}`
-                      : call.externalNumber ?? "Unknown";
-                return (
-                  <div
-                    key={call.id}
-                    className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-muted"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm text-text truncate">
-                        {counterparty}
-                      </p>
-                      <p className="text-[11px] text-text-subtle">
-                        {call.channel} · {call.direction} ·{" "}
-                        {formatRelative(call.startedAt.toISOString())}
-                      </p>
-                    </div>
-                    <Badge tone={callBadgeTone(call.status)}>
-                      {call.status.replace("_", " ")}
-                    </Badge>
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        <Card tone="raised">
-          <CardHeader>
-            <CardTitle className="text-base">Recent faxes</CardTitle>
-            <CardDescription>
-              Inbound + outbound fax activity.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentFaxes.length === 0 ? (
-              <EmptyState
-                title="No faxes yet"
-                description="Send your first fax from the fax tab."
-              />
-            ) : (
-              recentFaxes.map((fax) => (
-                <div
-                  key={fax.id}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-muted"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-text truncate">
-                      {fax.direction === "outbound" ? "→ " : "← "}
-                      {fax.toNumber}
-                      {fax.patient && (
-                        <span className="text-text-subtle">
-                          {" "}
-                          · {fax.patient.firstName} {fax.patient.lastName}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-text-subtle">
-                      {fax.pageCount ?? "?"} pages ·{" "}
-                      {formatRelative(fax.createdAt.toISOString())}
-                    </p>
-                  </div>
-                  <Badge tone={faxBadgeTone(fax.status)}>{fax.status}</Badge>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-
-        <Card tone="raised" className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Recent broadcasts</CardTitle>
-            <CardDescription>
-              Latest practice-wide outreach campaigns.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {recentCampaigns.length === 0 ? (
-              <EmptyState
-                title="No campaigns yet"
-                description="Use SMS broadcast to message patient cohorts."
-              />
-            ) : (
-              recentCampaigns.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-surface-muted"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-text truncate">{c.name}</p>
-                    <p className="text-[11px] text-text-subtle">
-                      {c.channel.toUpperCase()} · {c._count.recipients}{" "}
-                      recipients ·{" "}
-                      {formatRelative(c.createdAt.toISOString())}
-                    </p>
-                  </div>
-                  <Badge tone={campaignBadgeTone(c.status)}>{c.status}</Badge>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      <CommsRecentClient
+        calls={recentCalls.map((call) => ({
+          id: call.id,
+          counterparty: call.patient
+            ? `${call.patient.firstName} ${call.patient.lastName}`
+            : call.providerUser
+              ? `${call.providerUser.firstName} ${call.providerUser.lastName}`
+              : call.externalNumber ?? "Unknown",
+          patientId: call.patient?.id,
+          channel: call.channel,
+          direction: call.direction,
+          startedAt: call.startedAt.toISOString(),
+          status: call.status,
+        }))}
+        faxes={recentFaxes.map((fax) => ({
+          id: fax.id,
+          toNumber: fax.toNumber,
+          patientId: fax.patient?.id,
+          patientName: fax.patient
+            ? `${fax.patient.firstName} ${fax.patient.lastName}`
+            : undefined,
+          direction: fax.direction,
+          pageCount: fax.pageCount,
+          createdAt: fax.createdAt.toISOString(),
+          status: fax.status,
+        }))}
+        broadcasts={recentCampaigns.map((c) => ({
+          id: c.id,
+          name: c.name,
+          channel: c.channel,
+          recipientCount: c._count.recipients,
+          createdAt: c.createdAt.toISOString(),
+          status: c.status,
+        }))}
+      />
     </PageShell>
   );
 }
@@ -350,57 +279,3 @@ function ChannelCard({
   );
 }
 
-function callBadgeTone(
-  status: string,
-): "success" | "warning" | "danger" | "neutral" | "info" {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "in_progress":
-    case "ringing":
-    case "initiated":
-      return "info";
-    case "missed":
-    case "cancelled":
-      return "warning";
-    case "failed":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-function faxBadgeTone(
-  status: string,
-): "success" | "warning" | "danger" | "neutral" | "info" {
-  switch (status) {
-    case "delivered":
-    case "received":
-      return "success";
-    case "queued":
-    case "sending":
-      return "info";
-    case "failed":
-      return "danger";
-    default:
-      return "neutral";
-  }
-}
-
-function campaignBadgeTone(
-  status: string,
-): "success" | "warning" | "danger" | "neutral" | "info" {
-  switch (status) {
-    case "completed":
-      return "success";
-    case "scheduled":
-    case "sending":
-      return "info";
-    case "failed":
-      return "danger";
-    case "cancelled":
-      return "warning";
-    default:
-      return "neutral";
-  }
-}
