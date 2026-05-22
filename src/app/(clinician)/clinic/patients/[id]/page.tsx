@@ -42,6 +42,7 @@ import {
 import { CarePlanSection } from "@/components/patient/CarePlanSection";
 import { ChartTaskList } from "@/components/patient/ChartTaskList";
 import { logger } from "@/lib/observability/log";
+import { MessagePatientDock } from "@/app/(clinician)/clinic/messages/dock-compose";
 
 function cleanMarkdownSummary(md: string): string {
   if (!md) return "";
@@ -575,6 +576,10 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
 
             {/* Quick actions */}
             <div className="flex items-center gap-2 shrink-0 pt-1">
+              <MessagePatientDock
+                patientId={patient.id}
+                patientName={`${patient.firstName} ${patient.lastName}`}
+              />
               <Link href={`/clinic/patients/${params.id}/voice-chart`}>
                 <Button variant="ghost" size="sm">
                   Voice chart
