@@ -146,48 +146,18 @@ function extractManifest(mod: unknown): unknown {
 function discoverManifestSources(): Array<{ key: string; raw: unknown }> {
   const out: Array<{ key: string; raw: unknown }> = [];
 
-  // Path 1: Vitest / Node runtime fallback.
-  // We use process.env.VITEST to explicitly enter the Node fs.readdirSync path
-  // without confusing Webpack's static analyzer or Next.js server components.
+  // Path 1: Vitest (Vite runtime).
+  // Use Vite's `import.meta.glob` with `eager: true` so manifests are
+  // discovered and transformed through vite-node, not Node's native require.
+  // This is the only path that works on Node 20 in CI, since Node <22 cannot
+  // strip TypeScript syntax when requiring `.ts` files directly.
   if (process.env.VITEST) {
-    // eslint-disable-next-line
-    const fs = require("node:fs") as typeof import("node:fs");
-    // eslint-disable-next-line
-    const path = require("node:path") as typeof import("node:path");
-    // Hide createRequire from Webpack's analyzer using String()
-    // eslint-disable-next-line
-    const { createRequire } = require(String("node:module")) as typeof import("node:module");
-
-    const here = typeof __dirname === "string" ? __dirname : process.cwd();
-    const manifestDir = path.join(here, "manifests");
-    const requireFn = createRequire(path.join(here, "registry.ts"));
-
-    const collect = (dir: string, prefix: string) => {
-      let entries: string[];
-      try {
-        entries = fs.readdirSync(dir);
-      } catch (err) {
-        throw new Error(
-          `[specialty-templates] cannot read manifests directory "${dir}": ${(err as Error).message}`
-        );
-      }
-      for (const entry of entries) {
-        const full = path.join(dir, entry);
-        const stat = fs.statSync(full);
-        if (stat.isDirectory()) {
-          collect(full, `${prefix}${entry}/`);
-          continue;
-        }
-        if (!entry.endsWith(".ts")) continue;
-        if (entry.endsWith(".d.ts") || entry.endsWith(".test.ts")) continue;
-        out.push({
-          key: `./${prefix}${entry}`,
-          raw: extractManifest(requireFn(full)),
-        });
-      }
-    };
-
-    collect(manifestDir, "");
+    // @ts-ignore - import.meta.glob is a Vite-only API
+    const modules = import.meta.glob("./manifests/**/*.ts", { eager: true }) as Record<string, unknown>;
+    for (const [key, mod] of Object.entries(modules)) {
+      if (key.endsWith(".d.ts") || key.endsWith(".test.ts")) continue;
+      out.push({ key, raw: extractManifest(mod) });
+    }
     return out;
   }
 
