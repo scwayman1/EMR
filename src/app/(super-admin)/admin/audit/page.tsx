@@ -300,6 +300,3 @@ export default async function AuditLogPage({
   );
 }
 
-// Tiny helper used in tests to mirror page-side cursor URL construction
-// without re-implementing it. Not part of the page render path.
-export const _internals = { encodeCursor };
