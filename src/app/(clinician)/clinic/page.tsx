@@ -648,6 +648,12 @@ export default async function ClinicHomePage() {
           {/* Right: Quick actions */}
           <div className="flex items-center gap-3 shrink-0">
             <UniversalPatientSearch className="hidden md:block" />
+            <Link href="/clinic/mindful" title="Take a mindful break">
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-text-subtle hover:text-accent gap-1.5">
+                <span aria-hidden="true">🍃</span>
+                Relax
+              </Button>
+            </Link>
             <NewVisitModal>
               <Button size="sm">New visit</Button>
             </NewVisitModal>
