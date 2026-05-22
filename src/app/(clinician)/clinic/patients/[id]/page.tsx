@@ -42,6 +42,23 @@ import {
 import { CarePlanSection } from "@/components/patient/CarePlanSection";
 import { ChartTaskList } from "@/components/patient/ChartTaskList";
 import { logger } from "@/lib/observability/log";
+
+function cleanMarkdownSummary(md: string): string {
+  if (!md) return "";
+  return md
+    // Strip headers (e.g. # Header, ## Subheader)
+    .replace(/^#+\s+/gm, "")
+    // Strip bullets and lists (e.g. - list item, * list item, 1. list item)
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    // Strip bold/italic/strike markers (e.g. **bold**, *italic*, ~~strike~~)
+    .replace(/(\*\*|\*|~~|_)/g, "")
+    // Strip links [text](url) -> text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    // Normalize spaces/newlines
+    .replace(/\s+/g, " ")
+    .trim();
+}
 /* ── Types ────────────────────────────────────────────────────── */
 
 interface PageProps {
@@ -78,6 +95,8 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     patientMemories,
     clinicalObservations,
     patientClaims,
+    pastConditions,
+    pastSurgeries,
   ] = await Promise.all([
     prisma.patient.findFirst({
       where: {
@@ -191,6 +210,14 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         adjustments: true,
         charges: true,
       },
+    }),
+    prisma.pastMedicalCondition.findMany({
+      where: { patientId: params.id, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.pastSurgery.findMany({
+      where: { patientId: params.id, deletedAt: null },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
 
@@ -385,7 +412,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     : null;
 
   const chartSummaryText = patient.chartSummary?.summaryMd
-    ? patient.chartSummary.summaryMd.replace(/^[#*-\s]+/gm, "")
+    ? cleanMarkdownSummary(patient.chartSummary.summaryMd)
     : patient.presentingConcerns ?? "No summary available.";
 
   /* ── Serialize threads for client component ───────────────── */
@@ -720,8 +747,8 @@ function DemographicsTab({
   const showPediatricOverlay = isPediatric(dob);
 
   const intake = (patient.intakeAnswers ?? {}) as Record<string, any>;
-  const pmh = Array.isArray(intake.pastMedicalHistory) ? (intake.pastMedicalHistory as string[]) : [];
-  const psh = Array.isArray(intake.pastSurgicalHistory) ? (intake.pastSurgicalHistory as string[]) : [];
+  const pmh = pastConditions;
+  const psh = pastSurgeries;
   const sex = intake.sex ?? intake.gender ?? "Not recorded";
   const race = intake.race ?? intake.ethnicity ?? "Not recorded";
   const maritalStatus = intake.maritalStatus ?? "Not recorded";

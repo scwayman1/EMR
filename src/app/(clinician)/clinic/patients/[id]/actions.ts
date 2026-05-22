@@ -243,4 +243,61 @@ export async function logCorrespondence(
   return { ok: true };
 }
 
+export async function addPastMedicalConditionAction(
+  patientId: string,
+  condition: string,
+  onsetYear?: number | null,
+  notes?: string | null
+) {
+  const user = await requireUser();
+  await prisma.pastMedicalCondition.create({
+    data: {
+      patientId,
+      condition,
+      onsetYear,
+      notes,
+      source: "clinician",
+    },
+  });
+  revalidatePath(`/clinic/patients/${patientId}`);
+  return { ok: true };
+}
+
+export async function deletePastMedicalConditionAction(patientId: string, id: string) {
+  await prisma.pastMedicalCondition.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
+  revalidatePath(`/clinic/patients/${patientId}`);
+  return { ok: true };
+}
+
+export async function addPastSurgeryAction(
+  patientId: string,
+  procedure: string,
+  performedDateText?: string | null,
+  notes?: string | null
+) {
+  await prisma.pastSurgery.create({
+    data: {
+      patientId,
+      procedure,
+      performedDateText,
+      notes,
+      source: "clinician",
+    },
+  });
+  revalidatePath(`/clinic/patients/${patientId}`);
+  return { ok: true };
+}
+
+export async function deletePastSurgeryAction(patientId: string, id: string) {
+  await prisma.pastSurgery.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
+  revalidatePath(`/clinic/patients/${patientId}`);
+  return { ok: true };
+}
+
 
