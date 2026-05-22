@@ -711,6 +711,41 @@
 }
 
 /* ==========================================================================
+   EMR-780 — Birthday celebration keyframes
+   Used by <BirthdayBadge /> and <BirthdayCelebration /> for the inline
+   emoji bounce, modal entrance, fade-in backdrop, and floating balloons.
+   Scoped here (rather than tailwind.config.ts) so the names stay
+   discoverable next to the rest of the global motion vocabulary.
+   ========================================================================== */
+@keyframes birthday-bounce {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+
+@keyframes birthday-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes birthday-card-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes birthday-balloon-float {
+  0% {
+    transform: translateY(0) rotate(-3deg);
+    opacity: 0;
+  }
+  10% { opacity: 0.85; }
+  90% { opacity: 0.85; }
+  100% {
+    transform: translateY(-110vh) rotate(3deg);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
    Utility — invisible scrollbar (used by horizontal sub-tab nav, etc.)
    The bar still scrolls; we just hide its chrome to keep the row clean.
    ========================================================================== */

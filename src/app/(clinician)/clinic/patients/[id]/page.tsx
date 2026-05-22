@@ -36,6 +36,8 @@ import {
 } from "@/lib/utils/patient-age";
 import { CarePlanSection } from "@/components/patient/CarePlanSection";
 import { ChartTaskList } from "@/components/patient/ChartTaskList";
+import { BirthdayCelebration } from "@/components/patient/birthday-celebration";
+import { BirthdayBadge } from "@/components/patient/birthday-badge";
 import { logger } from "@/lib/observability/log";
 
 /* ── Types ────────────────────────────────────────────────────── */
@@ -405,6 +407,15 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         patientName={`${patient.firstName} ${patient.lastName}`}
       />
 
+      {/* EMR-780: celebratory popup fires once-per-session when opening
+          the chart on the patient's birthday. */}
+      <BirthdayCelebration
+        dateOfBirth={patient.dateOfBirth}
+        patientFirstName={patient.firstName}
+        patientId={patient.id}
+        audience="clinician"
+      />
+
       {/* ── Dossier header ────────────────────────────────── */}
       <Card tone="ambient" className="mb-8">
         <CardContent className="pt-8 pb-8">
@@ -418,8 +429,14 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   benchmarkSeconds={benchmarkSeconds}
                 />
               </div>
-              <h1 className="font-display text-3xl text-text tracking-tight leading-tight">
-                {patient.firstName} {patient.lastName}
+              <h1 className="font-display text-3xl text-text tracking-tight leading-tight flex items-center gap-2 flex-wrap">
+                <span>
+                  {patient.firstName} {patient.lastName}
+                </span>
+                {/* EMR-780: birthday indicator — renders 🎂 only when
+                    today matches the patient's DOB. Auto-clears at 00:01
+                    local the following day. */}
+                <BirthdayBadge dateOfBirth={patient.dateOfBirth} />
               </h1>
               {patient.presentingConcerns && (
                 <p className="text-[15px] text-text-muted mt-1.5 leading-relaxed max-w-xl">

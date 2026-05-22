@@ -31,6 +31,8 @@ import { HealthRings } from "@/components/portal/health-rings";
 import { FreezeTokenStore } from "@/components/portal/freeze-token-store";
 import { applyFreezeTokenAction } from "@/app/(patient)/portal/apply-freeze-action";
 import { BadgeShowcase, type BadgeData } from "@/components/portal/badge-showcase";
+import { BirthdayCelebration } from "@/components/patient/birthday-celebration";
+import { BirthdayBadge } from "@/components/patient/birthday-badge";
 
 // EMR-205: guard the home-page queries so a hung downstream call can
 // never wedge the Suspense boundary again. Tight timeouts give the user
@@ -335,6 +337,13 @@ export default async function PatientHome() {
     <PageShell maxWidth="max-w-[1040px]">
       <OnboardingTour />
       <QuickSymptomFab />
+      {/* EMR-780: birthday popup for the patient's own chart. */}
+      <BirthdayCelebration
+        dateOfBirth={patient.dateOfBirth}
+        patientFirstName={patient.firstName}
+        patientId={patient.id}
+        audience="patient"
+      />
       {/* ── Hero greeting ────────────────────────────── */}
       <section className="relative overflow-hidden rounded-2xl md:rounded-3xl liquid-glass-strong mb-6 md:mb-8">
         <div className="relative px-6 sm:px-8 md:px-12 py-8 md:py-12 max-w-2xl">
@@ -358,9 +367,13 @@ export default async function PatientHome() {
               />
             )}
           </div>
-          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl leading-[1.1] tracking-tight text-text">
-            {greeting()},{" "}
-            <span className="italic text-accent">{patient.firstName}</span>.
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl leading-[1.1] tracking-tight text-text flex items-center gap-2 flex-wrap">
+            <span>
+              {greeting()},{" "}
+              <span className="italic text-accent">{patient.firstName}</span>.
+            </span>
+            {/* EMR-780: 🎂 next to the patient's name on their birthday. */}
+            <BirthdayBadge dateOfBirth={patient.dateOfBirth} />
           </h1>
           <p className="text-sm text-text-muted mt-3 leading-relaxed max-w-lg">
             Here is your health dashboard. A quick check-in helps your care team
