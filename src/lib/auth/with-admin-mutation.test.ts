@@ -21,6 +21,19 @@ vi.mock("./super-admin-bootstrap", () => ({
   bootstrapSuperAdminIfAllowlisted: vi.fn(),
 }));
 
+vi.mock("./super-admin-mfa", () => ({
+  loadSuperAdminMfaState: async () => ({ status: "enrolled" }),
+  buildMfaRequiredResponse: () => new Response(JSON.stringify({}), { status: 403 }),
+}));
+
+vi.mock("./impersonation", () => ({
+  readImpersonationFromCookies: vi.fn().mockResolvedValue(null),
+  IMPERSONATION_COOKIE: "lj_impersonation",
+}));
+
+
+
+
 vi.mock("./audit-stub", () => ({
   logControllerAction: vi.fn().mockResolvedValue(undefined),
 }));
@@ -47,6 +60,8 @@ vi.mock("@/lib/observability/log", () => ({
     with: vi.fn().mockReturnThis(),
   },
 }));
+
+
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextResponse } from "next/server";

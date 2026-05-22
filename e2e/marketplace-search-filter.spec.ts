@@ -57,23 +57,16 @@ test.describe("Marketplace search + filter — pass 10", () => {
     expect(count, "anxiety category should return ≥1 product").toBeGreaterThan(0);
   });
 
-  test("?category=nonexistent-slug renders cleanly (current: silently ignores)", async ({
-    page,
-  }) => {
-    // Current behavior (src/app/marketplace/page.tsx:38-41): if the
-    // category slug doesn't match any CATEGORIES row, the filter is
-    // silently dropped and the full catalog renders. This is a UX
-    // smell — a user who bookmarks /marketplace?category=anxiety-old
-    // after a slug rename has no way to know their filter is invalid.
-    // Tracked as a follow-up; this test asserts no crash for now.
-    const res = await page.goto("/marketplace?category=nonexistent-slug", {
-      waitUntil: "networkidle",
-    });
-    expect(res?.status() ?? 0, "page renders cleanly even with a bogus category").toBeLessThan(500);
-    // Don't assert count — current behavior silently shows the full
-    // catalog. Flip this assertion to `toBe(0)` once the product
-    // decision lands (404, empty state, or banner).
-    expect(await productCardCount(page)).toBeGreaterThanOrEqual(0);
+  test("unknown category slugs render an empty-state banner", async ({ page }) => {
+    await page.goto("/marketplace?category=does-not-exist");
+
+    await expect(
+      page.getByRole("heading", { name: /Category not found:/ }),
+    ).toBeVisible();
+    await expect(page.getByText("0 products")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Browse all products" }),
+    ).toHaveAttribute("href", "/marketplace");
   });
 
   test("?sort=price-asc returns products in ascending price order", async ({ page }) => {
@@ -124,8 +117,6 @@ test.describe("Marketplace search + filter — pass 10", () => {
   });
 
   test("?brand= filters to a single brand", async ({ page }) => {
-    // Pick a brand from the catalog deterministically. "Solace Botanicals"
-    // is in src/lib/marketplace/data.ts and has multiple products.
     const brand = "Solace Botanicals";
     await page.goto(`/marketplace?brand=${encodeURIComponent(brand)}`, {
       waitUntil: "networkidle",
@@ -133,8 +124,6 @@ test.describe("Marketplace search + filter — pass 10", () => {
     const count = await productCardCount(page);
     expect(count, `expected ≥1 product from brand "${brand}"`).toBeGreaterThan(0);
 
-    // Every card should display the chosen brand name. Look at the
-    // eyebrow that the listing card uses (uppercase brand label).
     const visibleBrands = await page
       .locator(".text-text-subtle.uppercase, .uppercase.tracking-\\[0\\.14em\\]")
       .allTextContents();
@@ -146,35 +135,22 @@ test.describe("Marketplace search + filter — pass 10", () => {
   });
 
   test("?q=tincture&category=anxiety combines filters", async ({ page }) => {
-    // Combined query: anxiety-tagged tinctures. Should be a subset of
-    // either filter alone. We can't predict the exact count without
-    // hardcoding the catalog, but we can assert the page doesn't error
-    // and renders ≥0 cards.
     const res = await page.goto("/marketplace?q=tincture&category=anxiety", {
       waitUntil: "networkidle",
     });
     expect(res?.status() ?? 0).toBeLessThan(500);
-    // Count is allowed to be zero (no tinctures match anxiety) — what
-    // we're verifying is that the combination doesn't 500 or render
-    // broken state.
     const count = await productCardCount(page);
     expect(count).toBeGreaterThanOrEqual(0);
-    // Page must still have the listing chrome (eyebrow, header).
     await expect(page.getByRole("heading").first()).toBeVisible();
   });
 
   test("malicious-looking query doesn't crash the page", async ({ page }) => {
-    // Defense-in-depth — confirm the query handler tolerates pathological
-    // input. server-side `searchProducts` should treat this as a no-match
-    // string rather than 500.
     const evil = `<script>alert(1)</script>'; DROP TABLE products;--`;
     const res = await page.goto(
       `/marketplace?q=${encodeURIComponent(evil)}`,
       { waitUntil: "networkidle" },
     );
     expect(res?.status() ?? 0).toBeLessThan(500);
-    // Confirm the query string was NOT echoed unescaped into the DOM
-    // anywhere — basic XSS sanity.
     const html = await page.content();
     expect(html, "raw <script> tag must not appear in rendered HTML").not.toContain(
       "<script>alert(1)</script>",

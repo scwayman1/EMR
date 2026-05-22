@@ -30,6 +30,7 @@ export const IDLE_LIMITS_MS: Record<Role, number> = {
   system: 15 * MINUTE,
   implementation_admin: 10 * MINUTE,
   super_admin: 10 * MINUTE,
+  leafnerd: 30 * MINUTE,
 };
 
 /** Absolute cap on session age — applies regardless of activity. */
