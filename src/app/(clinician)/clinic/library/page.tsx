@@ -1,13 +1,16 @@
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import Link from "next/link";
+import { getAllInteractions } from "@/lib/domain/drug-interactions";
 import { PdfExportButton } from "./pdf-export-button";
+import { InteractionBubbles } from "./interaction-bubbles";
 
 export const metadata = { title: "Clinical Library" };
 
 export default function LibraryPage() {
+  const interactions = getAllInteractions();
   return (
     <PageShell maxWidth="max-w-[960px]">
       <PageHeader
@@ -190,26 +193,13 @@ export default function LibraryPage() {
       <Card tone="raised" className="mb-6">
         <CardHeader>
           <CardTitle>Drug interaction reference</CardTitle>
-          <CardDescription>Cannabis-drug interactions are checked automatically in the Cannabis Rx tab.</CardDescription>
+          <CardDescription>
+            Click any bubble to see mechanism and recommendation.{" "}
+            {interactions.length} interactions in the database — checked automatically when prescribing.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <Badge tone="danger">Red</Badge>
-              <p className="text-sm text-text-muted">Contraindicated: Warfarin (CYP2C9), Clobazam (dramatic CBD interaction, FDA warning)</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge tone="warning">Yellow</Badge>
-              <p className="text-sm text-text-muted">Caution: Opioids (additive CNS depression), Benzodiazepines, SSRIs (CYP2D6), Statins (CYP3A4), Immunosuppressants, Antiepileptics</p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Badge tone="success">Green</Badge>
-              <p className="text-sm text-text-muted">Generally safe: Acetaminophen, Ibuprofen, Vitamin D, Melatonin, Magnesium, Probiotics</p>
-            </div>
-          </div>
-          <p className="text-xs text-text-subtle mt-4">
-            43 interactions in the database. Full interaction check runs automatically when prescribing.
-          </p>
+          <InteractionBubbles interactions={interactions} />
         </CardContent>
       </Card>
 
