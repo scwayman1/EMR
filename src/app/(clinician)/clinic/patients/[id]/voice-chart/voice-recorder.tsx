@@ -9,6 +9,16 @@ import type { TranscriptSegment } from "@/lib/domain/voice-chart";
 import type { NoteBlockType } from "@/lib/domain/notes";
 import { NOTE_BLOCK_LABELS, APSO_ORDER } from "@/lib/domain/notes";
 import {
+  MOCK_TRANSCRIPTS,
+  SCRIBE_SUMMARY_STYLES,
+  SCRIBE_TEMPLATES,
+  SCRIBE_TONES,
+  findTemplate,
+  type ScribeSummaryStyleId,
+  type ScribeTemplateId,
+  type ScribeToneId,
+} from "@/lib/domain/scribe-templates";
+import {
   startVoiceEncounter,
   processTranscript,
   saveTranscriptToEncounter,
@@ -33,13 +43,85 @@ interface Props {
   treatmentGoals: string | null;
 }
 
+// ── Mock transcript by template ────────────────────────────────
+
+/**
+ * Parse a template's mock transcript string into TranscriptSegment[]
+ * scaled across `durationSec`. Lines look like:
+ *   [00:08] Dr: How have you been?
+ *   [00:14] Pt: Better, doctor.
+ */
+function parseMockTranscript(
+  mockText: string,
+  durationSec: number,
+): TranscriptSegment[] {
+  const lines = mockText.split("\n").map((l) => l.trim()).filter(Boolean);
+  const segments: TranscriptSegment[] = [];
+  const lineRegex = /^\[(\d{1,2}):(\d{2})\]\s*(Dr|Pt|\?\?):\s*(.+)$/i;
+
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(lineRegex);
+    if (!m) continue;
+    const start = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    const speakerRaw = m[3].toLowerCase();
+    const speaker: TranscriptSegment["speaker"] =
+      speakerRaw === "dr"
+        ? "clinician"
+        : speakerRaw === "pt"
+          ? "patient"
+          : "unknown";
+    segments.push({
+      speaker,
+      text: m[4],
+      startTime: start,
+      endTime: start, // patched below
+    });
+  }
+
+  // Patch end times = next start, or +6s for the last segment.
+  for (let i = 0; i < segments.length; i++) {
+    segments[i].endTime =
+      i + 1 < segments.length ? segments[i + 1].startTime : segments[i].startTime + 6;
+  }
+
+  // Scale to the actual recorded duration so timestamps line up
+  // with what the clinician saw on the timer.
+  if (segments.length > 0 && durationSec > 0) {
+    const maxTime = segments[segments.length - 1].endTime;
+    const scale = maxTime > 0 ? durationSec / maxTime : 1;
+    return segments.map((s) => ({
+      ...s,
+      startTime: Math.round(s.startTime * scale),
+      endTime: Math.round(s.endTime * scale),
+    }));
+  }
+  return segments;
+}
+
 // ── Simulated transcript ───────────────────────────────────────
 
 function buildSimulatedTranscript(
   patientName: string,
   concerns: string | null,
   goals: string | null,
-  durationSec: number
+  durationSec: number,
+  templateId: ScribeTemplateId,
+): TranscriptSegment[] {
+  // When the selected template has a mock transcript on file, use it
+  // verbatim — it's the most realistic preview of how that template
+  // shape will sound coming back out of the model.
+  const templated = MOCK_TRANSCRIPTS[templateId];
+  if (templated) {
+    return parseMockTranscript(templated, durationSec);
+  }
+  return buildGenericTranscript(patientName, concerns, goals, durationSec);
+}
+
+function buildGenericTranscript(
+  patientName: string,
+  concerns: string | null,
+  goals: string | null,
+  durationSec: number,
 ): TranscriptSegment[] {
   const firstName = patientName.split(" ")[0];
   const concernText = concerns || "general wellness";
@@ -136,6 +218,7 @@ async function transcribeOrFallback(opts: {
   patientName: string;
   presentingConcerns: string | null;
   treatmentGoals: string | null;
+  templateId: ScribeTemplateId;
 }): Promise<TranscriptSegment[]> {
   const {
     audioChunks,
@@ -144,6 +227,7 @@ async function transcribeOrFallback(opts: {
     patientName,
     presentingConcerns,
     treatmentGoals,
+    templateId,
   } = opts;
 
   const fallback = () =>
@@ -152,6 +236,7 @@ async function transcribeOrFallback(opts: {
       presentingConcerns,
       treatmentGoals,
       durationSec,
+      templateId,
     );
 
   if (audioChunks.length === 0) {
@@ -206,6 +291,72 @@ function filenameForMime(mime: string): string {
   if (lower.includes("m4a")) return "recording.m4a";
   if (lower.includes("ogg")) return "recording.ogg";
   return "recording.webm";
+}
+
+// ── Segmented control (iOS-style pill segment) ────────────────
+
+interface SegmentedOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+function SegmentedControl({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: SegmentedOption[];
+  onChange: (value: string) => void;
+}) {
+  const selected = options.find((o) => o.value === value);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs font-medium text-text-muted uppercase tracking-wider">
+          {label}
+        </span>
+        {selected?.description && (
+          <span className="text-[11px] text-text-muted">
+            {selected.description}
+          </span>
+        )}
+      </div>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="inline-flex bg-surface-muted rounded-full p-1 border border-border-strong/40 w-full"
+      >
+        {options.map((opt) => {
+          const active = opt.value === value;
+          return (
+            <button
+              key={opt.value}
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(opt.value)}
+              className={`flex-1 text-xs font-medium px-3 py-1.5 rounded-full transition-all duration-150 ease-out
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40
+                ${
+                  active
+                    ? "bg-surface text-text shadow-sm"
+                    : "text-text-muted hover:text-text"
+                }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function findToneLabel(id: ScribeToneId): string {
+  return SCRIBE_TONES.find((t) => t.id === id)?.label ?? "Clinical";
 }
 
 // ── Waveform bar component ─────────────────────────────────────
@@ -302,11 +453,34 @@ export function VoiceRecorder({
   const [encounterId, setEncounterId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Heidi-style scribe format selection. Default to SOAP + clinical
+  // + structured — covers ~80% of routine encounters. Changing the
+  // template auto-switches the tone to whatever the template prefers,
+  // unless the clinician has already overridden it this session.
+  const [templateId, setTemplateId] = useState<ScribeTemplateId>("soap");
+  const [toneId, setToneId] = useState<ScribeToneId>("clinical");
+  const [summaryStyleId, setSummaryStyleId] =
+    useState<ScribeSummaryStyleId>("structured");
+  const [toneTouched, setToneTouched] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const selectedTemplate = findTemplate(templateId);
+
+  const handleTemplateChange = (next: ScribeTemplateId) => {
+    setTemplateId(next);
+    if (!toneTouched) {
+      const t = findTemplate(next);
+      setToneId(t.defaultTone);
+    }
+  };
+
   // Processing / complete state
   const [transcript, setTranscript] = useState<TranscriptSegment[]>([]);
   const [blocks, setBlocks] = useState<NoteBlock[]>([]);
   const [noteId, setNoteId] = useState<string | null>(null);
   const [confidence, setConfidence] = useState(0);
+  const [documentHeader, setDocumentHeader] = useState<string>("Clinical Note");
+  const [sectionOrder, setSectionOrder] = useState<NoteBlockType[]>(APSO_ORDER);
 
   // Audio refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -438,6 +612,7 @@ export function VoiceRecorder({
       patientName,
       presentingConcerns,
       treatmentGoals,
+      templateId,
     });
 
     setTranscript(segments);
@@ -465,11 +640,17 @@ export function VoiceRecorder({
       .join("\n");
 
     if (encounterId) {
-      const result = await processTranscript(encounterId, formatted, patientId);
+      const result = await processTranscript(encounterId, formatted, patientId, {
+        templateId,
+        toneId,
+        summaryStyleId,
+      });
       if (result.ok) {
         setBlocks(result.blocks);
         setNoteId(result.noteId);
         setConfidence(result.confidence);
+        setDocumentHeader(result.documentHeader);
+        setSectionOrder(result.sectionOrder);
         setState("complete");
       } else {
         setError(result.error);
@@ -489,6 +670,8 @@ export function VoiceRecorder({
     setNoteId(null);
     setConfidence(0);
     setError(null);
+    setDocumentHeader("Clinical Note");
+    setSectionOrder(APSO_ORDER);
     durationRef.current = 0;
   };
 
@@ -511,46 +694,166 @@ export function VoiceRecorder({
 
       {/* ── Idle state ────────────────────────────────────── */}
       {state === "idle" && (
-        <Card tone="raised" className="max-w-lg mx-auto">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-6">
-            <div className="text-center space-y-1">
-              <p className="text-lg font-medium text-text">{patientName}</p>
-              {patientDob && (
-                <p className="text-sm text-text-muted">DOB: {patientDob}</p>
-              )}
-              {presentingConcerns && (
-                <p className="text-xs text-text-muted mt-2 max-w-xs">
-                  Concerns: {presentingConcerns}
-                </p>
-              )}
-            </div>
-
-            <button
-              onClick={handleStart}
-              className="group relative w-20 h-20 rounded-full bg-gradient-to-b from-accent to-accent-strong shadow-lg
-                         hover:shadow-xl hover:scale-105 active:scale-95
-                         transition-all duration-200 ease-out
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-              aria-label="Start recording"
-            >
-              <svg
-                className="w-8 h-8 text-accent-ink mx-auto"
-                fill="currentColor"
-                viewBox="0 0 24 24"
+        <div className="max-w-2xl mx-auto space-y-5">
+          {/* Template picker — horizontally scrollable, iOS-style tile chips */}
+          <Card tone="raised">
+            <CardHeader className="pb-3">
+              <div className="flex items-baseline justify-between">
+                <CardTitle className="text-base">Note template</CardTitle>
+                <span className="text-xs text-text-muted">
+                  {SCRIBE_TEMPLATES.length} formats
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div
+                role="radiogroup"
+                aria-label="Select note template"
+                className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 snap-x"
               >
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h4v2H8v-2h4v-3.07z" />
-              </svg>
-            </button>
+                {SCRIBE_TEMPLATES.map((tpl) => {
+                  const active = tpl.id === templateId;
+                  return (
+                    <button
+                      key={tpl.id}
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => handleTemplateChange(tpl.id)}
+                      className={`shrink-0 snap-start text-left rounded-2xl px-4 py-3 min-w-[148px] border transition-all duration-200 ease-out
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40
+                        ${
+                          active
+                            ? "bg-accent-soft border-accent/60 shadow-sm"
+                            : "bg-surface border-border-strong/40 hover:border-accent/40 hover:bg-surface-muted"
+                        }`}
+                    >
+                      <div className="text-xl leading-none mb-1.5" aria-hidden>
+                        {tpl.glyph}
+                      </div>
+                      <div className="text-sm font-medium text-text">
+                        {tpl.shortLabel}
+                      </div>
+                      <div className="text-[11px] text-text-muted mt-0.5 line-clamp-2">
+                        {tpl.description}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <p className="text-sm text-text-muted">Tap to start recording</p>
-          </CardContent>
-        </Card>
+              {/* Tone + summary style as segmented controls */}
+              <div className="mt-5 space-y-4">
+                <SegmentedControl
+                  label="Tone"
+                  value={toneId}
+                  options={SCRIBE_TONES.map((t) => ({
+                    value: t.id,
+                    label: t.label,
+                    description: t.description,
+                  }))}
+                  onChange={(v) => {
+                    setToneId(v as ScribeToneId);
+                    setToneTouched(true);
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced((s) => !s)}
+                  className="text-xs text-text-muted hover:text-accent transition-colors duration-200"
+                  aria-expanded={showAdvanced}
+                >
+                  {showAdvanced ? "Hide" : "Show"} summary style options
+                </button>
+
+                {showAdvanced && (
+                  <SegmentedControl
+                    label="Summary style"
+                    value={summaryStyleId}
+                    options={SCRIBE_SUMMARY_STYLES.map((s) => ({
+                      value: s.id,
+                      label: s.label,
+                      description: s.description,
+                    }))}
+                    onChange={(v) => setSummaryStyleId(v as ScribeSummaryStyleId)}
+                  />
+                )}
+              </div>
+
+              {/* Selected template preview */}
+              <div className="mt-5 rounded-xl bg-surface-muted border border-border-strong/30 p-3.5">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-[11px] uppercase tracking-wider text-text-muted">
+                    Preview
+                  </span>
+                  <Badge tone="accent">{selectedTemplate.documentHeader}</Badge>
+                </div>
+                <p className="text-sm text-text leading-snug">
+                  {selectedTemplate.mockSummary.summary}
+                </p>
+                <p className="text-[11px] text-text-muted mt-2">
+                  Sections:{" "}
+                  {selectedTemplate.sectionOrder
+                    .map((s) => NOTE_BLOCK_LABELS[s])
+                    .join(" • ")}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Record card */}
+          <Card tone="raised">
+            <CardContent className="pt-8 pb-8 flex flex-col items-center gap-6">
+              <div className="text-center space-y-1">
+                <p className="text-lg font-medium text-text">{patientName}</p>
+                {patientDob && (
+                  <p className="text-sm text-text-muted">DOB: {patientDob}</p>
+                )}
+                {presentingConcerns && (
+                  <p className="text-xs text-text-muted mt-2 max-w-xs">
+                    Concerns: {presentingConcerns}
+                  </p>
+                )}
+              </div>
+
+              <button
+                onClick={handleStart}
+                className="group relative w-20 h-20 rounded-full bg-gradient-to-b from-accent to-accent-strong shadow-lg
+                           hover:shadow-xl hover:scale-105 active:scale-95
+                           transition-all duration-200 ease-out
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                aria-label="Start recording"
+              >
+                <svg
+                  className="w-8 h-8 text-accent-ink mx-auto"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h4v2H8v-2h4v-3.07z" />
+                </svg>
+              </button>
+
+              <div className="text-center space-y-0.5">
+                <p className="text-sm text-text-muted">Tap to start recording</p>
+                <p className="text-[11px] text-text-muted">
+                  {selectedTemplate.glyph} {selectedTemplate.label} ·{" "}
+                  {findToneLabel(toneId)} tone
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* ── Recording state ───────────────────────────────── */}
       {state === "recording" && (
         <Card tone="raised" className="max-w-lg mx-auto">
           <CardContent className="pt-8 pb-8 flex flex-col items-center gap-6">
+            {/* Active template chip */}
+            <Badge tone="accent">
+              {selectedTemplate.glyph} {selectedTemplate.label} ·{" "}
+              {findToneLabel(toneId)}
+            </Badge>
             {/* Pulsing red indicator + timer */}
             <div className="flex items-center gap-3">
               <span className="relative flex h-3 w-3">
@@ -675,12 +978,16 @@ export function VoiceRecorder({
       {/* ── Complete state ────────────────────────────────── */}
       {state === "complete" && (
         <div className="space-y-6">
-          {/* Header with confidence + actions */}
+          {/* Header with template, confidence + actions */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-xl font-display font-medium text-text">
-                Extracted Notes
+                {documentHeader}
               </h2>
+              <Badge tone="accent">
+                {selectedTemplate.glyph} {selectedTemplate.shortLabel}
+              </Badge>
+              <Badge tone="neutral">{findToneLabel(toneId)} tone</Badge>
               <Badge tone={confidenceTone(confidence)}>
                 {Math.round(confidence * 100)}% confidence
               </Badge>
@@ -695,9 +1002,9 @@ export function VoiceRecorder({
             </div>
           </div>
 
-          {/* Note sections in APSO order */}
+          {/* Note sections in the template's preferred order */}
           <div className="grid gap-4 max-w-3xl">
-            {APSO_ORDER.map((sectionType) => {
+            {sectionOrder.map((sectionType) => {
               const block = blocks.find((b) => b.type === sectionType);
               if (!block) return null;
               return (
