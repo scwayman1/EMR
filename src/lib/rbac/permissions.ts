@@ -163,6 +163,7 @@ const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   implementation_admin: new Set<Permission>(),
   super_admin: new Set<Permission>(),
   system: new Set<Permission>(),
+  leafnerd: new Set<Permission>(),
 };
 
 /* ── Errors ─────────────────────────────────────────────────────── */
