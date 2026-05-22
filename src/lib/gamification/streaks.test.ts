@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import { randomUUID } from "crypto";
+import { recordDailyCheckIn, applyFreezeToken } from "./streaks";
+import { prisma } from "@/lib/db/prisma";
 
 let organizations: any[] = [];
 let patients: any[] = [];
@@ -120,9 +122,6 @@ vi.mock("@/lib/db/prisma", () => {
     }
   };
 });
-
-import { recordDailyCheckIn, applyFreezeToken } from "./streaks";
-import { prisma } from "@/lib/db/prisma";
 
 describe("Daily Streaks & Freeze Tokens", () => {
   const orgId = `test-org-${randomUUID()}`;
