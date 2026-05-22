@@ -35,6 +35,14 @@ function walk(node: unknown, visit: (el: AnyEl) => void): void {
   if (!node || typeof node !== "object") return;
   if (isValidElement(node)) {
     visit(node as AnyEl);
+    if (typeof node.type === "function") {
+      try {
+        const rendered = (node.type as Function)(node.props);
+        walk(rendered, visit);
+      } catch (e) {
+        // Safe fallback in case hooks or contexts throw
+      }
+    }
     const children = (node.props as { children?: unknown }).children;
     if (children !== undefined) walk(children, visit);
   }

@@ -30,7 +30,7 @@
  *     delegates to `renderModalShell`.
  */
 
-import {
+import React, {
   createContext,
   useCallback,
   useContext,

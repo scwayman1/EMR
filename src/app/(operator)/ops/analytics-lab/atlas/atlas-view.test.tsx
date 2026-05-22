@@ -13,6 +13,17 @@
 import { describe, it, expect, vi } from "vitest";
 import util from "util";
 
+vi.mock("react", async () => {
+  const actual = await vi.importActual<any>("react");
+  return {
+    ...actual,
+    useState: (initial: any) => [
+      typeof initial === "function" ? initial() : initial,
+      vi.fn(),
+    ],
+  };
+});
+
 import {
   AtlasView,
   ConditionDetailPanel,

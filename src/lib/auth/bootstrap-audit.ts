@@ -123,7 +123,7 @@ export function runBootstrapAllowlistAudit(): Promise<void> {
 async function doAudit(): Promise<void> {
   const emails = normaliseAllowlist(process.env.SUPER_ADMIN_BOOTSTRAP_EMAILS);
   const hash = hashAllowlist(emails);
-  const deploySha = resolveDeploySha();
+  const deploySha = resolveDeploySha() ?? "";
 
   const previous = await prisma.bootstrapAllowlistSnapshot.findFirst({
     orderBy: { createdAt: "desc" },

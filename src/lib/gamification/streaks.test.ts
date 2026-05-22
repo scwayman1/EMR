@@ -1,4 +1,74 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
+
+let dailyCheckInStreaks: any[] = [];
+let freezeTokens: any[] = [];
+
+// Mocking Prisma for isolated unit testing without database connectivity
+vi.mock("@/lib/db/prisma", () => {
+  return {
+    prisma: {
+      organization: {
+        create: vi.fn(async () => ({})),
+        delete: vi.fn(async () => ({})),
+      },
+      patient: {
+        create: vi.fn(async () => ({})),
+        delete: vi.fn(async () => ({})),
+      },
+      dailyCheckInStreak: {
+        findUnique: vi.fn(async ({ where }) => {
+          return dailyCheckInStreaks.find((s) => s.patientId === where.patientId) || null;
+        }),
+        create: vi.fn(async ({ data }) => {
+          const record = { ...data };
+          dailyCheckInStreaks.push(record);
+          return record;
+        }),
+        update: vi.fn(async ({ where, data }) => {
+          const index = dailyCheckInStreaks.findIndex((s) => s.patientId === where.patientId);
+          if (index !== -1) {
+            dailyCheckInStreaks[index] = { ...dailyCheckInStreaks[index], ...data };
+            return dailyCheckInStreaks[index];
+          }
+          return null;
+        }),
+        deleteMany: vi.fn(async () => {
+          dailyCheckInStreaks = [];
+        }),
+      },
+      freezeToken: {
+        count: vi.fn(async ({ where }) => {
+          return freezeTokens.filter((t) => {
+            return t.patientId === where.patientId && t.isUsed === where.isUsed;
+          }).length;
+        }),
+        findFirst: vi.fn(async ({ where }) => {
+          return freezeTokens.find((t) => t.patientId === where.patientId && t.isUsed === where.isUsed) || null;
+        }),
+        create: vi.fn(async ({ data }) => {
+          const record = { id: `token-${Math.random()}`, isUsed: false, ...data };
+          freezeTokens.push(record);
+          return record;
+        }),
+        update: vi.fn(async ({ where, data }) => {
+          const index = freezeTokens.findIndex((t) => t.id === where.id);
+          if (index !== -1) {
+            freezeTokens[index] = { ...freezeTokens[index], ...data };
+            return freezeTokens[index];
+          }
+          return null;
+        }),
+        deleteMany: vi.fn(async () => {
+          freezeTokens = [];
+        }),
+      },
+      $transaction: vi.fn(async (promises) => {
+        return Promise.all(promises);
+      }),
+    },
+  };
+});
+
 import { recordDailyCheckIn, applyFreezeToken } from "./streaks";
 import { prisma } from "@/lib/db/prisma";
 import { randomUUID } from "crypto";
