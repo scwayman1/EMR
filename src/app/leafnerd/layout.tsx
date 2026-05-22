@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SidebarNav } from "@/components/leafnerd/SidebarNav";
 
 const THEME_BOOTSTRAP = `
 (function(){try{
@@ -27,11 +28,8 @@ export default function LeafNerdLayout({ children }: { children: React.ReactNode
             <h1 className="text-2xl font-bold text-accent-strong tracking-tight">LeafNerd</h1>
             <p className="text-[10px] text-text-muted mt-1 uppercase tracking-widest font-bold">Intelligence Overlay</p>
           </div>
-          <nav className="flex-1 px-4 space-y-2">
-            <div className="px-3 py-2.5 rounded-lg bg-bg-highlight/5 text-text-strong font-medium text-sm shadow-sm border border-border/5">Dashboard</div>
-            <div className="px-3 py-2.5 rounded-lg text-text-muted hover:text-text hover:bg-bg-highlight/5 font-medium text-sm transition-colors cursor-pointer">Data Lake Queries</div>
-            <div className="px-3 py-2.5 rounded-lg text-text-muted hover:text-text hover:bg-bg-highlight/5 font-medium text-sm transition-colors cursor-pointer">AI Workbench</div>
-          </nav>
+          <SidebarNav />
+
           <div className="p-4 border-t border-border/10">
             <div className="flex items-center space-x-3 px-2 py-2">
               <div className="w-8 h-8 rounded-full bg-accent-strong/10 border border-accent-strong/20 flex items-center justify-center text-accent-strong font-bold text-xs">LN</div>

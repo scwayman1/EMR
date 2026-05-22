@@ -43,6 +43,22 @@ import { CarePlanSection } from "@/components/patient/CarePlanSection";
 import { ChartTaskList } from "@/components/patient/ChartTaskList";
 import { logger } from "@/lib/observability/log";
 
+function cleanMarkdownSummary(md: string): string {
+  if (!md) return "";
+  return md
+    // Strip headers (e.g. # Header, ## Subheader)
+    .replace(/^#+\s+/gm, "")
+    // Strip bullets and lists (e.g. - list item, * list item, 1. list item)
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/^\d+\.\s+/gm, "")
+    // Strip bold/italic/strike markers (e.g. **bold**, *italic*, ~~strike~~)
+    .replace(/(\*\*|\*|~~|_)/g, "")
+    // Strip links [text](url) -> text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    // Normalize spaces/newlines
+    .replace(/\s+/g, " ")
+    .trim();
+}
 /* ── Types ────────────────────────────────────────────────────── */
 
 interface PageProps {
@@ -79,6 +95,8 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     patientMemories,
     clinicalObservations,
     patientClaims,
+    pastConditions,
+    pastSurgeries,
   ] = await Promise.all([
     prisma.patient.findFirst({
       where: {
@@ -193,6 +211,14 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         charges: true,
       },
     }),
+    prisma.pastMedicalCondition.findMany({
+      where: { patientId: params.id, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    }),
+    prisma.pastSurgery.findMany({
+      where: { patientId: params.id, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    }),
   ]);
 
   if (!patient) notFound();
@@ -264,13 +290,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
    * notes, and rx; 3b adds records, images, correspondence, memory,
    * and billing so every tab that carries a list has a peek. */
   const tabPeeks: TabPeeks = {
-    labs: labDocs.slice(0, 5).map((d) => ({
+    labs: labDocs.slice(0, 5).map((d: any) => ({
       id: d.id,
       title: d.originalName || "Untitled lab",
       meta: formatRelative(d.createdAt),
       href: `/clinic/patients/${params.id}?tab=labs`,
     })),
-    notes: allNotes.slice(0, 5).map((n) => {
+    notes: allNotes.slice(0, 5).map((n: any) => {
       // Notes store their chief complaint inside a Json `blocks` payload
       // whose shape is validated at write-time. For peek purposes we just
       // read defensively and fall back to the narrative or a generic label.
@@ -292,32 +318,32 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       meta: [r.dosage, r.product?.format].filter(Boolean).join(" · ") || "Active",
       href: `/clinic/patients/${params.id}?tab=rx`,
     })),
-    records: recordDocs.slice(0, 5).map((d) => ({
+    records: recordDocs.slice(0, 5).map((d: any) => ({
       id: d.id,
       title: d.originalName || "Untitled document",
       meta: `${d.kind} · ${formatRelative(d.createdAt)}`,
       href: `/clinic/patients/${params.id}?tab=records`,
     })),
-    images: imageDocs.slice(0, 5).map((d) => ({
+    images: imageDocs.slice(0, 5).map((d: any) => ({
       id: d.id,
       title: d.originalName || "Untitled image",
       meta: formatRelative(d.createdAt),
       href: `/clinic/patients/${params.id}?tab=images`,
     })),
-    correspondence: threads.slice(0, 5).map((t) => ({
+    correspondence: threads.slice(0, 5).map((t: any) => ({
       id: t.id,
       title: t.subject || "No subject",
       meta: `${t.messages.length} message${t.messages.length === 1 ? "" : "s"} · ${formatRelative(t.lastMessageAt)}`,
       href: `/clinic/patients/${params.id}?tab=correspondence`,
     })),
-    memory: patientMemories.slice(0, 5).map((m) => ({
+    memory: patientMemories.slice(0, 5).map((m: any) => ({
       id: m.id,
       title:
         m.content.length > 60 ? m.content.slice(0, 60) + "…" : m.content,
       meta: `${m.kind} · ${formatRelative(m.createdAt)}`,
       href: `/clinic/patients/${params.id}?tab=memory`,
     })),
-    billing: patientClaims.slice(0, 5).map((c) => ({
+    billing: patientClaims.slice(0, 5).map((c: any) => ({
       id: c.id,
       // Money is stored in cents; peek rows render the dollar amount
       // rounded to the nearest dollar — we're not trying to be a ledger.
@@ -386,7 +412,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
     : null;
 
   const chartSummaryText = patient.chartSummary?.summaryMd
-    ? patient.chartSummary.summaryMd.replace(/^[#*-\s]+/gm, "")
+    ? cleanMarkdownSummary(patient.chartSummary.summaryMd)
     : patient.presentingConcerns ?? "No summary available.";
 
   /* ── Serialize threads for client component ───────────────── */
@@ -414,6 +440,15 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       createdAt: m.createdAt.toISOString(),
     })),
   }));
+
+  const headerDob = patient.dateOfBirth ? new Date(patient.dateOfBirth) : null;
+  const headerAge = headerDob
+    ? Math.floor(
+        (Date.now() - headerDob.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
+      )
+    : null;
+  const headerIntake = (patient.intakeAnswers ?? {}) as Record<string, any>;
+  const headerSex = headerIntake.sex ?? headerIntake.gender ?? "F";
 
   return (
     <PageShell maxWidth="max-w-[1280px]">
@@ -637,6 +672,8 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
               e.scheduledFor &&
               new Date(e.scheduledFor) >= new Date(),
           )}
+          pastConditions={pastConditions}
+          pastSurgeries={pastSurgeries}
         />
       )}
       {tab === "records" && <RecordsTab documents={recordDocs} patientId={params.id} />}
@@ -696,11 +733,15 @@ function DemographicsTab({
   medications,
   openTasks,
   upcomingEncounters,
+  pastConditions,
+  pastSurgeries,
 }: {
   patient: any;
   medications: any[];
   openTasks: any[];
   upcomingEncounters: any[];
+  pastConditions: any[];
+  pastSurgeries: any[];
 }) {
   const dob = patient.dateOfBirth ? new Date(patient.dateOfBirth) : null;
   const age = dob
@@ -712,8 +753,8 @@ function DemographicsTab({
   const showPediatricOverlay = isPediatric(dob);
 
   const intake = (patient.intakeAnswers ?? {}) as Record<string, any>;
-  const pmh = Array.isArray(intake.pastMedicalHistory) ? (intake.pastMedicalHistory as string[]) : [];
-  const psh = Array.isArray(intake.pastSurgicalHistory) ? (intake.pastSurgicalHistory as string[]) : [];
+  const pmh = pastConditions;
+  const psh = pastSurgeries;
   const sex = intake.sex ?? intake.gender ?? "Not recorded";
   const race = intake.race ?? intake.ethnicity ?? "Not recorded";
   const maritalStatus = intake.maritalStatus ?? "Not recorded";
@@ -871,7 +912,6 @@ function DemographicsTab({
             </div>
           </CardContent>
         </Card>
-
       </div>
 
       <MedicalHistoryManager

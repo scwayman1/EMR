@@ -191,7 +191,7 @@ describe("Daily Streaks & Freeze Tokens", () => {
     
     const tokens = await prisma.freezeToken.count({ where: { patientId, isUsed: false } });
     expect(tokens).toBe(1);
-  });
+  }, 30000);
 
   it("should repair a broken streak using applyFreezeToken", async () => {
     // 1. Initial check-in

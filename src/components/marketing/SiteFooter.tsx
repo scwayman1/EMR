@@ -58,7 +58,7 @@ function FooterColumn({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between py-4 sm:py-0 sm:cursor-default sm:pointer-events-none text-left"
+        className="w-full flex items-center justify-between py-4 sm:py-0 sm:cursor-default text-left"
       >
         <span className="text-[12.5px] font-semibold tracking-[1.2px] uppercase text-text sm:mb-3.5 block">
           {title}
