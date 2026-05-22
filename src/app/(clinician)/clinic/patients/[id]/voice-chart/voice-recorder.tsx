@@ -33,6 +33,7 @@ interface Props {
   patientDob: string | null;
   presentingConcerns: string | null;
   treatmentGoals: string | null;
+  lastVisitBullets?: string[];
 }
 
 // ── Simulated transcript ───────────────────────────────────────
@@ -352,6 +353,7 @@ export function VoiceRecorder({
   patientDob,
   presentingConcerns,
   treatmentGoals,
+  lastVisitBullets = [],
 }: Props) {
   const router = useRouter();
 
@@ -555,7 +557,22 @@ export function VoiceRecorder({
     if (encounterId) {
       const result = await processTranscript(encounterId, formatted, patientId);
       if (result.ok) {
-        setBlocks(result.blocks);
+        // Filter out Objective blocks if present (Objective is human-only)
+        const filteredBlocks = (result.blocks as NoteBlock[])
+          .filter((b) => b.type !== ("objective" as any))
+          .map((b) => {
+            // Replace generic clinician terms with Dr. Amelia Patel, MD in Plan box
+            if (b.type === "plan") {
+              const bodyWithClinicianReplaced = b.body
+                .replace(/\bthe clinician\b/gi, "Dr. Amelia Patel, MD")
+                .replace(/\bthe provider\b/gi, "Dr. Amelia Patel, MD")
+                .replace(/\bprovider\b/gi, "Dr. Amelia Patel, MD");
+              return { ...b, body: bodyWithClinicianReplaced };
+            }
+            return b;
+          });
+
+        setBlocks(filteredBlocks);
         const bodies = {
           summary: "",
           findings: "",
@@ -563,7 +580,7 @@ export function VoiceRecorder({
           plan: "",
           followUp: "",
         };
-        result.blocks.forEach((b) => {
+        filteredBlocks.forEach((b) => {
           bodies[b.type] = b.body;
         });
         setBlockBodies(bodies);
@@ -920,6 +937,33 @@ export function VoiceRecorder({
               <Button variant="secondary" size="sm" onClick={handleRecordAgain}>
                 Record Again
               </Button>
+            </div>
+          </div>
+
+          {/* Concerns and Last Visit context inside Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-surface-muted/50 rounded-xl border border-border/50 text-left">
+            <div>
+              <h4 className="text-[10px] font-bold text-text-subtle uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <span>📅</span> Last Visit Summary
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-xs text-text-muted">
+                {lastVisitBullets.map((bullet, idx) => (
+                  <li key={idx} className="leading-relaxed">{bullet}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-[10px] font-bold text-text-subtle uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <span>📋</span> Patient Concerns
+              </h4>
+              <p className="text-xs text-text-muted leading-relaxed line-clamp-2">
+                {presentingConcerns || "No acute presenting concerns documented."}
+              </p>
+              {treatmentGoals && (
+                <p className="text-[10px] text-text-subtle mt-1 italic">
+                  Goals: {treatmentGoals}
+                </p>
+              )}
             </div>
           </div>
 

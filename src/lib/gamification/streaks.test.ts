@@ -1,7 +1,128 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
+import { randomUUID } from "crypto";
+
+let organizations: any[] = [];
+let patients: any[] = [];
+let dailyCheckInStreaks: any[] = [];
+let freezeTokens: any[] = [];
+let badges: any[] = [];
+let patientBadges: any[] = [];
+
+vi.mock("@/lib/db/prisma", () => {
+  return {
+    prisma: {
+      organization: {
+        create: vi.fn(async ({ data }) => {
+          organizations.push(data);
+          return data;
+        }),
+        delete: vi.fn(async ({ where }) => {
+          organizations = organizations.filter(o => o.id !== where.id);
+          return { id: where.id };
+        }),
+      },
+      patient: {
+        create: vi.fn(async ({ data }) => {
+          patients.push(data);
+          return data;
+        }),
+        findUnique: vi.fn(async ({ where }) => {
+          const p = patients.find(pat => pat.id === where.id);
+          if (!p) return null;
+          const dailyStreak = dailyCheckInStreaks.find(s => s.patientId === p.id) || null;
+          const pBadges = patientBadges.filter(pb => pb.patientId === p.id).map(pb => ({
+            ...pb,
+            badge: badges.find(b => b.id === pb.badgeId) || {}
+          }));
+          return {
+            ...p,
+            dailyStreak,
+            patientBadges: pBadges,
+          };
+        }),
+        delete: vi.fn(async ({ where }) => {
+          patients = patients.filter(p => p.id !== where.id);
+          return { id: where.id };
+        }),
+      },
+      dailyCheckInStreak: {
+        findUnique: vi.fn(async ({ where }) => {
+          return dailyCheckInStreaks.find(s => s.patientId === where.patientId) || null;
+        }),
+        create: vi.fn(async ({ data }) => {
+          const record = { id: randomUUID(), ...data };
+          dailyCheckInStreaks.push(record);
+          return record;
+        }),
+        update: vi.fn(async ({ where, data }) => {
+          const record = dailyCheckInStreaks.find(s => s.patientId === where.patientId);
+          if (record) {
+            Object.assign(record, data);
+            return record;
+          }
+          throw new Error("Record not found");
+        }),
+        deleteMany: vi.fn(async ({ where }) => {
+          dailyCheckInStreaks = dailyCheckInStreaks.filter(s => s.patientId !== where.patientId);
+          return { count: 1 };
+        }),
+      },
+      freezeToken: {
+        create: vi.fn(async ({ data }) => {
+          const record = { id: randomUUID(), createdAt: new Date(), isUsed: false, ...data };
+          freezeTokens.push(record);
+          return record;
+        }),
+        findFirst: vi.fn(async ({ where, orderBy }) => {
+          let filtered = freezeTokens.filter(t => t.patientId === where.patientId && t.isUsed === where.isUsed);
+          if (orderBy && orderBy.createdAt === "asc") {
+            filtered.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+          }
+          return filtered[0] || null;
+        }),
+        count: vi.fn(async ({ where }) => {
+          return freezeTokens.filter(t => t.patientId === where.patientId && t.isUsed === where.isUsed).length;
+        }),
+        update: vi.fn(async ({ where, data }) => {
+          const record = freezeTokens.find(t => t.id === where.id);
+          if (record) {
+            Object.assign(record, data);
+            return record;
+          }
+          throw new Error("Record not found");
+        }),
+        deleteMany: vi.fn(async ({ where }) => {
+          freezeTokens = freezeTokens.filter(t => t.patientId !== where.patientId);
+          return { count: 1 };
+        }),
+      },
+      badge: {
+        findMany: vi.fn(async () => {
+          return badges;
+        }),
+        createMany: vi.fn(async ({ data }) => {
+          for (const item of data) {
+            badges.push({ id: randomUUID(), ...item });
+          }
+          return { count: data.length };
+        }),
+      },
+      patientBadge: {
+        create: vi.fn(async ({ data }) => {
+          const pb = { id: randomUUID(), ...data };
+          patientBadges.push(pb);
+          return pb;
+        }),
+      },
+      $transaction: vi.fn(async (promises) => {
+        return Promise.all(promises);
+      }),
+    }
+  };
+});
+
 import { recordDailyCheckIn, applyFreezeToken } from "./streaks";
 import { prisma } from "@/lib/db/prisma";
-import { randomUUID } from "crypto";
 
 describe("Daily Streaks & Freeze Tokens", () => {
   const orgId = `test-org-${randomUUID()}`;

@@ -25,12 +25,14 @@ vi.mock("./super-admin-bootstrap", () => ({
   bootstrapSuperAdminIfAllowlisted: vi.fn(),
 }));
 
-vi.mock("./super-admin-mfa", () => ({
-  loadSuperAdminMfaState: async () => ({ status: "enrolled" }),
-  buildMfaRequiredResponse: () => new Response(JSON.stringify({}), { status: 403 }),
+vi.mock("./session-kill-list", () => ({
+  isUserRevoked: () => Promise.resolve(false),
 }));
 
-
+vi.mock("./super-admin-mfa", () => ({
+  loadSuperAdminMfaState: () => Promise.resolve({ status: "enrolled" }),
+  buildMfaRequiredResponse: () => new Response(null, { status: 403 }),
+}));
 
 vi.mock("@/lib/observability/log", () => ({
   logger: {
