@@ -723,6 +723,108 @@
 }
 
 /* ==========================================================================
+   Mobile portrait iOS polish (ux/mobile-portrait-ios-polish)
+   These rules tighten the touch experience on phones to match Apple HIG
+   without disturbing desktop rendering. They are scoped via media queries
+   and utility classes so md+ remains untouched.
+   ========================================================================== */
+
+/* iOS Safari auto-zooms when a focused input has font-size < 16px. Bumping
+   the minimum font-size on mobile prevents the disorienting zoom that
+   otherwise hijacks the viewport when patients tap a search bar. We only
+   apply this below the md breakpoint so dense desktop forms stay compact. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Apple HIG — interactive elements must hit 44×44 pt. Mark any element that
+   is intrinsically smaller (e.g. icon-only chevrons) with this class on
+   mobile to expand its hit-area without inflating its visual footprint. */
+.ios-tap-target {
+  position: relative;
+}
+.ios-tap-target::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Suppress the dark blue tap flash on touch — iOS Safari paints this by
+   default; SF native apps don't, so the EMR's Apple aesthetic requires
+   we opt out across all interactive surfaces. */
+@media (hover: none) and (pointer: coarse) {
+  button, a, [role="button"], [role="tab"], [role="link"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Swipe-back affordance — a faint vertical scrim along the left 8px edge of
+   detail pages, mimicking the iOS edge swipe gesture hint. Apply to a
+   page wrapper with .ios-swipe-back-hint. Pure CSS, no JS gesture: the
+   browser's history.back() is already wired by Next router. */
+.ios-swipe-back-hint {
+  position: relative;
+}
+.ios-swipe-back-hint::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  pointer-events: none;
+  z-index: 30;
+  background: linear-gradient(
+    to right,
+    rgba(15, 18, 16, 0.06),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+@media (max-width: 767px) {
+  .ios-swipe-back-hint::before {
+    opacity: 1;
+  }
+}
+
+/* Safe-area helpers — Tailwind doesn't ship arbitrary env() utilities, so
+   these classes are convenient escape hatches for the few spots that
+   need them (top header, bottom nav, FAB). */
+.safe-pt { padding-top: env(safe-area-inset-top); }
+.safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+.safe-pr { padding-right: env(safe-area-inset-right); }
+.safe-pl { padding-left: env(safe-area-inset-left); }
+.safe-mt { margin-top: env(safe-area-inset-top); }
+.safe-mb { margin-bottom: env(safe-area-inset-bottom); }
+
+/* Mobile-only collapsing search bar (Apple Mail pattern). The full-width
+   bar shrinks to an icon-only pill once the page scrolls. Pages that
+   opt in toggle `data-collapsed="true"` on the bar via an IntersectionObserver
+   or scroll handler. Pure CSS handles the rest. */
+.ios-collapsing-search {
+  transition: max-width 260ms cubic-bezier(0.2, 0, 0, 1),
+              opacity 200ms ease;
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  .ios-collapsing-search[data-collapsed="true"] {
+    max-width: 44px;
+  }
+  .ios-collapsing-search[data-collapsed="true"] > .ios-search-label {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+/* ==========================================================================
    ADA — Reduced motion: disable ALL transitions and animations globally
    ========================================================================== */
 @media (prefers-reduced-motion: reduce) {

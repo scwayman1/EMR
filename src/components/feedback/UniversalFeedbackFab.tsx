@@ -88,22 +88,42 @@ export function UniversalFeedbackFab() {
         type="button"
         onClick={open}
         className={cn(
-          "fixed bottom-5 right-5 z-[60] h-12 w-12 rounded-full",
+          // Apple HIG: 44pt minimum hit target. Bumped from h-12 w-12 to
+          // h-14 w-14 on mobile so the FAB clears thumb-targeting on
+          // small iPhones, while staying off the bottom MobileNav by
+          // adding env(safe-area-inset-bottom) on iOS.
+          "fixed z-[60] h-14 w-14 md:h-12 md:w-12 rounded-full",
           "bg-gradient-to-b from-emerald-700 to-emerald-800 text-white shadow-lg",
-          "hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300",
+          "active:scale-95 hover:scale-105 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300",
         )}
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom) + 1.25rem)",
+          right: "calc(env(safe-area-inset-right) + 1.25rem)",
+        }}
         aria-label="Send feedback"
         title="Send feedback"
       >
-        <span className="block text-base">🌱</span>
+        <span className="block text-lg md:text-base">🌱</span>
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-end md:justify-center bg-black/40 backdrop-blur-sm p-4" onClick={close}>
+    <div
+      className="fixed inset-0 z-[60] flex items-stretch md:items-center justify-end md:justify-center bg-black/40 backdrop-blur-sm md:p-4"
+      onClick={close}
+    >
       <div
-        className="w-full max-w-xl bg-surface-raised rounded-xl border border-border shadow-xl flex flex-col max-h-[92vh]"
+        className={cn(
+          // Full-screen sheet on mobile (iOS modal pattern), centered
+          // card on tablet+. Safe-area-aware padding so the sheet header
+          // never hides under the Dynamic Island and the footer button
+          // never sits beneath the home indicator.
+          "w-full md:max-w-xl bg-surface-raised md:rounded-xl rounded-t-2xl md:rounded-b-xl",
+          "border border-border shadow-xl flex flex-col",
+          "max-h-screen md:max-h-[92vh] md:h-auto",
+          "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] md:pt-0 md:pb-0",
+        )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -116,7 +136,11 @@ export function UniversalFeedbackFab() {
               Goes straight to Scott & Neal. No bots in between.
             </p>
           </div>
-          <button onClick={close} className="text-text-subtle hover:text-text text-lg leading-none px-2" aria-label="Close">
+          <button
+            onClick={close}
+            className="inline-flex items-center justify-center w-11 h-11 -mr-2 rounded-full text-text-subtle hover:text-text hover:bg-surface-muted active:scale-95 transition-all text-xl leading-none"
+            aria-label="Close"
+          >
             ×
           </button>
         </header>
@@ -170,7 +194,7 @@ export function UniversalFeedbackFab() {
             <button
               onClick={submit}
               disabled={state === "submitting"}
-              className="inline-flex items-center justify-center gap-2 rounded-md font-medium px-4 h-9 text-sm bg-gradient-to-b from-emerald-700 to-emerald-800 text-white shadow-sm hover:from-emerald-700/90 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-2 rounded-md font-medium px-4 h-11 md:h-9 text-sm bg-gradient-to-b from-emerald-700 to-emerald-800 text-white shadow-sm hover:from-emerald-700/90 active:scale-[0.98] transition-transform disabled:opacity-50"
             >
               {state === "submitting" ? "Sending…" : "Send whisper"}
             </button>

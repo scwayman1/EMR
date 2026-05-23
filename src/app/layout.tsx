@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { UniversalFeedbackFab } from "@/components/feedback/UniversalFeedbackFab";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -12,6 +12,20 @@ export const metadata: Metadata = {
   description:
     "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",
   robots: { index: false, follow: false }, // private by default in V1
+};
+
+// Mobile portrait iOS polish — `viewport-fit=cover` is required for
+// env(safe-area-inset-*) CSS variables to resolve to non-zero values on
+// notched / Dynamic Island iPhones. Without this the bottom MobileNav
+// and top header underlap the home indicator / notch.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFCF7" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F1210" },
+  ],
 };
 
 // EMR-205: Conditionally wrap with ClerkProvider only if Clerk publishable key is present in env.
