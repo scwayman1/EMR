@@ -13,6 +13,32 @@ export const metadata: Metadata = {
   description:
     "An AI-native care platform for modern cannabis medicine. Patient portal, clinician workspace, and practice operations in one unified system.",
   robots: { index: false, follow: false }, // private by default in V1
+  applicationName: "LeafJourney",
+  // PWA / iOS install polish — Next auto-emits `<link rel="manifest" …>`
+  // from src/app/manifest.ts, and Next's metadata API knows how to map
+  // these keys to the right `<meta>` / `<link>` tags. iOS Safari is
+  // the picky one: without `appleWebApp.capable=true` the home-screen
+  // install opens in mobile Safari with chrome instead of standalone.
+  appleWebApp: {
+    capable: true,
+    title: "LeafJourney",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/icons/icon-512.svg", sizes: "512x512", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.svg", sizes: "180x180", type: "image/svg+xml" },
+    ],
+  },
+  formatDetection: {
+    // Stop iOS from auto-linkifying phone numbers / dates in clinical
+    // text — we already render explicit `tel:` links where appropriate.
+    telephone: false,
+  },
 };
 
 // Mobile portrait iOS polish — `viewport-fit=cover` is required for
