@@ -242,17 +242,31 @@ function RxDetailPane({
   return (
     <div className="p-6 max-w-2xl">
       {/* Patient / medication header */}
-      <div className="mb-5">
-        <p className="text-xs uppercase tracking-wider text-text-subtle font-medium mb-1">
-          Refill request
-        </p>
-        <h2 className="font-display text-2xl text-text tracking-tight">
-          {row.patientFirstName} {row.patientLastName}
-        </h2>
-        <p className="text-sm text-text-muted mt-1">
-          {row.medicationName}
-          {row.medicationDosage ? ` · ${row.medicationDosage}` : ""}
-        </p>
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-text-subtle font-medium mb-1">
+            Refill request
+          </p>
+          <h2 className="font-display text-2xl text-text tracking-tight">
+            {row.patientFirstName} {row.patientLastName}
+          </h2>
+          <p className="text-sm text-text-muted mt-1">
+            {row.medicationName}
+            {row.medicationDosage ? ` · ${row.medicationDosage}` : ""}
+          </p>
+        </div>
+        {/* ux/print-stylesheets-clinical — Rx authorization slip
+            (printable in case the pharmacy fax route is down or the
+            patient wants a paper copy). Opens in a new tab; the
+            printable route re-renders the data through PrintDocument. */}
+        <a
+          href={`/clinic/sign-off/refills/${row.id}/print`}
+          target="_blank"
+          rel="noopener"
+          className="text-xs text-text-muted hover:text-text underline underline-offset-2 shrink-0 mt-1"
+        >
+          Print Rx
+        </a>
       </div>
 
       {/* Copilot suggestion */}
