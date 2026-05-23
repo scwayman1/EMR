@@ -154,6 +154,13 @@ model Organization {
   // One-to-one with Organization. Created on first paid event or via the
   // admin tooling; absent for orgs that haven't onboarded billing yet.
   practiceSubscription PracticeSubscription?
+
+  // EMR-787 — Practice Manager Agent v1 (clinical / office supplies).
+  // PARALLEL to `cannabisProducts` / `supplyProducts` (those are dispensary
+  // domain). These are the gloves-and-gowns side of the practice.
+  supplies     Supply[]
+  suppliers    Supplier[]
+  supplyOrders SupplyOrder[]
 }
 
 // EMR-420 — A Practice is a single clinical location/group under an
@@ -229,6 +236,10 @@ model User {
   cannabisRxsWritten        CannabisRx[]                @relation("CannabisRxProvider")
   pdmpChecksRequested       CuresPdmpCheck[]            @relation("PdmpRequester")
   pdmpChecksAcknowledged    CuresPdmpCheck[]            @relation("PdmpAcknowledger")
+  // EMR-787 — Practice Manager Agent v1 reverse relations.
+  approvedSupplyOrders      SupplyOrder[]               @relation("SupplyOrderApprover")
+  supplyOrdersProposed      SupplyOrder[]               @relation("SupplyOrderProposer")
+  supplyOrderAuditEntries   SupplyOrderAuditEntry[]     @relation("SupplyOrderAuditActor")
 }
 
 model Membership {
@@ -372,7 +383,7 @@ model Patient {
   freezeTokens FreezeToken[]
 
   // EMR-107 — ChatCB AI Coach
-  aiCoachThreads AICoachThread[]
+  aiCoachThreads        AICoachThread[]
   pastMedicalConditions PastMedicalCondition[]
   pastSurgeries         PastSurgery[]
 
@@ -5124,15 +5135,15 @@ model PracticeSubscription {
 }
 
 model PastMedicalCondition {
-  id           String    @id @default(cuid())
-  patientId    String
-  condition    String    // e.g., "Diabetes Mellitus Type 2"
-  notes        String?   // Clinician notes or description
-  onsetYear    Int?      // Estimated or actual year of onset
-  source       String?   // e.g., "intake", "clinician", "imported", "ai"
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  deletedAt    DateTime? // Soft delete timestamp
+  id        String    @id @default(cuid())
+  patientId String
+  condition String // e.g., "Diabetes Mellitus Type 2"
+  notes     String? // Clinician notes or description
+  onsetYear Int? // Estimated or actual year of onset
+  source    String? // e.g., "intake", "clinician", "imported", "ai"
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // Soft delete timestamp
 
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
@@ -5142,10 +5153,10 @@ model PastMedicalCondition {
 model PastSurgery {
   id                String    @id @default(cuid())
   patientId         String
-  procedure         String    // e.g., "Left Total Knee Arthroplasty"
-  notes             String?   // Surgical notes or details
-  performedDateText String?   // Flexible display text (e.g., "August 2022")
-  source            String?   // e.g., "intake", "clinician", "imported", "ai"
+  procedure         String // e.g., "Left Total Knee Arthroplasty"
+  notes             String? // Surgical notes or details
+  performedDateText String? // Flexible display text (e.g., "August 2022")
+  source            String? // e.g., "intake", "clinician", "imported", "ai"
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime? // Soft delete timestamp
@@ -5153,4 +5164,149 @@ model PastSurgery {
   patient Patient @relation(fields: [patientId], references: [id], onDelete: Cascade)
 
   @@index([patientId])
+}
+
+// --------------------------------------------------------------
+// EMR-787 — Practice Manager Agent v1
+// --------------------------------------------------------------
+// Clinical / office supplies (gloves, gowns, BP cuffs, exam-table paper).
+// PARALLEL to — and intentionally separate from — `CannabisProduct` /
+// `SupplyProduct`, which model the dispensary side of inventory.
+// Domain types + helpers live in `src/lib/domain/supplies.ts`.
+// --------------------------------------------------------------
+
+enum SupplyOrderStatus {
+  agent_drafted
+  awaiting_approval
+  approved
+  submitted
+  shipped
+  delivered
+  rejected
+  cancelled
+}
+
+enum SupplyOrderProposedByKind {
+  agent
+  user
+}
+
+enum SupplyOrderActorKind {
+  agent
+  user
+  system
+}
+
+enum SupplyOrderAuditAction {
+  drafted
+  approved
+  rejected
+  submitted
+  shipped
+  delivered
+  edited
+  cancelled
+  auto_submitted
+  reverted
+}
+
+model Supplier {
+  id                      String   @id @default(cuid())
+  organizationId          String
+  name                    String
+  contactName             String?
+  email                   String?
+  phone                   String?
+  defaultPaymentTermsDays Int      @default(30)
+  notes                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplies     Supply[]
+  orders       SupplyOrder[]
+
+  @@index([organizationId])
+}
+
+model Supply {
+  id                String    @id @default(cuid())
+  organizationId    String
+  name              String
+  sku               String?
+  category          String? // free-form for v1: "PPE", "wound-care", "instruments", ...
+  supplierId        String?
+  reorderThreshold  Int       @default(0)
+  reorderQty        Int       @default(0)
+  lastUnitCostCents Int?
+  onHand            Int       @default(0)
+  unit              String    @default("ea")
+  notes             String?
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  preferredSupplier Supplier?     @relation(fields: [supplierId], references: [id])
+  orders            SupplyOrder[]
+
+  @@index([organizationId])
+  @@index([organizationId, deletedAt])
+}
+
+model SupplyOrder {
+  id                 String                    @id @default(cuid())
+  organizationId     String
+  supplyId           String
+  supplierId         String
+  status             SupplyOrderStatus         @default(agent_drafted)
+  qty                Int
+  unitCostCents      Int
+  totalCents         Int
+  // Discriminated authorship — `kind` selects which id column is populated.
+  proposedByKind     SupplyOrderProposedByKind
+  proposedByAgentId  String?
+  proposedByUserId   String?
+  approvedByUserId   String?
+  autoSubmitted      Boolean                   @default(false)
+  rejectionReason    String?
+  submittedAt        DateTime?
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+  deliveredQty       Int?
+  expectedDeliveryAt DateTime?
+  supplierPoRef      String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  deletedAt          DateTime?
+
+  organization Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supply       Supply                  @relation(fields: [supplyId], references: [id])
+  supplier     Supplier                @relation(fields: [supplierId], references: [id])
+  approvedBy   User?                   @relation("SupplyOrderApprover", fields: [approvedByUserId], references: [id])
+  proposer     User?                   @relation("SupplyOrderProposer", fields: [proposedByUserId], references: [id])
+  auditEntries SupplyOrderAuditEntry[]
+
+  @@index([organizationId, status])
+  @@index([supplyId, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt])
+}
+
+// Append-only audit log for SupplyOrder state changes. Separate from the
+// global `AuditLog` table so the approval queue can render a per-order
+// activity feed without filtering the platform-wide stream.
+model SupplyOrderAuditEntry {
+  id           String                 @id @default(cuid())
+  orderId      String
+  actorKind    SupplyOrderActorKind
+  actorAgentId String?
+  actorUserId  String?
+  action       SupplyOrderAuditAction
+  payload      Json?
+  createdAt    DateTime               @default(now())
+
+  order     SupplyOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actorUser User?       @relation("SupplyOrderAuditActor", fields: [actorUserId], references: [id])
+
+  @@index([orderId, createdAt])
 }
