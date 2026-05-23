@@ -835,6 +835,42 @@ export function SmartInboxView({
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>(initialPriority);
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "all">("all");
   const [search, setSearch] = useState("");
+  // EMR-DnD: clinician-pinned threads bubble to the top of the list,
+  // beating priority-based smart sort. Persisted in localStorage as a
+  // Set<threadId>. TODO(schema): mirror to a `MessageThread.pinnedBy`
+  // join table so pins survive a logout / device swap.
+  const [pinnedThreadIds, setPinnedThreadIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("inbox:pinned:v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every((s) => typeof s === "string")) {
+          setPinnedThreadIds(new Set(parsed as string[]));
+        }
+      }
+    } catch {
+      // ignore — bad JSON or unavailable storage.
+    }
+  }, []);
+  const togglePinned = (threadId: string) => {
+    setPinnedThreadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(threadId)) next.delete(threadId);
+      else next.add(threadId);
+      try {
+        window.localStorage.setItem(
+          "inbox:pinned:v1",
+          JSON.stringify(Array.from(next)),
+        );
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   // Shared motion: subtle stagger on the triaged list. No-op under
   // prefers-reduced-motion. Variants are stable across renders.
   const reduceMotion = useReducedMotion() ?? false;
@@ -911,14 +947,19 @@ export function SmartInboxView({
 
     // EMR-657 — smart sort: urgent+unread first, then high+unread, etc.;
     // within the same score bucket, fall back to recency (newest first).
+    // EMR-DnD — pinned threads sort above all unpinned threads regardless
+    // of priority, then the existing smart-sort logic resolves ties.
     list = [...list].sort((a, b) => {
+      const aPinned = pinnedThreadIds.has(a.threadId) ? 0 : 1;
+      const bPinned = pinnedThreadIds.has(b.threadId) ? 0 : 1;
+      if (aPinned !== bPinned) return aPinned - bPinned;
       const scoreDiff = smartScore(a) - smartScore(b);
       if (scoreDiff !== 0) return scoreDiff;
       return b.lastMessageAt.localeCompare(a.lastMessageAt);
     });
 
     return list;
-  }, [triaged, priorityFilter, categoryFilter, search]);
+  }, [triaged, priorityFilter, categoryFilter, search, pinnedThreadIds]);
 
   // Active thread detail
   const selectedTriage = triaged.find((t) => t.threadId === selectedThreadId);
@@ -1112,6 +1153,7 @@ export function SmartInboxView({
             ) : (
               filtered.map((t) => {
                 const isSelected = t.threadId === selectedThreadId;
+                const isPinned = pinnedThreadIds.has(t.threadId);
                 return (
                   <motion.button
                     key={t.threadId}
@@ -1122,6 +1164,7 @@ export function SmartInboxView({
                       "border-l-[3px]",
                       PRIORITY_BORDER_COLORS[t.priority],
                       isSelected && "bg-surface-muted",
+                      isPinned && "bg-accent-soft/30",
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -1132,6 +1175,39 @@ export function SmartInboxView({
                             {t.unreadCount > 0 && (
                               <span className="shrink-0 h-2 w-2 rounded-full bg-accent" />
                             )}
+                            {/* EMR-DnD: pin toggle. role=button on a
+                                span (not a real <button>) so we stay
+                                valid HTML inside the outer motion.button.
+                                Keyboard activated via Space/Enter. */}
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              aria-pressed={isPinned}
+                              aria-label={isPinned ? "Unpin thread" : "Pin thread to top"}
+                              title={isPinned ? "Unpin thread" : "Pin thread to top"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                togglePinned(t.threadId);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === " " || e.key === "Enter") {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  togglePinned(t.threadId);
+                                }
+                              }}
+                              className={cn(
+                                "shrink-0 inline-flex items-center justify-center h-5 w-5 rounded transition-colors",
+                                "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                                isPinned
+                                  ? "text-accent"
+                                  : "text-text-subtle/40 hover:text-text-subtle",
+                              )}
+                            >
+                              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .013 2.371c-.125.612-.413 1.27-.978 1.834a.5.5 0 0 1-.707 0L5.95 11.756 1.854 15.85a.5.5 0 1 1-.708-.707L5.243 11.05 2.475 8.28a.5.5 0 0 1 0-.706c.565-.565 1.222-.853 1.834-.978a5.93 5.93 0 0 1 2.372.013l3.134-3.134a2.97 2.97 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                              </svg>
+                            </span>
                             <p className="text-sm font-semibold text-text truncate">
                               {t.patientName}
                             </p>

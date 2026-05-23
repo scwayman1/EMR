@@ -31,6 +31,7 @@ import {
   categorizeQueueItem,
   URGENCY_TAG_CONFIG,
 } from "@/lib/domain/queue-urgency";
+import { QueueRailClient, type QueueRailCard } from "./queue-rail-client";
 
 // EMR-205: guard the mission-control fan-out so a single hung query
 // can never wedge the Suspense boundary and strand clinicians on the
@@ -855,8 +856,11 @@ export default async function ClinicHomePage() {
             ]}
           />
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
-            {(todaysEncounters as any[])
+          // EMR-DnD: clinicians can drag (or use Space + arrows) to pin
+          // their personal preferred order on top of the AI urgency
+          // ranking. Order persists per-day in localStorage.
+          (() => {
+            const queueCards: QueueRailCard[] = (todaysEncounters as any[])
               .map((enc: any) => ({
                 enc,
                 urgency: categorizeQueueItem({
@@ -881,8 +885,7 @@ export default async function ClinicHomePage() {
               const consultsCount = enc.patient.documents?.filter((d: any) => d.kind === "letter").length ?? 0;
               const imagesCount = enc.patient.documents?.filter((d: any) => d.kind === "image").length ?? 0;
 
-              return (
-                <div key={enc.id} className="shrink-0 snap-start">
+              const node = (
                   <Card
                     tone="raised"
                     className="w-64 card-hover flex flex-col justify-between p-4 group"
@@ -971,10 +974,13 @@ export default async function ClinicHomePage() {
                       </Link>
                     </div>
                   </Card>
-                </div>
               );
-            })}
-          </div>
+              return { id: enc.id, node };
+            });
+
+            const dayKey = startOfDay.toISOString().slice(0, 10);
+            return <QueueRailClient cards={queueCards} dayKey={dayKey} />;
+          })()
         )}
       </section>
 
