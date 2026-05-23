@@ -346,8 +346,21 @@ export function CommandPalette({ role }: CommandPaletteProps = {}) {
     // Role-aware search passthrough. Clinician gets the existing roster
     // filter; operator gets the ops patients list; patient has nothing
     // searchable of that shape so no passthrough there.
+    //
+    // Clinic-floor roles ALSO get a top-of-list "Search everything" entry
+    // that hands the query off to the /search global results page — that's
+    // the deeper-search counterpart to ⌘K's quick-jump posture. Putting
+    // it above the per-row matches makes Enter-from-an-empty-result still
+    // feel useful.
     if (trimmed.length > 0) {
       if (role === "clinician" || role === undefined) {
+        out.unshift({
+          id: "search-all-results",
+          label: `Search everything: "${trimmed}"`,
+          hint: "Open /search — patients, messages, notes, audit",
+          group: "Search",
+          run: (r, q) => r.push(`/search?q=${encodeURIComponent(q)}`),
+        });
         out.unshift({
           id: "search-clinician-patients",
           label: `Search patients: "${trimmed}"`,
@@ -494,9 +507,13 @@ export function CommandPalette({ role }: CommandPaletteProps = {}) {
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-border bg-surface-muted/40 text-[11px] text-text-subtle flex items-center justify-between">
-          <span>↑ ↓ to navigate · ↵ to select</span>
-          <span>esc to close</span>
+        <div className="px-4 py-2 border-t border-border bg-surface-muted/40 text-[11px] text-text-subtle flex items-center justify-between gap-3">
+          <span>↑ ↓ navigate · ↵ select</span>
+          {query.trim().length > 0 && (role === "clinician" || role === undefined) ? (
+            <span>↵ on top row to search all results · esc to close</span>
+          ) : (
+            <span>esc to close</span>
+          )}
         </div>
       </Card>
     </div>
