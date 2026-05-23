@@ -652,7 +652,9 @@ export default async function ClinicHomePage() {
 
           {/* Right: Quick actions */}
           <div className="flex items-center gap-3 shrink-0">
-            <UniversalPatientSearch className="hidden md:block" />
+            <div data-tour="palette" className="hidden md:block">
+              <UniversalPatientSearch />
+            </div>
             <Link href="/clinic/mindful" title="Take a mindful break">
               <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-text-subtle hover:text-accent gap-1.5">
                 <span aria-hidden="true">🍃</span>
@@ -723,7 +725,7 @@ export default async function ClinicHomePage() {
         }
 
         return (
-          <section className="mb-8">
+          <section className="mb-8" data-tour="agent-fleet">
             <div className="flex items-center justify-between mb-3">
               <Eyebrow>Your AI team — last 24 hours</Eyebrow>
               <Link
@@ -829,7 +831,7 @@ export default async function ClinicHomePage() {
       {/* ============================================================
           2. PATIENT QUEUE — horizontal scroll rail
           ============================================================ */}
-      <section className="mb-10">
+      <section className="mb-10" data-tour="queue">
         <Eyebrow className="mb-4">Today&apos;s queue</Eyebrow>
 
         {todaysEncounters.length === 0 ? (

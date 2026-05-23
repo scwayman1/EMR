@@ -21,6 +21,7 @@ import {
   GLOBAL_SHORTCUTS,
   type ShortcutDescriptor,
 } from "@/lib/ui/keyboard";
+import { replayClinicianTour } from "@/components/onboarding/clinician-tour";
 
 export interface KeyboardHelpModalProps {
   open: boolean;
@@ -112,10 +113,20 @@ export function KeyboardHelpModal({ open, onClose }: KeyboardHelpModalProps) {
           ))}
         </div>
 
-        <footer className="px-6 py-3 border-t border-border bg-surface-muted/40 text-[11px] text-text-subtle flex items-center justify-between">
+        <footer className="px-6 py-3 border-t border-border bg-surface-muted/40 text-[11px] text-text-subtle flex items-center justify-between gap-3">
           <span>
             Press <Kbd>?</Kbd> any time to reopen.
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              replayClinicianTour();
+            }}
+            className="text-[11px] text-[color:var(--accent,#3a7d44)] hover:underline underline-offset-2"
+          >
+            Replay product tour →
+          </button>
           <span>
             <Kbd>Esc</Kbd> to close
           </span>
