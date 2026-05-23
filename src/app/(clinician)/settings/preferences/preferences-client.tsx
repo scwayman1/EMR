@@ -36,6 +36,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { KeyboardHelpModal } from "@/components/ui/keyboard-help-modal";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { cn } from "@/lib/utils/cn";
 
 // ----------------------------------------------------------------------
@@ -102,6 +103,7 @@ type DefaultLanding =
 type DefaultMessageFilter = "all" | "unread" | "ai-drafts" | "emergency";
 
 type SectionId =
+  | "profile"
   | "appearance"
   | "defaults"
   | "notifications"
@@ -111,6 +113,11 @@ type SectionId =
 type NavItem = { id: SectionId; label: string; description: string };
 
 const NAV: NavItem[] = [
+  {
+    id: "profile",
+    label: "Profile",
+    description: "Photo and practice logo",
+  },
   {
     id: "appearance",
     label: "Appearance",
@@ -159,7 +166,7 @@ const MESSAGE_FILTER_OPTIONS: Array<{ value: DefaultMessageFilter; label: string
 
 export function PreferencesClient() {
   const { toast } = useToast();
-  const [active, setActive] = useState<SectionId>("appearance");
+  const [active, setActive] = useState<SectionId>("profile");
 
   // Hydration: pull values from localStorage on mount so SSR markup stays
   // identical for every user, then "snap into" the persisted choice. This
@@ -317,6 +324,8 @@ export function PreferencesClient() {
         <SettingsNav active={active} onSelect={setActive} />
 
         <div className="flex-1 min-w-0 space-y-6">
+          {active === "profile" && <ProfileSection />}
+
           {active === "appearance" && (
             <AppearanceSection
               theme={theme}
@@ -551,6 +560,118 @@ function Select<T extends string>({
 // ----------------------------------------------------------------------
 // Sections
 // ----------------------------------------------------------------------
+
+// ----------------------------------------------------------------------
+// Profile (provider avatar + practice logo)
+// ----------------------------------------------------------------------
+//
+// TODO(EMR follow-up): when `User.imageUrl` and `Organization.logoUrl`
+// columns land in Prisma, swap the localStorage shims for server actions
+// + cache revalidation. The AvatarUpload primitive already handles the
+// onUpload(dataUrl, file) handoff — only the persistence layer changes.
+
+const PROFILE_PHOTO_KEY = nsKey("profile.photo");
+const PRACTICE_LOGO_KEY = nsKey("practice.logo");
+
+function ProfileSection() {
+  const { toast } = useToast();
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [logo, setLogo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setPhoto(window.localStorage.getItem(PROFILE_PHOTO_KEY));
+      setLogo(window.localStorage.getItem(PRACTICE_LOGO_KEY));
+    } catch {
+      // Safari private mode — silently fall through, picker still works.
+    }
+  }, []);
+
+  const persist = useCallback(
+    (key: string, dataUrl: string) => {
+      try {
+        window.localStorage.setItem(key, dataUrl);
+      } catch (err) {
+        // QuotaExceededError on browsers with tiny localStorage budgets
+        // (Safari ~5MB). Surface a real error so the optimistic preview
+        // rolls back via the AvatarUpload toast.
+        throw new Error(
+          err instanceof Error && err.name === "QuotaExceededError"
+            ? "This browser ran out of room to store the image."
+            : "Couldn’t save the image to this browser.",
+        );
+      }
+    },
+    [],
+  );
+
+  return (
+    <Card tone="raised">
+      <CardHeader>
+        <CardTitle>Profile</CardTitle>
+        <CardDescription>
+          Your photo appears in messages and chart notes. The practice logo
+          shows on patient-facing PDFs and the portal header.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+          <div className="flex flex-col items-center gap-2">
+            <AvatarUpload
+              initialSrc={photo}
+              size={112}
+              variant="circle"
+              onUpload={async (dataUrl) => {
+                persist(PROFILE_PHOTO_KEY, dataUrl);
+                setPhoto(dataUrl);
+              }}
+            />
+            <p className="text-xs text-text-muted text-center max-w-[14rem]">
+              Your provider headshot
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <AvatarUpload
+              initialSrc={logo}
+              size={112}
+              variant="rounded"
+              helperText={logo ? "Drag or tap to change logo" : "Drag or tap to add logo"}
+              onUpload={async (dataUrl) => {
+                persist(PRACTICE_LOGO_KEY, dataUrl);
+                setLogo(dataUrl);
+              }}
+            />
+            <p className="text-xs text-text-muted text-center max-w-[14rem]">
+              Practice logo
+            </p>
+          </div>
+        </div>
+        <p className="mt-6 text-[11px] text-text-subtle leading-relaxed">
+          Saved to this browser only — a server-side photo store is on the
+          roadmap.{" "}
+          <button
+            type="button"
+            className="underline hover:text-text"
+            onClick={() => {
+              try {
+                window.localStorage.removeItem(PROFILE_PHOTO_KEY);
+                window.localStorage.removeItem(PRACTICE_LOGO_KEY);
+              } catch {
+                /* noop */
+              }
+              setPhoto(null);
+              setLogo(null);
+              toast({ title: "Cleared", variant: "info", duration: 2000 });
+            }}
+          >
+            Clear both
+          </button>
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 function AppearanceSection({
   theme,
