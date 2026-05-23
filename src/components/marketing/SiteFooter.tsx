@@ -8,12 +8,17 @@ type FooterLink = { label: string; href?: string; external?: boolean };
 
 const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
+    // Re-ordered + extended to surface the real marketing routes
+    // (/features, /pricing, /clinicians) — every other top-tier
+    // SaaS marketing footer links these three from "Product". The
+    // portal links remain but moved below the marketing pages.
     title: "Product",
     links: [
-      { label: "Patient Portal", href: "/sign-up" },
-      { label: "Clinician Portal", href: "/sign-up" },
-      { label: "Operator Dashboard" },
-      { label: "The LeafMart", href: "https://www.theleafmart.com/", external: true },
+      { label: "Features", href: "/features" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Find a clinician", href: "/clinicians" },
+      { label: "The LeafMart", href: "/leafmart" },
+      { label: "Marketplace", href: "/marketplace" },
     ],
   },
   {
