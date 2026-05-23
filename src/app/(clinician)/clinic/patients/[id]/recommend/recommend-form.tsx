@@ -165,7 +165,7 @@ export function RecommendForm({
             <CardTitle>Patient summary</CardTitle>
             <CardDescription>
               The recommendation engine will use this data along with outcome
-              trends, assessment scores, and the research corpus.
+              trends, assessment scores, and the research database.
             </CardDescription>
           </CardHeader>
           <CardContent>
