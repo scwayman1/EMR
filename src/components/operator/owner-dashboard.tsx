@@ -7,6 +7,7 @@ import {
   type OwnerKpiSnapshot,
 } from "@/lib/domain/owner-kpis";
 import { formatMoneyCompact, formatMoney } from "@/lib/domain/billing";
+import { agentRegistry } from "@/lib/agents";
 
 // ---------------------------------------------------------------------------
 // OwnerDashboard — composes the 6 KPI tiles in a 1/2/3-column grid.
@@ -69,10 +70,19 @@ export function OwnerDashboard({ snapshot }: OwnerDashboardProps) {
   };
 
   // ---------- 4. Agent fleet status ----------
+  // EMR-795: the headline count is driven by AgentJob rows in the DB
+  // (see `loadAgents` in owner-kpis.ts), so newly-registered agent
+  // classes are discovered automatically as soon as they record jobs.
+  // No tile-side wiring is needed for the new Practice Manager Agent
+  // beyond surfacing its presence via the sub-label below.
+  const hasPracticeManagerAgent = "practiceManager" in agentRegistry;
+  const baseAgentSubtext = `${snapshot.agents.running} processing, ${snapshot.agents.completedToday} completed today`;
   const agentsCard = {
     eyebrow: "Agent fleet",
     headline: snapshot.agents.running.toString(),
-    subtext: `${snapshot.agents.running} processing, ${snapshot.agents.completedToday} completed today`,
+    subtext: hasPracticeManagerAgent
+      ? `${baseAgentSubtext} • incl. Practice Manager`
+      : baseAgentSubtext,
     href: "/ops/agents",
     pulse: snapshot.agents.running > 0,
   };
