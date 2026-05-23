@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LeafSprig } from "@/components/ui/ornament";
 import { ResearchSearchForm } from "./research-form";
+import { ChatCBPanel } from "./chat-cb-panel";
 import { formatRelative } from "@/lib/utils/format";
 
 export const metadata = { title: "Research" };
@@ -190,6 +191,8 @@ export default async function ResearchConsolePage({
               )}
             </CardContent>
           </Card>
+
+          <ChatCBPanel />
 
           <Card>
             <CardHeader>
