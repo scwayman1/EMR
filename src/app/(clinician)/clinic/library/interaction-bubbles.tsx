@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils/cn";
+import { LeafSprig } from "@/components/ui/ornament";
 import { InteractionBadge } from "@/components/ui/interaction-badge";
 import type { DrugInteraction, Severity } from "@/lib/domain/drug-interactions";
 
@@ -11,22 +12,22 @@ const GROUPS: { severity: Severity; heading: string }[] = [
   { severity: "green", heading: "No known interaction" },
 ];
 
-const BUBBLE: Record<Severity, string> = {
+const LEAF: Record<Severity, string> = {
   red: "bg-red-50 border-red-200 text-danger hover:bg-red-100",
   yellow: "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100",
   green: "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100",
+};
+
+const LEAF_ICON: Record<Severity, string> = {
+  red: "text-danger/60",
+  yellow: "text-amber-500/70",
+  green: "text-emerald-600/70",
 };
 
 const RING: Record<Severity, string> = {
   red: "ring-2 ring-danger/40 ring-offset-1",
   yellow: "ring-2 ring-amber-400/50 ring-offset-1",
   green: "ring-2 ring-emerald-400/50 ring-offset-1",
-};
-
-const DOT: Record<Severity, string> = {
-  red: "bg-danger",
-  yellow: "bg-amber-400",
-  green: "bg-emerald-500",
 };
 
 export function InteractionBubbles({
@@ -64,14 +65,20 @@ export function InteractionBubbles({
                     onClick={() => toggle(key)}
                     aria-expanded={isOpen}
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border transition-colors capitalize",
-                      BUBBLE[severity],
+                      "inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium border transition-all capitalize",
+                      "rounded-tl-sm rounded-br-sm rounded-tr-3xl rounded-bl-3xl",
+                      "hover:-rotate-1 hover:scale-[1.03]",
+                      LEAF[severity],
                       isOpen && RING[severity],
                     )}
                   >
-                    <span
-                      className={cn("h-1.5 w-1.5 rounded-full shrink-0", DOT[severity])}
-                      aria-hidden="true"
+                    <LeafSprig
+                      size={12}
+                      className={cn(
+                        "shrink-0 transition-transform",
+                        LEAF_ICON[severity],
+                        isOpen && "rotate-12",
+                      )}
                     />
                     {interaction.drug}
                     <span className="opacity-50 font-normal text-[10px]">
