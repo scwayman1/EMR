@@ -124,7 +124,7 @@ export default function LibraryPage() {
       <Card tone="raised" className="mb-6">
         <CardHeader>
           <CardTitle>Dosing guidelines by condition</CardTitle>
-          <CardDescription>Evidence-based starting doses from the research corpus. Titrate based on response.</CardDescription>
+          <CardDescription>Evidence-based starting doses from the research database. Titrate based on response.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -149,7 +149,7 @@ export default function LibraryPage() {
             </table>
           </div>
           <p className="text-xs text-text-subtle mt-4">
-            Source: Curated research corpus (50+ studies). See{" "}
+            Source: Curated research database (50+ studies). See{" "}
             <Link href="/clinic/research" className="text-accent hover:underline">Research Console</Link>{" "}
             for full citations and evidence search.
           </p>
@@ -248,7 +248,7 @@ export default function LibraryPage() {
       <Card>
         <CardContent className="py-6 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-text">Research corpus</p>
+            <p className="text-sm font-medium text-text">Research database</p>
             <p className="text-xs text-text-muted mt-1">50+ peer-reviewed studies with structured dosing data</p>
           </div>
           <Link href="/clinic/research">
