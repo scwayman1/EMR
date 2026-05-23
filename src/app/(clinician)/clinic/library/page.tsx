@@ -6,10 +6,17 @@ import Link from "next/link";
 import { getAllInteractions } from "@/lib/domain/drug-interactions";
 import { PdfExportButton } from "./pdf-export-button";
 import { InteractionBubbles } from "./interaction-bubbles";
+import { getCurrentUser } from "@/lib/auth/session";
+import { isModalityEnabled } from "@/lib/modality/server";
+import { ChatCB } from "../research/chat-cb";
 
 export const metadata = { title: "Clinical Library" };
 
-export default function LibraryPage() {
+export default async function LibraryPage() {
+  const user = await getCurrentUser();
+  const cannabisEnabled = user?.organizationId
+    ? await isModalityEnabled(user.organizationId, "cannabis-medicine")
+    : false;
   const interactions = getAllInteractions();
   return (
     <PageShell maxWidth="max-w-[960px]">
@@ -202,6 +209,16 @@ export default function LibraryPage() {
           <InteractionBubbles interactions={interactions} />
         </CardContent>
       </Card>
+
+      {/* ChatCB — AI evidence assistant, cannabis-modality only */}
+      {cannabisEnabled && (
+        <div className="mb-6">
+          <p className="text-xs font-medium text-text-subtle uppercase tracking-wide mb-3">
+            AI evidence assistant
+          </p>
+          <ChatCB />
+        </div>
+      )}
 
       {/* Justin Kander's book (EMR-036) */}
       <Card tone="ambient" className="mb-6">
