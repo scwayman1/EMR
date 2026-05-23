@@ -42,6 +42,21 @@ export const DEFAULT_GROUPS: MobileNavGroup[] = [
     ],
   },
   {
+    // Surfaces /features, /pricing, /clinicians, and /book-demo on
+    // mobile portrait — none of those marketing routes were
+    // reachable from the phone-portrait nav before. The desktop
+    // SiteHeader exposes Features + Pricing inline; this is the
+    // mobile-portrait equivalent. (ux/marketing-polish-stripe-tier)
+    id: "product",
+    label: "Product",
+    tabs: [
+      { label: "Features", href: "/features", icon: "✦" },
+      { label: "Pricing", href: "/pricing", icon: "✓" },
+      { label: "Clinicians", href: "/clinicians", icon: "✚" },
+      { label: "Demo", href: "/book-demo", icon: "☆" },
+    ],
+  },
+  {
     id: "learn",
     label: "Learn",
     tabs: [
@@ -74,7 +89,11 @@ export const DEFAULT_GROUPS: MobileNavGroup[] = [
     label: "Account",
     tabs: [
       { label: "Sign in", href: "/sign-in", icon: "➜" },
-      { label: "Demo", href: "/sign-up", icon: "☆" },
+      // Demo → /book-demo (sales intake), not /sign-up (Clerk
+      // account creation). Same fix as the desktop SiteHeader,
+      // the homepage hero CTAs, and the closing-CTA bands across
+      // /about, /pricing, /security.
+      { label: "Demo", href: "/book-demo", icon: "☆" },
       { label: "Security", href: "/security", icon: "☢" },
       { label: "Developer", href: "/developer", icon: "⚙" },
     ],
