@@ -4,6 +4,11 @@ import { useFormState, useFormStatus } from "react-dom";
 import { saveProfileAction, type ProfileResult } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input, FieldGroup } from "@/components/ui/input";
+import { DatePicker, toISODate } from "@/components/ui/date-picker";
+
+// Patient self-service DOB shouldn't be in the future. Computed once per
+// render — adequate for a form that's open briefly.
+const PROFILE_TODAY = toISODate(new Date());
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -90,11 +95,12 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
             htmlFor="dateOfBirth"
             hint={age !== null ? `Age: ${age}` : undefined}
           >
-            <Input
+            <DatePicker
               id="dateOfBirth"
               name="dateOfBirth"
-              type="date"
               defaultValue={initial.dateOfBirth}
+              max={PROFILE_TODAY}
+              placeholder="Date of birth"
             />
           </FieldGroup>
           <FieldGroup label="Sex" htmlFor="sex">
