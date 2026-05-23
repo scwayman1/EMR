@@ -2,7 +2,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { listStagger, listStaggerChild } from "@/lib/ui/motion";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
@@ -222,6 +224,10 @@ export function PatientListClient({
   const [search, setSearch] = useState(initialSearch);
   const [powerFilter, setPowerFilter] = useState<PowerFilter>("all");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  // Shared motion: stagger the roster fan-in. No-op under reduced motion.
+  const reduceMotion = useReducedMotion() ?? false;
+  const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
+  const childVariants = useMemo(() => listStaggerChild(reduceMotion), [reduceMotion]);
 
   /* Hydrate saved views from localStorage -------------------------- */
   useEffect(() => {
@@ -418,9 +424,14 @@ export function PatientListClient({
               />
             </div>
           ) : (
-            <ul className="divide-y divide-border/60">
+            <motion.ul
+              className="divide-y divide-border/60"
+              // Replay stagger when the active filter/search changes.
+              key={`roster-${powerFilter}-${search}`}
+              {...listStaggerProps}
+            >
               {filtered.map((p) => (
-                <li key={p.id}>
+                <motion.li key={p.id} variants={childVariants}>
                   <Link
                     href={`/clinic/patients/${p.id}`}
                     className="card-hover flex items-center gap-4 px-5 py-4 hover:bg-surface-muted/50 transition-colors duration-150 group"
@@ -477,9 +488,9 @@ export function PatientListClient({
                       <ChevronRight />
                     </div>
                   </Link>
-                </li>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
           )}
         </CardContent>
       </Card>

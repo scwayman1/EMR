@@ -15,7 +15,9 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
+import { modalSpring, modalBackdrop } from "@/lib/ui/motion";
 
 type DialogContextValue = {
   open: boolean;
@@ -100,6 +102,7 @@ export function DialogContent({ className, children, ...props }: DialogContentPr
   // focus to it on close — keyboard / screen-reader users otherwise get
   // dropped at document body.
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const reduce = useReducedMotion() ?? false;
 
   const handleCloseAttempt = () => {
     let isDirty = false;
@@ -195,78 +198,85 @@ export function DialogContent({ className, children, ...props }: DialogContentPr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  if (!open) return null;
+  const backdrop = modalBackdrop(reduce);
+  const spring = modalSpring(reduce);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={handleCloseAttempt}
-        aria-hidden
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className={cn(
-          "relative z-10 w-full max-w-lg rounded-lg border border-border bg-surface p-6 shadow-xl overflow-hidden",
-          "focus:outline-none focus-visible:outline-none",
-          className,
-        )}
-        {...props}
-      >
-        <button
-          type="button"
-          onClick={handleCloseAttempt}
-          className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:pointer-events-none cursor-pointer"
-          aria-label="Close"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 15 15"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 text-text-subtle"
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            className="absolute inset-0 bg-black/50"
+            onClick={handleCloseAttempt}
+            aria-hidden
+            {...backdrop}
+          />
+          <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            tabIndex={-1}
+            className={cn(
+              "relative z-10 w-full max-w-lg rounded-lg border border-border bg-surface p-6 shadow-xl overflow-hidden",
+              "focus:outline-none focus-visible:outline-none",
+              className,
+            )}
+            {...spring}
+            {...(props as React.ComponentProps<typeof motion.div>)}
           >
-            <path
-              d="M11.7816 4.03157C12.0062 3.8069 12.0062 3.44295 11.7816 3.21828C11.5569 2.99361 11.1929 2.99361 10.9683 3.21828L7.50005 6.68653L4.03182 3.21828C3.80715 2.99361 3.4432 2.99361 3.21853 3.21828C2.99386 3.44295 2.99386 3.8069 3.21853 4.03157L6.68676 7.49982L3.21853 10.9681C2.99386 11.1927 2.99386 11.5567 3.21853 11.7814C3.4432 12.006 3.80715 12.006 4.03182 11.7814L7.50005 8.31311L10.9683 11.7814C11.1929 12.006 11.5569 12.006 11.7816 11.7814C12.0062 11.5567 12.0062 11.1927 11.7816 10.9681L8.31333 7.49982L11.7816 4.03157Z"
-              fill="currentColor"
-              fillRule="evenodd"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-        {children}
-        {showConfirm && (
-          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-surface/95 backdrop-blur-sm p-6 text-center">
-            <h3 className="text-lg font-semibold text-text">Are you sure you want to leave?</h3>
-            <p className="text-sm text-text-muted mt-2">Your changes will be lost.</p>
-            <div className="flex gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => setShowConfirm(false)}
-                className="px-4 py-2 rounded-md border border-border bg-surface text-sm font-medium text-text hover:bg-surface-muted transition-colors cursor-pointer select-none"
+            <button
+              type="button"
+              onClick={handleCloseAttempt}
+              className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 disabled:pointer-events-none cursor-pointer"
+              aria-label="Close"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 15 15"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 text-text-subtle"
               >
-                Stay
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowConfirm(false);
-                  onOpenChange(false);
-                }}
-                className="px-4 py-2 rounded-md bg-danger text-white text-sm font-medium hover:bg-danger-hover transition-colors cursor-pointer select-none"
-              >
-                Leave
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+                <path
+                  d="M11.7816 4.03157C12.0062 3.8069 12.0062 3.44295 11.7816 3.21828C11.5569 2.99361 11.1929 2.99361 10.9683 3.21828L7.50005 6.68653L4.03182 3.21828C3.80715 2.99361 3.4432 2.99361 3.21853 3.21828C2.99386 3.44295 2.99386 3.8069 3.21853 4.03157L6.68676 7.49982L3.21853 10.9681C2.99386 11.1927 2.99386 11.5567 3.21853 11.7814C3.4432 12.006 3.80715 12.006 4.03182 11.7814L7.50005 8.31311L10.9683 11.7814C11.1929 12.006 11.5569 12.006 11.7816 11.7814C12.0062 11.5567 12.0062 11.1927 11.7816 10.9681L8.31333 7.49982L11.7816 4.03157Z"
+                  fill="currentColor"
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+            {children}
+            {showConfirm && (
+              <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-surface/95 backdrop-blur-sm p-6 text-center">
+                <h3 className="text-lg font-semibold text-text">Are you sure you want to leave?</h3>
+                <p className="text-sm text-text-muted mt-2">Your changes will be lost.</p>
+                <div className="flex gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm(false)}
+                    className="px-4 py-2 rounded-md border border-border bg-surface text-sm font-medium text-text hover:bg-surface-muted transition-colors cursor-pointer select-none"
+                  >
+                    Stay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowConfirm(false);
+                      onOpenChange(false);
+                    }}
+                    className="px-4 py-2 rounded-md bg-danger text-white text-sm font-medium hover:bg-danger-hover transition-colors cursor-pointer select-none"
+                  >
+                    Leave
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 

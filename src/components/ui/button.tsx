@@ -1,9 +1,16 @@
+"use client";
+
 import * as React from "react";
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils/cn";
+import { tapPress } from "@/lib/ui/motion";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "highlight";
 type Size = "sm" | "md" | "lg";
 
+// Strip framer-motion's drag/handler types we don't care about from the
+// public Button API to keep the surface small for callers, but accept the
+// rest of HTMLButtonElement attrs verbatim.
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
@@ -43,6 +50,21 @@ const SIZES: Record<Size, string> = {
   lg: "h-12 px-6 text-base",
 };
 
+/**
+ * Internal motion-wrapped <button>. Lives as its own component so the public
+ * Button forwardRef itself does NOT call any hooks at render time — that
+ * keeps the existing unit test happy, which invokes `(Button as any).render`
+ * directly outside of React's lifecycle.
+ */
+const MotionButton = React.forwardRef<
+  HTMLButtonElement,
+  HTMLMotionProps<"button">
+>(function MotionButton(props, ref) {
+  const reduce = useReducedMotion() ?? false;
+  const tap = tapPress(reduce);
+  return <motion.button ref={ref} {...tap} {...props} />;
+});
+
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     { className, variant = "primary", size = "md", leadingIcon, trailingIcon, type, children, ...props },
@@ -52,16 +74,16 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // ancestor forms when consumers omit the prop. Callers can still pass
     // type="submit" / "reset" explicitly.
     return (
-      <button
+      <MotionButton
         ref={ref}
         type={type ?? "button"}
         className={cn(BASE, VARIANTS[variant], SIZES[size], className)}
-        {...props}
+        {...(props as HTMLMotionProps<"button">)}
       >
         {leadingIcon}
         {children}
         {trailingIcon}
-      </button>
+      </MotionButton>
     );
   }
 );

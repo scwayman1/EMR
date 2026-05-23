@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { SignOffNav, type NavSection } from "./sign-off-nav";
+import { PageTransition } from "@/components/ui/page-transition";
 
 export default async function SignOffLayout({
   children,
@@ -89,7 +90,10 @@ export default async function SignOffLayout({
 
       {/* Right content */}
       <div className="flex-1 min-w-0 bg-surface-raised overflow-y-auto">
-        {children}
+        {/* PageTransition re-keys on pathname so sub-route swaps inside
+            sign-off (labs ↔ refills ↔ notes ↔ messages) get the shared
+            `pagePushIn` motion. No-op under prefers-reduced-motion. */}
+        <PageTransition>{children}</PageTransition>
       </div>
     </div>
   );

@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/utils/cn";
+import { listStagger, listStaggerChild } from "@/lib/ui/motion";
 import {
   QUEUE_STATUS_CONFIG,
   calculateWaitTime,
@@ -121,6 +123,13 @@ function QueueColumn({
   entries: QueueEntry[];
 }) {
   const config = QUEUE_STATUS_CONFIG[status];
+  // Shared motion: stagger queue card fan-in within the column. No-op
+  // under prefers-reduced-motion. Each card slides up a hair on entry,
+  // which makes the 30-second auto-refresh feel "live" instead of
+  // suddenly mutated.
+  const reduceMotion = useReducedMotion() ?? false;
+  const listProps = listStagger(reduceMotion);
+  const childVariants = listStaggerChild(reduceMotion);
 
   return (
     <div className="flex flex-col">
@@ -133,17 +142,24 @@ function QueueColumn({
         </Badge>
       </div>
 
-      <div className="space-y-2 min-h-[80px] rounded-xl bg-surface-muted/40 p-2">
+      <motion.div
+        className="space-y-2 min-h-[80px] rounded-xl bg-surface-muted/40 p-2"
+        // Replay stagger when the entries array identity changes (auto-refresh).
+        key={`queue-${status}-${entries.length}`}
+        {...listProps}
+      >
         {entries.length === 0 ? (
           <div className="text-center py-6 text-[11px] text-text-subtle italic">
             empty
           </div>
         ) : (
           entries.map((entry) => (
-            <QueueCard key={entry.encounterId} entry={entry} />
+            <motion.div key={entry.encounterId} variants={childVariants}>
+              <QueueCard entry={entry} />
+            </motion.div>
           ))
         )}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { Card } from "@/components/ui/card";
+import { listStagger, listStaggerChild } from "@/lib/ui/motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -823,6 +825,11 @@ export function SmartInboxView({
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>(initialPriority);
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "all">("all");
   const [search, setSearch] = useState("");
+  // Shared motion: subtle stagger on the triaged list. No-op under
+  // prefers-reduced-motion. Variants are stable across renders.
+  const reduceMotion = useReducedMotion() ?? false;
+  const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
+  const childVariants = useMemo(() => listStaggerChild(reduceMotion), [reduceMotion]);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     initialThreadId ?? triaged[0]?.threadId ?? null,
   );
@@ -1078,7 +1085,14 @@ export function SmartInboxView({
       <div className="flex flex-col md:flex-row gap-4 min-h-[600px]">
         {/* Left panel: triaged message list */}
         <Card className="md:w-[40%] shrink-0 overflow-hidden">
-          <div className="overflow-y-auto max-h-[700px]">
+          <motion.div
+            className="overflow-y-auto max-h-[700px]"
+            // Motion: list-stagger fan-in. The key includes filter + search so
+            // the stagger replays when the filter set changes, giving the
+            // refresh a real "rebuilt" feel instead of a silent swap.
+            key={`inbox-${priorityFilter}-${categoryFilter}-${search}`}
+            {...listStaggerProps}
+          >
             {filtered.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-sm text-text-muted">
@@ -1089,8 +1103,9 @@ export function SmartInboxView({
               filtered.map((t) => {
                 const isSelected = t.threadId === selectedThreadId;
                 return (
-                  <button
+                  <motion.button
                     key={t.threadId}
+                    variants={childVariants}
                     onClick={() => setSelectedThreadId(t.threadId)}
                     className={cn(
                       "w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted",
@@ -1159,11 +1174,11 @@ export function SmartInboxView({
                         </div>
                       </div>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })
             )}
-          </div>
+          </motion.div>
         </Card>
 
         {/* Right panel: thread detail */}
