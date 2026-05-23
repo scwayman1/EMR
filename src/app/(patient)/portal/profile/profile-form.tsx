@@ -1,18 +1,9 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormState } from "react-dom";
 import { saveProfileAction, type ProfileResult } from "./actions";
-import { Button } from "@/components/ui/button";
 import { Input, FieldGroup } from "@/components/ui/input";
-
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Saving..." : "Save profile"}
-    </Button>
-  );
-}
+import { SubmitButton } from "@/lib/ui/form-helpers";
 
 export interface ProfileValues {
   firstName: string;
@@ -237,7 +228,7 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
       )}
 
       <div className="flex items-center justify-end gap-2 pt-2">
-        <SubmitButton />
+        <SubmitButton idleLabel="Save profile" pendingLabel="Saving profile…" />
       </div>
     </form>
   );

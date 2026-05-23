@@ -7,6 +7,20 @@ import { Button } from "@/components/ui/button";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { createPatientAction } from "@/app/(clinician)/clinic/patients/actions";
 import { cn } from "@/lib/utils/cn";
+import { FormErrorSummary, buildErrors } from "@/lib/ui/form-helpers";
+
+// EMR-UX: directive error copy. We never blame the user — every message
+// starts with "Please add a …" or similar imperative.
+const FIELD_LABELS: Record<string, string> = {
+  firstName: "First name",
+  lastName: "Last name",
+  dateOfBirth: "Date of birth",
+  "contact-0-name": "Emergency contact name",
+  "contact-0-relation": "Emergency contact relationship",
+  "contact-0-phone": "Emergency contact phone",
+  insuranceProvider: "Insurance provider",
+  memberId: "Member ID",
+};
 
 const SEX_OPTIONS = ["", "Female", "Male", "Intersex", "Prefer not to say"];
 const MARITAL_OPTIONS = [
@@ -221,13 +235,15 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-text uppercase tracking-wider">
+                  <label htmlFor="firstName" className="text-xs font-semibold text-text uppercase tracking-wider">
                     First Name <span className="text-danger">*</span>
                   </label>
                   <input
+                    id="firstName"
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    aria-invalid={errors.firstName ? true : undefined}
                     className={cn(
                       "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50",
                       errors.firstName && "border-danger ring-2 ring-danger/20"
@@ -236,13 +252,15 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-text uppercase tracking-wider">
+                  <label htmlFor="lastName" className="text-xs font-semibold text-text uppercase tracking-wider">
                     Last Name <span className="text-danger">*</span>
                   </label>
                   <input
+                    id="lastName"
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    aria-invalid={errors.lastName ? true : undefined}
                     className={cn(
                       "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50",
                       errors.lastName && "border-danger ring-2 ring-danger/20"
@@ -251,13 +269,15 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-text uppercase tracking-wider">
+                  <label htmlFor="dateOfBirth" className="text-xs font-semibold text-text uppercase tracking-wider">
                     Date of Birth <span className="text-danger">*</span>
                   </label>
                   <input
+                    id="dateOfBirth"
                     type="date"
                     value={dateOfBirth}
                     onChange={(e) => setDateOfBirth(e.target.value)}
+                    aria-invalid={errors.dateOfBirth ? true : undefined}
                     className={cn(
                       "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50",
                       errors.dateOfBirth && "border-danger ring-2 ring-danger/20"
@@ -389,9 +409,7 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
             </div>
 
             {hasValidationError && (
-              <p className="text-sm text-danger font-medium bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
-                Please complete each field.
-              </p>
+              <FormErrorSummary errors={buildErrors(errors, FIELD_LABELS)} />
             )}
 
             <div className="pt-4 flex items-center justify-between border-t border-border mt-6">
@@ -431,11 +449,13 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs text-text">Name</label>
+                      <label htmlFor={`contact-${idx}-name`} className="text-xs text-text">Name</label>
                       <input
+                        id={`contact-${idx}-name`}
                         type="text"
                         value={contact.name}
                         onChange={(e) => handleContactChange(idx, "name", e.target.value)}
+                        aria-invalid={errors[`contact-${idx}-name`] ? true : undefined}
                         className={cn(
                           "w-full rounded-md border border-border bg-surface px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent/50",
                           errors[`contact-${idx}-name`] && "border-danger ring-2 ring-danger/20"
@@ -443,12 +463,14 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-text">Relationship</label>
+                      <label htmlFor={`contact-${idx}-relation`} className="text-xs text-text">Relationship</label>
                       <input
+                        id={`contact-${idx}-relation`}
                         type="text"
                         value={contact.relationship}
                         onChange={(e) => handleContactChange(idx, "relationship", e.target.value)}
                         placeholder="e.g. Spouse, Friend..."
+                        aria-invalid={errors[`contact-${idx}-relation`] ? true : undefined}
                         className={cn(
                           "w-full rounded-md border border-border bg-surface px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent/50",
                           errors[`contact-${idx}-relation`] && "border-danger ring-2 ring-danger/20"
@@ -456,12 +478,14 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-text">Phone</label>
+                      <label htmlFor={`contact-${idx}-phone`} className="text-xs text-text">Phone</label>
                       <input
+                        id={`contact-${idx}-phone`}
                         type="tel"
                         value={contact.phone}
                         onChange={(e) => handleContactChange(idx, "phone", e.target.value)}
                         placeholder="(555) 123-4567"
+                        aria-invalid={errors[`contact-${idx}-phone`] ? true : undefined}
                         className={cn(
                           "w-full rounded-md border border-border bg-surface px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent/50",
                           errors[`contact-${idx}-phone`] && "border-danger ring-2 ring-danger/20"
@@ -484,9 +508,7 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
             </div>
 
             {hasValidationError && (
-              <p className="text-sm text-danger font-medium bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
-                Please complete each field.
-              </p>
+              <FormErrorSummary errors={buildErrors(errors, FIELD_LABELS)} />
             )}
 
             <div className="pt-4 flex items-center justify-between border-t border-border mt-6">
@@ -513,14 +535,16 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
 
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-text uppercase tracking-wider">
+                  <label htmlFor="insuranceProvider" className="text-xs font-semibold text-text uppercase tracking-wider">
                     Primary Insurance Provider <span className="text-danger">*</span>
                   </label>
                   <input
+                    id="insuranceProvider"
                     type="text"
                     value={insuranceProvider}
                     onChange={(e) => setInsuranceProvider(e.target.value)}
                     placeholder="e.g. Blue Shield"
+                    aria-invalid={errors.insuranceProvider ? true : undefined}
                     className={cn(
                       "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50",
                       errors.insuranceProvider && "border-danger ring-2 ring-danger/20"
@@ -530,13 +554,15 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-text uppercase tracking-wider">
+                    <label htmlFor="memberId" className="text-xs font-semibold text-text uppercase tracking-wider">
                       Member ID / Card ID <span className="text-danger">*</span>
                     </label>
                     <input
+                      id="memberId"
                       type="text"
                       value={memberId}
                       onChange={(e) => setMemberId(e.target.value)}
+                      aria-invalid={errors.memberId ? true : undefined}
                       className={cn(
                         "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50",
                         errors.memberId && "border-danger ring-2 ring-danger/20"
@@ -558,13 +584,11 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
             </div>
 
             {hasValidationError && (
-              <p className="text-sm text-danger font-medium bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
-                Please complete each field.
-              </p>
+              <FormErrorSummary errors={buildErrors(errors, FIELD_LABELS)} />
             )}
 
             {submitError && (
-              <p className="text-sm text-danger font-medium bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
+              <p role="alert" className="text-sm text-danger font-medium bg-danger/10 border border-danger/20 rounded-md px-3 py-2">
                 {submitError}
               </p>
             )}
