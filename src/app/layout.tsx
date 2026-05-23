@@ -49,9 +49,13 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600&family=Instrument+Serif:ital@1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap"
           rel="stylesheet"
         />
+        {/* Theme bootstrap — runs before paint to prevent FOUC.
+            Reads localStorage("leafjourney-theme") which can be
+            "light" | "dark" | "system" (default: "system").
+            Resolves "system" against prefers-color-scheme. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("leafjourney-theme");if(t==="dark"){document.documentElement.setAttribute("data-theme","dark")}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("leafjourney-theme")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(d){document.documentElement.setAttribute("data-theme","dark")}else{document.documentElement.removeAttribute("data-theme")}}catch(e){}})();`,
           }}
         />
       </head>
