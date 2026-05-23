@@ -32,6 +32,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 /**
  * Pure validation predicate — exported so the unit test can exercise the
@@ -101,17 +102,9 @@ export function EmergencyRevokeDialog({
     submitting: submitState === "submitting",
   });
 
-  // Esc closes the dialog. Backdrop click closes too (below). We don't trap
-  // focus here — the legacy Dialog primitive in src/components/ui/dialog.tsx
-  // doesn't either, and this dialog is small enough that focus rings on
-  // every interactive element are enough for keyboard ops.
-  React.useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && submitState !== "submitting") onCancel();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel, submitState]);
+  // Esc / X / backdrop close are now handled by the canonical Dialog
+  // primitive. We block close mid-flight via the `onOpenChange` callback so
+  // a half-submitted revoke can't be torn down by an accidental Esc.
 
   async function submit() {
     if (!canSubmit) return;
@@ -152,23 +145,25 @@ export function EmergencyRevokeDialog({
 
   const reasonTrimmed = reason.trim().length;
   const reasonTooShort = reasonTrimmed > 0 && reasonTrimmed < 10;
+  // EMR-642 — guard against accidental backdrop/Esc dismissal once the
+  // operator has started typing the reason or the confirmation email.
+  const isDirty = confirmEmail.length > 0 || reason.length > 0;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Emergency revoke super-admin"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (next) return;
+        if (submitState === "submitting") return;
+        onCancel();
+      }}
+      confirmCloseOnDirty
+      isDirty={isDirty}
     >
-      <button
-        type="button"
-        aria-label="Close emergency revoke dialog"
-        onClick={() => {
-          if (submitState !== "submitting") onCancel();
-        }}
-        className="absolute inset-0 bg-black/50"
-      />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-danger/40 bg-surface p-6 shadow-2xl">
+      <DialogContent
+        className="max-w-md border-danger/40"
+        aria-label="Emergency revoke super-admin"
+      >
         <h3 className="text-lg font-semibold text-danger">Emergency revoke</h3>
 
         {/* Red warning banner — the load-bearing piece of friction. */}
@@ -270,7 +265,7 @@ export function EmergencyRevokeDialog({
             {submitState === "submitting" ? "Revoking…" : "Emergency revoke"}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

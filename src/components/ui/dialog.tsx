@@ -23,6 +23,20 @@ type DialogContextValue = {
   open: boolean;
   onOpenChange: (next: boolean) => void;
   titleId: string;
+  /**
+   * EMR-642 — When true, the close affordances (X / Esc / backdrop) defer
+   * dismissal to a "Discard changes?" confirmation when the dialog body is
+   * dirty. Off by default to preserve existing snappy-close behavior for
+   * read-only modals.
+   */
+  confirmCloseOnDirty: boolean;
+  /**
+   * Optional explicit dirty-state, controlled by the consumer. When provided
+   * this overrides the auto-detection that scans inputs for value !=
+   * defaultValue. Use this when the dialog edits state held in React (e.g.
+   * a custom rich-text editor) rather than via uncontrolled inputs.
+   */
+  isDirty?: boolean;
 };
 
 const DialogContext = createContext<DialogContextValue | null>(null);
@@ -38,23 +52,52 @@ function useDialogContext(component: string) {
 export interface DialogProps {
   open: boolean;
   onOpenChange: (next: boolean) => void;
+  /**
+   * EMR-642 — Opt in to the "Discard changes?" close-confirm. When false
+   * (default), the dialog dismisses immediately on X / Esc / backdrop. When
+   * true, the close attempt is deferred to an in-dialog confirmation if the
+   * body is dirty.
+   */
+  confirmCloseOnDirty?: boolean;
+  /**
+   * Controlled dirty-state. When provided, this drives the close-confirm
+   * decision instead of the input-auto-detection. The dialog also forwards
+   * dirty-state out via `onDirtyChange` when the consumer prefers
+   * uncontrolled tracking.
+   */
+  isDirty?: boolean;
   children: ReactNode;
 }
 
-export function Dialog({ open, onOpenChange, children }: DialogProps) {
+export function Dialog({
+  open,
+  onOpenChange,
+  confirmCloseOnDirty = false,
+  isDirty,
+  children,
+}: DialogProps) {
   const titleId = useId();
 
+  // Note: Esc handling moved into <DialogContent> so it can defer to the
+  // dirty-close confirm. Keeping a fallback no-op here so a Dialog rendered
+  // without DialogContent (very rare — only programmatic open states) still
+  // has a sensible Esc behavior.
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onOpenChange(false);
+      // The real handler is inside DialogContent. If DialogContent is not
+      // mounted, allow Esc to close anyway — but only when no confirm gate
+      // is in play.
+      if (event.key === "Escape" && !confirmCloseOnDirty) onOpenChange(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, confirmCloseOnDirty]);
 
   return (
-    <DialogContext.Provider value={{ open, onOpenChange, titleId }}>
+    <DialogContext.Provider
+      value={{ open, onOpenChange, titleId, confirmCloseOnDirty, isDirty }}
+    >
       {children}
     </DialogContext.Provider>
   );
@@ -95,7 +138,13 @@ const FOCUSABLE_SELECTOR =
   'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex]:not([tabindex="-1"]), [contenteditable]:not([contenteditable="false"])';
 
 export function DialogContent({ className, children, ...props }: DialogContentProps) {
-  const { open, onOpenChange, titleId } = useDialogContext("DialogContent");
+  const {
+    open,
+    onOpenChange,
+    titleId,
+    confirmCloseOnDirty,
+    isDirty: controlledDirty,
+  } = useDialogContext("DialogContent");
   const [showConfirm, setShowConfirm] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   // Remember whatever had focus before the dialog opened so we can return
@@ -105,27 +154,52 @@ export function DialogContent({ className, children, ...props }: DialogContentPr
   const reduce = useReducedMotion() ?? false;
 
   const handleCloseAttempt = () => {
-    let isDirty = false;
+    // EMR-642 — dirty-close is now opt-in. Most modals (read-only, light
+    // toggles, confirmation prompts) want snappy dismissal; only modals
+    // wrapping a non-trivial edit form should pay the friction cost of a
+    // discard confirm.
+    if (!confirmCloseOnDirty) {
+      onOpenChange(false);
+      return;
+    }
+
+    // Prefer the controlled `isDirty` flag when provided — it's the only way
+    // to detect dirty state for React-controlled inputs whose defaultValue
+    // tracks the latest value.
+    if (typeof controlledDirty === "boolean") {
+      if (controlledDirty) {
+        setShowConfirm(true);
+      } else {
+        onOpenChange(false);
+      }
+      return;
+    }
+
+    // Fallback: scan the DOM for uncontrolled inputs whose value drifted
+    // from defaultValue. This is the legacy behavior, preserved for
+    // backwards-compat with any consumer that opts in without supplying
+    // an explicit isDirty.
+    let dirty = false;
     if (dialogRef.current) {
       const inputs = dialogRef.current.querySelectorAll("input, textarea, select");
       for (const input of Array.from(inputs)) {
         if (input instanceof HTMLInputElement) {
           if (input.type === "checkbox" || input.type === "radio") {
-            if (input.checked !== input.defaultChecked) isDirty = true;
+            if (input.checked !== input.defaultChecked) dirty = true;
           } else if (input.value !== input.defaultValue) {
-            isDirty = true;
+            dirty = true;
           }
         } else if (input instanceof HTMLTextAreaElement) {
-          if (input.value !== input.defaultValue) isDirty = true;
+          if (input.value !== input.defaultValue) dirty = true;
         } else if (input instanceof HTMLSelectElement) {
           const defaultSelected = Array.from(input.options).find(opt => opt.defaultSelected);
           const defaultIndex = defaultSelected ? defaultSelected.index : 0;
-          if (input.selectedIndex !== defaultIndex) isDirty = true;
+          if (input.selectedIndex !== defaultIndex) dirty = true;
         }
       }
     }
 
-    if (isDirty) {
+    if (dirty) {
       setShowConfirm(true);
     } else {
       onOpenChange(false);
