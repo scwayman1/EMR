@@ -7,6 +7,7 @@ import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { ConsciousnessOverlay } from "@/components/ui/consciousness-overlay";
+import { ClinicianTour } from "@/components/onboarding/clinician-tour";
 import { prisma } from "@/lib/db/prisma";
 import {
   computeApprovalsBadge,
@@ -187,6 +188,7 @@ export default async function ClinicianLayout({
       <KeyboardShortcuts />
       <CommandPalette role="clinician" />
       <ConsciousnessOverlay />
+      <ClinicianTour />
       {children}
     </AppShell>
   );
