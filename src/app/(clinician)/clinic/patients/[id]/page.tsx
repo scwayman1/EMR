@@ -668,6 +668,19 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   Download chart
                 </Button>
               </Link>
+              {/* ux/print-stylesheets-clinical — opens a server-rendered
+                  chart summary in a new tab and auto-fires the print dialog
+                  via AutoPrintTrigger. Target="_blank" keeps the working
+                  chart untouched while the printout renders. */}
+              <Link
+                href={`/clinic/patients/${params.id}/print`}
+                target="_blank"
+                rel="noopener"
+              >
+                <Button variant="ghost" size="sm">
+                  Print chart
+                </Button>
+              </Link>
               <Link href={`/clinic/patients/${params.id}/voice-chart`}>
                 <Button variant="ghost" size="sm">
                   Voice chart
