@@ -7,15 +7,13 @@
  * content from the single source of truth at `src/lib/ui/keyboard.ts`, so
  * registry edits are reflected here for free.
  *
- * UX:
- *   • Centered card with backdrop blur (matches CommandPalette aesthetic).
- *   • Sections: Navigation, Lists, Actions.
- *   • Each row: <kbd> chips on the right, label + description on the left.
- *   • Click backdrop or press Esc to dismiss.
+ * Migrated to the canonical `<Dialog>` primitive (ux/modal-consistency-sweep)
+ * so backdrop, focus trap, focus restoration, animation and close affordance
+ * all match the rest of the app for free.
  */
 
 import { useEffect } from "react";
-import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils/cn";
 import {
   GLOBAL_SHORTCUTS,
@@ -46,43 +44,25 @@ export function KeyboardHelpModal({ open, onClose }: KeyboardHelpModalProps) {
     };
   }, [open]);
 
-  if (!open) return null;
-
   const grouped = SECTION_ORDER.map((section) => ({
     section,
     items: GLOBAL_SHORTCUTS.filter((s) => s.section === section),
   })).filter((g) => g.items.length > 0);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Keyboard shortcuts"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-text/40 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <Card
-        tone="raised"
-        className="w-full max-w-2xl overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="max-w-2xl p-0 overflow-hidden">
         <header className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div>
             <p className="text-[11px] uppercase tracking-[0.14em] text-text-subtle">
               Help
             </p>
-            <h2 className="font-display text-lg text-text tracking-tight">
+            <DialogTitle className="font-display text-lg text-text tracking-tight">
               Keyboard shortcuts
-            </h2>
+            </DialogTitle>
           </div>
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={onClose}
-            className="text-text-subtle hover:text-text text-xl leading-none px-2"
-          >
-            ×
-          </button>
+          {/* Dialog primitive renders its own absolute-positioned X close button;
+              we hide ours to avoid two stacked close affordances. */}
         </header>
 
         <div className="px-6 py-5 grid sm:grid-cols-2 gap-x-8 gap-y-6 max-h-[70vh] overflow-y-auto">
@@ -131,8 +111,8 @@ export function KeyboardHelpModal({ open, onClose }: KeyboardHelpModalProps) {
             <Kbd>Esc</Kbd> to close
           </span>
         </footer>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 

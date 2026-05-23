@@ -25,6 +25,7 @@ import {
 import { sendReply, composeMessage, type ComposeResult } from "./actions";
 import { CallLaunchButtons } from "@/components/communications/call-launch-buttons";
 import { CallBubble, type CallLogData } from "./call-bubble";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -450,28 +451,37 @@ function ComposeModal({
     setDropdownOpen(true);
   }
 
+  // EMR-642 — the compose form is a true edit surface, so any progress
+  // typed by the clinician should be guarded against accidental dismissal.
+  const isDirty =
+    patientQuery.length > 0 ||
+    (formRef.current?.elements
+      ? Array.from(formRef.current.elements).some((el) => {
+          if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
+            if (el.type === "hidden") return false;
+            return el.value.length > 0;
+          }
+          return false;
+        })
+      : false);
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <Dialog
+      open
+      onOpenChange={(next) => { if (!next) onClose(); }}
+      confirmCloseOnDirty
+      isDirty={isDirty}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-surface shadow-2xl overflow-hidden">
+      <DialogContent className="max-w-lg p-0 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2 text-text">
             <PencilSquareIcon />
-            <h2 className="font-display text-lg font-semibold">New Message</h2>
+            <DialogTitle className="font-display text-lg font-semibold">
+              New Message
+            </DialogTitle>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-md text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
-            aria-label="Close"
-          >
-            <XIcon />
-          </button>
+          {/* Dialog primitive renders the X close button absolutely. */}
         </div>
 
         {/* Form */}
@@ -552,8 +562,8 @@ function ComposeModal({
             <ComposeSubmitButton />
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
