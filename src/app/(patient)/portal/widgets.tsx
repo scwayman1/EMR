@@ -19,6 +19,8 @@ import { computePlantHealth, STAGE_LABELS } from "@/lib/domain/plant-health";
 import { formatDate, formatRelative } from "@/lib/utils/format";
 import { applyFreezeTokenAction } from "@/app/(patient)/portal/apply-freeze-action";
 import { withTimeout } from "@/lib/utils/with-timeout";
+import { PWASyncNextVisit, PWASyncTasks, PWASyncStreak } from "@/components/portal/pwa-sync";
+
 
 const PATIENT_QUERY_TIMEOUT_MS = 5_000;
 const PLANT_HEALTH_TIMEOUT_MS = 2_000;
@@ -150,6 +152,7 @@ export async function HeroGreetingWidget({ userId }: { userId: string }) {
 
   return (
     <section className="relative overflow-hidden rounded-2xl md:rounded-3xl liquid-glass-strong mb-6 md:mb-8">
+      <PWASyncStreak streak={patient.dailyStreak} />
       <div className="relative px-6 sm:px-8 md:px-12 py-8 md:py-12 max-w-2xl">
         <div className="flex items-center gap-4 mb-3">
           <Eyebrow className="mb-0">
@@ -438,6 +441,7 @@ export async function CannabisNextVisitMoodWidget({ userId }: { userId: string }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
+      <PWASyncNextVisit visit={nextVisit} />
       {/* Cannabis Module */}
       <Card tone="glass">
         <CardContent className="py-6">
@@ -624,6 +628,7 @@ export async function PlantTasksWidget({ userId }: { userId: string }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 mb-6 md:mb-8">
+      <PWASyncTasks tasks={patient.tasks} />
       {/* Plant companion */}
       <Link href="/portal/garden" className="block min-h-[44px]">
         <Card tone="glass" className="card-hover h-full">

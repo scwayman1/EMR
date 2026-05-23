@@ -39,7 +39,7 @@ export default async function PatientHome() {
 
   const patientExists = isLocalDemo
     ? true
-    : await withTimeout(
+    : await withTimeout<any>(
         prisma.patient.findUnique({
           where: { userId: user.id },
           select: { id: true },
