@@ -3,6 +3,7 @@ import "./globals.css";
 import { UniversalFeedbackFab } from "@/components/feedback/UniversalFeedbackFab";
 import { ClerkProvider } from "@clerk/nextjs";
 import { CookieConsent } from "@/components/layout/CookieConsent";
+import { ToastProvider } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: {
@@ -47,9 +48,11 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        {children}
-        <UniversalFeedbackFab />
-        <CookieConsent />
+        <ToastProvider>
+          {children}
+          <UniversalFeedbackFab />
+          <CookieConsent />
+        </ToastProvider>
       </body>
     </html>
   );

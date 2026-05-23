@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils/cn";
+import { useToast } from "@/components/ui/toast";
 
 // EMR-128 — universal feedback FAB. Mounted once at the root layout so
 // every route in every role sees the same pulse-of-the-product channel.
@@ -18,6 +19,7 @@ export function UniversalFeedbackFab() {
   const [comment, setComment] = useState("");
   const [area, setArea] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Persist a stable client-id per browser to dedupe repeats / retries.
   const clientIdRef = useRef<string>("");
@@ -75,6 +77,11 @@ export function UniversalFeedbackFab() {
         return;
       }
       setState("thanks");
+      toast({
+        title: "Thanks for the whisper",
+        description: "We'll route it to the right team.",
+        variant: "success",
+      });
       setTimeout(close, 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error.");
