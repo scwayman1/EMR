@@ -141,8 +141,18 @@ export function AppShell({
         )}
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-border bg-surface">
-            <Link href={homeHref} className="flex items-center gap-2">
+          {/* Mobile header — sticky, glassy, and notch-safe. The
+              `pt-[env(safe-area-inset-top)]` keeps the wordmark + avatar
+              below the Dynamic Island on iPhone 14/15/16 Pro models. */}
+          <header
+            className={cn(
+              "md:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-16 border-b border-border",
+              "bg-surface/85 backdrop-blur-xl supports-[backdrop-filter]:bg-surface/70",
+              "pt-[env(safe-area-inset-top)] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]",
+            )}
+            style={{ height: "calc(4rem + env(safe-area-inset-top))" }}
+          >
+            <Link href={homeHref} className="flex items-center gap-2 min-h-[44px]">
               <Wordmark size="sm" />
             </Link>
             <div className="flex items-center gap-2">

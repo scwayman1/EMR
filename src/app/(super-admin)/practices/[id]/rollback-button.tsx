@@ -8,6 +8,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { rollbackPracticeConfig } from "./rollback-action";
 
 export function RollbackButton({
@@ -52,6 +53,10 @@ export function RollbackButton({
   const nameMatches =
     confirmName.trim().toLowerCase() === practiceName.trim().toLowerCase();
   const canSubmit = nameMatches && reason.trim().length >= 4 && !isPending;
+  // EMR-642 — once the operator has begun typing the confirmation, treat
+  // the modal as dirty so a stray outside-click or Esc prompts a discard
+  // confirmation rather than nuking their input.
+  const isDirty = confirmName.length > 0 || reason.length > 0;
 
   return (
     <>
@@ -63,22 +68,20 @@ export function RollbackButton({
         Rollback to v{targetVersion}
       </button>
 
-      {open && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="rollback-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm p-4 transition-all"
-        >
-          <div className="w-full max-w-md rounded-2xl bg-surface shadow-2xl border border-border/85 p-6 animate-in fade-in-50 zoom-in-95 duration-200">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && !isPending) close();
+        }}
+        confirmCloseOnDirty
+        isDirty={isDirty}
+      >
+        <DialogContent className="max-w-md">
             <div className="flex items-center gap-3 text-red-600 dark:text-red-500">
               <span className="text-xl" aria-hidden="true">&#9888;</span>
-              <h2
-                id="rollback-title"
-                className="font-display text-lg font-bold text-text tracking-tight"
-              >
+              <DialogTitle className="font-display text-lg font-bold text-text tracking-tight">
                 Rollback to v{targetVersion}?
-              </h2>
+              </DialogTitle>
             </div>
             
             <p className="text-[13px] text-text-muted mt-3 leading-relaxed">
@@ -155,9 +158,8 @@ export function RollbackButton({
                 {isPending ? "Rolling back…" : `Rollback to v${targetVersion}`}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,15 +1,28 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { listStagger, listStaggerChild } from "@/lib/ui/motion";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { EmptyState } from "@/components/ui/empty-state";
+import {
+  PatientsEmptyIllustration,
+  ResearchEmptyIllustration,
+} from "@/components/ui/empty-illustrations";
 import { Button } from "@/components/ui/button";
 import { patientMatchesQuery } from "@/lib/search/patient-search";
 import { UniversalPatientSearch } from "@/components/clinic/UniversalPatientSearch";
+import {
+  useContextMenu,
+  ContextMenuIcons,
+  ContextMenuHint,
+  type ContextMenuItem,
+} from "@/components/ui/context-menu";
+import { useRouter } from "next/navigation";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -210,6 +223,95 @@ function ChevronRight() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Patient row — wraps the existing <Link> in a right-click menu so   */
+/*  every roster row gets Monday/Linear-tier quick actions without     */
+/*  having to chase the kebab.                                         */
+/* ------------------------------------------------------------------ */
+
+function PatientRosterRow({
+  patient,
+  children,
+}: {
+  patient: PatientRow;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const items: ContextMenuItem[] = [
+    {
+      label: "Open chart",
+      icon: ContextMenuIcons.Open,
+      onSelect: (c) => {
+        router.push(`/clinic/patients/${patient.id}`);
+        c();
+      },
+      kbd: "↵",
+    },
+    {
+      label: "Compose message",
+      icon: ContextMenuIcons.Message,
+      onSelect: (c) => {
+        router.push(`/clinic/messages?compose=1&patient=${patient.id}`);
+        c();
+      },
+    },
+    {
+      label: "Schedule visit",
+      icon: ContextMenuIcons.Calendar,
+      onSelect: (c) => {
+        router.push(`/clinic/schedule?patient=${patient.id}`);
+        c();
+      },
+    },
+    { divider: true, label: "" },
+    {
+      label: "Copy patient ID",
+      icon: ContextMenuIcons.Copy,
+      onSelect: (c) => {
+        try {
+          void navigator.clipboard?.writeText(patient.id);
+        } catch {
+          /* ignore */
+        }
+        c();
+      },
+      kbd: "⌘ C",
+    },
+    { divider: true, label: "" },
+    {
+      label: "Archive patient",
+      icon: ContextMenuIcons.Archive,
+      danger: true,
+      onSelect: (c) => {
+        if (
+          typeof window !== "undefined" &&
+          window.confirm(
+            `Archive ${patient.firstName} ${patient.lastName}? They will be hidden from the roster but their chart will be preserved.`,
+          )
+        ) {
+          // Mutation hook to be wired into the existing actions.ts —
+          // for now we simply navigate to the chart so the clinician
+          // can complete archival from the canonical surface.
+          router.push(`/clinic/patients/${patient.id}?archive=1`);
+        }
+        c();
+      },
+    },
+  ];
+  const ctx = useContextMenu(() => items);
+  return (
+    <div
+      onContextMenu={ctx.triggerProps.onContextMenu}
+      onTouchStart={ctx.triggerProps.onTouchStart}
+      onTouchEnd={ctx.triggerProps.onTouchEnd}
+      onTouchMove={ctx.triggerProps.onTouchMove}
+    >
+      {children}
+      {ctx.menu}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main client component                                              */
 /* ------------------------------------------------------------------ */
 
@@ -222,6 +324,10 @@ export function PatientListClient({
   const [search, setSearch] = useState(initialSearch);
   const [powerFilter, setPowerFilter] = useState<PowerFilter>("all");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  // Shared motion: stagger the roster fan-in. No-op under reduced motion.
+  const reduceMotion = useReducedMotion() ?? false;
+  const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
+  const childVariants = useMemo(() => listStaggerChild(reduceMotion), [reduceMotion]);
 
   /* Hydrate saved views from localStorage -------------------------- */
   useEffect(() => {
@@ -406,21 +512,59 @@ export function PatientListClient({
           {patients.length === 0 ? (
             <div className="px-5 pb-6">
               <EmptyState
-                title="No patients in the system yet"
-                description="Add your first patient to get started with chart management."
+                illustration={<PatientsEmptyIllustration />}
+                title="Add your first patient"
+                description="Your roster lives here. Once you add a patient their charts, messages, and visits all roll up into a single timeline."
+                primaryAction={
+                  <Link href="/clinic/patients/new">
+                    <Button size="sm">Add patient</Button>
+                  </Link>
+                }
+                secondaryAction={
+                  <Link href="/clinic/patients/import">
+                    <Button size="sm" variant="ghost">
+                      Import from CSV
+                    </Button>
+                  </Link>
+                }
+                tips={[
+                  "Bulk import existing patients from a CSV export",
+                  "Front desk can intake new patients without touching the chart",
+                  "Every new patient gets an auto-generated portal invite",
+                ]}
               />
             </div>
           ) : filtered.length === 0 ? (
             <div className="px-5 pb-6">
               <EmptyState
-                title="No patients match your search"
-                description="Try adjusting your search terms or selecting a different filter chip."
+                illustration={<ResearchEmptyIllustration />}
+                title="No matches for that search"
+                description="We couldn't find anyone in your roster matching this query. Try a shorter search term, or clear your filter chips."
+                secondaryAction={
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setSearch("");
+                      setPowerFilter("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                }
               />
             </div>
           ) : (
-            <ul className="divide-y divide-border/60">
+            <ContextMenuHint>
+            <motion.ul
+              className="divide-y divide-border/60"
+              // Replay stagger when the active filter/search changes.
+              key={`roster-${powerFilter}-${search}`}
+              {...listStaggerProps}
+            >
               {filtered.map((p) => (
-                <li key={p.id}>
+                <motion.li key={p.id} variants={childVariants}>
+                  <PatientRosterRow patient={p}>
                   <Link
                     href={`/clinic/patients/${p.id}`}
                     className="card-hover flex items-center gap-4 px-5 py-4 hover:bg-surface-muted/50 transition-colors duration-150 group"
@@ -477,9 +621,11 @@ export function PatientListClient({
                       <ChevronRight />
                     </div>
                   </Link>
-                </li>
+                  </PatientRosterRow>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
+            </ContextMenuHint>
           )}
         </CardContent>
       </Card>

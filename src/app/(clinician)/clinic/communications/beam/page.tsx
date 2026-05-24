@@ -23,13 +23,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { decryptMessageBodySafe } from "@/lib/communications/message-crypto";
-import { formatZoomMeetingId } from "@/lib/communications/zoom";
+import { formatBeamMeetingId } from "@/lib/communications/zoom";
 import { formatRelative } from "@/lib/utils/format";
-import { ZoomScheduleForm } from "./schedule-form";
+import { BeamScheduleForm } from "./schedule-form";
 
 export const metadata = { title: "Beam telehealth" };
 
-export default async function ZoomPage() {
+export default async function BeamPage() {
   const user = await requireUser();
   const orgId = user.organizationId;
   if (!orgId) {
@@ -112,7 +112,7 @@ export default async function ZoomPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ZoomScheduleForm providerOptions={recipientOptions} />
+              <BeamScheduleForm providerOptions={recipientOptions} />
             </CardContent>
           </Card>
 
@@ -189,7 +189,7 @@ export default async function ZoomPage() {
                             Meeting ID:{" "}
                             <span className="tabular-nums">
                               {call.zoomMeetingId
-                                ? formatZoomMeetingId(call.zoomMeetingId)
+                                ? formatBeamMeetingId(call.zoomMeetingId)
                                 : "—"}
                             </span>
                             {passcode && (

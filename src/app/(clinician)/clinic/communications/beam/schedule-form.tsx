@@ -16,8 +16,8 @@ import { useRef, useState, useEffect } from "react";
 import { Input, Label } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  scheduleZoomMeetingAction,
-  type ScheduleZoomResult,
+  scheduleBeamMeetingAction,
+  type ScheduleBeamResult,
 } from "./actions";
 
 interface ProviderOption {
@@ -38,13 +38,13 @@ const DURATION_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1) * 5);
 // HIPAA-compliant encrypted care-team call, up to 10 total members.
 const MAX_GROUP_CALL_MEMBERS = 10;
 
-export function ZoomScheduleForm({
+export function BeamScheduleForm({
   providerOptions,
 }: {
   providerOptions: ProviderOption[];
 }) {
-  const [state, formAction] = useFormState<ScheduleZoomResult | null, FormData>(
-    scheduleZoomMeetingAction,
+  const [state, formAction] = useFormState<ScheduleBeamResult | null, FormData>(
+    scheduleBeamMeetingAction,
     null,
   );
   const formRef = useRef<HTMLFormElement>(null);

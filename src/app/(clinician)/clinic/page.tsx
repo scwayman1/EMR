@@ -18,6 +18,7 @@ import { MessagesTile } from "@/components/command/messages-tile";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QueueEmptyIllustration } from "@/components/ui/empty-illustrations";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatRelative } from "@/lib/utils/format";
 import { RecentPatients } from "@/components/shell/recent-patients";
@@ -30,6 +31,7 @@ import {
   categorizeQueueItem,
   URGENCY_TAG_CONFIG,
 } from "@/lib/domain/queue-urgency";
+import { QueueRailClient, type QueueRailCard } from "./queue-rail-client";
 
 // EMR-205: guard the mission-control fan-out so a single hung query
 // can never wedge the Suspense boundary and strand clinicians on the
@@ -651,7 +653,9 @@ export default async function ClinicHomePage() {
 
           {/* Right: Quick actions */}
           <div className="flex items-center gap-3 shrink-0">
-            <UniversalPatientSearch className="hidden md:block" />
+            <div data-tour="palette" className="hidden md:block">
+              <UniversalPatientSearch />
+            </div>
             <Link href="/clinic/mindful" title="Take a mindful break">
               <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-text-subtle hover:text-accent gap-1.5">
                 <span aria-hidden="true">🍃</span>
@@ -722,7 +726,7 @@ export default async function ClinicHomePage() {
         }
 
         return (
-          <section className="mb-8">
+          <section className="mb-8" data-tour="agent-fleet">
             <div className="flex items-center justify-between mb-3">
               <Eyebrow>Your AI team — last 24 hours</Eyebrow>
               <Link
@@ -828,25 +832,35 @@ export default async function ClinicHomePage() {
       {/* ============================================================
           2. PATIENT QUEUE — horizontal scroll rail
           ============================================================ */}
-      <section className="mb-10">
+      <section className="mb-10" data-tour="queue">
         <Eyebrow className="mb-4">Today&apos;s queue</Eyebrow>
 
         {todaysEncounters.length === 0 ? (
-          <Card tone="outlined" className="py-10 px-6">
-            <div className="flex flex-col items-center text-center">
-              <LeafSprig size={32} className="text-accent/40 mb-3" />
-              <p className="font-display text-lg text-text">
-                Clear schedule.
-              </p>
-              <p className="text-sm text-text-muted mt-1 mb-6">
-                A good day to catch up on notes.
-              </p>
-              <RelaxPopup />
-            </div>
-          </Card>
+          <EmptyState
+            illustration={<QueueEmptyIllustration />}
+            title="Clear schedule — a good day to get ahead"
+            description="No visits on the books today. Perfect window to close out yesterday's notes, review labs, or knock out a quick CME."
+            primaryAction={<RelaxPopup />}
+            secondaryAction={
+              <Link
+                href="/clinic/sign-off/notes"
+                className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-text hover:bg-surface-muted transition-colors"
+              >
+                Open pending notes
+              </Link>
+            }
+            tips={[
+              "Sign off pending labs and refills while it's quiet",
+              "Tomorrow's pre-visit briefs are already prepped",
+              "Block off some focus time on your calendar — you earned it",
+            ]}
+          />
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin">
-            {(todaysEncounters as any[])
+          // EMR-DnD: clinicians can drag (or use Space + arrows) to pin
+          // their personal preferred order on top of the AI urgency
+          // ranking. Order persists per-day in localStorage.
+          (() => {
+            const queueCards: QueueRailCard[] = (todaysEncounters as any[])
               .map((enc: any) => ({
                 enc,
                 urgency: categorizeQueueItem({
@@ -871,8 +885,7 @@ export default async function ClinicHomePage() {
               const consultsCount = enc.patient.documents?.filter((d: any) => d.kind === "letter").length ?? 0;
               const imagesCount = enc.patient.documents?.filter((d: any) => d.kind === "image").length ?? 0;
 
-              return (
-                <div key={enc.id} className="shrink-0 snap-start">
+              const node = (
                   <Card
                     tone="raised"
                     className="w-64 card-hover flex flex-col justify-between p-4 group"
@@ -961,10 +974,13 @@ export default async function ClinicHomePage() {
                       </Link>
                     </div>
                   </Card>
-                </div>
               );
-            })}
-          </div>
+              return { id: enc.id, node };
+            });
+
+            const dayKey = startOfDay.toISOString().slice(0, 10);
+            return <QueueRailClient cards={queueCards} dayKey={dayKey} />;
+          })()
         )}
       </section>
 
@@ -991,8 +1007,9 @@ export default async function ClinicHomePage() {
           <CardContent>
             {feed.length === 0 ? (
               <EmptyState
-                title="No recent activity"
-                description="Clinical events will appear here as they happen."
+                title="Nothing happening — yet"
+                description="Lab results, signed notes, messages, and refills will stream through here as your team works."
+                className="p-6"
               />
             ) : (
               <ul className="space-y-1 -mx-2">

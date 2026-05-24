@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
-import { scheduleHipaaZoomMeeting } from "@/lib/communications/zoom";
+import { scheduleHipaaBeamMeeting } from "@/lib/communications/zoom";
 import { encryptMessageBody } from "@/lib/communications/message-crypto";
 
 const scheduleSchema = z
@@ -27,20 +27,20 @@ const scheduleSchema = z
     "Pick exactly one counterparty (patient OR provider).",
   );
 
-export type ScheduleZoomResult =
+export type ScheduleBeamResult =
   | { ok: true; callId: string; meetingId: string; mode: "live" | "dev-shim" }
   | { ok: false; error: string };
 
-export async function scheduleZoomMeetingAction(
-  _prev: ScheduleZoomResult | null,
+export async function scheduleBeamMeetingAction(
+  _prev: ScheduleBeamResult | null,
   formData: FormData,
-): Promise<ScheduleZoomResult> {
+): Promise<ScheduleBeamResult> {
   const user = await requireUser();
   if (!user.organizationId) {
     return { ok: false, error: "No organization context." };
   }
   if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
-    return { ok: false, error: "Only providers can schedule Zoom visits." };
+    return { ok: false, error: "Only providers can schedule Beam visits." };
   }
 
   const parsed = scheduleSchema.safeParse({
@@ -84,7 +84,7 @@ export async function scheduleZoomMeetingAction(
     if (!provider) return { ok: false, error: "Provider not in your org." };
   }
 
-  const meeting = await scheduleHipaaZoomMeeting({
+  const meeting = await scheduleHipaaBeamMeeting({
     topic: parsed.data.topic,
     scheduledFor,
     durationMinutes: parsed.data.durationMinutes,
@@ -130,7 +130,7 @@ export async function scheduleZoomMeetingAction(
 
 const cancelSchema = z.object({ callId: z.string().min(1) });
 
-export async function cancelZoomMeetingAction(
+export async function cancelBeamMeetingAction(
   formData: FormData,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await requireUser();

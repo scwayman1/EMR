@@ -53,11 +53,16 @@ import {
 } from "@/lib/utils/patient-age";
 import { CarePlanSection } from "@/components/patient/CarePlanSection";
 import { ChartTaskList } from "@/components/patient/ChartTaskList";
+import { PatientActivityTimeline } from "@/components/patient/PatientActivityTimeline";
+import { loadPatientActivity } from "@/lib/domain/patient-activity";
 import { UnresolvedFollowUpsPanel } from "@/components/patient/UnresolvedFollowUpsPanel";
 import { buildUnresolvedFollowUps } from "@/lib/domain/unresolved-followups";
 import { logger } from "@/lib/observability/log";
 import { BirthdayBanner } from "./birthday-banner";
 import { MessagePatientDock } from "@/app/(clinician)/clinic/messages/dock-compose";
+// UX inline editing — Notion / Linear-style click-to-edit on chart
+// demographics + insurance. See src/components/ui/inline-edit.tsx.
+import { InlineDemographicsCard } from "./inline-demographics-card";
 
 function cleanMarkdownSummary(md: string): string {
   if (!md) return "";
@@ -341,9 +346,21 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       })
     : [];
 
+  // Activity timeline (Linear/Notion-style chart event feed). We only
+  // hit the timeline aggregator when the tab is actually open — every
+  // other render keeps its zero-cost baseline. The count shown on the
+  // tab badge is an approximation derived from data we already have so
+  // it doesn't require its own query on every chart open.
+  const activityEvents = tab === "timeline"
+    ? await loadPatientActivity(prisma, params.id, { limit: 200 })
+    : [];
+  const timelineCount =
+    patient.encounters.length + threads.length + allNotes.length;
+
   const counts = {
     demographics: 1,
     memory: patientMemories.length + openObservationCount,
+    timeline: timelineCount,
     records: recordDocs.length,
     images: imageDocs.length,
     labs: labDocs.length + assessmentResponses.length,
@@ -668,6 +685,19 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   Download chart
                 </Button>
               </Link>
+              {/* ux/print-stylesheets-clinical — opens a server-rendered
+                  chart summary in a new tab and auto-fires the print dialog
+                  via AutoPrintTrigger. Target="_blank" keeps the working
+                  chart untouched while the printout renders. */}
+              <Link
+                href={`/clinic/patients/${params.id}/print`}
+                target="_blank"
+                rel="noopener"
+              >
+                <Button variant="ghost" size="sm">
+                  Print chart
+                </Button>
+              </Link>
               <Link href={`/clinic/patients/${params.id}/voice-chart`}>
                 <Button variant="ghost" size="sm">
                   Voice chart
@@ -792,6 +822,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           )}
           pastConditions={pastConditions}
           pastSurgeries={pastSurgeries}
+          canEditDemographics={canEditSection(user, "notes")}
         />
       )}
       {tab === "records" && <RecordsTab documents={recordDocs} patientId={params.id} />}
@@ -831,6 +862,9 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
           patientFirstName={patient.firstName}
         />
       )}
+      {tab === "timeline" && (
+        <PatientActivityTimeline events={activityEvents} />
+      )}
       {tab === "correspondence" && (
         <CorrespondenceTab
           threads={serializedThreads}
@@ -867,6 +901,7 @@ function DemographicsTab({
   upcomingEncounters,
   pastConditions,
   pastSurgeries,
+  canEditDemographics,
 }: {
   patient: any;
   medications: any[];
@@ -874,6 +909,7 @@ function DemographicsTab({
   upcomingEncounters: any[];
   pastConditions: any[];
   pastSurgeries: any[];
+  canEditDemographics: boolean;
 }) {
   const dob = patient.dateOfBirth ? new Date(patient.dateOfBirth) : null;
   const age = dob
@@ -954,52 +990,66 @@ function DemographicsTab({
       />
 
 
-      {/* Identity & Personal */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Card tone="raised">
-          <CardHeader>
-            <CardTitle className="text-base">Identity</CardTitle>
-            <CardDescription>Personal identification</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-y-4 gap-x-6">
-              <DemoField label="Full name" value={`${patient.firstName} ${patient.lastName}`} />
-              <DemoField label="Date of birth" value={dob ? `${formatDate(dob)} (age ${age})` : "Not recorded"} />
+      {/* Identity, contact, insurance — inline-editable (UX click-to-edit).
+          Each field swaps to an input on click; saves on Enter/blur, reverts
+          on Esc; errors surface via the project toast system. */}
+      <Card tone="raised">
+        <CardHeader>
+          <CardTitle className="text-base">Patient details</CardTitle>
+          <CardDescription>
+            {canEditDemographics
+              ? "Click any field to edit. Press Enter to save, Esc to cancel."
+              : "Personal identification and contact"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+            <InlineDemographicsCard
+              patientId={patient.id}
+              canEdit={canEditDemographics}
+              initial={{
+                firstName: patient.firstName ?? "",
+                lastName: patient.lastName ?? "",
+                dateOfBirth: dob ? dob.toISOString().slice(0, 10) : "",
+                email: patient.email ?? "",
+                phone: patient.phone ?? "",
+                addressLine1: patient.addressLine1 ?? "",
+                addressLine2: patient.addressLine2 ?? "",
+                city: patient.city ?? "",
+                state: patient.state ?? "",
+                postalCode: patient.postalCode ?? "",
+              }}
+              insurance={{
+                providerName:
+                  ((intake.insurance as any)?.providerName as string) ??
+                  (typeof intake.insurance === "string" ? (intake.insurance as string) : "") ??
+                  "",
+                memberId:
+                  ((intake.insurance as any)?.memberId as string) ??
+                  (intake.memberId as string) ??
+                  "",
+                groupNumber:
+                  ((intake.insurance as any)?.groupNumber as string) ?? "",
+              }}
+            />
+            <div className="grid grid-cols-1 gap-y-3 text-sm">
               <DemoField label="Sex" value={sex} />
               <DemoField label="Race / Ethnicity" value={race} />
               <DemoField label="Marital status" value={maritalStatus} />
               <DemoField label="Patient ID" value={patient.id.slice(0, 12).toUpperCase()} mono />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card tone="raised">
-          <CardHeader>
-            <CardTitle className="text-base">Contact</CardTitle>
-            <CardDescription>How to reach this patient</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-y-4">
-              <DemoField label="Email" value={patient.email ?? "Not on file"} />
-              <DemoField label="Phone" value={patient.phone ?? "Not on file"} />
-              <DemoField
-                label="Address"
-                value={
-                  [patient.addressLine1, patient.addressLine2, patient.city, patient.state, patient.postalCode]
-                    .filter(Boolean)
-                    .join(", ") || "Not on file"
-                }
-              />
               {emergencyContact && (
                 <DemoField
                   label="Emergency contact"
                   value={typeof emergencyContact === "string" ? emergencyContact : `${emergencyContact.name} — ${emergencyContact.phone}`}
                 />
               )}
+              {age != null && (
+                <DemoField label="Age" value={`${age} (${ageBand})`} />
+              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Alert box */}
       <Card tone="raised" className="border-l-4 border-l-[color:var(--warning)]">
