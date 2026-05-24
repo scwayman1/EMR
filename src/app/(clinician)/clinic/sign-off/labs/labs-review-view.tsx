@@ -352,15 +352,21 @@ function LabOverlay({ row, onClose }: { row: LabRow; onClose: () => void }) {
             </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => window.print()}
+            {/* ux/print-stylesheets-clinical — open a server-rendered
+                print view in a new tab instead of printing the live overlay.
+                The dedicated route uses the shared PrintDocument frame so
+                the page lands on the printer as a clean clinical document
+                (no modal chrome, no batch tray, no glass blur). */}
+            <a
+              href={`/clinic/sign-off/labs/${row.id}/print`}
+              target="_blank"
+              rel="noopener"
               className="text-text-subtle hover:text-text p-1.5 rounded-lg hover:bg-surface-muted transition-colors"
               aria-label="Print / Save as PDF"
               title="Print / Save as PDF"
             >
               <Printer className="h-4 w-4" aria-hidden="true" />
-            </button>
+            </a>
             <button
               onClick={onClose}
               className="text-text-subtle hover:text-text text-xl leading-none px-2"

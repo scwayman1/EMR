@@ -184,6 +184,241 @@ export async function updatePatientPhoto(patientId: string, base64Data: string) 
   return { ok: true };
 }
 
+/**
+ * UX inline-edit primitive — single-field demographic update from the
+ * chart. Each call writes one column and stamps an AuditLog entry so the
+ * change is traceable. Bound writes to RBAC: only users with chart write
+ * access (notes.edit) can mutate demographics.
+ */
+const INLINE_DEMOGRAPHIC_FIELDS = new Set([
+  "firstName",
+  "lastName",
+  "dateOfBirth",
+  "email",
+  "phone",
+  "addressLine1",
+  "addressLine2",
+  "city",
+  "state",
+  "postalCode",
+] as const);
+
+type InlineDemographicField =
+  | "firstName"
+  | "lastName"
+  | "dateOfBirth"
+  | "email"
+  | "phone"
+  | "addressLine1"
+  | "addressLine2"
+  | "city"
+  | "state"
+  | "postalCode";
+
+export type InlineUpdateResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+export async function updatePatientDemographicField(
+  patientId: string,
+  field: InlineDemographicField,
+  rawValue: string,
+): Promise<InlineUpdateResult> {
+  const user = await requireUser();
+
+  if (!INLINE_DEMOGRAPHIC_FIELDS.has(field)) {
+    return { ok: false, error: "Unsupported field" };
+  }
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Read-only access to chart" };
+  }
+
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, organizationId: user.organizationId!, deletedAt: null },
+    select: { id: true, organizationId: true },
+  });
+  if (!patient) return { ok: false, error: "Patient not found" };
+
+  try {
+    await assertChartAccess(user, patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Chart is restricted" };
+    }
+    throw err;
+  }
+
+  const trimmed = rawValue.trim();
+
+  // Per-field validation + coercion.
+  let data: Record<string, unknown>;
+  if (field === "firstName" || field === "lastName") {
+    if (trimmed.length === 0) return { ok: false, error: "Required" };
+    if (trimmed.length > 100) return { ok: false, error: "Too long" };
+    data = { [field]: trimmed };
+  } else if (field === "dateOfBirth") {
+    if (!trimmed) {
+      data = { dateOfBirth: null };
+    } else {
+      const d = new Date(trimmed);
+      if (Number.isNaN(d.getTime())) return { ok: false, error: "Invalid date" };
+      data = { dateOfBirth: d };
+    }
+  } else if (field === "email") {
+    if (trimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      return { ok: false, error: "Invalid email" };
+    }
+    data = { email: trimmed || null };
+  } else if (field === "phone") {
+    if (trimmed && !/^[0-9 +()\-.]{7,20}$/.test(trimmed)) {
+      return { ok: false, error: "Invalid phone" };
+    }
+    data = { phone: trimmed || null };
+  } else {
+    // Address fields — free-text, modest length cap.
+    if (trimmed.length > 200) return { ok: false, error: "Too long" };
+    data = { [field]: trimmed || null };
+  }
+
+  await prisma.patient.update({ where: { id: patient.id }, data: data as any });
+
+  await prisma.auditLog.create({
+    data: {
+      organizationId: patient.organizationId,
+      actorUserId: user.id,
+      action: "patient.demographics.updated",
+      subjectType: "Patient",
+      subjectId: patient.id,
+      metadata: { field } as any,
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${patientId}`);
+  return { ok: true };
+}
+
+/**
+ * Update a single field inside the `intakeAnswers.insurance` JSON blob —
+ * used by the inline-edit insurance card. Keeps writes off the
+ * full-intake JSON read/modify/write pattern that exists elsewhere in
+ * this file.
+ */
+type InlineInsuranceField = "providerName" | "memberId" | "groupNumber";
+
+export async function updatePatientInsuranceField(
+  patientId: string,
+  field: InlineInsuranceField,
+  rawValue: string,
+): Promise<InlineUpdateResult> {
+  const user = await requireUser();
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Read-only access to chart" };
+  }
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, organizationId: user.organizationId!, deletedAt: null },
+  });
+  if (!patient) return { ok: false, error: "Patient not found" };
+
+  try {
+    await assertChartAccess(user, patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Chart is restricted" };
+    }
+    throw err;
+  }
+
+  const trimmed = rawValue.trim();
+  if (trimmed.length > 200) return { ok: false, error: "Too long" };
+
+  const intake = (patient.intakeAnswers as Record<string, any>) ?? {};
+  const insurance = (intake.insurance as Record<string, any>) ?? {};
+  insurance[field] = trimmed || null;
+  intake.insurance = insurance;
+
+  await prisma.patient.update({
+    where: { id: patient.id },
+    data: { intakeAnswers: intake as any },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      organizationId: patient.organizationId,
+      actorUserId: user.id,
+      action: "patient.insurance.updated",
+      subjectType: "Patient",
+      subjectId: patient.id,
+      metadata: { field } as any,
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${patientId}`);
+  return { ok: true };
+}
+
+/**
+ * Inline-edit on an encounter row — title (`reason`) and modality. Both
+ * are common on the chart's encounters list. Used by InlineEdit /
+ * InlineEditSelect.
+ */
+type InlineEncounterField = "reason" | "modality";
+
+const ENCOUNTER_MODALITIES = new Set(["in_person", "video", "phone"]);
+
+export async function updateEncounterField(
+  encounterId: string,
+  field: InlineEncounterField,
+  rawValue: string,
+): Promise<InlineUpdateResult> {
+  const user = await requireUser();
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Read-only access" };
+  }
+
+  const encounter = await prisma.encounter.findFirst({
+    where: { id: encounterId, organizationId: user.organizationId! },
+    select: { id: true, organizationId: true, patientId: true },
+  });
+  if (!encounter) return { ok: false, error: "Encounter not found" };
+
+  try {
+    await assertChartAccess(user, encounter.patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Chart is restricted" };
+    }
+    throw err;
+  }
+
+  const trimmed = rawValue.trim();
+  let data: Record<string, unknown>;
+  if (field === "reason") {
+    if (trimmed.length > 200) return { ok: false, error: "Too long" };
+    data = { reason: trimmed || null };
+  } else {
+    if (!ENCOUNTER_MODALITIES.has(trimmed)) {
+      return { ok: false, error: "Invalid modality" };
+    }
+    data = { modality: trimmed };
+  }
+
+  await prisma.encounter.update({ where: { id: encounter.id }, data: data as any });
+
+  await prisma.auditLog.create({
+    data: {
+      organizationId: encounter.organizationId,
+      actorUserId: user.id,
+      action: "encounter.updated",
+      subjectType: "Encounter",
+      subjectId: encounter.id,
+      metadata: { field } as any,
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${encounter.patientId}`);
+  return { ok: true };
+}
+
 export async function updatePMHAndPSH(patientId: string, pmh: string[], psh: string[]) {
   const user = await requireUser();
   const patient = await prisma.patient.findFirst({

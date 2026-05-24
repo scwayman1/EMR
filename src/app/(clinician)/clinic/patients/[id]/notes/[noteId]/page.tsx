@@ -71,9 +71,19 @@ export default async function NoteDetailPage({ params }: PageProps) {
         title={`Note — ${formatDate(note.createdAt)}`}
         description={`${patient.firstName} ${patient.lastName} · ${note.encounter.modality} visit`}
         actions={
-          <Link href={`/clinic/patients/${params.id}?tab=notes`}>
-            <Button variant="secondary">Back to chart</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            {/* ux/print-stylesheets-clinical — single-note SOAP printout */}
+            <Link
+              href={`/clinic/patients/${params.id}/notes/${params.noteId}/print`}
+              target="_blank"
+              rel="noopener"
+            >
+              <Button variant="ghost">Print note</Button>
+            </Link>
+            <Link href={`/clinic/patients/${params.id}?tab=notes`}>
+              <Button variant="secondary">Back to chart</Button>
+            </Link>
+          </div>
         }
       />
 

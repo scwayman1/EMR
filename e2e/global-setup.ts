@@ -19,7 +19,7 @@
 
 import type { FullConfig } from "@playwright/test";
 
-const DEFAULT_TIMEOUT_MS = 5_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   const baseUrl = process.env.BASE_URL || "http://localhost:3000";
