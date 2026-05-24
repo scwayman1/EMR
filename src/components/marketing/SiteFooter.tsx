@@ -3,17 +3,23 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Wordmark } from "@/components/ui/logo";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 type FooterLink = { label: string; href?: string; external?: boolean };
 
 const COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
+    // Re-ordered + extended to surface the real marketing routes
+    // (/features, /pricing, /clinicians) — every other top-tier
+    // SaaS marketing footer links these three from "Product". The
+    // portal links remain but moved below the marketing pages.
     title: "Product",
     links: [
-      { label: "Patient Portal", href: "/sign-up" },
-      { label: "Clinician Portal", href: "/sign-up" },
-      { label: "Operator Dashboard" },
-      { label: "The LeafMart", href: "https://www.theleafmart.com/", external: true },
+      { label: "Features", href: "/features" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Find a clinician", href: "/clinicians" },
+      { label: "The LeafMart", href: "/leafmart" },
+      { label: "Marketplace", href: "/marketplace" },
     ],
   },
   {
@@ -58,7 +64,7 @@ function FooterColumn({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between py-4 sm:py-0 sm:cursor-default sm:pointer-events-none text-left"
+        className="w-full flex items-center justify-between py-4 sm:py-0 sm:cursor-default text-left"
       >
         <span className="text-[12.5px] font-semibold tracking-[1.2px] uppercase text-text sm:mb-3.5 block">
           {title}
@@ -110,16 +116,46 @@ function NewsletterSignup() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMessage(null);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+    const trimmed = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed)) {
       setStatus("error");
       setMessage("Enter a valid email");
       return;
     }
     setStatus("submitting");
-    await new Promise((r) => setTimeout(r, 400));
-    setStatus("success");
-    setMessage("You're on the list. Watch your inbox.");
-    setEmail("");
+    // Posts through the shared marketing intake at /api/contact so
+    // every inbound email reaches the founders' inbox (and ops can
+    // grep one place by role). Earlier this handler was a setTimeout
+    // fake-success that silently dropped subscribers — same pattern
+    // PR #258 fixed in /book-demo and find-and-fix pass 5 caught
+    // again in EMR-716.
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmed.split("@")[0] || "Newsletter subscriber",
+          email: trimmed,
+          subject: "Newsletter subscription",
+          role: "footer_subscribe",
+          message:
+            "User opted in to the newsletter from the site footer on " +
+            (typeof window !== "undefined" ? window.location.pathname : "/") +
+            ".",
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("non-2xx response from /api/contact");
+      }
+      setStatus("success");
+      setMessage("You're on the list. Watch your inbox.");
+      setEmail("");
+    } catch {
+      setStatus("error");
+      setMessage(
+        "We couldn't record your subscription. Please try again or email hello@leafjourney.com.",
+      );
+    }
   }
 
   return (
@@ -228,9 +264,10 @@ export function SiteFooter() {
             <span>&copy; {new Date().getFullYear()} Leafjourney Health.</span>
             <BackToTop />
           </div>
-          <div className="flex flex-col sm:flex-row gap-1 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <span>Hemp-derived products ship nationally where permitted.</span>
             <span>Licensed cannabis available intrastate only.</span>
+            <ThemeToggle />
           </div>
         </div>
       </div>

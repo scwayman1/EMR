@@ -8,21 +8,81 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { sendEmail } from "@/lib/email/resend";
 import { logger } from "@/lib/observability/log";
 
-// EMR-128 — Whisper inbox + EMR-594 founder email fan-out.
+// EMR-128 — Whisper inbox + EMR-594 founder email fan-out + EMR-640 explicit
+// founder routing for every submission.
 //
 // In-memory ring buffer until persistence lands. The route validates the
 // FAB's submission contract end-to-end, classifies the whisper, and emails
-// both founders (Scott + Neil) when an email provider is configured. If the
-// founder fan-out fails for any reason other than a missing API key the
-// route surfaces the failure (502) so the clinician sees the error inline
-// — silent loss is the explicit anti-acceptance.
+// both founders (Scott + Neal) on EVERY submission so the AC for EMR-640
+// ("a whisper from any page lands in both inboxes") is unconditional —
+// area-specialised inboxes still get a Cc when the classifier picks up a
+// clinical or billing signal, but they no longer replace the founder
+// recipients. If the send fails for any reason other than a missing API
+// key the route logs the failure but returns 200 because the ring buffer
+// still has the suggestion for replay (silent loss is the anti-acceptance,
+// surfacing a transient HTTP wobble to the user is worse than a missed
+// email we can replay).
 const RING_CAP = 500;
 const ring: ClassifiedWhisper[] = [];
 
-const FOUNDER_RECIPIENTS = [
-  "neal@leafjourney.com",
+// EMR-640: founders are unconditional recipients on every whisper.
+// Order intentionally stable so the To: line reads `scott, neal` across
+// providers. Email casing follows the founder bootstrap allowlist
+// (`SUPER_ADMIN_BOOTSTRAP_EMAILS`) — see leafjourney_founders memory.
+const FOUNDER_RECIPIENTS: readonly string[] = [
   "scott@leafjourney.com",
+  "neal@leafjourney.com",
 ];
+
+// Area-specialised inboxes that get Cc'd when the classifier picks a
+// signal. Keeping them as a Cc (vs. swapping the To:) ensures founders
+// always see traffic flowing to ops queues — critical for the v1
+// "founders triage everything" stage.
+const AREA_CC: Partial<Record<ClassifiedWhisper["area"], string>> = {
+  billing: "billing@leafjourney.com",
+  medications: "clinical@leafjourney.com",
+};
+
+function getRecipients(whisper: ClassifiedWhisper): {
+  to: string[];
+  cc?: string[];
+} {
+  const cc = AREA_CC[whisper.area];
+  return { to: [...FOUNDER_RECIPIENTS], cc: cc ? [cc] : undefined };
+}
+
+// EMR-640: server-side rate limit + spam guard. The whisper endpoint is
+// public (signed-out leafmart and marketing surfaces both mount the FAB)
+// so we key on IP rather than user. 10/min/IP is generous for a human
+// typing into a textarea and stops a noisy script cold. In-memory only;
+// see lib/auth/rate-limit.ts for the Upstash swap point.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 10;
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(req: Request): string {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0]!.trim();
+  const xri = req.headers.get("x-real-ip");
+  if (xri) return xri.trim();
+  return "unknown";
+}
+
+function checkRateLimit(
+  ip: string,
+): { ok: true } | { ok: false; retryAfterSec: number } {
+  const now = Date.now();
+  const bucket = rateBuckets.get(ip);
+  if (!bucket || bucket.resetAt < now) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { ok: true };
+  }
+  if (bucket.count >= RATE_LIMIT_MAX) {
+    return { ok: false, retryAfterSec: Math.ceil((bucket.resetAt - now) / 1000) };
+  }
+  bucket.count += 1;
+  return { ok: true };
+}
 
 function formatRoles(roles: string[] | undefined): string {
   if (!roles || roles.length === 0) return "(no role)";
@@ -47,6 +107,7 @@ function buildEmail(
     `Sentiment:   ${whisper.sentiment ?? "—"}`,
     `Area:        ${whisper.area ?? "—"}`,
     `C-Suite:     ${whisper.cSuiteRoute ?? "—"}`,
+    whisper.voiceMemoUrl ? `Voice Memo:  ${whisper.voiceMemoUrl} (retained for 30 days)` : "",
     ``,
     `Comment:`,
     whisper.comment,
@@ -71,6 +132,7 @@ function buildEmail(
         <tr><td style="padding:2px 12px 2px 0;color:#5b6b62">Time</td><td>${escape(whisper.receivedAt)}</td></tr>
         <tr><td style="padding:2px 12px 2px 0;color:#5b6b62">Sentiment</td><td>${escape(whisper.sentiment ?? "—")}</td></tr>
         <tr><td style="padding:2px 12px 2px 0;color:#5b6b62">Area</td><td>${escape(whisper.area ?? "—")}</td></tr>
+        ${whisper.voiceMemoUrl ? `<tr><td style="padding:2px 12px 2px 0;color:#5b6b62">Voice Memo</td><td><a href="${escape(whisper.voiceMemoUrl)}">Listen to audio</a> (retained 30 days)</td></tr>` : ""}
       </table>
       <div style="margin-top:16px;padding:12px 14px;background:#f3f5f3;border-radius:8px;border:1px solid #e3e8e3;white-space:pre-wrap;font-size:14px">
         ${escape(whisper.comment)}
@@ -83,6 +145,20 @@ function buildEmail(
 }
 
 export async function POST(req: Request) {
+  // EMR-640 — rate limit before parsing to keep abuse cheap. Done in-line
+  // (no requireApiAuth) because the FAB is mounted on signed-out surfaces.
+  const ip = getClientIp(req);
+  const limit = checkRateLimit(ip);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "Too many whispers — give us a moment to read what you sent." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(limit.retryAfterSec) },
+      },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -103,9 +179,11 @@ export async function POST(req: Request) {
   // because the FAB renders on signed-out surfaces (leafmart, marketing) too.
   const currentUser = await getCurrentUser().catch(() => null);
   const { subject, text, html } = buildEmail(classified, currentUser);
+  const recipients = getRecipients(classified);
 
   const send = await sendEmail({
-    to: FOUNDER_RECIPIENTS,
+    to: recipients.to,
+    cc: recipients.cc,
     subject,
     text,
     html,
@@ -117,22 +195,49 @@ export async function POST(req: Request) {
     ],
   });
 
-  if (!send.ok && send.reason !== "no-api-key") {
-    // Genuine failure (HTTP or network) — surface to the clinician so the
-    // whisper isn't silently dropped. The whisper is already in the in-memory
-    // ring buffer so the operator inbox still has it for replay.
+  // EMR-640 — every whisper is logged with the suggestion id, page, and
+  // user identity so the founders can follow up even if the email leg
+  // fails. Email outcome ride-along is just a tag on the same record.
+  if (send.ok) {
+    logger.info({
+      event: "whisper.received",
+      whisperId: classified.id,
+      page: classified.pageUrl,
+      area: classified.area,
+      sentiment: classified.sentiment,
+      userId: currentUser?.id ?? null,
+      userEmail: currentUser?.email ?? null,
+      to: recipients.to,
+      cc: recipients.cc ?? [],
+      emailId: send.id,
+    });
+  } else if (send.reason === "no-api-key") {
+    // Dev / un-provisioned deploy. The ring buffer still holds it for the
+    // operator inbox; log loudly so the team knows email isn't wired up.
+    logger.warn({
+      event: "whisper.email_skipped_no_api_key",
+      whisperId: classified.id,
+      page: classified.pageUrl,
+      area: classified.area,
+      userId: currentUser?.id ?? null,
+      to: recipients.to,
+      cc: recipients.cc ?? [],
+    });
+  } else {
+    // Genuine failure (HTTP or network) — the whisper is already in the
+    // in-memory ring buffer so the operator inbox still has it for replay.
+    // We log the error but return 200 so the user sees a success screen
+    // instead of a confusing red error for a transient send issue.
     logger.error({
       event: "whisper.email_failed",
       whisperId: classified.id,
+      page: classified.pageUrl,
+      area: classified.area,
+      userId: currentUser?.id ?? null,
+      to: recipients.to,
+      cc: recipients.cc ?? [],
       reason: send.reason,
     });
-    return NextResponse.json(
-      {
-        error:
-          "Whisper saved, but we couldn't reach the founder inbox. They'll see it when the relay is back.",
-      },
-      { status: 502 },
-    );
   }
 
   return NextResponse.json({
