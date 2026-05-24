@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,26 @@ export function MedicationsManager({
 }: MedicationsManagerProps) {
   const router = useRouter();
   const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
+  const [dispenses, setDispenses] = useState<any[]>([]);
+  const [isLoadingDispenses, setIsLoadingDispenses] = useState(false);
+
+  useEffect(() => {
+    async function loadDispenses() {
+      setIsLoadingDispenses(true);
+      try {
+        const res = await fetch(`/api/dispensary/dispenses?patientId=${patientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDispenses(data.results || []);
+        }
+      } catch (err) {
+        console.error("Error loading dispenses:", err);
+      } finally {
+        setIsLoadingDispenses(false);
+      }
+    }
+    loadDispenses();
+  }, [patientId]);
 
   const handleLeftClick = () => {
     // Navigate to rx tab
@@ -126,6 +146,45 @@ export function MedicationsManager({
           </div>
         )}
       </CardContent>
+
+      {/* Dispensary History Section */}
+      <div className="border-t border-border/60 p-6 bg-surface-muted/30">
+        <h3 className="text-sm font-semibold text-text uppercase tracking-wider mb-3">
+          Dispensary History
+        </h3>
+        {isLoadingDispenses ? (
+          <p className="text-xs text-text-muted italic">Loading dispensary history...</p>
+        ) : dispenses.length === 0 ? (
+          <p className="text-xs text-text-muted italic">No dispensary dispenses on file.</p>
+        ) : (
+          <div className="overflow-x-auto border border-border/40 rounded-lg">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border/40 bg-surface-muted/60 text-[10px] uppercase tracking-wider text-text-subtle font-semibold">
+                  <th className="px-6 py-3.5">Product</th>
+                  <th className="px-6 py-3.5">SKU</th>
+                  <th className="px-6 py-3.5">Quantity</th>
+                  <th className="px-6 py-3.5">Dispensary</th>
+                  <th className="px-6 py-3.5">Dispensed At</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30 text-xs">
+                {dispenses.map((disp) => (
+                  <tr key={disp.id} className="hover:bg-surface-muted/50 transition-colors">
+                    <td className="px-6 py-3 font-medium text-text">{disp.productName}</td>
+                    <td className="px-6 py-3 text-text-muted font-mono">{disp.productSku}</td>
+                    <td className="px-6 py-3 text-text-muted">{disp.quantity} {disp.unit}</td>
+                    <td className="px-6 py-3 text-text-muted">🏪 {disp.dispensary?.name || "Unknown"}</td>
+                    <td className="px-6 py-3 text-text-muted">
+                      {formatDate(new Date(disp.dispensedAt))}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* ── RIGHT-CLICK MEDICATION DETAILS MODAL ───────────────── */}
       {selectedMed && (
