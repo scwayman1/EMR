@@ -1,28 +1,18 @@
 // Shared, pure formatting + color helpers for the HQ tiles. No React, no
 // server imports — safe to use anywhere and trivial to unit-test.
 
-const USD_BIG = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
-
-const USD_SMALL = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+import { money } from "@/lib/ui/format";
 
 /**
  * Format cents → USD. Cents are dropped above the $1,000 threshold so the
  * KPI strip reads at a glance, but values under $1,000 keep two decimals so
- * single-charge debugging contexts stay legible.
+ * single-charge debugging contexts stay legible. Delegates to the central
+ * `money()` primitive so all surfaces speak the same way.
  */
 export function formatUSDCents(cents: number): string {
   const dollars = cents / 100;
-  if (Math.abs(dollars) >= 1000) return USD_BIG.format(dollars);
-  return USD_SMALL.format(dollars);
+  if (Math.abs(dollars) >= 1000) return money(cents, { compactDollars: true });
+  return money(cents);
 }
 
 /** Integer with thousand-separators, e.g. `1,284`. */

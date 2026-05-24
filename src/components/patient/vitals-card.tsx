@@ -1,5 +1,6 @@
 import React from "react";
 import { Heart, Activity, Thermometer, Wind, Droplets } from "lucide-react";
+import { Vitals } from "@/components/ui/format";
 
 export interface VitalsProps {
   heartRate: number;
@@ -56,9 +57,11 @@ export function VitalsCard({ vitals }: { vitals?: VitalsProps }) {
             <Droplets className="w-3.5 h-3.5" /> Circulation Flow
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100">
-              {vitals.bloodPressureSys}/{vitals.bloodPressureDia}
-            </span>
+            <Vitals.BP
+              systolic={vitals.bloodPressureSys}
+              diastolic={vitals.bloodPressureDia}
+              className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100"
+            />
           </div>
         </div>
 
@@ -67,7 +70,7 @@ export function VitalsCard({ vitals }: { vitals?: VitalsProps }) {
             <Wind className="w-3.5 h-3.5" /> Breathing Pace
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100">
+            <span className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100 tabular-nums">
               {vitals.respiratoryRate}
             </span>
             <span className="text-xs text-neutral-500">breaths/min</span>
@@ -79,9 +82,10 @@ export function VitalsCard({ vitals }: { vitals?: VitalsProps }) {
             <Wind className="w-3.5 h-3.5 text-blue-500" /> Blood Oxygen
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100">
-              {vitals.oxygenSaturation}%
-            </span>
+            <Vitals.SpO2
+              value={vitals.oxygenSaturation}
+              className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100"
+            />
           </div>
         </div>
 
@@ -90,9 +94,11 @@ export function VitalsCard({ vitals }: { vitals?: VitalsProps }) {
             <Thermometer className="w-3.5 h-3.5 text-orange-500" /> Body Warmth
           </span>
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100">
-              {vitals.temperature}°F
-            </span>
+            <Vitals.Temp
+              value={vitals.temperature}
+              unit="F"
+              className="text-2xl font-semibold text-neutral-800 dark:text-neutral-100"
+            />
           </div>
         </div>
       </div>

@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow, EditorialRule } from "@/components/ui/ornament";
 import { Button } from "@/components/ui/button";
+import { money } from "@/lib/ui/format";
 
 export const metadata = { title: "Financial Cockpit" };
 export const dynamic = "force-dynamic";
@@ -22,11 +23,7 @@ export const dynamic = "force-dynamic";
 // the headline metrics and routes to the existing detail surfaces.
 
 function formatMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
+  return money(cents, { compactDollars: true });
 }
 
 export default async function FinancialCockpitPage() {
