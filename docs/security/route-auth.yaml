@@ -130,6 +130,12 @@ routes:
     owner: platform-security
     notes: "super_admin role. EMR-747 streaming CSV export of ControllerAuditLog. Uses streamCsvResponse from src/lib/admin/csv-export.ts (EMR-749) — one super_admin.csv_export audit row emitted BEFORE the stream begins; rows pulled lazily via async iterator so a 100k-row export never materialises in memory. Includes a practice_id column to satisfy the utility's requirePracticeIdColumn enforcement."
 
+  admin/audit/export-pdf:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "super_admin role via requireApiAuth. PDF-formatted ControllerAuditLog export mirrors the CSV export contract, caps rows at 5000, emits the same super_admin.csv_export audit action with format=pdf, and returns no-store HTML-as-PDF content."
+
   admin/practices/[id]/switch-specialty:
     methods: [POST]
     auth: required
@@ -290,6 +296,12 @@ routes:
     auth: required
     owner: scheduling
     notes: "EMR-683. Org-scoped patient search for launching video visits. Gated via requireApiAuth."
+
+  clinic/patients/roster-export:
+    methods: [GET]
+    auth: required
+    owner: clinical-safety
+    notes: "Clinician-side patient roster CSV/PDF export. Gated via requireUser, requires organizationId, scopes patients to that org and deletedAt=null, and returns no-store export content."
 
   patients/[id]/export/lfj:
     methods: [GET]
@@ -562,6 +574,12 @@ routes:
     owner: integrations
     review_due: 2026-05-30
     notes: "Scaffolded route for testing Garmin integration."
+
+  integrations/garmin/auth:
+    methods: [GET]
+    auth: required
+    owner: integrations
+    notes: "Patient-only Garmin OAuth start route. Gated via requireRole('patient') and redirects into the Garmin callback flow; currently uses mock request-token behavior when real Garmin keys are absent."
 
   portal/encounters/[id]/calendar.ics:
     methods: [GET]

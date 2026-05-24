@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { triggerGarminSync, getGarminSyncStatus } from "./actions";
 
 interface Integration {
   id: string;
@@ -93,7 +92,6 @@ const INTEGRATIONS: Integration[] = [
 interface ConnectionState {
   connected: boolean;
   lastSync: string | null;
-  syncing?: boolean;
 }
 
 export function IntegrationsView() {
@@ -109,59 +107,7 @@ export function IntegrationsView() {
     eversense: { connected: false, lastSync: null },
   });
 
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
-
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3000);
-  };
-
-  // Load initial Garmin state
-  useEffect(() => {
-    getGarminSyncStatus().then((status) => {
-      setStates((prev) => ({
-        ...prev,
-        garmin: {
-          connected: status.hasData,
-          lastSync: status.lastSync ? new Date(status.lastSync).toISOString().replace("T", " ").slice(0, 16) : null,
-        },
-      }));
-    });
-  }, []);
-
-  const handleGarminSync = async () => {
-    setStates((prev) => ({
-      ...prev,
-      garmin: { ...prev.garmin, syncing: true },
-    }));
-
-    try {
-      const res = await triggerGarminSync();
-      setStates((prev) => ({
-        ...prev,
-        garmin: {
-          connected: true,
-          lastSync: new Date(res.syncTime).toISOString().replace("T", " ").slice(0, 16),
-          syncing: false,
-        },
-      }));
-      showToast("Garmin synced successfully");
-    } catch (error) {
-      console.error(error);
-      showToast("Failed to sync Garmin data");
-      setStates((prev) => ({
-        ...prev,
-        garmin: { ...prev.garmin, syncing: false },
-      }));
-    }
-  };
-
   const toggle = (id: string) => {
-    if (id === "garmin" && !states.garmin.connected) {
-      window.location.href = "/api/integrations/garmin/auth";
-      return;
-    }
-
     setStates((prev) => ({
       ...prev,
       [id]: {
@@ -171,31 +117,10 @@ export function IntegrationsView() {
     }));
   };
 
-  const handleManualSync = (id: string) => {
-    if (id === "garmin") {
-      handleGarminSync();
-    } else {
-      setStates((prev) => ({
-        ...prev,
-        [id]: {
-          ...prev[id],
-          lastSync: new Date().toISOString().replace("T", " ").slice(0, 16),
-        },
-      }));
-      showToast("Synced successfully");
-    }
-  };
-
   return (
-    <div className="relative">
-      {toastMsg && (
-        <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-text text-surface px-4 py-2 rounded shadow-lg z-50 text-sm">
-          {toastMsg}
-        </div>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       {INTEGRATIONS.map((integration) => {
-        const state = states[integration.id] || { connected: false, lastSync: null };
+        const state = states[integration.id];
         return (
           <Card key={integration.id} tone="raised">
             <CardHeader>
@@ -236,39 +161,24 @@ export function IntegrationsView() {
                 <div className="text-xs text-text-subtle">
                   {state.lastSync ? `Last sync: ${state.lastSync}` : "Never synced"}
                 </div>
-                <div className="flex gap-2">
-                  {state.connected && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleManualSync(integration.id)}
-                      disabled={state.syncing}
-                    >
-                      {state.syncing ? "Syncing..." : "Sync Now"}
-                    </Button>
-                  )}
-                  {integration.available ? (
-                    <Button
-                      variant={state.connected ? "secondary" : "primary"}
-                      size="sm"
-                      onClick={() => toggle(integration.id)}
-                      disabled={state.syncing}
-                    >
-                      {state.connected ? "Disconnect" : `Connect ${integration.name}`}
-                    </Button>
-                  ) : (
-                    <Button variant="secondary" size="sm" disabled>
-                      Coming soon
-                    </Button>
-                  )}
-                </div>
+                {integration.available ? (
+                  <Button
+                    variant={state.connected ? "secondary" : "primary"}
+                    size="sm"
+                    onClick={() => toggle(integration.id)}
+                  >
+                    {state.connected ? "Disconnect" : `Connect ${integration.name}`}
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="sm" disabled>
+                    Coming soon
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         );
       })}
-      </div>
     </div>
   );
 }
-

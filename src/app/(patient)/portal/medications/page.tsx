@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { formatDate } from "@/lib/utils/format";
 import { DosingDisplay } from "@/components/prescription/dosing-display";
+import { detectSubstitution } from "@/lib/domain/medication-substitution";
 
 export const metadata = { title: "My Medications & Dosing Plan" };
 
@@ -70,6 +71,48 @@ export default async function MedicationsPage() {
       })
     : [];
 
+  // Pull recent inactive regimens too so we can detect same-mg
+  // product substitutions and surface a calming "your dose didn't
+  // change" message to the patient (EMR-003).
+  const recentRegimensForSubCheck = patient
+    ? await prisma.dosingRegimen.findMany({
+        where: { patientId: patient.id, active: false },
+        include: { product: true },
+        orderBy: { endDate: "desc" },
+        take: 5,
+      })
+    : [];
+
+  const substitution = detectSubstitution(
+    [...regimens, ...recentRegimensForSubCheck].map((r: any) => ({
+      id: r.id,
+      productId: r.productId,
+      productName: r.product?.name ?? null,
+      active: r.active,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      volumePerDose: r.volumePerDose,
+      volumeUnit: r.volumeUnit,
+      calculatedThcMgPerDose: r.calculatedThcMgPerDose,
+      calculatedCbdMgPerDose: r.calculatedCbdMgPerDose,
+    })),
+  );
+
+  function formatMgSummary(
+    volumePerDose: number,
+    volumeUnit: string,
+    thc: number | null | undefined,
+    cbd: number | null | undefined,
+  ): string | null {
+    const thcMg = thc ?? 0;
+    const cbdMg = cbd ?? 0;
+    if (thcMg === 0 && cbdMg === 0) return null;
+    const parts: string[] = [];
+    if (thcMg > 0) parts.push(`${thcMg.toFixed(1)} mg THC`);
+    if (cbdMg > 0) parts.push(`${cbdMg.toFixed(1)} mg CBD`);
+    return `${volumePerDose} ${volumeUnit} = ${parts.join(" + ")}`;
+  }
+
   // Daily totals
   const totalThcPerDay = regimens.reduce(
     (sum: number, r: any) => sum + (r.calculatedThcMgPerDay ?? 0),
@@ -104,6 +147,61 @@ export default async function MedicationsPage() {
         />
       ) : (
         <>
+          {/* ── Same-mg substitution alert (EMR-003) ──────── */}
+          {substitution.occurred && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mb-6 rounded-2xl border border-accent/25 bg-accent-soft/70 px-6 py-5 shadow-sm"
+              data-testid="medication-substitution-alert"
+            >
+              <div className="flex items-start gap-3">
+                <LeafSprig size={20} className="text-accent shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-display text-lg text-text">
+                    Your mg dose stays the same, only the volume changed.
+                  </p>
+                  <p className="text-sm text-text-muted leading-relaxed">
+                    {substitution.previousProductName ? (
+                      <>
+                        Switched from{" "}
+                        <strong>{substitution.previousProductName}</strong>{" "}
+                        ({substitution.previousVolume}) to{" "}
+                        <strong>{substitution.currentProductName}</strong>{" "}
+                        ({substitution.currentVolume}). The therapeutic dose
+                        is unchanged
+                        {substitution.thcMgPerDose != null && (
+                          <>
+                            {" "}
+                            — still{" "}
+                            <strong className="tabular-nums">
+                              {substitution.thcMgPerDose.toFixed(1)} mg THC
+                            </strong>
+                          </>
+                        )}
+                        {substitution.cbdMgPerDose != null &&
+                          substitution.cbdMgPerDose > 0 && (
+                            <>
+                              {" "}+{" "}
+                              <strong className="tabular-nums">
+                                {substitution.cbdMgPerDose.toFixed(1)} mg CBD
+                              </strong>
+                            </>
+                          )}{" "}
+                        per dose.
+                      </>
+                    ) : (
+                      <>
+                        We swapped your product, but your therapeutic mg dose
+                        is unchanged.
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Regimen cards ────────────────────────────── */}
           <section className="space-y-6">
             {regimens.map((regimen: any) => {
@@ -137,7 +235,9 @@ export default async function MedicationsPage() {
                   </CardHeader>
                   <CardContent className="space-y-5">
                     {/* ── How to take it ──────────────────── */}
-                    {regimen.patientInstructions && (
+                    {(regimen.patientInstructions ||
+                      regimen.calculatedThcMgPerDose != null ||
+                      regimen.calculatedCbdMgPerDose != null) && (
                       <div className="rounded-xl bg-accent-soft border border-accent/15 px-5 py-4">
                         <div className="flex items-center gap-2 mb-2">
                           <LeafSprig size={16} className="text-accent/70" />
@@ -145,9 +245,24 @@ export default async function MedicationsPage() {
                             How to take it
                           </p>
                         </div>
-                        <p className="font-display text-lg text-text leading-relaxed">
-                          {regimen.patientInstructions}
-                        </p>
+                        {regimen.patientInstructions && (
+                          <p className="font-display text-lg text-text leading-relaxed">
+                            {regimen.patientInstructions}
+                          </p>
+                        )}
+                        {(() => {
+                          const summary = formatMgSummary(
+                            regimen.volumePerDose,
+                            regimen.volumeUnit,
+                            regimen.calculatedThcMgPerDose,
+                            regimen.calculatedCbdMgPerDose,
+                          );
+                          return summary ? (
+                            <p className="mt-2 font-display text-base text-accent tabular-nums">
+                              {summary}
+                            </p>
+                          ) : null;
+                        })()}
                       </div>
                     )}
 

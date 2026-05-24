@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useTransition } from "react";
 import { cn } from "@/lib/utils/cn";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,11 @@ import {
   type AppointmentType,
   type TimeSlot,
 } from "@/lib/domain/scheduling";
+import {
+  bookAppointment,
+  cancelAppointment,
+  rescheduleAppointment,
+} from "./actions";
 
 // ── Types ──────────────────────────────────────────────
 
@@ -21,12 +26,26 @@ interface ProviderInfo {
   title: string;
 }
 
+export interface UpcomingAppointment {
+  id: string;
+  providerId: string | null;
+  providerName: string;
+  startIso: string;
+  endIso: string;
+  status: string;
+  modality: string;
+}
+
 interface BookingCalendarProps {
   providers: ProviderInfo[];
   patientId: string;
+  upcoming: UpcomingAppointment[];
 }
 
 type BookingStep = "selecting" | "confirming" | "booked";
+type Mode =
+  | { kind: "book" }
+  | { kind: "reschedule"; appointmentId: string; existingProviderId: string | null };
 
 // ── Helpers ────────────────────────────────────────────
 
@@ -36,6 +55,17 @@ function formatDateLabel(dateStr: string): string {
     weekday: "short",
     month: "short",
     day: "numeric",
+  });
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 
@@ -60,11 +90,19 @@ function isWeekend(dateStr: string): boolean {
   return day === 0 || day === 6;
 }
 
+function modalityLabel(modality: string): string {
+  if (modality === "in_person") return "In-person";
+  if (modality === "video") return "Video";
+  if (modality === "phone") return "Phone";
+  return modality;
+}
+
 // ── Component ──────────────────────────────────────────
 
-export function BookingCalendar({ providers, patientId }: BookingCalendarProps) {
+export function BookingCalendar({ providers, patientId, upcoming }: BookingCalendarProps) {
+  const [mode, setMode] = useState<Mode>({ kind: "book" });
   const [selectedProviderId, setSelectedProviderId] = useState(
-    providers[0]?.id ?? ""
+    providers[0]?.id ?? "",
   );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -72,29 +110,32 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
     useState<AppointmentType>("follow_up");
   const [step, setStep] = useState<BookingStep>("selecting");
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [bookedDetails, setBookedDetails] = useState<{
     date: string;
     time: string;
     provider: string;
     type: string;
+    action: "booked" | "rescheduled";
   } | null>(null);
+  const [pendingCancelId, setPendingCancelId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   const selectedProvider = providers.find((p) => p.id === selectedProviderId);
   const providerDisplayName = selectedProvider
     ? `${selectedProvider.title} ${selectedProvider.name}`
     : "";
 
-  // 14 days from today
   const dateRange = useMemo(() => generateDateRange(14), []);
 
-  // Generate slots for selected date
   const slots = useMemo(() => {
     if (!selectedDate || !selectedProviderId) return [];
     return generateSlots(
       selectedDate,
       selectedProviderId,
       providerDisplayName,
-      DEFAULT_AVAILABILITY
+      DEFAULT_AVAILABILITY,
     );
   }, [selectedDate, selectedProviderId, providerDisplayName]);
 
@@ -111,23 +152,102 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
     setStep("confirming");
   }, []);
 
-  const handleBook = useCallback(async () => {
+  const resetBookingState = useCallback(() => {
+    setStep("selecting");
+    setSelectedSlot(null);
+    setSelectedDate(null);
+    setBookedDetails(null);
+    setSubmitError(null);
+    setMode({ kind: "book" });
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
     if (!selectedSlot || !selectedDate) return;
     setSubmitting(true);
+    setSubmitError(null);
     try {
-      // Simulate booking delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setBookedDetails({
-        date: formatDateLabel(selectedDate),
-        time: `${selectedSlot.startTime} - ${selectedSlot.endTime}`,
-        provider: providerDisplayName,
-        type: APPOINTMENT_TYPE_LABELS[appointmentType].label,
-      });
+      if (mode.kind === "reschedule") {
+        const res = await rescheduleAppointment({
+          appointmentId: mode.appointmentId,
+          slotDate: selectedDate,
+          slotStartTime: selectedSlot.startTime,
+        });
+        if (!res.ok) {
+          setSubmitError(res.error);
+          return;
+        }
+        setBookedDetails({
+          date: formatDateLabel(selectedDate),
+          time: `${selectedSlot.startTime} - ${selectedSlot.endTime}`,
+          provider: providerDisplayName,
+          type: APPOINTMENT_TYPE_LABELS[appointmentType].label,
+          action: "rescheduled",
+        });
+      } else {
+        await bookAppointment({
+          patientId,
+          providerId: selectedProviderId,
+          slotDate: selectedDate,
+          slotStartTime: selectedSlot.startTime,
+          appointmentType,
+          modality: appointmentType === "telehealth" ? "video" : "in_person",
+        });
+        setBookedDetails({
+          date: formatDateLabel(selectedDate),
+          time: `${selectedSlot.startTime} - ${selectedSlot.endTime}`,
+          provider: providerDisplayName,
+          type: APPOINTMENT_TYPE_LABELS[appointmentType].label,
+          action: "booked",
+        });
+      }
       setStep("booked");
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : "Something went wrong. Try again.",
+      );
     } finally {
       setSubmitting(false);
     }
-  }, [selectedSlot, selectedDate, appointmentType, providerDisplayName]);
+  }, [
+    selectedSlot,
+    selectedDate,
+    appointmentType,
+    providerDisplayName,
+    mode,
+    patientId,
+    selectedProviderId,
+  ]);
+
+  const handleReschedule = useCallback((appt: UpcomingAppointment) => {
+    setMode({
+      kind: "reschedule",
+      appointmentId: appt.id,
+      existingProviderId: appt.providerId,
+    });
+    if (appt.providerId) setSelectedProviderId(appt.providerId);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setStep("selecting");
+    setSubmitError(null);
+    setBookedDetails(null);
+    if (typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("schedule-date-picker")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }, []);
+
+  const handleCancel = useCallback((appointmentId: string) => {
+    setPendingCancelId(appointmentId);
+    setCancelError(null);
+    startTransition(async () => {
+      const res = await cancelAppointment({ appointmentId });
+      if (!res.ok) setCancelError(res.error);
+      setPendingCancelId(null);
+    });
+  }, []);
 
   // ── Success state ─────────────────────────────────
 
@@ -161,10 +281,12 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
               </svg>
             </div>
             <h2 className="font-display text-2xl text-text mb-2">
-              Appointment booked!
+              {bookedDetails.action === "rescheduled"
+                ? "Appointment rescheduled!"
+                : "Appointment booked!"}
             </h2>
             <p className="text-text-muted mb-8">
-              You will receive a confirmation email shortly.
+              You will receive a confirmation message shortly.
             </p>
 
             <Card tone="default" className="text-left mx-auto max-w-sm rounded-2xl">
@@ -197,16 +319,8 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
             </Card>
 
             <div className="mt-8">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setStep("selecting");
-                  setSelectedSlot(null);
-                  setSelectedDate(null);
-                  setBookedDetails(null);
-                }}
-              >
-                Schedule another appointment
+              <Button variant="secondary" onClick={resetBookingState}>
+                Back to schedule
               </Button>
             </div>
           </CardContent>
@@ -219,9 +333,80 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
 
   return (
     <div className="space-y-8">
+      {upcoming.length > 0 && (
+        <section>
+          <p className="text-sm font-medium text-text mb-3">Your upcoming appointments</p>
+          {cancelError && (
+            <p className="text-sm text-danger mb-2" role="alert">
+              {cancelError}
+            </p>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {upcoming.map((appt) => {
+              const isCancelling = pendingCancelId === appt.id;
+              return (
+                <Card key={appt.id} tone="default" className="rounded-2xl">
+                  <CardContent className="py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text truncate">
+                          {appt.providerName}
+                        </p>
+                        <p className="text-xs text-text-muted mt-0.5">
+                          {formatDateTime(appt.startIso)}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Badge tone={appt.status === "confirmed" ? "accent" : "neutral"}>
+                            {appt.status}
+                          </Badge>
+                          <span className="text-[11px] text-text-subtle">
+                            {modalityLabel(appt.modality)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2 shrink-0">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleReschedule(appt)}
+                          disabled={isCancelling}
+                        >
+                          Reschedule
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCancel(appt.id)}
+                          disabled={isCancelling}
+                        >
+                          {isCancelling ? "Cancelling…" : "Cancel"}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {mode.kind === "reschedule" && (
+        <div className="rounded-2xl border border-accent/40 bg-accent/5 px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-text">
+            Rescheduling an existing appointment — pick a new date and time below.
+          </p>
+          <Button variant="ghost" size="sm" onClick={resetBookingState}>
+            Cancel reschedule
+          </Button>
+        </div>
+      )}
+
       {/* Provider selector */}
       <section>
-        <p className="text-sm font-medium text-text mb-3">Choose a provider</p>
+        <p className="text-sm font-medium text-text mb-3">
+          {mode.kind === "reschedule" ? "Provider" : "Choose a provider"}
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {providers.map((p) => (
             <button
@@ -260,7 +445,7 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
       </section>
 
       {/* Date picker: horizontal scroll of 14 days */}
-      <section>
+      <section id="schedule-date-picker">
         <p className="text-sm font-medium text-text mb-3">
           Select a date (next 14 days)
         </p>
@@ -305,38 +490,39 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
         </div>
       </section>
 
-      {/* Appointment type pills */}
-      <section>
-        <p className="text-sm font-medium text-text mb-3">Appointment type</p>
-        <div className="flex flex-wrap gap-2">
-          {(["follow_up", "telehealth", "new_patient"] as AppointmentType[]).map(
-            (t) => {
-              const info = APPOINTMENT_TYPE_LABELS[t];
-              return (
-                <button
-                  key={t}
-                  onClick={() => setAppointmentType(t)}
-                  className={cn(
-                    "rounded-full border px-4 py-2 text-sm transition-all duration-200",
-                    appointmentType === t
-                      ? "bg-accent/10 border-accent text-accent font-medium"
-                      : "bg-surface border-border text-text-muted hover:bg-surface-muted"
-                  )}
-                >
-                  {info.label}{" "}
-                  <span className="text-xs text-text-subtle">
-                    ({info.duration} min)
-                  </span>
-                </button>
-              );
-            }
-          )}
-        </div>
-      </section>
+      {/* Appointment type pills (booking only) */}
+      {mode.kind === "book" && (
+        <section>
+          <p className="text-sm font-medium text-text mb-3">Appointment type</p>
+          <div className="flex flex-wrap gap-2">
+            {(["follow_up", "telehealth", "new_patient"] as AppointmentType[]).map(
+              (t) => {
+                const info = APPOINTMENT_TYPE_LABELS[t];
+                return (
+                  <button
+                    key={t}
+                    onClick={() => setAppointmentType(t)}
+                    className={cn(
+                      "rounded-full border px-4 py-2 text-sm transition-all duration-200",
+                      appointmentType === t
+                        ? "bg-accent/10 border-accent text-accent font-medium"
+                        : "bg-surface border-border text-text-muted hover:bg-surface-muted"
+                    )}
+                  >
+                    {info.label}{" "}
+                    <span className="text-xs text-text-subtle">
+                      ({info.duration} min)
+                    </span>
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Time slot grid + Confirmation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Time slots (3 columns) */}
         <div className="lg:col-span-2">
           {selectedDate ? (
             <>
@@ -377,12 +563,13 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
           )}
         </div>
 
-        {/* Confirmation card */}
         <div>
           {step === "confirming" && selectedSlot && selectedDate ? (
             <Card tone="raised" className="sticky top-6 rounded-2xl">
               <CardHeader>
-                <CardTitle>Confirm booking</CardTitle>
+                <CardTitle>
+                  {mode.kind === "reschedule" ? "Confirm reschedule" : "Confirm booking"}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4 text-sm">
@@ -410,35 +597,52 @@ export function BookingCalendar({ providers, patientId }: BookingCalendarProps) 
                       {selectedSlot.startTime} - {selectedSlot.endTime}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-text-subtle uppercase tracking-wider">
-                      Type
-                    </p>
-                    <Badge tone="accent" className="mt-1">
-                      {APPOINTMENT_TYPE_LABELS[appointmentType].label}
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-text-subtle uppercase tracking-wider">
-                      Modality
-                    </p>
-                    <p className="text-text">
-                      {appointmentType === "telehealth" ? "Video" : "In-person"}
-                    </p>
-                  </div>
+                  {mode.kind === "book" && (
+                    <>
+                      <div>
+                        <p className="text-[10px] text-text-subtle uppercase tracking-wider">
+                          Type
+                        </p>
+                        <Badge tone="accent" className="mt-1">
+                          {APPOINTMENT_TYPE_LABELS[appointmentType].label}
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-text-subtle uppercase tracking-wider">
+                          Modality
+                        </p>
+                        <p className="text-text">
+                          {appointmentType === "telehealth" ? "Video" : "In-person"}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
+                {submitError && (
+                  <p className="text-sm text-danger mt-4" role="alert">
+                    {submitError}
+                  </p>
+                )}
               </CardContent>
               <div className="px-6 pb-6">
                 <Button
-                  onClick={handleBook}
+                  onClick={handleSubmit}
                   disabled={submitting}
                   size="lg"
                   className="w-full"
                 >
-                  {submitting ? "Booking..." : "Book appointment"}
+                  {submitting
+                    ? mode.kind === "reschedule"
+                      ? "Rescheduling…"
+                      : "Booking…"
+                    : mode.kind === "reschedule"
+                      ? "Confirm new time"
+                      : "Book appointment"}
                 </Button>
                 <p className="text-[11px] text-text-subtle text-center mt-2">
-                  Your appointment will be pending confirmation.
+                  {mode.kind === "reschedule"
+                    ? "The new time will be marked pending re-confirmation."
+                    : "Your appointment will be pending confirmation."}
                 </p>
               </div>
             </Card>

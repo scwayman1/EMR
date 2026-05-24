@@ -8,7 +8,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --incremental false",
     "worker": "tsx --conditions=react-server src/workers/agent-worker.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
