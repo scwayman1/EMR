@@ -19,12 +19,32 @@ interface MedicationsListProps {
 export function MedicationsList({ patientId, medications, patient }: MedicationsListProps) {
   const [viewMed, setViewMed] = useState<any | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; med: any } | null>(null);
+  const [dispenses, setDispenses] = useState<any[]>([]);
+  const [isLoadingDispenses, setIsLoadingDispenses] = useState(false);
 
   useEffect(() => {
     const handleClose = () => setContextMenu(null);
     window.addEventListener("click", handleClose);
     return () => window.removeEventListener("click", handleClose);
   }, []);
+
+  useEffect(() => {
+    async function loadDispenses() {
+      setIsLoadingDispenses(true);
+      try {
+        const res = await fetch(`/api/dispensary/dispenses?patientId=${patientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDispenses(data.results || []);
+        }
+      } catch (err) {
+        console.error("Error loading dispenses:", err);
+      } finally {
+        setIsLoadingDispenses(false);
+      }
+    }
+    loadDispenses();
+  }, [patientId]);
 
   return (
     <>
@@ -56,6 +76,33 @@ export function MedicationsList({ patientId, medications, patient }: Medications
               </div>
             </div>
           ))
+        )}
+      </div>
+
+      {/* Dispensary History Section */}
+      <div className="mt-4 pt-4 border-t border-border">
+        <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-2">
+          Dispensary History
+        </h4>
+        {isLoadingDispenses ? (
+          <p className="text-xs text-text-muted italic">Loading dispensary history...</p>
+        ) : dispenses.length === 0 ? (
+          <p className="text-xs text-text-muted italic">No dispensary dispenses on file.</p>
+        ) : (
+          <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+            {dispenses.map((disp) => (
+              <div key={disp.id} className="text-xs bg-surface-muted p-2 rounded-md border border-border/50">
+                <div className="flex justify-between font-medium">
+                  <span className="text-text">{disp.productName}</span>
+                  <span className="text-text-muted">{disp.quantity} {disp.unit}</span>
+                </div>
+                <div className="flex justify-between text-text-subtle mt-0.5">
+                  <span>🏪 {disp.dispensary?.name || "Unknown Dispensary"}</span>
+                  <span>🗓 {format(new Date(disp.dispensedAt), "MM/dd/yyyy")}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
