@@ -3,7 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea } from "@/components/ui/input";
+import {
+  DictationInput,
+  DictationTextarea,
+} from "@/components/ui/dictation-input";
 import { cn } from "@/lib/utils/cn";
 import { composePatientMessage, type ComposeResult } from "./actions";
 
@@ -124,11 +127,17 @@ export function MessagePatientDock({ patientId, patientName }: Props) {
     null,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  // Controlled mirrors so DictationInput / DictationTextarea can append
+  // dictated transcripts. Cleared on send + on dock close.
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
 
   // Close and reset the form after a successful send
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
+      setSubject("");
+      setBody("");
       setMode("closed");
     }
   }, [state]);
@@ -214,23 +223,29 @@ export function MessagePatientDock({ patientId, patientName }: Props) {
                   <label className="block text-[11px] font-semibold text-text-subtle uppercase tracking-wide mb-1">
                     Subject
                   </label>
-                  <Input
+                  <DictationInput
                     name="subject"
                     placeholder="Subject…"
                     required
                     className="text-sm"
+                    value={subject}
+                    onChange={setSubject}
+                    aria-label="Message subject"
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-text-subtle uppercase tracking-wide mb-1">
                     Message
                   </label>
-                  <Textarea
+                  <DictationTextarea
                     name="body"
                     rows={5}
-                    placeholder="Write your message to the patient…"
+                    placeholder="Write your message to the patient — or tap the mic to dictate…"
                     required
                     className="resize-none text-sm"
+                    value={body}
+                    onChange={setBody}
+                    aria-label="Message body"
                   />
                 </div>
                 {state?.ok === false && (
