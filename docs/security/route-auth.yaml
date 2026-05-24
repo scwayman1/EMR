@@ -575,12 +575,6 @@ routes:
     review_due: 2026-05-30
     notes: "Scaffolded route for testing Garmin integration."
 
-  integrations/garmin/auth:
-    methods: [GET]
-    auth: required
-    owner: integrations
-    notes: "Patient-only Garmin OAuth start route. Gated via requireRole('patient') and redirects into the Garmin callback flow; currently uses mock request-token behavior when real Garmin keys are absent."
-
   portal/encounters/[id]/calendar.ics:
     methods: [GET]
     auth: required
