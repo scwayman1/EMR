@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
+import { RESOLVED_SENTINEL } from "./resolve-marker";
 
 // ---------- Reply to a thread ----------
 
@@ -173,6 +174,69 @@ export async function composePatientMessage(
 
   revalidatePath("/clinic/messages");
   return { ok: true, threadId: thread.id };
+}
+
+// ---------- Resolve thread (EMR-660) ----------
+//
+// Marks a thread as clinically dispositioned by inserting a system-authored
+// "Resolved" chat bubble. The MessageThread model does not (yet) carry a
+// dedicated status column — see the follow-up note in the PR body. Until
+// then, the inbox treats the presence of a trailing `[[RESOLVED]]` bubble
+// from a clinician as the dispositioned marker, and a subsequent patient
+// reply causes the thread to reappear automatically (it lands AFTER the
+// resolved bubble, so `lastMessageAt > resolvedBubble.createdAt`).
+//
+// Body sentinel keeps the wire format auditable for the chart export while
+// avoiding a schema migration during this PR. When MessageThread gains a
+// real `status` column the action will switch to `prisma.messageThread
+// .update({ data: { status: "resolved" } })` and the sentinel becomes a
+// human-readable label.
+
+const resolveSchema = z.object({ threadId: z.string().min(1) });
+
+export type ResolveResult = { ok: true } | { ok: false; error: string };
+
+export async function resolveThread(
+  _prev: ResolveResult | null,
+  formData: FormData,
+): Promise<ResolveResult> {
+  const user = await requireUser();
+
+  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
+    return { ok: false, error: "Unauthorized — clinician role required." };
+  }
+
+  const parsed = resolveSchema.safeParse({
+    threadId: formData.get("threadId") as string,
+  });
+  if (!parsed.success) return { ok: false, error: "Invalid thread." };
+
+  const thread = await prisma.messageThread.findFirst({
+    where: {
+      id: parsed.data.threadId,
+      patient: { organizationId: user.organizationId! },
+    },
+    select: { id: true },
+  });
+  if (!thread) return { ok: false, error: "Thread not found." };
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.message.create({
+      data: {
+        threadId: thread.id,
+        senderUserId: user.id,
+        status: "sent",
+        body: `${RESOLVED_SENTINEL} Thread resolved at ${now.toISOString()}`,
+        sentAt: now,
+      },
+    }),
+    // Do NOT bump lastMessageAt — that would defeat the "hide until new
+    // patient message" filter. Leave lastMessageAt at the previous reply.
+  ]);
+
+  revalidatePath("/clinic/messages");
+  return { ok: true };
 }
 
 // ---------- Send reply (Smart Inbox — EMR-153) ----------
