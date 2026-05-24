@@ -9,6 +9,7 @@ import { ROLE_HOME } from "@/lib/rbac/roles";
 import { cn } from "@/lib/utils/cn";
 import { MobileNav } from "./MobileNav";
 import { NavSections } from "./NavSections";
+import { NotificationCenter } from "@/components/ui/notification-center";
 import { PillarNav } from "./PillarNav";
 import { RailIdentityMenu } from "./RailIdentityMenu";
 import { NavPrefsProvider } from "./NavPrefsContext";
@@ -80,7 +81,10 @@ export function AppShell({
                 </Link>
               }
               footer={
-                <RailIdentityMenu user={user} roleLabel={roleLabel} />
+                <div className="flex flex-col items-center gap-1 pb-1">
+                  <NotificationCenter userId={user.id} variant="rail" />
+                  <RailIdentityMenu user={user} roleLabel={roleLabel} />
+                </div>
               }
             />
           </div>
@@ -118,6 +122,7 @@ export function AppShell({
                   </div>
                   <div className="text-xs text-text-subtle truncate">{user.email}</div>
                 </div>
+                <NotificationCenter userId={user.id} variant="header" />
               </div>
               <div className="mt-2">
                 {hasClerk ? (
@@ -156,6 +161,7 @@ export function AppShell({
               <Wordmark size="sm" />
             </Link>
             <div className="flex items-center gap-2">
+              <NotificationCenter userId={user.id} variant="header" />
               <MobileNav sections={resolved} />
               <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
             </div>
