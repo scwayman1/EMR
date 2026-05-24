@@ -9,6 +9,7 @@ import { Printer } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { explainLabValue } from "@/lib/domain/lab-explainer";
 import { LabTooltip } from "@/components/ui/lab-tooltip";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   draftLabOutreachAction,
   updateLabOutreachAction,
@@ -357,16 +358,17 @@ function LabOverlay({ row, onClose }: { row: LabRow; onClose: () => void }) {
                 The dedicated route uses the shared PrintDocument frame so
                 the page lands on the printer as a clean clinical document
                 (no modal chrome, no batch tray, no glass blur). */}
-            <a
-              href={`/clinic/sign-off/labs/${row.id}/print`}
-              target="_blank"
-              rel="noopener"
-              className="text-text-subtle hover:text-text p-1.5 rounded-lg hover:bg-surface-muted transition-colors"
-              aria-label="Print / Save as PDF"
-              title="Print / Save as PDF"
-            >
-              <Printer className="h-4 w-4" aria-hidden="true" />
-            </a>
+            <Tooltip content="Print / Save as PDF">
+              <a
+                href={`/clinic/sign-off/labs/${row.id}/print`}
+                target="_blank"
+                rel="noopener"
+                className="text-text-subtle hover:text-text p-1.5 rounded-lg hover:bg-surface-muted transition-colors"
+                aria-label="Print / Save as PDF"
+              >
+                <Printer className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </Tooltip>
             <button
               onClick={onClose}
               className="text-text-subtle hover:text-text text-xl leading-none px-2"

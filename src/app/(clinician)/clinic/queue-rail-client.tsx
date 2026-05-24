@@ -26,6 +26,7 @@
 
 import * as React from "react";
 import { SortableList, reorder } from "@/components/ui/sortable";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/cn";
 
 export interface QueueRailCard {
@@ -133,18 +134,23 @@ export function QueueRailClient({ cards, dayKey }: Props) {
                 hover or while dragging. Spreading dragHandleProps here
                 makes only the grip itself the drag source so the rest
                 of the card (links, Prepare button) stay clickable. */}
-            <span
-              {...dragHandleProps}
-              className={cn(
-                dragHandleProps.className,
-                "absolute top-1.5 left-1.5 z-10 p-1 rounded bg-surface/80 backdrop-blur",
-                "opacity-0 group-hover:opacity-100 focus:opacity-100",
-                "aria-grabbed:opacity-100",
-              )}
-              title="Drag to reorder (or Space + arrow keys)"
+            <Tooltip
+              content="Drag to reorder (or Space + arrow keys)"
+              side="right"
+              delay={400}
             >
-              <DragGripIcon />
-            </span>
+              <span
+                {...dragHandleProps}
+                className={cn(
+                  dragHandleProps.className,
+                  "absolute top-1.5 left-1.5 z-10 p-1 rounded bg-surface/80 backdrop-blur",
+                  "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                  "aria-grabbed:opacity-100",
+                )}
+              >
+                <DragGripIcon />
+              </span>
+            </Tooltip>
             {card.node}
           </div>
         )}
