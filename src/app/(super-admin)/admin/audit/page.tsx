@@ -29,6 +29,7 @@ import {
 } from "@/lib/admin/audit-log";
 import { AuditTableIsland, type AuditRowView } from "./keyboard-island";
 import { AuditExportMenu } from "./export-menu";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Audit log" };
@@ -224,28 +225,26 @@ export default async function AuditLogPage({
             className="rounded-md border border-border bg-background px-3 py-2 text-sm"
           />
         </div>
-        <div>
+        <div className="w-44">
           <label className="block text-xs text-text-muted mb-1" htmlFor="audit-filter-from">
             From
           </label>
-          <input
+          <DatePicker
             id="audit-filter-from"
             name="from"
-            type="date"
             defaultValue={q.from ? q.from.toISOString().slice(0, 10) : ""}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            placeholder="From date"
           />
         </div>
-        <div>
+        <div className="w-44">
           <label className="block text-xs text-text-muted mb-1" htmlFor="audit-filter-to">
             To
           </label>
-          <input
+          <DatePicker
             id="audit-filter-to"
             name="to"
-            type="date"
             defaultValue={q.to ? q.to.toISOString().slice(0, 10) : ""}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm"
+            placeholder="To date"
           />
         </div>
         <button
