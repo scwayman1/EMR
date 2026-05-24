@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
+import { SplitWorkspace } from "@/components/shell/SplitWorkspace";
+import { ContextPane } from "@/components/shell/ContextPane";
 import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
@@ -193,7 +195,10 @@ export default async function ClinicianLayout({
       <ClinicianTour />
       <InstallPrompt />
       <HelpDrawer />
-      {children}
+      <SplitWorkspace>
+        <ContextPane />
+        {children}
+      </SplitWorkspace>
     </AppShell>
   );
 }
