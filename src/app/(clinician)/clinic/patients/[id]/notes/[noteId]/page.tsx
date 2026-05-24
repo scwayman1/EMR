@@ -6,6 +6,7 @@ import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils/format";
 import { NoteEditor } from "./note-editor";
+import { NoteCommentsPanel } from "@/components/collaboration/note-comments-panel";
 
 interface PageProps {
   params: { id: string; noteId: string };
@@ -104,6 +105,11 @@ export default async function NoteDetailPage({ params }: PageProps) {
             : null
         }
       />
+
+      {/* ux/comments-mentions-collab — inline collaboration on chart notes */}
+      <div className="mt-8">
+        <NoteCommentsPanel noteId={note.id} patientId={params.id} />
+      </div>
     </PageShell>
   );
 }
