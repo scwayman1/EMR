@@ -558,3 +558,47 @@ export async function submitDraftedOrderAsAgent(
   revalidatePath("/ops/supplies");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// EMR-791 UI compat shims — positional args + throw-on-error so the existing
+// agent-drafted-card / supplies-view call sites don't need rewrites. New
+// callers should prefer the typed Schema-driven exports above.
+// ---------------------------------------------------------------------------
+
+function unwrap(r: ActionResult): void {
+  if (!r.ok) throw new Error(r.error);
+}
+
+export async function approveSupplyOrder(orderId: string): Promise<void> {
+  const r = await approveAndSubmitOrder({ orderId });
+  if (!r.ok) throw new Error(r.error);
+}
+
+export async function rejectSupplyOrder(orderId: string, reason: string): Promise<void> {
+  unwrap(await rejectOrder({ orderId, reason }));
+}
+
+export async function editSupplyOrderDraft(
+  orderId: string,
+  patch: { qty?: number; unitCostCents?: number },
+): Promise<void> {
+  unwrap(await editDraftedOrder({ orderId, ...patch }));
+}
+
+export async function markSupplyOrderShipped(
+  orderId: string,
+  supplierPoRef?: string,
+): Promise<void> {
+  unwrap(await markShipped({ orderId, trackingNumber: supplierPoRef }));
+}
+
+export async function markSupplyOrderDelivered(
+  orderId: string,
+  deliveredQty?: number,
+): Promise<void> {
+  unwrap(await markDelivered({ orderId, qtyReceived: deliveredQty }));
+}
+
+export async function cancelSupplyOrder(orderId: string, reason: string): Promise<void> {
+  unwrap(await cancelOrder({ orderId, reason }));
+}
