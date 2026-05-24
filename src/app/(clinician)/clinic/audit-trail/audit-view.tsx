@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 
 // ─── Types ──────────────────────────────────────────────
@@ -266,26 +267,28 @@ export function AuditTrailView({
               <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
                 From
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
+                onChange={(v) => {
+                  setDateFrom(v);
                   setCurrentPage(1);
                 }}
+                placeholder="From date"
+                max={dateTo || undefined}
               />
             </div>
             <div>
               <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
                 To
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
+                onChange={(v) => {
+                  setDateTo(v);
                   setCurrentPage(1);
                 }}
+                placeholder="To date"
+                min={dateFrom || undefined}
               />
             </div>
           </div>
