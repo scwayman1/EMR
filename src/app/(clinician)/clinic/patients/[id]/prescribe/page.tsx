@@ -65,6 +65,16 @@ export default async function PrescribePage({ params }: PageProps) {
     icd10Codes: [], // Could pull from problem list when we have one
   });
 
+  const patientAddress = [
+    patient.addressLine1,
+    patient.addressLine2,
+    patient.city,
+    patient.state,
+    patient.postalCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
     <PageShell maxWidth="max-w-[960px]">
       <div className="mb-10">
@@ -85,6 +95,7 @@ export default async function PrescribePage({ params }: PageProps) {
       <PrescribeForm
         patientId={params.id}
         patientName={`${patient.firstName} ${patient.lastName}`}
+        patientAddress={patientAddress}
         contraindicationMatches={contraindicationMatches.map((m) => ({
           id: m.contraindication.id,
           label: m.contraindication.label,

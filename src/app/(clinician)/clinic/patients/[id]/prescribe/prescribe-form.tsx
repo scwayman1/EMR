@@ -76,6 +76,16 @@ const PRODUCT_TYPES = [
   { value: "suppository", label: "Suppository" },
 ] as const;
 
+const mapFormatToProductType = (format: string): string => {
+  const f = format.toLowerCase();
+  if (f === "flower") return "flower";
+  if (f === "tincture") return "tincture";
+  if (f === "edible") return "edible";
+  if (f === "topical") return "topical";
+  if (f === "capsule") return "capsule";
+  return "other";
+};
+
 const DOSE_UNITS = [
   { value: "mg", label: "mg" },
   { value: "mL", label: "mL" },
@@ -163,6 +173,7 @@ interface CoSignerOption {
 export function PrescribeForm({
   patientId,
   patientName,
+  patientAddress = "",
   products,
   medications,
   contraindicationMatches = [],
@@ -170,6 +181,7 @@ export function PrescribeForm({
 }: {
   patientId: string;
   patientName: string;
+  patientAddress?: string;
   products: Product[];
   medications: Medication[];
   contraindicationMatches?: ContraindicationMatch[];
@@ -185,6 +197,19 @@ export function PrescribeForm({
   const [customProductName, setCustomProductName] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productType, setProductType] = useState("");
+
+  // --- Barcode / SKU scanning ---
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [scannedSku, setScannedSku] = useState<any | null>(null);
+  const [isLoadingSku, setIsLoadingSku] = useState(false);
+  const [barcodeError, setBarcodeError] = useState("");
+
+  // --- Dispensary locator / recommendations ---
+  const [searchAddress, setSearchAddress] = useState(patientAddress || "Seattle, WA");
+  const [nearbyDispensaries, setNearbyDispensaries] = useState<any[]>([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+  const [nearbyError, setNearbyError] = useState("");
+  const [selectedDispensaryId, setSelectedDispensaryId] = useState<string | null>(null);
 
   // --- Dosing ---
   const [volumePerDose, setVolumePerDose] = useState("");
@@ -292,22 +317,100 @@ export function PrescribeForm({
     }
   }, [volumePerDose, frequencyPerDay, daysSupply, quantityManual]);
 
+  const handleBarcodeSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const sku = barcodeInput.trim();
+    if (!sku) return;
+
+    setIsLoadingSku(true);
+    setBarcodeError("");
+    setScannedSku(null);
+
+    try {
+      const res = await fetch(`/api/dispensary/sku?sku=${encodeURIComponent(sku)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScannedSku(data);
+        setCustomProductName(data.brand ? `${data.brand} - ${data.name}` : data.name);
+        setSelectedProductId(""); // clear selected formulary product
+        
+        const mappedType = mapFormatToProductType(data.format);
+        if (mappedType) {
+          setProductType(mappedType);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setBarcodeError(errData.error === "sku_not_found" ? "SKU or UPC not found in catalog." : "Failed to resolve barcode.");
+      }
+    } catch (err) {
+      setBarcodeError("Network error occurred.");
+    } finally {
+      setIsLoadingSku(false);
+    }
+  };
+
+  const fetchNearbyDispensaries = useCallback(async () => {
+    const address = searchAddress.trim();
+    if (!address) return;
+
+    setIsLoadingNearby(true);
+    setNearbyError("");
+
+    try {
+      let urlStr = `/api/dispensary/nearby?address=${encodeURIComponent(address)}`;
+      if (scannedSku) {
+        urlStr += `&sku=${encodeURIComponent(scannedSku.sku)}`;
+      } else if (selectedProduct) {
+        urlStr += `&name=${encodeURIComponent(selectedProduct.name)}`;
+      } else if (customProductName) {
+        urlStr += `&name=${encodeURIComponent(customProductName)}`;
+      }
+
+      const res = await fetch(urlStr);
+      if (res.ok) {
+        const data = await res.json();
+        setNearbyDispensaries(data.results || []);
+      } else {
+        setNearbyError("Failed to load nearby dispensaries.");
+      }
+    } catch (err) {
+      setNearbyError("Network error loading dispensaries.");
+    } finally {
+      setIsLoadingNearby(false);
+    }
+  }, [searchAddress, scannedSku, selectedProduct, customProductName]);
+
+  useEffect(() => {
+    fetchNearbyDispensaries();
+  }, [fetchNearbyDispensaries]);
+
   // Run interaction check when a product is selected and patient has medications
   const runInteractionCheck = useCallback(() => {
-    if (!selectedProduct || medications.length === 0) {
+    if (!selectedProduct && !scannedSku) {
+      setInteractions([]);
+      return;
+    }
+    if (medications.length === 0) {
       setInteractions([]);
       return;
     }
 
     const cannabinoids: string[] = [];
-    if (selectedProduct.thcConcentration && selectedProduct.thcConcentration > 0)
-      cannabinoids.push("THC");
-    if (selectedProduct.cbdConcentration && selectedProduct.cbdConcentration > 0)
-      cannabinoids.push("CBD");
-    if (selectedProduct.cbnConcentration && selectedProduct.cbnConcentration > 0)
-      cannabinoids.push("CBN");
-    if (selectedProduct.cbgConcentration && selectedProduct.cbgConcentration > 0)
-      cannabinoids.push("CBG");
+    if (selectedProduct) {
+      if (selectedProduct.thcConcentration && selectedProduct.thcConcentration > 0)
+        cannabinoids.push("THC");
+      if (selectedProduct.cbdConcentration && selectedProduct.cbdConcentration > 0)
+        cannabinoids.push("CBD");
+      if (selectedProduct.cbnConcentration && selectedProduct.cbnConcentration > 0)
+        cannabinoids.push("CBN");
+      if (selectedProduct.cbgConcentration && selectedProduct.cbgConcentration > 0)
+        cannabinoids.push("CBG");
+    } else if (scannedSku) {
+      if ((scannedSku.thcMgPerUnit && scannedSku.thcMgPerUnit > 0) || (scannedSku.thcPercent && scannedSku.thcPercent > 0))
+        cannabinoids.push("THC");
+      if ((scannedSku.cbdMgPerUnit && scannedSku.cbdMgPerUnit > 0) || (scannedSku.cbdPercent && scannedSku.cbdPercent > 0))
+        cannabinoids.push("CBD");
+    }
 
     if (cannabinoids.length === 0) {
       setInteractions([]);
@@ -318,7 +421,7 @@ export function PrescribeForm({
     const results = checkInteractions(medNames, cannabinoids);
     setInteractions(results);
     setInteractionAcknowledged(false);
-  }, [selectedProduct, medications]);
+  }, [selectedProduct, scannedSku, medications]);
 
   useEffect(() => {
     runInteractionCheck();
@@ -623,6 +726,112 @@ export function PrescribeForm({
           )}
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Barcode / SKU scan input */}
+          <div className="border border-border/80 rounded-xl p-4 bg-muted/30">
+            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>🏷️</span> Barcode & SKU Resolver
+            </h4>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="barcodeInput"
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleBarcodeSubmit();
+                    }
+                  }}
+                  placeholder="Scan SKU/UPC barcode or enter SKU code..."
+                  className="bg-background pr-8"
+                />
+                {barcodeInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBarcodeInput("");
+                      setBarcodeError("");
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle hover:text-text text-sm font-semibold"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleBarcodeSubmit()}
+                disabled={isLoadingSku || !barcodeInput.trim()}
+                className="btn btn-secondary px-4 py-2 text-sm flex items-center justify-center font-medium bg-white border border-border hover:bg-muted text-text font-medium disabled:opacity-50"
+              >
+                {isLoadingSku ? "Resolving..." : "Resolve"}
+              </button>
+            </div>
+            {barcodeError && (
+              <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                <span>⚠️</span> {barcodeError}
+              </p>
+            )}
+          </div>
+
+          {/* Resolved SKU details */}
+          {scannedSku && (
+            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-50/50 flex items-start justify-between gap-4 animate-fadeIn">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Badge tone="success" className="text-[10px] uppercase tracking-wider">
+                    Resolved SKU
+                  </Badge>
+                  <span className="text-[10px] text-emerald-800 font-semibold px-2 py-0.5 rounded-full bg-emerald-100">
+                    {scannedSku.sku}
+                  </span>
+                </div>
+                <h4 className="text-sm font-semibold text-text mt-1">
+                  {scannedSku.brand && `${scannedSku.brand} - `}{scannedSku.name}
+                </h4>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Format: <span className="font-semibold text-text">{scannedSku.format}</span>
+                  {scannedSku.upc && ` · UPC: ${scannedSku.upc}`}
+                </p>
+                <div className="flex gap-4 mt-2 text-xs">
+                  {(scannedSku.thcMgPerUnit !== null || scannedSku.thcPercent !== null) && (
+                    <span className="text-emerald-800 font-medium">
+                      THC: <span className="font-semibold">{scannedSku.thcMgPerUnit !== null ? `${scannedSku.thcMgPerUnit} mg/unit` : `${scannedSku.thcPercent}%`}</span>
+                    </span>
+                  )}
+                  {(scannedSku.cbdMgPerUnit !== null || scannedSku.cbdPercent !== null) && (
+                    <span className="text-emerald-800 font-medium">
+                      CBD: <span className="font-semibold">{scannedSku.cbdMgPerUnit !== null ? `${scannedSku.cbdMgPerUnit} mg/unit` : `${scannedSku.cbdPercent}%`}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                {scannedSku.coaUrl && (
+                  <a
+                    href={scannedSku.coaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent hover:underline flex items-center gap-1 font-medium bg-white px-2.5 py-1 rounded-lg border border-border shadow-sm"
+                  >
+                    📄 COA Lab Report
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScannedSku(null);
+                    setCustomProductName("");
+                  }}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Search / filter */}
           <FieldGroup label="Search products" htmlFor="productSearch">
             <Input
@@ -805,6 +1014,148 @@ export function PrescribeForm({
         </CardContent>
       </Card>
 
+      {/* ── Fulfilling Provider / Dispensary Locator ─────────── */}
+      <Card tone="raised" className="relative overflow-hidden">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg tracking-tight">Fulfilling Provider</CardTitle>
+              <CardDescription>
+                Search and select a licensed dispensary within a 30-mile radius to fulfill this prescription.
+              </CardDescription>
+            </div>
+            <Badge tone={selectedDispensaryId ? "success" : "warning"} className="uppercase tracking-wider">
+              {selectedDispensaryId ? "Provider Locked" : "Select Provider"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Address search inputs */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <FieldGroup label="Patient search coordinates / address" htmlFor="searchAddress">
+                <Input
+                  id="searchAddress"
+                  value={searchAddress}
+                  onChange={(e) => setSearchAddress(e.target.value)}
+                  placeholder="Enter patient city, state, or address..."
+                  className="bg-background"
+                />
+              </FieldGroup>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchNearbyDispensaries()}
+              disabled={isLoadingNearby}
+              className="btn btn-secondary px-4 py-2 h-[42px] text-sm flex items-center justify-center font-medium bg-white border border-border hover:bg-muted text-text"
+            >
+              {isLoadingNearby ? "Searching..." : "Search"}
+            </button>
+          </div>
+
+          {/* Results list */}
+          {nearbyError && (
+            <p className="text-sm text-red-600 font-medium">
+              ⚠️ {nearbyError}
+            </p>
+          )}
+
+          {isLoadingNearby ? (
+            <div className="flex flex-col items-center justify-center py-6 text-text-muted gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
+              <p className="text-xs">Finding matching dispensaries within 30 miles...</p>
+            </div>
+          ) : nearbyDispensaries.length === 0 ? (
+            <div className="p-4 rounded-xl border border-dashed border-border bg-muted/20 text-center text-text-muted">
+              <p className="text-sm">No matching dispensaries carrying this product found within 30 miles.</p>
+              <p className="text-xs mt-1">Try updating the search location or widening target parameters.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Nearby Dispensaries carrying item ({nearbyDispensaries.length})
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {nearbyDispensaries.map((disp) => {
+                  const isSelected = selectedDispensaryId === disp.id;
+                  const matchSku = disp.skus?.[0];
+                  return (
+                    <div
+                      key={disp.id}
+                      onClick={() => {
+                        setSelectedDispensaryId(isSelected ? null : disp.id);
+                      }}
+                      className={`relative flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-50/40 shadow-sm"
+                          : "border-border hover:border-accent/40 hover:bg-muted/10"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h5 className="font-semibold text-sm text-text leading-tight">
+                            {disp.name}
+                          </h5>
+                          <p className="text-xs text-text-muted mt-0.5">
+                            📍 {disp.geo.addressLine1}, {disp.geo.city}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 shrink-0">
+                          {disp.distanceMiles.toFixed(1)} mi
+                        </span>
+                      </div>
+
+                      {/* Stock & pricing details */}
+                      {matchSku ? (
+                        <div className="mt-3 pt-3 border-t border-dashed border-border flex items-center justify-between text-xs">
+                          <div>
+                            <span className="text-text-muted">Price: </span>
+                            <span className="font-semibold text-text">${(matchSku.priceCents / 100).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-text-muted">Stock: </span>
+                            <span className={`font-semibold ${matchSku.inventoryCount && matchSku.inventoryCount > 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                              {matchSku.inventoryCount !== null ? `${matchSku.inventoryCount} units` : "In Stock"}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 pt-3 border-t border-dashed border-border text-xs text-text-subtle">
+                          Stock levels synchronized recently
+                        </div>
+                      )}
+
+                      {/* Locked state indicator */}
+                      {isSelected && (
+                        <div className="absolute right-3 bottom-3 flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          <span>🔒</span> Fulfilling Provider
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Hidden inputs for selected pharmacy/dispensary to submit with the form */}
+          {selectedDispensaryId && (
+            <>
+              <input
+                type="hidden"
+                name="pharmacyId"
+                value={selectedDispensaryId}
+              />
+              <input
+                type="hidden"
+                name="pharmacyName"
+                value={nearbyDispensaries.find((d) => d.id === selectedDispensaryId)?.name ?? ""}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ── Subscription & Signa — Dosing ──────────────────────── */}
       <Card tone="raised">
         <CardHeader>
@@ -949,19 +1300,19 @@ export function PrescribeForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!selectedProductId && (
+          {!selectedProductId && !scannedSku && (
             <p className="text-sm text-text-subtle italic">
-              Select a product from the formulary to run the interaction check.
+              Select a product from the formulary or scan a barcode to run the interaction check.
             </p>
           )}
 
-          {selectedProductId && medications.length === 0 && (
+          {(selectedProductId || scannedSku) && medications.length === 0 && (
             <p className="text-sm text-text-subtle italic">
               No conventional medications on file. No interactions to check.
             </p>
           )}
 
-          {selectedProductId && medications.length > 0 && interactions.length === 0 && (
+          {(selectedProductId || scannedSku) && medications.length > 0 && interactions.length === 0 && (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-accent-soft/50 border border-[color:var(--success)]/20">
               <InteractionBadge severity="green" />
               <span className="text-sm text-text">
