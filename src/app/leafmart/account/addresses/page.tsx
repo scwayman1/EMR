@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { AccountSidebar } from "@/components/leafmart/AccountSidebar";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface Address {
   id: string;
@@ -52,6 +53,7 @@ function labelClass() {
 }
 
 export default function AddressesPage() {
+  const confirm = useConfirm();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,7 +143,14 @@ export default function AddressesPage() {
   }
 
   async function remove(id: string) {
-    if (!window.confirm("Delete this address?")) return;
+    const ok = await confirm({
+      title: "Delete this address?",
+      description:
+        "Future orders won't be able to ship here. You can always add it again.",
+      severity: "danger",
+      confirmLabel: "Delete address",
+    });
+    if (!ok) return;
     await fetch(`/api/leafmart/addresses/${id}`, { method: "DELETE" });
     await refresh();
   }

@@ -38,6 +38,7 @@ import { ResolveButton } from "./resolve-button";
 import { ExportModal, type ExportableMessage } from "./export-modal";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BulkActionBar, useBulkSelection } from "@/components/ui/bulk-action-bar";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   useContextMenu,
@@ -1048,6 +1049,7 @@ export function SmartInboxView({
   const reduceMotion = useReducedMotion() ?? false;
   const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
   const childVariants = useMemo(() => listStaggerChild(reduceMotion), [reduceMotion]);
+  const confirm = useConfirm();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     initialThreadId ?? triaged[0]?.threadId ?? null,
   );
@@ -1526,15 +1528,16 @@ export function SmartInboxView({
                         setSelectedThreadId(t.threadId);
                       }}
                       onArchive={() => {
-                        if (
-                          typeof window !== "undefined" &&
-                          !window.confirm(
-                            `Archive the thread with ${t.patientName}? You can find it later under Archived.`,
-                          )
-                        ) {
-                          return;
-                        }
-                        setSelectedThreadId(null);
+                        void (async () => {
+                          const ok = await confirm({
+                            title: `Archive the thread with ${t.patientName}?`,
+                            description:
+                              "It moves off the active inbox. You can pull it back from Archived if they reply.",
+                            severity: "danger",
+                            confirmLabel: "Archive thread",
+                          });
+                          if (ok) setSelectedThreadId(null);
+                        })();
                       }}
                       onCopyLink={() => {
                         try {
