@@ -18,7 +18,13 @@ export async function GET(req: Request) {
   }
 
   const row = await prisma.dispensarySku.findFirst({
-    where: { sku, active: true },
+    where: {
+      active: true,
+      OR: [
+        { sku },
+        { upc: sku },
+      ],
+    },
     select: {
       id: true,
       dispensaryId: true,

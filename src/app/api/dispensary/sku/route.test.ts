@@ -46,7 +46,7 @@ describe("GET /api/dispensary/sku", () => {
     expect((await res.json()).error).toBe("sku_required");
   });
 
-  it("returns 404 when no active SKU matches", async () => {
+  it("returns 404 when no active SKU or UPC matches", async () => {
     hoisted.mockPrisma.dispensarySku.findFirst.mockResolvedValue(null);
 
     const req = makeRequest({ sku: "missing-sku" });
@@ -57,12 +57,15 @@ describe("GET /api/dispensary/sku", () => {
     expect((await res.json()).error).toBe("sku_not_found");
     expect(hoisted.mockPrisma.dispensarySku.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { sku: "missing-sku", active: true },
+        where: {
+          active: true,
+          OR: [{ sku: "missing-sku" }, { upc: "missing-sku" }],
+        },
       }),
     );
   });
 
-  it("returns SKU details when found", async () => {
+  it("returns SKU details when found by SKU", async () => {
     const row = {
       id: "sku-row-1",
       dispensaryId: "disp-1",
@@ -106,7 +109,55 @@ describe("GET /api/dispensary/sku", () => {
     });
     expect(hoisted.mockPrisma.dispensarySku.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { sku: "ABC-123", active: true },
+        where: {
+          active: true,
+          OR: [{ sku: "ABC-123" }, { upc: "ABC-123" }],
+        },
+      }),
+    );
+  });
+
+  it("returns SKU details when found by UPC", async () => {
+    const row = {
+      id: "sku-row-1",
+      dispensaryId: "disp-1",
+      sku: "ABC-123",
+      upc: "012345678905",
+      name: "Sleep Tincture 30mL",
+      brand: "LeafCo",
+      format: "tincture",
+      strainType: "hybrid",
+      thcMgPerUnit: 5,
+      cbdMgPerUnit: 10,
+      thcPercent: 0.1,
+      cbdPercent: 0.2,
+      packSize: "30mL",
+      priceCents: 4500,
+      inStock: true,
+      inventoryCount: 12,
+      imageUrl: "https://cdn/img.png",
+      coaUrl: "https://cdn/coa.pdf",
+      description: "A nice tincture",
+    };
+    hoisted.mockPrisma.dispensarySku.findFirst.mockResolvedValue(row);
+
+    const req = makeRequest({ sku: "012345678905" });
+
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toMatchObject({
+      sku: "ABC-123",
+      upc: "012345678905",
+      format: "tincture",
+    });
+    expect(hoisted.mockPrisma.dispensarySku.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          active: true,
+          OR: [{ sku: "012345678905" }, { upc: "012345678905" }],
+        },
       }),
     );
   });
