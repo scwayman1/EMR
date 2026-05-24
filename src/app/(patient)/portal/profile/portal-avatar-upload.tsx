@@ -8,13 +8,14 @@ interface PortalAvatarUploadProps {
   initialSrc: string | null;
 }
 
+/**
+ * Patient-portal profile avatar. Hands the cropped JPEG dataURL to
+ * `savePatientPortalPhoto`. Errors propagate so the AvatarUpload toast
+ * shows an "Upload failed" message instead of silently swallowing.
+ */
 export function PortalAvatarUpload({ initials, initialSrc }: PortalAvatarUploadProps) {
-  const handleUpload = async (base64: string) => {
-    try {
-      await savePatientPortalPhoto(base64);
-    } catch (err) {
-      console.error("Failed to save portal photo", err);
-    }
+  const handleUpload = async (dataUrl: string) => {
+    await savePatientPortalPhoto(dataUrl);
   };
 
   return (

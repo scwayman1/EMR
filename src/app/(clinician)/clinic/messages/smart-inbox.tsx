@@ -34,6 +34,11 @@ import { CallBubble, type CallLogData } from "./call-bubble";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BulkActionBar, useBulkSelection } from "@/components/ui/bulk-action-bar";
 import { useToast } from "@/components/ui/toast";
+import {
+  useContextMenu,
+  ContextMenuIcons,
+  type ContextMenuItem,
+} from "@/components/ui/context-menu";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -823,6 +828,160 @@ function smartScore(t: TriagedMessage): number {
   return t.unreadCount > 0 ? base - 1 : base;
 }
 
+// ---------------------------------------------------------------------------
+// Thread list row — wrapped in a per-row right-click ContextMenu (Monday
+// /Linear-tier quick actions). The hook MUST live in a component so we
+// can call it once per visible row; calling it inside `.map(...)` would
+// be a hooks-in-loop violation.
+// ---------------------------------------------------------------------------
+
+interface ThreadRowProps {
+  thread: TriagedMessage;
+  isSelected: boolean;
+  isPinned: boolean;
+  childVariants: ReturnType<typeof listStaggerChild>;
+  onSelect: () => void;
+  onTogglePin: () => void;
+  onMarkRead: () => void;
+  onResolve: () => void;
+  onArchive: () => void;
+  onCopyLink: () => void;
+}
+
+function ThreadInboxRow({
+  thread: t,
+  isSelected,
+  isPinned,
+  childVariants,
+  onSelect,
+  onTogglePin,
+  onMarkRead,
+  onResolve,
+  onArchive,
+  onCopyLink,
+}: ThreadRowProps) {
+  const items: ContextMenuItem[] = [
+    { label: "Open", icon: ContextMenuIcons.Open, onSelect: (c) => { onSelect(); c(); }, kbd: "↵" },
+    {
+      label: t.unreadCount > 0 ? "Mark as read" : "Already read",
+      icon: ContextMenuIcons.Check,
+      disabled: t.unreadCount === 0,
+      onSelect: (c) => { onMarkRead(); c(); },
+    },
+    { label: "Resolve thread", icon: ContextMenuIcons.Check, onSelect: (c) => { onResolve(); c(); } },
+    { divider: true, label: "" },
+    { label: "Copy link to thread", icon: ContextMenuIcons.Link, onSelect: (c) => { onCopyLink(); c(); }, kbd: "⌘ L" },
+    {
+      label: isPinned ? "Unpin from top" : "Pin to top",
+      icon: ContextMenuIcons.Pin,
+      onSelect: (c) => { onTogglePin(); c(); },
+    },
+    { divider: true, label: "" },
+    { label: "Archive thread", icon: ContextMenuIcons.Archive, danger: true, onSelect: (c) => { onArchive(); c(); } },
+  ];
+  const ctx = useContextMenu(() => items);
+
+  return (
+    <>
+      <motion.button
+        key={t.threadId}
+        variants={childVariants}
+        onClick={onSelect}
+        onContextMenu={ctx.triggerProps.onContextMenu}
+        onTouchStart={ctx.triggerProps.onTouchStart}
+        onTouchEnd={ctx.triggerProps.onTouchEnd}
+        onTouchMove={ctx.triggerProps.onTouchMove}
+        className={cn(
+          "w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted",
+          "border-l-[3px]",
+          PRIORITY_BORDER_COLORS[t.priority],
+          isSelected && "bg-surface-muted",
+          isPinned && "bg-accent-soft/30",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {t.unreadCount > 0 && (
+                  <span className="shrink-0 h-2 w-2 rounded-full bg-accent" />
+                )}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isPinned}
+                  aria-label={isPinned ? "Unpin thread" : "Pin thread to top"}
+                  title={isPinned ? "Unpin thread" : "Pin thread to top"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onTogglePin();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === " " || e.key === "Enter") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onTogglePin();
+                    }
+                  }}
+                  className={cn(
+                    "shrink-0 inline-flex items-center justify-center h-5 w-5 rounded transition-colors",
+                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+                    isPinned
+                      ? "text-accent"
+                      : "text-text-subtle/40 hover:text-text-subtle",
+                  )}
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                    <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .013 2.371c-.125.612-.413 1.27-.978 1.834a.5.5 0 0 1-.707 0L5.95 11.756 1.854 15.85a.5.5 0 1 1-.708-.707L5.243 11.05 2.475 8.28a.5.5 0 0 1 0-.706c.565-.565 1.222-.853 1.834-.978a5.93 5.93 0 0 1 2.372.013l3.134-3.134a2.97 2.97 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
+                  </svg>
+                </span>
+                <p className="text-sm font-semibold text-text truncate">
+                  {t.patientName}
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {(t.attachmentCount ?? 0) > 0 && (
+                  <span
+                    className="inline-flex items-center gap-0.5 text-[11px] text-text-subtle"
+                    title={`${t.attachmentCount} attachment${
+                      (t.attachmentCount ?? 0) === 1 ? "" : "s"
+                    }`}
+                    aria-label={`${t.attachmentCount} attachment${
+                      (t.attachmentCount ?? 0) === 1 ? "" : "s"
+                    }`}
+                  >
+                    <PaperclipIcon className="opacity-80" />
+                    {t.attachmentCount}
+                  </span>
+                )}
+                <span className="text-[11px] text-text-subtle whitespace-nowrap">
+                  {formatRelative(t.lastMessageAt)}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-text mt-0.5 truncate">{t.subject}</p>
+            <p className="text-xs text-text-muted mt-0.5 line-clamp-1">
+              {t.summary}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <Badge tone={CATEGORY_BADGE_TONE[t.category]}>
+                {CATEGORY_LABELS[t.category]}
+              </Badge>
+              {t.needsClinician && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700">
+                  <UserAlertIcon />
+                  Needs clinician
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.button>
+      {ctx.menu}
+    </>
+  );
+}
+
 export function SmartInboxView({
   triaged,
   threadMessages,
@@ -843,6 +1002,42 @@ export function SmartInboxView({
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>(initialPriority);
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "all">("all");
   const [search, setSearch] = useState("");
+  // EMR-DnD: clinician-pinned threads bubble to the top of the list,
+  // beating priority-based smart sort. Persisted in localStorage as a
+  // Set<threadId>. TODO(schema): mirror to a `MessageThread.pinnedBy`
+  // join table so pins survive a logout / device swap.
+  const [pinnedThreadIds, setPinnedThreadIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem("inbox:pinned:v1");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.every((s) => typeof s === "string")) {
+          setPinnedThreadIds(new Set(parsed as string[]));
+        }
+      }
+    } catch {
+      // ignore — bad JSON or unavailable storage.
+    }
+  }, []);
+  const togglePinned = (threadId: string) => {
+    setPinnedThreadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(threadId)) next.delete(threadId);
+      else next.add(threadId);
+      try {
+        window.localStorage.setItem(
+          "inbox:pinned:v1",
+          JSON.stringify(Array.from(next)),
+        );
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
   // Shared motion: subtle stagger on the triaged list. No-op under
   // prefers-reduced-motion. Variants are stable across renders.
   const reduceMotion = useReducedMotion() ?? false;
@@ -924,14 +1119,19 @@ export function SmartInboxView({
 
     // EMR-657 — smart sort: urgent+unread first, then high+unread, etc.;
     // within the same score bucket, fall back to recency (newest first).
+    // EMR-DnD — pinned threads sort above all unpinned threads regardless
+    // of priority, then the existing smart-sort logic resolves ties.
     list = [...list].sort((a, b) => {
+      const aPinned = pinnedThreadIds.has(a.threadId) ? 0 : 1;
+      const bPinned = pinnedThreadIds.has(b.threadId) ? 0 : 1;
+      if (aPinned !== bPinned) return aPinned - bPinned;
       const scoreDiff = smartScore(a) - smartScore(b);
       if (scoreDiff !== 0) return scoreDiff;
       return b.lastMessageAt.localeCompare(a.lastMessageAt);
     });
 
     return list;
-  }, [triaged, priorityFilter, categoryFilter, search]);
+  }, [triaged, priorityFilter, categoryFilter, search, pinnedThreadIds]);
 
   // Visible thread IDs in current order — drives ⌘/Ctrl+A and Shift+Click
   // range selection. Recomputed whenever the filter pipeline changes.
@@ -1279,110 +1479,66 @@ export function SmartInboxView({
               filtered.map((t) => {
                 const isSelected = t.threadId === selectedThreadId;
                 const isChecked = selection.has(t.threadId);
+                const isPinned = pinnedThreadIds.has(t.threadId);
                 return (
-                  <motion.button
-                    key={t.threadId}
-                    variants={childVariants}
-                    onClick={() => setSelectedThreadId(t.threadId)}
-                    className={cn(
-                      "w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted group",
-                      "border-l-[3px]",
-                      PRIORITY_BORDER_COLORS[t.priority],
-                      isSelected && "bg-surface-muted",
-                      isChecked && "bg-accent-soft/40",
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Bulk-select checkbox — shown on hover or when
-                          any thread is already selected. Clicking the
-                          checkbox toggles selection without changing the
-                          active thread preview on the right. */}
-                      <label
-                        onClick={(e) => {
+                  <div key={t.threadId} className="relative group">
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        "absolute left-2 top-3 z-10 inline-flex items-center justify-center h-4 w-4",
+                        isChecked || selection.size > 0
+                          ? "opacity-100"
+                          : "opacity-0 group-hover:opacity-100 transition-opacity",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
                           e.stopPropagation();
+                          handleSelectionClick(
+                            t.threadId,
+                            (e.nativeEvent as MouseEvent | undefined)?.shiftKey,
+                          );
                         }}
-                        className={cn(
-                          "shrink-0 mt-1 inline-flex items-center justify-center h-4 w-4",
-                          isChecked || selection.size > 0
-                            ? "opacity-100"
-                            : "opacity-0 group-hover:opacity-100 transition-opacity",
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            handleSelectionClick(
-                              t.threadId,
-                              (e.nativeEvent as MouseEvent | undefined)
-                                ?.shiftKey,
-                            );
-                          }}
-                          aria-label={`Select thread with ${t.patientName}`}
-                          className="h-4 w-4 rounded border-border-strong text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                        />
-                      </label>
-                      <div className="flex-1 min-w-0">
-                        {/* Row 1: patient name + timestamp */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            {t.unreadCount > 0 && (
-                              <span className="shrink-0 h-2 w-2 rounded-full bg-accent" />
-                            )}
-                            <p className="text-sm font-semibold text-text truncate">
-                              {t.patientName}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {/* EMR-659 — paperclip + count when the thread
-                                has any attachment-like artifacts (detected
-                                by server-side heuristic on message bodies). */}
-                            {(t.attachmentCount ?? 0) > 0 && (
-                              <span
-                                className="inline-flex items-center gap-0.5 text-[11px] text-text-subtle"
-                                title={`${t.attachmentCount} attachment${
-                                  (t.attachmentCount ?? 0) === 1 ? "" : "s"
-                                }`}
-                                aria-label={`${t.attachmentCount} attachment${
-                                  (t.attachmentCount ?? 0) === 1 ? "" : "s"
-                                }`}
-                              >
-                                <PaperclipIcon className="opacity-80" />
-                                {t.attachmentCount}
-                              </span>
-                            )}
-                            <span className="text-[11px] text-text-subtle whitespace-nowrap">
-                              {formatRelative(t.lastMessageAt)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Row 2: subject */}
-                        <p className="text-xs text-text mt-0.5 truncate">
-                          {t.subject}
-                        </p>
-
-                        {/* Row 3: AI summary */}
-                        <p className="text-xs text-text-muted mt-0.5 line-clamp-1">
-                          {t.summary}
-                        </p>
-
-                        {/* Row 4: badges */}
-                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                          <Badge tone={CATEGORY_BADGE_TONE[t.category]}>
-                            {CATEGORY_LABELS[t.category]}
-                          </Badge>
-                          {t.needsClinician && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700">
-                              <UserAlertIcon />
-                              Needs clinician
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.button>
+                        aria-label={`Select thread with ${t.patientName}`}
+                        className="h-4 w-4 rounded border-border-strong text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      />
+                    </label>
+                    <ThreadInboxRow
+                      thread={t}
+                      isSelected={isSelected}
+                      isPinned={isPinned}
+                      childVariants={childVariants}
+                      onSelect={() => setSelectedThreadId(t.threadId)}
+                      onTogglePin={() => togglePinned(t.threadId)}
+                      onMarkRead={() => {
+                        setSelectedThreadId(t.threadId);
+                      }}
+                      onResolve={() => {
+                        setSelectedThreadId(t.threadId);
+                      }}
+                      onArchive={() => {
+                        if (
+                          typeof window !== "undefined" &&
+                          !window.confirm(
+                            `Archive the thread with ${t.patientName}? You can find it later under Archived.`,
+                          )
+                        ) {
+                          return;
+                        }
+                        setSelectedThreadId(null);
+                      }}
+                      onCopyLink={() => {
+                        try {
+                          const url = `${window.location.origin}/clinic/messages?thread=${t.threadId}`;
+                          void navigator.clipboard?.writeText(url);
+                        } catch {
+                          /* ignore */
+                        }
+                      }}
+                    />
+                  </div>
                 );
               })
             )}
