@@ -4,6 +4,7 @@ import { UniversalFeedbackFab } from "@/components/feedback/UniversalFeedbackFab
 import { ClerkProvider } from "@clerk/nextjs";
 import { CookieConsent } from "@/components/layout/CookieConsent";
 import { ToastProvider } from "@/components/ui/toast";
+import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 
 export const metadata: Metadata = {
   title: {
@@ -93,9 +94,11 @@ export default function RootLayout({
           Skip to content
         </a>
         <ToastProvider>
-          {children}
-          <UniversalFeedbackFab />
-          <CookieConsent />
+          <ConfirmProvider>
+            {children}
+            <UniversalFeedbackFab />
+            <CookieConsent />
+          </ConfirmProvider>
         </ToastProvider>
       </body>
     </html>
