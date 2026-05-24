@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ModalShell } from "@/components/ui/modal-shell";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { formatRelative } from "@/lib/utils/format";
 
 export type CallRow = {
@@ -63,14 +63,12 @@ const DETAIL_TITLES: Record<ModalItem["kind"], string> = {
 
 function DetailModal({ item, onClose }: { item: ModalItem; onClose: () => void }) {
   return (
-    <ModalShell
-      open={true}
-      onClose={onClose}
-      title={DETAIL_TITLES[item.kind]}
-      placement="center"
-      maxWidth="max-w-md"
-    >
-      <div className="px-6 py-5 space-y-4">
+    <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="max-w-md p-0">
+        <div className="px-6 py-5 border-b border-border">
+          <DialogTitle>{DETAIL_TITLES[item.kind]}</DialogTitle>
+        </div>
+        <div className="px-6 py-5 space-y-4">
         <dl className="space-y-2 text-sm">
           {item.kind === "call" && (
             <>
@@ -125,7 +123,8 @@ function DetailModal({ item, onClose }: { item: ModalItem; onClose: () => void }
           <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
-    </ModalShell>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -161,7 +160,11 @@ export function CommsRecentClient({
           </CardHeader>
           <CardContent className="space-y-1">
             {calls.length === 0 ? (
-              <EmptyState title="No calls yet" description="Calls launched from the inbox or chart will appear here." />
+              <EmptyState
+                title="No calls yet today"
+                description="Phone and video sessions launched from the inbox or any patient chart will land here automatically."
+                className="p-6"
+              />
             ) : (
               calls.map((call) => (
                 <button
@@ -188,7 +191,11 @@ export function CommsRecentClient({
           </CardHeader>
           <CardContent className="space-y-1">
             {faxes.length === 0 ? (
-              <EmptyState title="No faxes yet" description="Send your first fax from the fax tab." />
+              <EmptyState
+                title="No faxes in flight"
+                description="Both inbound and outbound fax activity show up here, with page counts and delivery state."
+                className="p-6"
+              />
             ) : (
               faxes.map((fax) => (
                 <button
@@ -218,7 +225,11 @@ export function CommsRecentClient({
           </CardHeader>
           <CardContent className="space-y-1">
             {broadcasts.length === 0 ? (
-              <EmptyState title="No campaigns yet" description="Use SMS broadcast to message patient cohorts." />
+              <EmptyState
+                title="No broadcasts yet"
+                description="Send your first cohort SMS or email and we'll log delivery, opens, and replies here."
+                className="p-6"
+              />
             ) : (
               broadcasts.map((c) => (
                 <button

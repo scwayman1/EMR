@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Wordmark } from "@/components/ui/logo";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 type FooterLink = { label: string; href?: string; external?: boolean };
 
@@ -263,9 +264,10 @@ export function SiteFooter() {
             <span>&copy; {new Date().getFullYear()} Leafjourney Health.</span>
             <BackToTop />
           </div>
-          <div className="flex flex-col sm:flex-row gap-1 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
             <span>Hemp-derived products ship nationally where permitted.</span>
             <span>Licensed cannabis available intrastate only.</span>
+            <ThemeToggle />
           </div>
         </div>
       </div>
