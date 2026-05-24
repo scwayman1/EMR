@@ -11,10 +11,12 @@ import {
   type Era835Header,
 } from "@/lib/billing/eob";
 
+import { money } from "@/lib/ui/format";
+
 export const metadata = { title: "EOB Inbox" };
 
 function formatMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  return money(cents);
 }
 
 // Sample 835 fixtures — once the clearinghouse webhook lands these come
