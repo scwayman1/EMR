@@ -18,6 +18,7 @@ import { Breadcrumbs } from "@/components/super-admin/breadcrumbs";
 import { loadPracticeLandingCards } from "./loaders";
 import { PracticeCard } from "./practice-card";
 import { PublishedBanner } from "./published-banner";
+import { money } from "@/lib/ui/format";
 
 export const metadata: Metadata = {
   title: "Practices — Leafjourney",
@@ -86,9 +87,7 @@ export default async function PracticesLandingPage({
           />
           <SummaryStat
             label="Collected"
-            value={`$${(totalPaidCents / 100).toLocaleString(undefined, {
-              maximumFractionDigits: 0,
-            })}`}
+            value={money(totalPaidCents, { compactDollars: true })}
             sub="Posted to claims"
           />
         </div>

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { money } from "@/lib/ui/format";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -53,7 +54,7 @@ const CATEGORY_LABELS: Record<SupplyCategory, string> = {
 const COMMON_SYMPTOMS = ["cough", "sore throat", "insomnia", "pain", "anxiety", "indigestion"];
 
 function formatPrice(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return money(cents);
 }
 
 export default async function SupplyStorePage({

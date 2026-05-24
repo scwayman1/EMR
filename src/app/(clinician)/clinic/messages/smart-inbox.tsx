@@ -23,6 +23,7 @@ import {
   type MessageCategory,
 } from "@/lib/domain/smart-inbox";
 import { sendReply, composeMessage, type ComposeResult } from "./actions";
+import { isResolvedMarker } from "./resolve-marker";
 import {
   bulkMarkThreadsReadAction,
   bulkResolveThreadsAction,
@@ -31,8 +32,13 @@ import {
 } from "./bulk-actions";
 import { CallLaunchButtons } from "@/components/communications/call-launch-buttons";
 import { CallBubble, type CallLogData } from "./call-bubble";
+// EMR-660 — Resolve button + Export modal live in sibling files to keep
+// the smart-inbox diff small (collision risk with EMR-659).
+import { ResolveButton } from "./resolve-button";
+import { ExportModal, type ExportableMessage } from "./export-modal";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BulkActionBar, useBulkSelection } from "@/components/ui/bulk-action-bar";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   useContextMenu,
@@ -1043,6 +1049,7 @@ export function SmartInboxView({
   const reduceMotion = useReducedMotion() ?? false;
   const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
   const childVariants = useMemo(() => listStaggerChild(reduceMotion), [reduceMotion]);
+  const confirm = useConfirm();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     initialThreadId ?? triaged[0]?.threadId ?? null,
   );
@@ -1052,6 +1059,8 @@ export function SmartInboxView({
   // text (case-insensitive substring). Resets whenever the selected thread
   // changes so a stale query doesn't carry across threads.
   const [threadSearch, setThreadSearch] = useState("");
+  // EMR-660 — Export modal open state for the currently-selected thread.
+  const [exportOpen, setExportOpen] = useState(false);
 
   // Bulk thread selection (multi-select on the left panel).
   const selection = useBulkSelection<string>();
@@ -1519,15 +1528,16 @@ export function SmartInboxView({
                         setSelectedThreadId(t.threadId);
                       }}
                       onArchive={() => {
-                        if (
-                          typeof window !== "undefined" &&
-                          !window.confirm(
-                            `Archive the thread with ${t.patientName}? You can find it later under Archived.`,
-                          )
-                        ) {
-                          return;
-                        }
-                        setSelectedThreadId(null);
+                        void (async () => {
+                          const ok = await confirm({
+                            title: `Archive the thread with ${t.patientName}?`,
+                            description:
+                              "It moves off the active inbox. You can pull it back from Archived if they reply.",
+                            severity: "danger",
+                            confirmLabel: "Archive thread",
+                          });
+                          if (ok) setSelectedThreadId(null);
+                        })();
                       }}
                       onCopyLink={() => {
                         try {
@@ -1596,14 +1606,36 @@ export function SmartInboxView({
                         messageThreadId={selectedTriage.threadId}
                         counterpartyName={selectedThread.patientName}
                       />
-                      <Button variant="ghost" size="sm" onClick={() => alert("Thread exported to PDF.")}>
+                      <Button variant="ghost" size="sm" onClick={() => setExportOpen(true)}>
                         Export
                       </Button>
-                      <Button variant="secondary" size="sm" onClick={() => alert("Thread marked as resolved.")}>
-                        Resolve
-                      </Button>
+                      <ResolveButton
+                        threadId={selectedThread.threadId}
+                        isResolved={(() => {
+                          // EMR-660 — Resolved when the most recent clinician
+                          // message carries the [[RESOLVED]] sentinel AND no
+                          // patient reply has landed after it. We check the
+                          // last message in chronological order.
+                          const sorted = [...selectedThread.messages].sort((a, b) =>
+                            a.createdAt.localeCompare(b.createdAt),
+                          );
+                          const last = sorted[sorted.length - 1];
+                          return !!last && isResolvedMarker(last.body);
+                        })()}
+                      />
                     </div>
                   )}
+                </div>
+                {/* EMR-660 — Continuous patient thread link. Surfaces all
+                    correspondence for this patient (across threads) as a
+                    single timeline on the chart's messages tab. */}
+                <div className="mt-2 text-xs">
+                  <Link
+                    href={`/clinic/patients/${selectedThread.patientId}#messages`}
+                    className="text-text-muted hover:text-accent hover:underline"
+                  >
+                    View all correspondence with {selectedThread.patientName} &rarr;
+                  </Link>
                 </div>
               </div>
 
@@ -1765,6 +1797,29 @@ export function SmartInboxView({
               <InlineReplyCompose
                 threadId={selectedThread.threadId}
                 patientId={selectedThread.patientId}
+              />
+              {/* EMR-660 — Export modal. Controlled by the Export button in the
+                  thread header above. Mounts here so it's scoped to the
+                  currently-selected thread. */}
+              <ExportModal
+                open={exportOpen}
+                onClose={() => setExportOpen(false)}
+                patientName={selectedThread.patientName}
+                subject={selectedThread.subject}
+                messages={selectedThread.messages.map(
+                  (m): ExportableMessage => ({
+                    id: m.id,
+                    body: m.body,
+                    createdAt: m.createdAt,
+                    senderLabel: m.senderUserId === currentUserId
+                      ? "You"
+                      : m.sender
+                        ? `${m.sender.firstName} ${m.sender.lastName}`
+                        : m.senderAgent
+                          ? `${m.senderAgent.split(":")[0] ?? "AI Assistant"} (AI)`
+                          : selectedThread.patientName,
+                  }),
+                )}
               />
             </>
           ) : (

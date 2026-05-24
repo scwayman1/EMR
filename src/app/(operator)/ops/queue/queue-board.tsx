@@ -19,6 +19,7 @@ import {
   ContextMenuIcons,
   type ContextMenuItem,
 } from "@/components/ui/context-menu";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 const COLUMN_ORDER: QueueStatus[] = [
   "scheduled",
@@ -171,6 +172,7 @@ function QueueColumn({
 
 function QueueCard({ entry }: { entry: QueueEntry }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const wait = entry.minutesWaiting;
   const waitClass = waitToneClass(wait);
 
@@ -226,13 +228,21 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
       icon: ContextMenuIcons.Archive,
       danger: true,
       onSelect: (c) => {
-        if (
-          typeof window !== "undefined" &&
-          window.confirm(`Cancel ${entry.patientName}'s visit?`)
-        ) {
-          router.refresh();
-        }
+        // Close the context menu first so the confirm dialog can take focus
+        // cleanly. Then prompt — if confirmed, refresh the board so the
+        // entry drops out of the column.
         c();
+        void (async () => {
+          const ok = await confirm({
+            title: `Cancel ${entry.patientName}'s visit?`,
+            description:
+              "They'll be removed from today's queue. You'll need to reschedule from their chart if they still want to be seen.",
+            severity: "danger",
+            confirmLabel: "Cancel visit",
+            cancelLabel: "Keep on queue",
+          });
+          if (ok) router.refresh();
+        })();
       },
     },
   ];

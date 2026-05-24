@@ -10,6 +10,7 @@ import { ConsciousnessOverlay } from "@/components/ui/consciousness-overlay";
 import { ClinicianTour } from "@/components/onboarding/clinician-tour";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { HelpDrawer } from "@/components/help/help-drawer";
+import { RecentPatientsStrip } from "@/components/patient/recent-patients-strip";
 import { prisma } from "@/lib/db/prisma";
 import {
   computeApprovalsBadge,
@@ -193,6 +194,7 @@ export default async function ClinicianLayout({
       <ClinicianTour />
       <InstallPrompt />
       <HelpDrawer />
+      <RecentPatientsStrip userId={user.id} />
       {children}
     </AppShell>
   );

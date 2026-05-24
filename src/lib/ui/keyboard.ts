@@ -52,6 +52,7 @@ export const GLOBAL_SHORTCUTS: ShortcutDescriptor[] = [
   { section: "Navigation", keys: "g h", label: "Go home", description: "Open the clinic overview" },
   { section: "Navigation", keys: "g m", label: "Go to messages", description: "Open the clinical inbox" },
   { section: "Navigation", keys: "g p", label: "Go to patients", description: "Open the patient roster" },
+  { section: "Navigation", keys: "g j", label: "Quick-jump to patient", description: "Open the patient quick-jump picker" },
   { section: "Navigation", keys: "g s", label: "Go to sign-off", description: "Open the unified sign-off queue" },
   { section: "Navigation", keys: "g a", label: "Go to approvals", description: "Open AI draft approvals" },
   { section: "Navigation", keys: "g b", label: "Go to morning brief", description: "Open today's agenda" },
