@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils/cn";
+import { Tooltip } from "@/components/ui/tooltip";
 
 /**
  * Three-state theme toggle: Light · Dark · System.
@@ -145,25 +146,26 @@ function SegmentButton({
   icon: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={active}
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-        active
-          ? "bg-surface text-text shadow-sm"
-          : "text-text-subtle hover:text-text",
-      )}
-      title={`${label} theme`}
-    >
-      <span aria-hidden="true" className="inline-flex">
-        {icon}
-      </span>
-      <span>{label}</span>
-    </button>
+    <Tooltip content={`${label} theme`}>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={active}
+        onClick={onClick}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+          active
+            ? "bg-surface text-text shadow-sm"
+            : "text-text-subtle hover:text-text",
+        )}
+      >
+        <span aria-hidden="true" className="inline-flex">
+          {icon}
+        </span>
+        <span>{label}</span>
+      </button>
+    </Tooltip>
   );
 }
 
@@ -195,11 +197,11 @@ function IconCycleToggle({
         ? "Dark theme (click for light)"
         : "System theme (click for dark)";
   return (
+    <Tooltip content={label}>
     <button
       type="button"
       onClick={next}
       aria-label={label}
-      title={label}
       className={cn(
         "inline-flex h-9 w-9 items-center justify-center rounded-md",
         "text-text-muted transition-colors hover:bg-surface-muted hover:text-text",
@@ -214,6 +216,7 @@ function IconCycleToggle({
       {mounted && mode === "system" && <SystemIcon />}
       {!mounted && <span className="block h-[14px] w-[14px]" aria-hidden="true" />}
     </button>
+    </Tooltip>
   );
 }
 
