@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatSig, DEMO_PHARMACIES } from "@/lib/domain/e-prescribe";
 
 // EMR-350 — DEA schedule + controlled-substance gating.
@@ -79,21 +80,32 @@ export function RxPreview({
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
   const deaSchedule = deriveDeaSchedule(productType, thcMg, cbdMg);
   const isControlled = deaSchedule !== null;
+  const confirm = useConfirm();
 
-  function handleSignClick() {
+  async function handleSignClick() {
     if (signing || signed) return;
     if (isControlled) {
       // Required confirmation step before signing a controlled prescription.
-      // Browser confirm() keeps the cleanup change small; we can swap in a
-      // bespoke modal once the prescribing surface gets its next pass.
-      const ok = window.confirm(
-        `This prescription is for a controlled substance (DEA Schedule ${deaSchedule}).\n\n` +
-          `By continuing you confirm:\n` +
-          `  • The patient and indication are correct\n` +
-          `  • Quantity and refills follow Schedule ${deaSchedule} limits\n` +
-          `  • You are authorized to prescribe this schedule in this state\n\n` +
-          `Sign and transmit?`,
-      );
+      // ConfirmDialog gives us accessible focus + theme-aware copy; the
+      // server-side DEA gate is still the source of truth.
+      const ok = await confirm({
+        title: `Sign Schedule ${deaSchedule} prescription?`,
+        description: (
+          <span>
+            This is a controlled substance. By continuing you attest that:
+            <ul className="mt-2 ml-4 list-disc space-y-0.5">
+              <li>the patient and indication are correct,</li>
+              <li>quantity and refills follow Schedule {deaSchedule} limits,</li>
+              <li>
+                you are authorized to prescribe Schedule {deaSchedule} in this
+                state.
+              </li>
+            </ul>
+          </span>
+        ),
+        severity: "warning",
+        confirmLabel: "Sign and transmit",
+      });
       if (!ok) return;
     }
     onSign();

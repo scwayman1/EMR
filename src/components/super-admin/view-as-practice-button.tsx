@@ -18,6 +18,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 interface Props {
   /**
@@ -32,18 +33,21 @@ interface Props {
 
 export function ViewAsPracticeButton({ practiceOrgId, practiceName }: Props) {
   const router = useRouter();
+  const confirm = useConfirm();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function handleClick() {
+  async function handleClick() {
     // Confirm to prevent accidental clicks — impersonation writes an
     // audit row that the user can't undo, so making the action
     // intentional is cheap insurance.
-    const ok = window.confirm(
-      `Enter "View as practice" mode for ${practiceName}?\n\n` +
-        "Your super-admin identity remains the audit attribution. " +
-        "Session auto-expires in 30 minutes.",
-    );
+    const ok = await confirm({
+      title: `View as ${practiceName}?`,
+      description:
+        "Your super-admin identity stays attached to every action in the audit log. The impersonation session auto-expires in 30 minutes.",
+      severity: "warning",
+      confirmLabel: "Enter view-as mode",
+    });
     if (!ok) return;
 
     setError(null);

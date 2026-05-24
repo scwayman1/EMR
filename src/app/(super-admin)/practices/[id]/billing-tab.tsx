@@ -3,12 +3,10 @@
 // the table is sufficient for the v1 acceptance gate (EMR-745 notes).
 
 import { loadPracticeBilling } from "../loaders";
+import { money } from "@/lib/ui/format";
 
 function formatDollars(cents: number): string {
-  const dollars = cents / 100;
-  return `$${dollars.toLocaleString(undefined, {
-    maximumFractionDigits: 0,
-  })}`;
+  return money(cents, { compactDollars: true });
 }
 
 function formatNumber(n: number): string {

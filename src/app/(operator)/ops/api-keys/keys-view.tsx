@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, FieldGroup } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils/cn";
 
 type Scope = "read-only" | "read-write" | "admin";
@@ -224,23 +225,30 @@ export function KeysView() {
         </Modal>
       )}
 
-      {revokeTarget && (
-        <Modal onClose={() => setRevokeTarget(null)}>
-          <h2 className="font-display text-xl text-text mb-2">Revoke this key?</h2>
-          <p className="text-sm text-text-muted mb-4">
-            Revoking <span className="font-medium">{revokeTarget.label}</span> will immediately
-            invalidate any integration using it. This cannot be undone.
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setRevokeTarget(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={confirmRevoke}>
-              Revoke key
-            </Button>
-          </div>
-        </Modal>
-      )}
+      {/* Revoke confirmation — uses the shared ConfirmDialog with a typed
+          confirmation gate so the operator has to retype the key label
+          before the destructive button enables. Stripe / GitHub pattern. */}
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        onClose={() => setRevokeTarget(null)}
+        onConfirm={confirmRevoke}
+        title="Revoke this API key?"
+        description={
+          revokeTarget ? (
+            <span>
+              Any integration using{" "}
+              <span className="font-medium text-text">{revokeTarget.label}</span>{" "}
+              stops working the instant you revoke it. The key cannot be reissued
+              — you&rsquo;ll have to generate a new one.
+            </span>
+          ) : (
+            ""
+          )
+        }
+        severity="danger"
+        confirmLabel="Revoke key"
+        requireTypedConfirmation={revokeTarget?.label}
+      />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   type DispensaryProductInput,
 } from "@/lib/billing/dispensary-revenue";
 import { Sparkline } from "@/components/ui/sparkline";
+import { money } from "@/lib/ui/format";
 
 export const metadata = { title: "Revenue Cockpit" };
 
@@ -24,18 +25,11 @@ export const metadata = { title: "Revenue Cockpit" };
 // ---------------------------------------------------------------------------
 
 function formatMoney(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
+  return money(cents, { compactDollars: true });
 }
 
 function formatMoneyPrecise(cents: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(cents / 100);
+  return money(cents);
 }
 
 const STATUS_COLORS: Record<string, string> = {

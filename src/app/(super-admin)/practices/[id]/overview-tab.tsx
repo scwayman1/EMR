@@ -4,14 +4,12 @@
 // that we have a full page.
 
 import { Badge } from "@/components/ui/badge";
+import { money } from "@/lib/ui/format";
 import type { PracticeCardData } from "../types";
 import { humanizeCareModel, humanizeSpecialty } from "../types";
 
 function formatDollars(cents: number): string {
-  const dollars = cents / 100;
-  if (dollars >= 1_000_000) return `$${(dollars / 1_000_000).toFixed(1)}M`;
-  if (dollars >= 1_000) return `$${(dollars / 1_000).toFixed(1)}K`;
-  return `$${dollars.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  return money(cents, { abbreviate: true });
 }
 
 function formatNumber(n: number): string {

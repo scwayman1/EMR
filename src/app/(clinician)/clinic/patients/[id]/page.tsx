@@ -23,6 +23,7 @@ import { ChartTabs, type TabKey, type TabPeeks } from "./chart-tabs";
 import { ChartFrame } from "./chart-frame";
 import { loadPeekSummaries } from "./peek-summary";
 import { TrackPatientView } from "@/components/shell/recent-patients";
+import { TrackChartView } from "@/components/patient/track-chart-view";
 import { dueScreenings } from "@/lib/domain/uspstf-screenings";
 import { CorrespondenceTab, type SerializedThread } from "./correspondence-tab";
 import { MemoryTab } from "./memory-tab";
@@ -552,6 +553,13 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
       <TrackPatientView
         patientId={patient.id}
         patientName={`${patient.firstName} ${patient.lastName}`}
+      />
+      {/* Per-user versioned tracker for the top-bar recent-patients strip */}
+      <TrackChartView
+        userId={user.id}
+        patientId={patient.id}
+        patientName={`${patient.firstName} ${patient.lastName}`}
+        avatarUrl={intake.photoUrl ?? null}
       />
 
       {/* ── Dossier header ────────────────────────────────── */}
