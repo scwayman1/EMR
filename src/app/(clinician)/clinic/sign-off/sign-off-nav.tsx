@@ -1,7 +1,9 @@
 "use client";
 
+import { type ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { FileText, FlaskConical, LayoutGrid, MessageSquare, Pill } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export type NavSection = {
@@ -9,6 +11,14 @@ export type NavSection = {
   href: string;
   count: number;
   hasUrgent: boolean;
+};
+
+const NAV_ICONS: Record<string, ComponentType<{ className?: string; "aria-hidden"?: boolean }>> = {
+  "/clinic/sign-off": LayoutGrid,
+  "/clinic/sign-off/labs": FlaskConical,
+  "/clinic/sign-off/refills": Pill,
+  "/clinic/sign-off/notes": FileText,
+  "/clinic/sign-off/messages": MessageSquare,
 };
 
 export function SignOffNav({ sections }: { sections: NavSection[] }) {
@@ -21,6 +31,7 @@ export function SignOffNav({ sections }: { sections: NavSection[] }) {
         const active = isAll
           ? pathname === "/clinic/sign-off"
           : pathname === s.href || pathname.startsWith(s.href + "/");
+        const Icon = NAV_ICONS[s.href] ?? LayoutGrid;
         return (
           <Link
             key={s.href}
@@ -32,7 +43,8 @@ export function SignOffNav({ sections }: { sections: NavSection[] }) {
                 : "text-text hover:bg-surface-muted"
             )}
           >
-            <span className="flex items-center gap-1.5 truncate">
+            <span className="flex items-center gap-2 truncate">
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
               {s.hasUrgent && (
                 <span className="h-1.5 w-1.5 rounded-full bg-danger shrink-0" aria-label="urgent items" />
               )}
