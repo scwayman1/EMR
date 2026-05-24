@@ -78,11 +78,18 @@ export default async function PharmacyPage() {
         title="Pharmacy communications"
         description="Direct line to the pharmacist for clarifications and medication recommendations. Every medication change needs both pharmacist AND provider sign-off before it touches the chart."
         actions={
-          <Link href="/clinic/pharmacy/new">
-            <Button variant="primary" size="sm">
-              New thread
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/clinic/pharmacy/integrations">
+              <Button variant="ghost" size="sm">
+                Integrations
+              </Button>
+            </Link>
+            <Link href="/clinic/pharmacy/new">
+              <Button variant="primary" size="sm">
+                New thread
+              </Button>
+            </Link>
+          </div>
         }
       />
 

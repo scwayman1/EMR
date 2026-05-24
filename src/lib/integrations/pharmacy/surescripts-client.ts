@@ -97,7 +97,14 @@ export type ScriptMessageType =
   | "NewRx"
   | "RxRenewalResponse"
   | "RxChangeResponse"
-  | "CancelRx";
+  | "CancelRx"
+  // Inbound message types — pharmacy → EMR.
+  | "RxRenewalRequest"
+  | "RxChangeRequest"
+  | "RxFill"
+  | "Status"
+  | "Verify"
+  | "Error";
 
 export interface ScriptHeader {
   to: string;            // pharmacy NCPDP ID

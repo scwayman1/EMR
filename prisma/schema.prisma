@@ -5310,3 +5310,115 @@ model SupplyOrderAuditEntry {
 
   @@index([orderId, createdAt])
 }
+
+// --------------------------------------------------------------
+// Drug ecosystem integration — append-only transaction log.
+//
+// Every NCPDP SCRIPT message the EMR transmits (or receives) is
+// recorded here so the integrations dashboard can render connection
+// health, replay failed sends, and provide an auditable chain of
+// custody for ePrescribing and pharmacy interactions.
+//
+// The log is intentionally non-PHI-heavy: payload stores the serialized
+// envelope minus patient address/phone (callers strip before persist).
+// --------------------------------------------------------------
+
+enum SurescriptsTransactionDirection {
+  outbound
+  inbound
+}
+
+enum SurescriptsTransactionStatus {
+  pending
+  accepted
+  queued
+  delivered
+  rejected
+  error
+}
+
+enum SurescriptsEnvironment {
+  sandbox
+  cert_tester
+  production
+}
+
+model SurescriptsTransaction {
+  id                   String                          @id @default(cuid())
+  organizationId       String
+  prescriptionId       String?
+  patientId            String?
+  providerId           String?
+  messageType          String // NewRx | RefillRequest | CancelRx | RxChangeResponse | RxFill | Status | Verify
+  direction            SurescriptsTransactionDirection
+  environment          SurescriptsEnvironment
+  surescriptsMessageId String                          @unique
+  relatesToMessageId   String?
+  confirmationNumber   String?
+  status               SurescriptsTransactionStatus    @default(pending)
+  errorCode            String?
+  errorDescription     String?
+  latencyMs            Int?
+  payload              Json
+  ack                  Json?
+  createdAt            DateTime                        @default(now())
+  updatedAt            DateTime                        @updatedAt
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, status])
+  @@index([prescriptionId])
+  @@index([patientId])
+}
+
+// --------------------------------------------------------------
+// Electronic Prior Authorization (ePA) request tracking.
+//
+// Tracks the ePA conversation between the EMR and the payer. A single
+// ePA may go through several question/answer rounds before approval —
+// each round updates the same row's `questionsAnswered` payload and
+// status. Terminal states are `approved`, `denied`, `cancelled`.
+// --------------------------------------------------------------
+
+enum EpaRequestStatus {
+  draft
+  submitted
+  awaiting_response
+  questions_pending
+  approved
+  denied
+  cancelled
+  error
+}
+
+model EpaRequest {
+  id                String           @id @default(cuid())
+  organizationId    String
+  prescriptionId    String
+  patientId         String
+  providerId        String
+  rxcui             String?
+  drugDescription   String
+  payerId           String
+  payerName         String
+  memberId          String
+  status            EpaRequestStatus @default(draft)
+  /// Initial clinical context (diagnosis codes + free-text rationale).
+  initialContext    Json
+  /// Payer questions + provider answers, append-only per round.
+  questionsAnswered Json             @default("[]")
+  payerAuthNumber   String?
+  approvedQuantity  Int?
+  approvedDays      Int?
+  effectiveFrom     DateTime?
+  effectiveUntil    DateTime?
+  denialReason      String?
+  submittedAt       DateTime?
+  resolvedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([patientId])
+  @@index([prescriptionId])
+}
