@@ -19,6 +19,7 @@ import {
   ContextMenuIcons,
   type ContextMenuItem,
 } from "@/components/ui/context-menu";
+import { useDensity, densityClass } from "@/lib/ui/density";
 
 const COLUMN_ORDER: QueueStatus[] = [
   "scheduled",
@@ -57,6 +58,9 @@ function formatTime(iso: string): string {
 
 export function QueueBoard({ entries }: { entries: QueueEntry[] }) {
   const router = useRouter();
+  // Density preference — tightens both per-column gutters and per-card
+  // padding via the descendant selector on `QueueCard`.
+  const { density } = useDensity();
   // Bumping this state forces React to re-render the wait-time calculations
   // every minute without doing a full server round-trip in between refreshes.
   const [, setTick] = useState(0);
@@ -103,7 +107,12 @@ export function QueueBoard({ entries }: { entries: QueueEntry[] }) {
         description={`${inRooms} in rooms · ${waiting} waiting · ${done} completed today`}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div
+        className={cn(
+          "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 density-grid",
+          densityClass(density),
+        )}
+      >
         {COLUMN_ORDER.map((status) => (
           <QueueColumn
             key={status}
@@ -241,7 +250,10 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
   return (
     <Card
       tone="raised"
-      className="px-3 py-2.5"
+      // Comfortable keeps the original feel; Dense halves vertical
+      // padding so the front-desk board can show ~50% more cards per
+      // column without scroll.
+      className="px-3 py-2.5 [.density-dense_&]:px-2 [.density-dense_&]:py-1.5"
       onContextMenu={ctx.triggerProps.onContextMenu}
       onTouchStart={ctx.triggerProps.onTouchStart}
       onTouchEnd={ctx.triggerProps.onTouchEnd}

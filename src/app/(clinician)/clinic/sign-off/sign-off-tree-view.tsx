@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
+import { useDensity, densityClass } from "@/lib/ui/density";
 
 export type SignOffRow = {
   id: string;
@@ -46,6 +47,7 @@ function formatRelative(iso: string): string {
 export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<SignOffRow["kind"]>>(new Set());
+  const { density } = useDensity();
 
   const selected = rows.find((r) => r.id === selectedId) ?? null;
 
@@ -65,7 +67,7 @@ export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className={cn("flex h-full overflow-hidden", densityClass(density))}>
       {/* Tree (left) */}
       <div className="w-72 shrink-0 border-r border-border overflow-y-auto bg-surface">
         {groups.map((group) => {
@@ -104,7 +106,7 @@ export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
                         type="button"
                         onClick={() => setSelectedId(item.id === selectedId ? null : item.id)}
                         className={cn(
-                          "w-full text-left px-4 py-2.5 border-b border-border/40 transition-colors",
+                          "w-full text-left density-row border-b border-border/40 transition-colors",
                           selectedId === item.id
                             ? "bg-accent/10"
                             : "hover:bg-surface-muted/60"

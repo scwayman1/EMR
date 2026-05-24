@@ -1162,3 +1162,55 @@
     page-break-inside: avoid;
   }
 }
+
+/* -------------------------------------------------------------------
+ * Density-mode utilities (PR-follow-through to PR #467 / PR #460).
+ *
+ * Surfaces opt in by toggling `density-comfortable` or `density-dense`
+ * on their container (typically via `useDensity()` in
+ * `src/lib/ui/density.ts`). The CSS variables below let nested rows /
+ * tiles / cards consume a single tunable "step" instead of authoring
+ * two parallel className strings per surface.
+ * ------------------------------------------------------------------- */
+
+.density-comfortable {
+  --density-row-py: 0.875rem;   /* 14px — matches DataTable comfortable */
+  --density-row-px: 1rem;       /* 16px */
+  --density-row-gap: 0.625rem;  /* 10px */
+  --density-tile-py: 1rem;      /* 16px */
+  --density-tile-px: 1.25rem;   /* 20px */
+  --density-card-gap: 1rem;     /* 16px */
+  --density-stack-gap: 0.75rem; /* 12px */
+}
+
+.density-dense {
+  --density-row-py: 0.4375rem;  /* 7px — halves comfortable */
+  --density-row-px: 0.75rem;    /* 12px */
+  --density-row-gap: 0.375rem;  /* 6px */
+  --density-tile-py: 0.625rem;  /* 10px */
+  --density-tile-px: 0.875rem;  /* 14px */
+  --density-card-gap: 0.625rem; /* 10px */
+  --density-stack-gap: 0.5rem;  /* 8px */
+}
+
+/* Convenience helpers; surfaces can compose these without redefining
+ * every padding/gap rule. Authors are free to read the variables
+ * directly when they need to scope to a specific child. */
+.density-row {
+  padding-top: var(--density-row-py);
+  padding-bottom: var(--density-row-py);
+  padding-left: var(--density-row-px);
+  padding-right: var(--density-row-px);
+}
+.density-tile {
+  padding-top: var(--density-tile-py);
+  padding-bottom: var(--density-tile-py);
+  padding-left: var(--density-tile-px);
+  padding-right: var(--density-tile-px);
+}
+.density-stack > * + * {
+  margin-top: var(--density-stack-gap);
+}
+.density-grid {
+  gap: var(--density-card-gap);
+}

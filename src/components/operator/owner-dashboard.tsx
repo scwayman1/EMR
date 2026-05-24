@@ -1,5 +1,6 @@
 import * as React from "react";
 import { KpiCard, type KpiSeverity, type KpiTrend } from "./kpi-card";
+import { OwnerDashboardDensityFrame } from "./owner-dashboard-density-frame";
 import {
   computeTrend,
   denialSeverity,
@@ -140,13 +141,13 @@ export function OwnerDashboard({ snapshot }: OwnerDashboardProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <OwnerDashboardDensityFrame>
       <KpiCard {...revenueCard} />
       <KpiCard {...denialsCard} />
       <KpiCard {...scheduleCard} />
       <KpiCard {...agentsCard} />
       <KpiCard {...patientsCard} />
       <KpiCard {...arCard} />
-    </div>
+    </OwnerDashboardDensityFrame>
   );
 }

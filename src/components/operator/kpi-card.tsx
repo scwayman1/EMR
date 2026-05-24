@@ -75,7 +75,10 @@ export function KpiCard({
         "shadow-sm transition-all duration-200 ease-smooth",
         "hover:shadow-md hover:-translate-y-0.5 hover:border-border-strong",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
-        "px-6 py-6",
+        // Padding falls back to the previous fixed 24px tile; when the
+        // tile is rendered inside a density container (`.density-*` on
+        // an ancestor) the CSS vars take over for a tighter dense pass.
+        "px-6 py-6 [.density-dense_&]:px-4 [.density-dense_&]:py-4",
         className,
       )}
     >
