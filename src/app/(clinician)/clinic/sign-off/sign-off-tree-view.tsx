@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
+import { useState } from "react";
+import { type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -33,7 +34,7 @@ const KIND_LABEL: Record<SignOffRow["kind"], string> = {
   message: "Messages",
 };
 
-const KIND_ICON: Record<SignOffRow["kind"], ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>> = {
+const KIND_ICON: Record<SignOffRow["kind"], LucideIcon> = {
   lab: FlaskConical,
   refill: Pill,
   note: FileText,
@@ -156,7 +157,7 @@ export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
     groupKey: string;
     urgentCount?: number;
     itemCount: number;
-    icon?: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+    icon?: LucideIcon;
   }) {
     const isCollapsed = collapsed.has(groupKey);
     const Chevron = isCollapsed ? ChevronRight : ChevronDown;

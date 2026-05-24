@@ -1,9 +1,8 @@
 "use client";
 
-import { type ComponentType } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, FlaskConical, LayoutGrid, MessageSquare, Pill } from "lucide-react";
+import { FileText, FlaskConical, LayoutGrid, MessageSquare, Pill, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 export type NavSection = {
@@ -13,7 +12,7 @@ export type NavSection = {
   hasUrgent: boolean;
 };
 
-const NAV_ICONS: Record<string, ComponentType<{ className?: string; "aria-hidden"?: boolean }>> = {
+const NAV_ICONS: Record<string, LucideIcon> = {
   "/clinic/sign-off": LayoutGrid,
   "/clinic/sign-off/labs": FlaskConical,
   "/clinic/sign-off/refills": Pill,
