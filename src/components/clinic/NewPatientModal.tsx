@@ -6,7 +6,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { createPatientAction } from "@/app/(clinician)/clinic/patients/actions";
+import { DatePicker, toISODate } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils/cn";
+
+// DOB can't be in the future. We compute today once at module load — a few
+// hours of drift across midnight is fine for a "no future birthdays" rule.
+const TODAY_ISO = toISODate(new Date());
 
 const SEX_OPTIONS = ["", "Female", "Male", "Intersex", "Prefer not to say"];
 const MARITAL_OPTIONS = [
@@ -254,14 +259,12 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
                   <label className="text-xs font-semibold text-text uppercase tracking-wider">
                     Date of Birth <span className="text-danger">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={dateOfBirth}
-                    onChange={(e) => setDateOfBirth(e.target.value)}
-                    className={cn(
-                      "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50",
-                      errors.dateOfBirth && "border-danger ring-2 ring-danger/20"
-                    )}
+                    onChange={setDateOfBirth}
+                    max={TODAY_ISO}
+                    placeholder="MM / DD / YYYY"
+                    aria-invalid={errors.dateOfBirth ? "true" : "false"}
                   />
                 </div>
 
