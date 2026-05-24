@@ -18,6 +18,7 @@ import { ShieldAlert, Lock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DictationTextarea } from "@/components/ui/dictation-input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatRelative } from "@/lib/utils/format";
 import { addPrivateNote, type PrivateNote } from "./private-notes-actions";
@@ -108,10 +109,14 @@ export function PrivateNotesTab({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <textarea
+            {/* Dictation is the clinician's own voice → still
+                strictly human-authored, which is the load-bearing rule
+                here ("No AI autofill"). The mic button hands raw
+                transcription back; no model rewrites the text. */}
+            <DictationTextarea
               value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
+              onChange={(next) => {
+                setDraft(next);
                 if (error) setError(null);
               }}
               placeholder="e.g. Patient has shown escalating verbal aggression toward intake staff — flag for safety pairing on next visit."
@@ -121,6 +126,7 @@ export function PrivateNotesTab({
               aria-label="Private clinician note"
               aria-invalid={error ? "true" : "false"}
               disabled={isPending}
+              dictateLabel="Dictate private note"
             />
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs text-text-subtle">

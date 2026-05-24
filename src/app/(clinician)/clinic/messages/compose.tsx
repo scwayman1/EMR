@@ -1,11 +1,11 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { sendClinicReplyAction } from "./actions";
 import type { ReplyResult } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/input";
+import { DictationTextarea } from "@/components/ui/dictation-input";
 import { useToast } from "@/components/ui/toast";
 
 function ClinicReplySubmitButton() {
@@ -24,11 +24,16 @@ export function ClinicReplyCompose({ threadId }: { threadId: string }) {
   );
   const formRef = useRef<HTMLFormElement>(null);
   const { toast } = useToast();
+  // Mirror the textarea value here so the dictation primitive can append
+  // transcripts via its controlled onChange. The hidden input ferries the
+  // value to the server action so the existing form contract is intact.
+  const [body, setBody] = useState("");
 
   useEffect(() => {
     if (!state) return;
     if (state.ok) {
       formRef.current?.reset();
+      setBody("");
       toast({ title: "Reply sent", variant: "success" });
     } else {
       toast({
@@ -48,12 +53,15 @@ export function ClinicReplyCompose({ threadId }: { threadId: string }) {
       <input type="hidden" name="threadId" value={threadId} />
       <div className="flex gap-3 items-end">
         <div className="flex-1">
-          <Textarea
+          <DictationTextarea
             name="body"
             rows={2}
-            placeholder="Type your reply..."
+            placeholder="Type your reply or tap the mic to dictate..."
             required
             className="resize-none"
+            value={body}
+            onChange={setBody}
+            aria-label="Reply body"
           />
         </div>
         <ClinicReplySubmitButton />
