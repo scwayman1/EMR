@@ -225,6 +225,51 @@ export function tapPress(reduce: boolean): MotionProps {
 }
 
 // ---------------------------------------------------------------------------
+// tooltipPop — preset shared by Tooltip + Popover primitives. A short, snappy
+// fade with a tiny axis-aware slide so the overlay feels "anchored" to its
+// trigger. Honors reduced motion (no-op).
+// ---------------------------------------------------------------------------
+
+export type TooltipSide = "top" | "bottom" | "left" | "right";
+
+const TOOLTIP_OFFSET = 4;
+
+function offsetForSide(side: TooltipSide): { x: number; y: number } {
+  switch (side) {
+    case "top":
+      return { x: 0, y: TOOLTIP_OFFSET };
+    case "bottom":
+      return { x: 0, y: -TOOLTIP_OFFSET };
+    case "left":
+      return { x: TOOLTIP_OFFSET, y: 0 };
+    case "right":
+      return { x: -TOOLTIP_OFFSET, y: 0 };
+  }
+}
+
+/**
+ * `tooltipPop(reduce, side)` — spread onto a `<motion.div>` rendered inside an
+ * `<AnimatePresence>`. Drops in from the anchor side and fades out in place.
+ */
+export function tooltipPop(reduce: boolean, side: TooltipSide = "top"): MotionProps {
+  if (reduce) {
+    return {
+      initial: { opacity: 1, x: 0, y: 0, scale: 1 },
+      animate: { opacity: 1, x: 0, y: 0, scale: 1 },
+      exit: { opacity: 1, x: 0, y: 0, scale: 1 },
+      transition: { duration: 0 },
+    };
+  }
+  const off = offsetForSide(side);
+  return {
+    initial: { opacity: 0, x: off.x, y: off.y, scale: 0.97 },
+    animate: { opacity: 1, x: 0, y: 0, scale: 1 },
+    exit: { opacity: 0, x: off.x * 0.5, y: off.y * 0.5, scale: 0.99 },
+    transition: { duration: DURATION.instant, ease: EASE_PREMIUM },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Constant ceiling so engineers don't reach for arbitrary numbers.
 // ---------------------------------------------------------------------------
 
@@ -234,4 +279,5 @@ export const MOTION_CONSTANTS = {
   SPRING_MODAL,
   LIST_STAGGER_STEP,
   LIST_STAGGER_CAP,
+  TOOLTIP_OFFSET,
 } as const;

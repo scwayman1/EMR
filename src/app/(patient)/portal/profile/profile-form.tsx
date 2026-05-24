@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormState } from "react-dom";
 import { saveProfileAction, type ProfileResult } from "./actions";
-import { Button } from "@/components/ui/button";
 import { Input, FieldGroup } from "@/components/ui/input";
+import { SubmitButton } from "@/lib/ui/form-helpers";
+import { DatePicker, toISODate } from "@/components/ui/date-picker";
 import { useToast } from "@/components/ui/toast";
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Saving..." : "Save profile"}
-    </Button>
-  );
-}
+// Patient self-service DOB shouldn't be in the future. Computed once per
+// render — adequate for a form that's open briefly.
+const PROFILE_TODAY = toISODate(new Date());
+
 
 export interface ProfileValues {
   firstName: string;
@@ -106,11 +103,12 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
             htmlFor="dateOfBirth"
             hint={age !== null ? `Age: ${age}` : undefined}
           >
-            <Input
+            <DatePicker
               id="dateOfBirth"
               name="dateOfBirth"
-              type="date"
               defaultValue={initial.dateOfBirth}
+              max={PROFILE_TODAY}
+              placeholder="Date of birth"
             />
           </FieldGroup>
           <FieldGroup label="Sex" htmlFor="sex">
@@ -246,7 +244,7 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
 
       {/* ---- Submit ---- */}
       <div className="flex items-center justify-end gap-2 pt-2">
-        <SubmitButton />
+        <SubmitButton idleLabel="Save profile" pendingLabel="Saving profile…" />
       </div>
     </form>
   );

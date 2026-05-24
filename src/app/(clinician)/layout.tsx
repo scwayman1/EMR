@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/ui/command-palette";
 import { ConsciousnessOverlay } from "@/components/ui/consciousness-overlay";
 import { ClinicianTour } from "@/components/onboarding/clinician-tour";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { HelpDrawer } from "@/components/help/help-drawer";
 import { prisma } from "@/lib/db/prisma";
 import {
   computeApprovalsBadge,
@@ -191,6 +192,7 @@ export default async function ClinicianLayout({
       <ConsciousnessOverlay />
       <ClinicianTour />
       <InstallPrompt />
+      <HelpDrawer />
       {children}
     </AppShell>
   );

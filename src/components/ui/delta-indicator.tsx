@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils/cn";
+import { Tooltip } from "@/components/ui/tooltip";
 
 // ---------------------------------------------------------------------------
 // DeltaIndicator — small inline up/down arrow + percent change badge.
@@ -85,20 +86,23 @@ export function DeltaIndicator({
       : `${absChange > 0 ? "+" : ""}${format ? format(absChange) : absChange.toLocaleString()} vs prior`;
 
   return (
-    <span
-      title={tooltip}
-      className={cn(
-        "inline-flex items-center gap-1 text-xs font-medium tabular-nums",
-        "animate-in fade-in zoom-in-95 duration-300 ease-out",
-        colorClass,
-        className,
-      )}
-      aria-label={`${direction === "up" ? "up" : direction === "down" ? "down" : "no change"} ${label}, ${tooltip}`}
-    >
-      <span aria-hidden="true" className="text-[0.7em] leading-none">
-        {arrow}
+    <Tooltip content={tooltip}>
+      <span
+        tabIndex={0}
+        className={cn(
+          "inline-flex items-center gap-1 text-xs font-medium tabular-nums",
+          "animate-in fade-in zoom-in-95 duration-300 ease-out",
+          "focus:outline-none focus-visible:ring-1 focus-visible:ring-accent/40 rounded",
+          colorClass,
+          className,
+        )}
+        aria-label={`${direction === "up" ? "up" : direction === "down" ? "down" : "no change"} ${label}, ${tooltip}`}
+      >
+        <span aria-hidden="true" className="text-[0.7em] leading-none">
+          {arrow}
+        </span>
+        <span>{label}</span>
       </span>
-      <span>{label}</span>
-    </span>
+    </Tooltip>
   );
 }
