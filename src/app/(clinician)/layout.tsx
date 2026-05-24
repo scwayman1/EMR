@@ -7,6 +7,8 @@ import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
 import { CommandPalette } from "@/components/ui/command-palette";
 import { ConsciousnessOverlay } from "@/components/ui/consciousness-overlay";
+import { ClinicianTour } from "@/components/onboarding/clinician-tour";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { prisma } from "@/lib/db/prisma";
 import {
   computeApprovalsBadge,
@@ -185,8 +187,10 @@ export default async function ClinicianLayout({
       <QuoteWelcomeModal userName={user.firstName} />
       <BreathingBreak />
       <KeyboardShortcuts />
-      <CommandPalette role="clinician" />
+      <CommandPalette role="clinician" userId={user.id} />
       <ConsciousnessOverlay />
+      <ClinicianTour />
+      <InstallPrompt />
       {children}
     </AppShell>
   );

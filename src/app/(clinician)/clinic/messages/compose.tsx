@@ -6,6 +6,7 @@ import { sendClinicReplyAction } from "./actions";
 import type { ReplyResult } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 function ClinicReplySubmitButton() {
   const { pending } = useFormStatus();
@@ -22,12 +23,21 @@ export function ClinicReplyCompose({ threadId }: { threadId: string }) {
     null
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (state?.ok) {
+    if (!state) return;
+    if (state.ok) {
       formRef.current?.reset();
+      toast({ title: "Reply sent", variant: "success" });
+    } else {
+      toast({
+        title: "Couldn't send reply",
+        description: state.error,
+        variant: "error",
+      });
     }
-  }, [state]);
+  }, [state, toast]);
 
   return (
     <form
@@ -48,9 +58,6 @@ export function ClinicReplyCompose({ threadId }: { threadId: string }) {
         </div>
         <ClinicReplySubmitButton />
       </div>
-      {state?.ok === false && (
-        <p className="text-xs text-danger mt-2">{state.error}</p>
-      )}
     </form>
   );
 }

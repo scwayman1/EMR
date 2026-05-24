@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { saveProfileAction, type ProfileResult } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input, FieldGroup } from "@/components/ui/input";
+import { useToast } from "@/components/ui/toast";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -48,6 +50,20 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
     saveProfileAction,
     null,
   );
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!state) return;
+    if (state.ok) {
+      toast({ title: "Profile saved", variant: "success" });
+    } else {
+      toast({
+        title: "Couldn't save profile",
+        description: state.error,
+        variant: "error",
+      });
+    }
+  }, [state, toast]);
 
   // Calculate age from DOB
   let age: number | null = null;
@@ -228,14 +244,7 @@ export function ProfileForm({ initial }: { initial: ProfileValues }) {
         </FieldGroup>
       </section>
 
-      {/* ---- Feedback & submit ---- */}
-      {state?.ok === false && (
-        <p className="text-sm text-danger">{state.error}</p>
-      )}
-      {state?.ok && (
-        <p className="text-sm text-success">Profile saved successfully.</p>
-      )}
-
+      {/* ---- Submit ---- */}
       <div className="flex items-center justify-end gap-2 pt-2">
         <SubmitButton />
       </div>

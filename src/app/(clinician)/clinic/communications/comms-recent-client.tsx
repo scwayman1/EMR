@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { formatRelative } from "@/lib/utils/format";
 
 export type CallRow = {
@@ -54,33 +55,20 @@ function badgeTone(status: string): "success" | "warning" | "danger" | "neutral"
   }
 }
 
+const DETAIL_TITLES: Record<ModalItem["kind"], string> = {
+  call: "Call details",
+  fax: "Fax details",
+  broadcast: "Broadcast details",
+};
+
 function DetailModal({ item, onClose }: { item: ModalItem; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-surface-raised rounded-xl border border-border shadow-xl p-6 space-y-4"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg text-text">
-            {item.kind === "call" && "Call details"}
-            {item.kind === "fax" && "Fax details"}
-            {item.kind === "broadcast" && "Broadcast details"}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-text-subtle hover:text-text text-xl leading-none shrink-0"
-            aria-label="Close"
-          >
-            ×
-          </button>
+    <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="max-w-md p-0">
+        <div className="px-6 py-5 border-b border-border">
+          <DialogTitle>{DETAIL_TITLES[item.kind]}</DialogTitle>
         </div>
-
+        <div className="px-6 py-5 space-y-4">
         <dl className="space-y-2 text-sm">
           {item.kind === "call" && (
             <>
@@ -111,7 +99,7 @@ function DetailModal({ item, onClose }: { item: ModalItem; onClose: () => void }
           )}
         </dl>
 
-        <div className="flex items-center gap-2 pt-2">
+        <div className="flex items-center gap-2 pt-2 flex-wrap">
           {item.kind === "call" && item.data.patientId && (
             <Link href={`/clinic/patients/${item.data.patientId}`}>
               <Button size="sm" variant="secondary">View chart</Button>
@@ -135,7 +123,8 @@ function DetailModal({ item, onClose }: { item: ModalItem; onClose: () => void }
           <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
         </div>
       </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -171,7 +160,11 @@ export function CommsRecentClient({
           </CardHeader>
           <CardContent className="space-y-1">
             {calls.length === 0 ? (
-              <EmptyState title="No calls yet" description="Calls launched from the inbox or chart will appear here." />
+              <EmptyState
+                title="No calls yet today"
+                description="Phone and video sessions launched from the inbox or any patient chart will land here automatically."
+                className="p-6"
+              />
             ) : (
               calls.map((call) => (
                 <button
@@ -198,7 +191,11 @@ export function CommsRecentClient({
           </CardHeader>
           <CardContent className="space-y-1">
             {faxes.length === 0 ? (
-              <EmptyState title="No faxes yet" description="Send your first fax from the fax tab." />
+              <EmptyState
+                title="No faxes in flight"
+                description="Both inbound and outbound fax activity show up here, with page counts and delivery state."
+                className="p-6"
+              />
             ) : (
               faxes.map((fax) => (
                 <button
@@ -228,7 +225,11 @@ export function CommsRecentClient({
           </CardHeader>
           <CardContent className="space-y-1">
             {broadcasts.length === 0 ? (
-              <EmptyState title="No campaigns yet" description="Use SMS broadcast to message patient cohorts." />
+              <EmptyState
+                title="No broadcasts yet"
+                description="Send your first cohort SMS or email and we'll log delivery, opens, and replies here."
+                className="p-6"
+              />
             ) : (
               broadcasts.map((c) => (
                 <button

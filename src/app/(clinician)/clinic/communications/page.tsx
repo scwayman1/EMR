@@ -37,7 +37,7 @@ export default async function CommunicationsPage() {
     pendingTranscripts,
     pendingFaxes,
     activeCampaigns,
-    upcomingZoom,
+    upcomingBeam,
     newVoicemails,
     recentCalls,
     recentFaxes,
@@ -120,8 +120,8 @@ export default async function CommunicationsPage() {
         <Link href="/clinic/communications/beam" className="block group">
           <MetricTile
             label="BEAM UPCOMING"
-            value={upcomingZoom}
-            accent={upcomingZoom > 0 ? "forest" : "none"}
+            value={upcomingBeam}
+            accent={upcomingBeam > 0 ? "forest" : "none"}
             hint="HIPAA-compliant Beam visits"
             className="group-hover:ring-1 group-hover:ring-accent/30 transition-shadow"
           />
@@ -182,8 +182,8 @@ export default async function CommunicationsPage() {
           title="Beam telehealth"
           description="HIPAA-compliant video visits — E2EE, waiting room, no cloud recording."
           href="/clinic/communications/beam"
-          cta={upcomingZoom > 0 ? `${upcomingZoom} upcoming` : "Schedule"}
-          highlight={upcomingZoom > 0}
+          cta={upcomingBeam > 0 ? `${upcomingBeam} upcoming` : "Schedule"}
+          highlight={upcomingBeam > 0}
         />
         <ChannelCard
           title="Voicemail"
