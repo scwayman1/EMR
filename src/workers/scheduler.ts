@@ -200,7 +200,7 @@ async function pollClearinghouseGateway() {
               submissionId: null,
               claimId: null,
               gatewayName: adapter.name,
-              failureCategory: "orphan_file",
+              failureCategory: "permanent_rejection",
               errorMessage: `Unmatched 999 document. gcn=${parsed.gcn}, icn=${parsed.icn}`,
               requestPayload: null,
               responseBody: doc.body,
@@ -209,7 +209,7 @@ async function pollClearinghouseGateway() {
           }
 
           const targetResponseStatus = parsed.status === "rejected" ? "rejected" : "accepted";
-          const targetClaimStatus = parsed.status === "rejected" ? "ch_rejected" : "submitted";
+          const targetClaimStatus: "ch_rejected" | "submitted" = parsed.status === "rejected" ? "ch_rejected" : "submitted";
 
           // Update ClearinghouseSubmission
           await tx.clearinghouseSubmission.update({
@@ -311,7 +311,7 @@ async function pollClearinghouseGateway() {
                 submissionId: null,
                 claimId: null,
                 gatewayName: adapter.name,
-                failureCategory: "orphan_file",
+                failureCategory: "permanent_rejection",
                 errorMessage: `277CA contains unmatched claim control number: ${action.claimControlNumber}`,
                 requestPayload: null,
                 responseBody: doc.body,
@@ -327,7 +327,7 @@ async function pollClearinghouseGateway() {
                 submissionId: null,
                 claimId: claim.id,
                 gatewayName: adapter.name,
-                failureCategory: "orphan_file",
+                failureCategory: "permanent_rejection",
                 errorMessage: `Claim ${claim.id} has no submission history but received 277CA`,
                 requestPayload: null,
                 responseBody: doc.body,
@@ -336,7 +336,7 @@ async function pollClearinghouseGateway() {
             }
 
             let targetResponseStatus: "accepted" | "rejected" = "accepted";
-            let targetClaimStatus = "accepted";
+            let targetClaimStatus: "accepted" | "ch_rejected" = "accepted";
 
             if (action.action === "resubmit" || action.action === "investigate") {
               targetResponseStatus = "rejected";
