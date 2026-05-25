@@ -19,7 +19,7 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 export type Density = "comfortable" | "dense";
 
-export const DENSITY_STORAGE_KEY = "emr.prefs.v1.density";
+export const DENSITY_STORAGE_KEY = "emr.prefs.v1.density"; // gitleaks:allow
 const DENSITY_EVENT = "emr:density-change";
 
 function isDensity(v: unknown): v is Density {
