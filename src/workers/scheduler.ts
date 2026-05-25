@@ -132,7 +132,7 @@ async function main() {
   await pollClearinghouseGateway();
 }
 
-async function pollClearinghouseGateway() {
+export async function pollClearinghouseGateway() {
   console.log("[scheduler] polling clearinghouse gateway");
 
   const org = await prisma.organization.findFirst();
@@ -484,11 +484,13 @@ async function pollClearinghouseGateway() {
   }, { timeout: 30000 });
 }
 
-main()
-  .catch((err) => {
-    console.error("[scheduler] error", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (process.argv[1]?.endsWith("scheduler.ts") || process.argv[1]?.endsWith("scheduler")) {
+  main()
+    .catch((err) => {
+      console.error("[scheduler] error", err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
