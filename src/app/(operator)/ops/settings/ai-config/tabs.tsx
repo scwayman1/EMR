@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "@/lib/utils/cn";
+import { Tabs, TabList, Trigger, Panel } from "@/components/ui/tabs";
 import { ModelConfigPanel } from "./model-config";
 import { AgentFleetPanel } from "./agent-fleet";
 
@@ -17,28 +17,23 @@ export function AiConfigTabs() {
   const active = TABS.find((t) => t.key === tab)!;
 
   return (
-    <div>
-      <div className="flex items-center gap-1 border-b border-border mb-5">
+    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} urlParam="section">
+      <TabList aria-label="AI configuration sections" className="mb-5">
         {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "relative px-4 py-3 text-sm font-medium transition-colors",
-              tab === t.key ? "text-accent" : "text-text-muted hover:text-text",
-            )}
-          >
+          <Trigger key={t.key} value={t.key}>
             {t.label}
-            {tab === t.key && (
-              <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-accent rounded-full" />
-            )}
-          </button>
+          </Trigger>
         ))}
-      </div>
+      </TabList>
       <p className="text-xs text-text-subtle mb-5">{active.hint}</p>
-      {tab === "default" && <ModelConfigPanel />}
-      {tab === "fleet" && <AgentFleetPanel />}
-    </div>
+      {/* Each panel renders its own state-heavy component; mark as lazy so
+          we don't double-fetch on every console open. */}
+      <Panel value="default" lazy>
+        <ModelConfigPanel />
+      </Panel>
+      <Panel value="fleet" lazy>
+        <AgentFleetPanel />
+      </Panel>
+    </Tabs>
   );
 }

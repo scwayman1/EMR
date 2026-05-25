@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils/cn";
+import { Tabs, TabList, Trigger, Panel } from "@/components/ui/tabs";
 import { EmergencyRevokeDialog } from "@/components/admin/emergency-revoke-dialog";
 
 type SpecialtyManifest = {
@@ -64,15 +64,11 @@ export function SuperAdminConsole() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div role="tablist" aria-label="Console sections" className="flex gap-1 border-b border-border">
-        <TabButton active={tab === "practices"} onClick={() => setTab("practices")}>
-          Practices
-        </TabButton>
-        <TabButton active={tab === "admins"} onClick={() => setTab("admins")}>
-          Super-admins
-        </TabButton>
-      </div>
+    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="space-y-6">
+      <TabList aria-label="Console sections">
+        <Trigger value="practices">Practices</Trigger>
+        <Trigger value="admins">Super-admins</Trigger>
+      </TabList>
 
       {templatesError && (
         <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-danger">
@@ -80,40 +76,13 @@ export function SuperAdminConsole() {
         </div>
       )}
 
-      {tab === "practices" ? (
+      <Panel value="practices">
         <PracticesTab templates={templates} />
-      ) : (
+      </Panel>
+      <Panel value="admins" lazy>
         <AdminsTab />
-      )}
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "px-4 py-2 text-sm font-medium transition-colors duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
-        active
-          ? "text-text border-b-2 border-accent -mb-px"
-          : "text-text-muted hover:text-text",
-      )}
-    >
-      {children}
-    </button>
+      </Panel>
+    </Tabs>
   );
 }
 

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Textarea, FieldGroup } from "@/components/ui/input";
+import { Tabs, TabList, Trigger, Panel } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils/cn";
 import { lex, lexPlural } from "@/lib/lexicon";
 import {
@@ -49,29 +50,26 @@ export function TroveWalletView({
   const [balance, setBalance] = useState<number>(snapshot.balance);
 
   return (
-    <div className="space-y-6">
+    <Tabs
+      value={tab}
+      onValueChange={(v) => setTab(v as Tab)}
+      variant="pill"
+      className="space-y-6"
+    >
       <TierStrip snapshot={snapshot} balance={balance} />
 
-      <div className="flex items-center gap-2 flex-wrap">
+      <TabList aria-label="Seed trove sections" className="flex-wrap">
         {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={cn(
-              "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-              tab === t.key
-                ? "bg-emerald-700 text-white border-emerald-700"
-                : "bg-surface text-text-muted border-border hover:bg-surface-muted",
-            )}
-          >
+          <Trigger key={t.key} value={t.key}>
             {t.label}
-          </button>
+          </Trigger>
         ))}
-      </div>
+      </TabList>
 
-      {tab === "wallet" && <WalletPanel snapshot={snapshot} balance={balance} />}
-      {tab === "redeem" && (
+      <Panel value="wallet">
+        <WalletPanel snapshot={snapshot} balance={balance} />
+      </Panel>
+      <Panel value="redeem" lazy>
         <RedeemPanel
           balance={balance}
           onIssue={(card) => {
@@ -79,10 +77,14 @@ export function TroveWalletView({
             setBalance((prev) => prev - (card.seedsBurned ?? 0));
           }}
         />
-      )}
-      {tab === "fruit-cards" && <FruitCardsPanel cards={cards} />}
-      {tab === "history" && <HistoryPanel entries={snapshot.recentEntries} />}
-    </div>
+      </Panel>
+      <Panel value="fruit-cards" lazy>
+        <FruitCardsPanel cards={cards} />
+      </Panel>
+      <Panel value="history" lazy>
+        <HistoryPanel entries={snapshot.recentEntries} />
+      </Panel>
+    </Tabs>
   );
 }
 
