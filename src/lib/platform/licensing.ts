@@ -15,12 +15,67 @@ import {
   MODULE_CATALOG,
   MODULE_PILLAR_LABELS,
   MODULE_TIERS,
+  defaultEntitlement,
+  hasModule,
+  type ModuleEntitlement,
   type ModulePillar,
   type ModuleStatus,
   type ModuleTier,
   type PlatformModule,
 } from "./modules";
 import { MENU_VERSION, menuCourses, statusStars } from "./licensing-menu";
+
+// ---------------------------------------------------------------------------
+// Michelin tier aliases (Bronze / Silver / Gold / Platinum).
+//
+// The underlying catalog uses the canonical tier ids (starter / professional
+// / canopy / enterprise). For sales surfaces we publish Michelin-grade
+// aliases — Bronze through Platinum — so brochures, slide decks, and the
+// operator menu can speak in the language prospects expect without
+// renaming the runtime entitlement schema.
+// ---------------------------------------------------------------------------
+
+export type MichelinTier = "bronze" | "silver" | "gold" | "platinum";
+
+/** Bidirectional map between canonical tier ids and Michelin aliases. */
+export const MICHELIN_TIER_ALIASES: Record<ModuleTier, MichelinTier> = {
+  starter: "bronze",
+  professional: "silver",
+  canopy: "gold",
+  enterprise: "platinum",
+};
+
+export const MICHELIN_TO_TIER: Record<MichelinTier, ModuleTier> = {
+  bronze: "starter",
+  silver: "professional",
+  gold: "canopy",
+  platinum: "enterprise",
+};
+
+export interface MichelinTierProfile {
+  id: ModuleTier;
+  michelin: MichelinTier;
+  label: string;
+  blurb: string;
+  monthlyLabel: string;
+  monthlyList: number | null;
+  bestFor: string;
+}
+
+export function michelinTierProfiles(): MichelinTierProfile[] {
+  return TIER_ORDER.map((id) => {
+    const t = MODULE_TIERS[id];
+    return {
+      id,
+      michelin: MICHELIN_TIER_ALIASES[id],
+      label: t.label,
+      blurb: t.blurb,
+      monthlyLabel: t.monthlyLabel,
+      monthlyList: t.monthlyList,
+      bestFor: t.bestFor,
+    };
+  });
+}
 
 /** Tier columns on the comparison matrix, ordered for display. */
 export const TIER_ORDER: ModuleTier[] = [
@@ -356,3 +411,242 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+// ---------------------------------------------------------------------------
+// Org-scoped authorization helpers
+//
+// The platform stores entitlements on Organization.metadata (see EMR-044
+// schema). Until that DB column lands, we resolve entitlements through an
+// in-memory store that callers can prime in tests / seed scripts. The
+// public surface — `loadEntitlement`, `hasModuleLicense`, and the
+// posture builder — does not change when persistence flips on.
+// ---------------------------------------------------------------------------
+
+const entitlementStore = new Map<string, ModuleEntitlement>();
+
+/** Seed an entitlement for an organization. Test/admin path. */
+export function setEntitlement(entitlement: ModuleEntitlement): void {
+  entitlementStore.set(entitlement.organizationId, entitlement);
+}
+
+/** Best-effort lookup. Falls back to the default "starter" entitlement. */
+export async function loadEntitlement(
+  organizationId: string,
+): Promise<ModuleEntitlement> {
+  return entitlementStore.get(organizationId) ?? defaultEntitlement(organizationId);
+}
+
+/**
+ * Authorization gate — does an organization currently hold a license for
+ * a given module? Modules can be referenced by their catalog id
+ * (e.g. "scribe-agent") or by a friendly alias understood by the
+ * licensing menu (e.g. "scheduling", "billing").
+ */
+export async function hasModuleLicense(
+  organizationId: string,
+  moduleName: string,
+): Promise<boolean> {
+  const entitlement = await loadEntitlement(organizationId);
+  const moduleId = resolveModuleId(moduleName);
+  if (!moduleId) return false;
+  return hasModule(entitlement, moduleId);
+}
+
+/**
+ * Synchronous variant used by route handlers that have already loaded
+ * the entitlement (e.g. middleware that hydrated session.entitlement).
+ */
+export function hasModuleLicenseSync(
+  entitlement: ModuleEntitlement,
+  moduleName: string,
+): boolean {
+  const moduleId = resolveModuleId(moduleName);
+  if (!moduleId) return false;
+  return hasModule(entitlement, moduleId);
+}
+
+/**
+ * Friendly module aliases — short names sales can quote that resolve to
+ * catalog ids. Anything not in the alias map falls back to a direct id
+ * lookup against MODULE_CATALOG.
+ */
+const MODULE_ALIASES: Record<string, string> = {
+  scheduling: "scheduler",
+  schedule: "scheduler",
+  billing: "revenue-cycle",
+  rcm: "revenue-cycle",
+  telehealth: "ehr-bridge",
+  charts: "ehr-core",
+  chart: "ehr-core",
+  ehr: "ehr-core",
+  dispensary: "marketplace",
+  marketplace: "marketplace",
+  portal: "patient-portal",
+  research: "research-portal",
+  cfo: "cfo-controller",
+};
+
+function resolveModuleId(moduleName: string): string | null {
+  const key = moduleName.trim().toLowerCase();
+  const aliased = MODULE_ALIASES[key];
+  if (aliased) return aliased;
+  if (MODULE_CATALOG.some((m) => m.id === moduleName)) return moduleName;
+  if (MODULE_CATALOG.some((m) => m.id === key)) return key;
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Licensing posture — the JSON shape served by /api/platform/licensing
+// for a given organization. Drives both the operator UI and any
+// downstream gating (vendor portal, partner audits).
+// ---------------------------------------------------------------------------
+
+export interface LicensingPostureModule {
+  id: string;
+  name: string;
+  pillar: ModulePillar;
+  pillarLabel: string;
+  tagline: string;
+  status: ModuleStatus;
+  stars: number;
+  active: boolean;
+  reason: "tier" | "addOn" | "addon-available" | "roadmap" | "disabled";
+  alaCarteMonthly: number | null;
+}
+
+export interface IntegrationConnectionState {
+  vendor: "epic" | "cerner" | "practice_fusion";
+  label: string;
+  status: "connected" | "configured" | "available" | "coming_soon";
+  detail: string;
+}
+
+export interface LicensingPosture {
+  organizationId: string;
+  generatedAt: string;
+  version: string;
+  tier: {
+    id: ModuleTier;
+    michelin: MichelinTier;
+    label: string;
+    monthlyLabel: string;
+    monthlyList: number | null;
+    blurb: string;
+  };
+  addOns: string[];
+  disabled: string[];
+  modules: LicensingPostureModule[];
+  totals: {
+    activeModules: number;
+    monthlyTierList: number | null;
+    monthlyAddOnList: number;
+    monthlyTotalList: number | null;
+  };
+  integrations: IntegrationConnectionState[];
+}
+
+/** Build the licensing posture document for an organization. */
+export function buildLicensingPosture(
+  entitlement: ModuleEntitlement,
+): LicensingPosture {
+  const tierProfile = michelinTierProfiles().find(
+    (p) => p.id === entitlement.tier,
+  )!;
+
+  const modules: LicensingPostureModule[] = MODULE_CATALOG.map((m) => {
+    const includedByTier = m.includedIn.includes(entitlement.tier);
+    const isAddOn = entitlement.addOns.includes(m.id);
+    const isDisabled = entitlement.disabled.includes(m.id);
+    const active = !isDisabled && (includedByTier || isAddOn);
+    let reason: LicensingPostureModule["reason"];
+    if (isDisabled) reason = "disabled";
+    else if (includedByTier) reason = "tier";
+    else if (isAddOn) reason = "addOn";
+    else if (m.status === "in_development" || m.status === "roadmap")
+      reason = "roadmap";
+    else reason = "addon-available";
+
+    return {
+      id: m.id,
+      name: m.name,
+      pillar: m.pillar,
+      pillarLabel: MODULE_PILLAR_LABELS[m.pillar],
+      tagline: m.tagline,
+      status: m.status,
+      stars: statusStars(m.status).stars,
+      active,
+      reason,
+      alaCarteMonthly: m.alaCarteMonthly,
+    };
+  });
+
+  let addOnTotal = 0;
+  for (const id of entitlement.addOns) {
+    const mod = MODULE_CATALOG.find((m) => m.id === id);
+    if (mod?.alaCarteMonthly) addOnTotal += mod.alaCarteMonthly;
+  }
+
+  const monthlyTier = tierProfile.monthlyList;
+  const monthlyTotal =
+    monthlyTier == null ? null : monthlyTier + addOnTotal;
+
+  return {
+    organizationId: entitlement.organizationId,
+    generatedAt: new Date().toISOString(),
+    version: MENU_VERSION,
+    tier: {
+      id: tierProfile.id,
+      michelin: tierProfile.michelin,
+      label: tierProfile.label,
+      monthlyLabel: tierProfile.monthlyLabel,
+      monthlyList: tierProfile.monthlyList,
+      blurb: tierProfile.blurb,
+    },
+    addOns: entitlement.addOns,
+    disabled: entitlement.disabled,
+    modules,
+    totals: {
+      activeModules: modules.filter((m) => m.active).length,
+      monthlyTierList: monthlyTier,
+      monthlyAddOnList: addOnTotal,
+      monthlyTotalList: monthlyTotal,
+    },
+    integrations: integrationConnectionStates(),
+  };
+}
+
+/**
+ * Stubbed connection state for the third-party EHR bridges we surface on
+ * the licensing console. Real wiring lives behind the EHR Bridge module
+ * (EMR-013 / EMR-082) once provisioned; for now we publish a stable
+ * shape so the UI and API stay aligned.
+ */
+export function integrationConnectionStates(): IntegrationConnectionState[] {
+  return [
+    {
+      vendor: "epic",
+      label: "Epic — App Orchard FHIR R4",
+      status: "available",
+      detail:
+        "OAuth2 SMART launch and bulk FHIR export ready; provision a client_id in Settings → Integrations.",
+    },
+    {
+      vendor: "cerner",
+      label: "Cerner Millennium — FHIR R4 + HL7 v2",
+      status: "configured",
+      detail:
+        "Sandbox tenant linked; production cutover pending counter-signature on the BAA.",
+    },
+    {
+      vendor: "practice_fusion",
+      label: "Practice Fusion — CCD/CDA + DocumentReference",
+      status: "coming_soon",
+      detail:
+        "Inbound DocumentReference round-trips land in EMR-082; reciprocal pull is roadmap.",
+    },
+  ];
+}
+
+// Re-export the canonical types for callers that import everything from
+// this module (the operator page and the JSON API both do).
+export type { ModuleEntitlement, ModulePillar, ModuleTier, PlatformModule };
