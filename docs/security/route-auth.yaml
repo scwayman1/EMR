@@ -315,6 +315,24 @@ routes:
     owner: clinical-safety
     notes: "EMR-785. Download chart as PDF layout. Gated via requireUser and assertChartAccess."
 
+  patients/[id]/preview:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "Clinician-scoped light patient summary for HoverCard previews."
+
+  threads/[id]/preview:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "Clinician-scoped light message thread summary for HoverCard previews."
+
+  users/[id]/preview:
+    methods: [GET]
+    auth: required
+    owner: platform-security
+    notes: "Clinician-scoped light provider/user summary for HoverCard previews."
+
   # ── Leafmart commerce ─────────────────────────────────────
   leafmart/me:
     methods: [GET]
