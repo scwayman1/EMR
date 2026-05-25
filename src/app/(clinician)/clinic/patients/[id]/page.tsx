@@ -722,6 +722,8 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   Print chart
                 </Button>
               </Link>
+=======
+>>>>>>> origin/qa-storm/emr-785-chart-download
               <Link href={`/clinic/patients/${params.id}/voice-chart`}>
                 <Button variant="ghost" size="sm">
                   Voice chart
