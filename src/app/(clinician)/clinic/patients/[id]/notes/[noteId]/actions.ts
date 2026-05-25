@@ -158,6 +158,7 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     revalidatePath(`/clinic/patients/${encounter.patientId}`);
     return { ok: true, status: "pending_cosign" };
   }
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
