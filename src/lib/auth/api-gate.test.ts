@@ -31,7 +31,7 @@ vi.mock("./impersonation", () => ({
 }));
 
 vi.mock("./session-kill-list", () => ({
-  isUserRevoked: () => Promise.resolve(false),
+  isUserRevoked: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("./super-admin-mfa", () => ({
@@ -52,11 +52,13 @@ vi.mock("@/lib/observability/log", () => ({
 import { requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
 import { verifyImpersonationCookie } from "./impersonation";
+import { isUserRevoked } from "./session-kill-list";
 import { requireApiAuth } from "./api-gate";
 
 const mockedRequireUser = vi.mocked(requireUser);
 const mockedBootstrap = vi.mocked(bootstrapSuperAdminIfAllowlisted);
 const mockedVerifyImpersonationCookie = vi.mocked(verifyImpersonationCookie);
+const mockedIsUserRevoked = vi.mocked(isUserRevoked);
 
 const baseUser = {
   id: "user_001",
@@ -72,6 +74,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockedBootstrap.mockResolvedValue(false);
   mockedVerifyImpersonationCookie.mockReturnValue(null);
+  mockedIsUserRevoked.mockResolvedValue(false);
 });
 
 describe("requireApiAuth — authentication", () => {
@@ -83,6 +86,18 @@ describe("requireApiAuth — authentication", () => {
     expect(gate.error!.status).toBe(401);
     const body = await gate.error!.json();
     expect(body.error).toBe("UNAUTHORIZED");
+  });
+
+  it("returns 401 when the user is revoked on the session kill-list", async () => {
+    mockedRequireUser.mockResolvedValue(baseUser);
+    mockedIsUserRevoked.mockResolvedValue(true);
+    const gate = await requireApiAuth();
+    expect(gate.actor).toBeNull();
+    expect(gate.error).not.toBeNull();
+    expect(gate.error!.status).toBe(401);
+    const body = await gate.error!.json();
+    expect(body.error).toBe("UNAUTHORIZED");
+    expect(body.message).toBe("Session revoked.");
   });
 
   it("returns the actor when authenticated and no role required", async () => {

@@ -40,6 +40,7 @@ import {
   IMPERSONATION_COOKIE,
   verifyImpersonationCookie,
 } from "./impersonation";
+import { isUserRevoked } from "./session-kill-list";
 
 export interface RequireApiAuthOptions {
   /**
@@ -106,6 +107,16 @@ export async function requireApiAuth(
       actor: null,
       error: NextResponse.json(
         { error: "UNAUTHORIZED", message: "Authentication required." },
+        { status: 401 },
+      ),
+    };
+  }
+
+  if (await isUserRevoked(user.id)) {
+    return {
+      actor: null,
+      error: NextResponse.json(
+        { error: "UNAUTHORIZED", message: "Session revoked." },
         { status: 401 },
       ),
     };
