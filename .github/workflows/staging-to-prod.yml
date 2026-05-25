@@ -5,6 +5,13 @@ on:
     branches:
       - main
 
+# Newer pushes to main supersede in-flight runs. Without this, every push
+# queues a fresh run behind the Staging environment approval gate; we hit
+# 67 stale runs piled up for 65+ hours on 2026-05-24 before catching it.
+concurrency:
+  group: staging-to-prod
+  cancel-in-progress: true
+
 # Pipeline contract:
 #   verify → deploy_staging → test_staging → deploy_production
 #
