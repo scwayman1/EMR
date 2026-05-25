@@ -25,6 +25,11 @@ vi.mock("./super-admin-bootstrap", () => ({
   bootstrapSuperAdminIfAllowlisted: vi.fn(),
 }));
 
+vi.mock("./impersonation", () => ({
+  IMPERSONATION_COOKIE: "lj_impersonation",
+  verifyImpersonationCookie: vi.fn(),
+}));
+
 vi.mock("./session-kill-list", () => ({
   isUserRevoked: () => Promise.resolve(false),
 }));
@@ -46,10 +51,12 @@ vi.mock("@/lib/observability/log", () => ({
 
 import { requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
+import { verifyImpersonationCookie } from "./impersonation";
 import { requireApiAuth } from "./api-gate";
 
 const mockedRequireUser = vi.mocked(requireUser);
 const mockedBootstrap = vi.mocked(bootstrapSuperAdminIfAllowlisted);
+const mockedVerifyImpersonationCookie = vi.mocked(verifyImpersonationCookie);
 
 const baseUser = {
   id: "user_001",
@@ -64,6 +71,7 @@ const baseUser = {
 beforeEach(() => {
   vi.resetAllMocks();
   mockedBootstrap.mockResolvedValue(false);
+  mockedVerifyImpersonationCookie.mockReturnValue(null);
 });
 
 describe("requireApiAuth — authentication", () => {
@@ -230,6 +238,61 @@ describe("requireApiAuth — rate limiting", () => {
     const gate = await requireApiAuth({ rateLimit: { limiter } });
     const body = await gate.error!.json();
     expect(body.bucket).toBeNull();
+  });
+});
+
+describe("requireApiAuth — impersonation read-only guard", () => {
+  it("blocks admin mutations while a verified impersonation cookie is active", async () => {
+    mockedRequireUser.mockResolvedValue({
+      ...baseUser,
+      roles: ["super_admin"],
+    });
+    mockedVerifyImpersonationCookie.mockReturnValue({
+      impersonatorUserId: baseUser.id,
+      practiceOrgId: "org_practice",
+      practiceName: "Practice",
+      startedAt: Date.now() - 1000,
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const gate = await requireApiAuth({
+      role: "super_admin",
+      request: new Request("https://app.example.com/api/admin/super-admins", {
+        method: "POST",
+        headers: { cookie: "lj_impersonation=signed" },
+      }),
+    });
+
+    expect(gate.actor).toBeNull();
+    expect(gate.error!.status).toBe(403);
+    expect(await gate.error!.json()).toMatchObject({
+      error: "IMPERSONATION_READ_ONLY",
+    });
+  });
+
+  it("allows the impersonation exit mutation so the operator can leave read-only mode", async () => {
+    mockedRequireUser.mockResolvedValue({
+      ...baseUser,
+      roles: ["super_admin"],
+    });
+    mockedVerifyImpersonationCookie.mockReturnValue({
+      impersonatorUserId: baseUser.id,
+      practiceOrgId: "org_practice",
+      practiceName: "Practice",
+      startedAt: Date.now() - 1000,
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const gate = await requireApiAuth({
+      role: "super_admin",
+      request: new Request("https://app.example.com/api/admin/impersonate/exit", {
+        method: "POST",
+        headers: { cookie: "lj_impersonation=signed" },
+      }),
+    });
+
+    expect(gate.error).toBeNull();
+    expect(gate.actor?.id).toBe(baseUser.id);
   });
 });
 

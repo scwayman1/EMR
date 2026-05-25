@@ -36,6 +36,10 @@ import type { Role } from "@prisma/client";
 import { logger } from "@/lib/observability/log";
 import { type AuthedUser, requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
+import {
+  IMPERSONATION_COOKIE,
+  verifyImpersonationCookie,
+} from "./impersonation";
 
 export interface RequireApiAuthOptions {
   /**
@@ -67,6 +71,12 @@ export interface RequireApiAuthOptions {
     /** Bucket label included in the 429 response — for client-side debugging. */
     bucket?: string;
   };
+
+  /**
+   * Original route Request. When supplied, active super-admin impersonation
+   * sessions are enforced as read-only for mutation helpers.
+   */
+  request?: Request;
 }
 
 export type RequireApiAuthResult =
@@ -126,6 +136,27 @@ export async function requireApiAuth(
     };
   }
 
+  if (options.request) {
+    const pathname = new URL(options.request.url).pathname;
+    const rawImpersonation = readCookieValue(
+      options.request.headers.get("cookie"),
+      IMPERSONATION_COOKIE,
+    );
+    const impersonation = verifyImpersonationCookie(rawImpersonation, user.id);
+    if (impersonation && pathname !== "/api/admin/impersonate/exit") {
+      return {
+        actor: null,
+        error: NextResponse.json(
+          {
+            error: "IMPERSONATION_READ_ONLY",
+            message: "Exit practice impersonation before making admin changes.",
+          },
+          { status: 403 },
+        ),
+      };
+    }
+  }
+
   if (options.rateLimit) {
     const result = options.rateLimit.limiter.check(user.id);
     if (!result.allowed) {
@@ -151,4 +182,19 @@ export async function requireApiAuth(
   }
 
   return { actor: user, error: null };
+}
+
+function readCookieValue(header: string | null, name: string): string | undefined {
+  if (!header) return undefined;
+  for (const part of header.split(";")) {
+    const [rawName, ...rest] = part.trim().split("=");
+    if (rawName !== name) continue;
+    const value = rest.join("=");
+    try {
+      return decodeURIComponent(value);
+    } catch {
+      return value;
+    }
+  }
+  return undefined;
 }
