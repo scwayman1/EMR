@@ -45,6 +45,8 @@ import {
   ContextMenuIcons,
   type ContextMenuItem,
 } from "@/components/ui/context-menu";
+// Thread tagging — localStorage-backed until a server-side Tag model lands.
+import { EntityTagEditor, EntityTagStrip } from "@/components/ui/entity-tag-editor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -979,6 +981,8 @@ function ThreadInboxRow({
                   Needs clinician
                 </span>
               )}
+              {/* Thread tags (read-only here; editor lives in the detail pane). */}
+              <EntityTagStrip scope="inbox-thread" entityId={t.threadId} />
             </div>
           </div>
         </div>
@@ -1581,6 +1585,14 @@ export function SmartInboxView({
                     >
                       {selectedThread.patientName}
                     </Link>
+                    {/* Thread tags — color-coded labels (follow-up, urgent…). */}
+                    <div className="mt-1">
+                      <EntityTagEditor
+                        scope="inbox-thread"
+                        entityId={selectedThread.threadId}
+                        compact
+                      />
+                    </div>
                   </div>
                   {selectedTriage && (
                     <div className="flex items-center gap-2">
