@@ -8,6 +8,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { resolveThread } from "./actions";
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
 export function ResolveButton({ threadId, isResolved }: Props) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const confirm = useConfirm();
 
   if (isResolved) {
     return (
@@ -29,10 +31,14 @@ export function ResolveButton({ threadId, isResolved }: Props) {
     );
   }
 
-  const onClick = () => {
-    const ok = window.confirm(
-      "Mark this thread as resolved? It will be removed from the inbox until the patient sends a new message.",
-    );
+  const onClick = async () => {
+    const ok = await confirm({
+      title: "Mark this thread as resolved?",
+      description:
+        "It drops out of the inbox until the patient sends a new message.",
+      severity: "info",
+      confirmLabel: "Resolve",
+    });
     if (!ok) return;
     const fd = new FormData();
     fd.set("threadId", threadId);

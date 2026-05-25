@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils/cn";
 import { explainLabValue } from "@/lib/domain/lab-explainer";
 import { LabTooltip } from "@/components/ui/lab-tooltip";
 import { Tooltip } from "@/components/ui/tooltip";
+import { LabValue } from "@/components/ui/format";
+import { LinkifiedText } from "@/components/ui/linkified-text";
 import {
   draftLabOutreachAction,
   updateLabOutreachAction,
@@ -436,7 +438,16 @@ function LabOverlay({ row, onClose }: { row: LabRow; onClose: () => void }) {
                             c.abnormal ? "text-danger" : "text-text"
                           )}
                         >
-                          {c.value} {c.unit}
+                          <LabValue
+                            value={c.value}
+                            unit={c.unit}
+                            refLow={c.refLow}
+                            refHigh={c.refHigh}
+                            // Row-level abnormal styling already conveys the
+                            // out-of-range signal; hide the chip to avoid
+                            // duplicate visual flags in the same cell.
+                            hideFlag
+                          />
                         </td>
                         <td className="text-right px-4 py-2.5 tabular-nums text-text-muted">
                           {p
@@ -689,9 +700,11 @@ function DraftBlock({
             <p className="text-[10px] text-accent font-medium mb-1">
               💬 From your care team
             </p>
-            <p className="text-sm text-text leading-relaxed whitespace-pre-wrap">
-              {local}
-            </p>
+            <LinkifiedText
+              as="p"
+              className="text-sm text-text leading-relaxed whitespace-pre-wrap"
+              text={local}
+            />
           </div>
         </div>
       )}

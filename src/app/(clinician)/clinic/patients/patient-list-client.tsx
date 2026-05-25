@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { listStagger, listStaggerChild } from "@/lib/ui/motion";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { PatientTagStrip } from "@/components/ui/patient-tag-strip";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -30,6 +31,7 @@ import {
   type ContextMenuItem,
 } from "@/components/ui/context-menu";
 import { useRouter } from "next/navigation";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -243,6 +245,7 @@ function PatientRosterRow({
   children: ReactNode;
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const items: ContextMenuItem[] = [
     {
       label: "Open chart",
@@ -289,18 +292,23 @@ function PatientRosterRow({
       icon: ContextMenuIcons.Archive,
       danger: true,
       onSelect: (c) => {
-        if (
-          typeof window !== "undefined" &&
-          window.confirm(
-            `Archive ${patient.firstName} ${patient.lastName}? They will be hidden from the roster but their chart will be preserved.`,
-          )
-        ) {
+        // Close the context menu before opening the confirm so focus and
+        // overlay layering stay clean.
+        c();
+        void (async () => {
+          const ok = await confirm({
+            title: `Archive ${patient.firstName} ${patient.lastName}?`,
+            description:
+              "They drop off the active roster. The chart and all records stay intact — you can unarchive from their profile later.",
+            severity: "danger",
+            confirmLabel: "Archive patient",
+          });
+          if (!ok) return;
           // Mutation hook to be wired into the existing actions.ts —
           // for now we simply navigate to the chart so the clinician
           // can complete archival from the canonical surface.
           router.push(`/clinic/patients/${patient.id}?archive=1`);
-        }
-        c();
+        })();
       },
     },
   ];
@@ -812,6 +820,8 @@ export function PatientListClient({
                             Last visit {formatShortDate(p.lastVisit)}
                           </Badge>
                         )}
+                        {/* Tag strip — reads PatientTag selections from localStorage. */}
+                        <PatientTagStrip patientId={p.id} />
                       </div>
                     </div>
 

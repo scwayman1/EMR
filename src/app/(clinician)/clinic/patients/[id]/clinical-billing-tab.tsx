@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDate, formatRelative } from "@/lib/utils/format";
+import { money } from "@/lib/ui/format";
 
 /**
  * Clinical Billing Summary — the physician's billing surface.
@@ -333,12 +334,7 @@ function ClaimRow({ claim }: { claim: any }) {
 
 function formatCents(cents: number): string {
   if (cents === 0) return "$0";
-  const negative = cents < 0;
-  const abs = Math.abs(cents);
-  return `${negative ? "-" : ""}$${(abs / 100).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  return money(cents);
 }
 
 const CATEGORY_LABELS: Record<string, string> = {

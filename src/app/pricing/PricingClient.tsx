@@ -6,6 +6,7 @@ import { Check, Minus, ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Eyebrow, EditorialRule } from "@/components/ui/ornament";
 import { cn } from "@/lib/utils/cn";
+import { money } from "@/lib/ui/format";
 
 type Tier = {
   id: "starter" | "professional" | "enterprise";
@@ -142,7 +143,10 @@ function priceFor(tier: Tier, annual: boolean) {
   const monthly = annual
     ? Math.round(tier.priceMonthly * 0.8)
     : tier.priceMonthly;
-  return `$${monthly}`;
+  // Pricing tier rows store dollars; the central money() helper expects
+  // cents — multiply by 100 so en-US thousands separators kick in for any
+  // future tier above $999/month (Enterprise add-ons, multi-seat bundles).
+  return money(monthly * 100, { compactDollars: true });
 }
 
 export function PricingClient() {

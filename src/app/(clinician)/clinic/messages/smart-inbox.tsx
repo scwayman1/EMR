@@ -13,6 +13,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Avatar } from "@/components/ui/avatar";
 import { AgentSignal } from "@/components/ui/agent-signal";
+import { LinkifiedText } from "@/components/ui/linkified-text";
 import { cn } from "@/lib/utils/cn";
 import { formatRelative } from "@/lib/utils/format";
 import {
@@ -38,12 +39,16 @@ import { ResolveButton } from "./resolve-button";
 import { ExportModal, type ExportableMessage } from "./export-modal";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BulkActionBar, useBulkSelection } from "@/components/ui/bulk-action-bar";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   useContextMenu,
   ContextMenuIcons,
   type ContextMenuItem,
 } from "@/components/ui/context-menu";
+// Thread tagging — localStorage-backed until a server-side Tag model lands.
+import { EntityTagEditor, EntityTagStrip } from "@/components/ui/entity-tag-editor";
+import { PatientHoverCard } from "@/components/preview";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -610,7 +615,9 @@ function HoverMedsText({ text }: { text: string }) {
             </span>
           );
         }
-        return <span key={i}>{part}</span>;
+        // Non-med text — pass through linkifier so URLs/emails/phones/refs
+        // become clickable inside message bodies.
+        return <LinkifiedText key={i} as="span" text={part} />;
       })}
     </>
   );
@@ -940,9 +947,11 @@ function ThreadInboxRow({
                     <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a5.927 5.927 0 0 1 .013 2.371c-.125.612-.413 1.27-.978 1.834a.5.5 0 0 1-.707 0L5.95 11.756 1.854 15.85a.5.5 0 1 1-.708-.707L5.243 11.05 2.475 8.28a.5.5 0 0 1 0-.706c.565-.565 1.222-.853 1.834-.978a5.93 5.93 0 0 1 2.372.013l3.134-3.134a2.97 2.97 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146z" />
                   </svg>
                 </span>
-                <p className="text-sm font-semibold text-text truncate">
-                  {t.patientName}
-                </p>
+                <PatientHoverCard patientId={t.patientId}>
+                  <p className="text-sm font-semibold text-text truncate cursor-default">
+                    {t.patientName}
+                  </p>
+                </PatientHoverCard>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {(t.attachmentCount ?? 0) > 0 && (
@@ -978,6 +987,8 @@ function ThreadInboxRow({
                   Needs clinician
                 </span>
               )}
+              {/* Thread tags (read-only here; editor lives in the detail pane). */}
+              <EntityTagStrip scope="inbox-thread" entityId={t.threadId} />
             </div>
           </div>
         </div>
@@ -1048,6 +1059,7 @@ export function SmartInboxView({
   const reduceMotion = useReducedMotion() ?? false;
   const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
   const childVariants = useMemo(() => listStaggerChild(reduceMotion), [reduceMotion]);
+  const confirm = useConfirm();
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     initialThreadId ?? triaged[0]?.threadId ?? null,
   );
@@ -1526,15 +1538,16 @@ export function SmartInboxView({
                         setSelectedThreadId(t.threadId);
                       }}
                       onArchive={() => {
-                        if (
-                          typeof window !== "undefined" &&
-                          !window.confirm(
-                            `Archive the thread with ${t.patientName}? You can find it later under Archived.`,
-                          )
-                        ) {
-                          return;
-                        }
-                        setSelectedThreadId(null);
+                        void (async () => {
+                          const ok = await confirm({
+                            title: `Archive the thread with ${t.patientName}?`,
+                            description:
+                              "It moves off the active inbox. You can pull it back from Archived if they reply.",
+                            severity: "danger",
+                            confirmLabel: "Archive thread",
+                          });
+                          if (ok) setSelectedThreadId(null);
+                        })();
                       }}
                       onCopyLink={() => {
                         try {
@@ -1572,12 +1585,22 @@ export function SmartInboxView({
                       {selectedThread.subject}
                     </h2>
                     {/* EMR-657 — clicking name opens the patient chart */}
-                    <Link
-                      href={`/clinic/patients/${selectedThread.patientId}`}
-                      className="text-xs text-text-muted hover:text-accent hover:underline transition-colors"
-                    >
-                      {selectedThread.patientName}
-                    </Link>
+                    <PatientHoverCard patientId={selectedThread.patientId}>
+                      <Link
+                        href={`/clinic/patients/${selectedThread.patientId}`}
+                        className="text-xs text-text-muted hover:text-accent hover:underline transition-colors"
+                      >
+                        {selectedThread.patientName}
+                      </Link>
+                    </PatientHoverCard>
+                    {/* Thread tags — color-coded labels (follow-up, urgent…). */}
+                    <div className="mt-1">
+                      <EntityTagEditor
+                        scope="inbox-thread"
+                        entityId={selectedThread.threadId}
+                        compact
+                      />
+                    </div>
                   </div>
                   {selectedTriage && (
                     <div className="flex items-center gap-2">
