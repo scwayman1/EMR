@@ -41,6 +41,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { BulkActionBar, useBulkSelection } from "@/components/ui/bulk-action-bar";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/toast";
+import { useDensity, densityClass } from "@/lib/ui/density";
 import {
   useContextMenu,
   ContextMenuIcons,
@@ -904,7 +905,7 @@ function ThreadInboxRow({
         onTouchEnd={ctx.triggerProps.onTouchEnd}
         onTouchMove={ctx.triggerProps.onTouchMove}
         className={cn(
-          "w-full text-left px-4 py-3 border-b border-border/60 transition-colors hover:bg-surface-muted",
+          "w-full text-left density-row border-b border-border/60 transition-colors hover:bg-surface-muted",
           "border-l-[3px]",
           PRIORITY_BORDER_COLORS[t.priority],
           isSelected && "bg-surface-muted",
@@ -1018,6 +1019,10 @@ export function SmartInboxView({
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>(initialPriority);
   const [categoryFilter, setCategoryFilter] = useState<MessageCategory | "all">("all");
   const [search, setSearch] = useState("");
+  // Inbox respects the user's global Comfortable/Dense preference —
+  // each thread row reads `--density-row-py` to compute its vertical
+  // padding (see smart-inbox thread <button> classname).
+  const { density } = useDensity();
   // EMR-DnD: clinician-pinned threads bubble to the top of the list,
   // beating priority-based smart sort. Persisted in localStorage as a
   // Set<threadId>. TODO(schema): mirror to a `MessageThread.pinnedBy`
@@ -1372,7 +1377,7 @@ export function SmartInboxView({
           }}
         />
       )}
-    <div className="space-y-4">
+    <div className={cn("space-y-4", densityClass(density))}>
       {/* Top bar: filters + stats */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Left: priority pills + category + search */}

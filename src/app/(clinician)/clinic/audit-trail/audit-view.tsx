@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
+import { useDensity, densityClass } from "@/lib/ui/density";
 import { PatientHoverCard, ProviderHoverCard } from "@/components/preview";
 
 // ─── Types ──────────────────────────────────────────────
@@ -182,8 +183,10 @@ export function AuditTrailView({
     URL.revokeObjectURL(url);
   }, [filteredLogs]);
 
+  const { density } = useDensity();
+
   return (
-    <div>
+    <div className={densityClass(density)}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
         <div className="max-w-2xl">
@@ -339,7 +342,10 @@ export function AuditTrailView({
 
                     return (
                       <tr key={log.id} className="group">
-                        <td className="py-3 px-5" colSpan={6}>
+                        <td
+                          className="py-3 px-5 [.density-dense_&]:py-1.5 [.density-dense_&]:px-3"
+                          colSpan={6}
+                        >
                           <div className="flex items-start gap-4">
                             {/* Expand button */}
                             <button

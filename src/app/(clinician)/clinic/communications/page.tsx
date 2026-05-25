@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { RouterRefreshFreshness } from "@/components/ui/freshness-indicator.client";
 import { CommsRecentClient } from "./comms-recent-client";
+import { ChannelsDensityFrame } from "./channels-density-frame";
 
 export const metadata = { title: "Communications" };
 
@@ -169,7 +170,7 @@ export default async function CommunicationsPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+      <ChannelsDensityFrame>
         <ChannelCard
           title="Text — Patient Inbox"
           description="AI-triaged secure messaging with patients."
@@ -216,7 +217,7 @@ export default async function CommunicationsPage() {
           href="/clinic/communications/broadcasts"
           cta="Open broadcast"
         />
-      </div>
+      </ChannelsDensityFrame>
 
       <CommsRecentClient
         calls={recentCalls.map((call) => ({
@@ -270,8 +271,13 @@ function ChannelCard({
   cta: string;
   highlight?: boolean;
 }) {
+  // When mounted inside `.density-dense`, collapse the default Card
+  // header/content padding so more channel tiles fit above the fold.
   return (
-    <Card tone={highlight ? "raised" : "default"}>
+    <Card
+      tone={highlight ? "raised" : "default"}
+      className="[.density-dense_&]:[&_>div]:py-2 [.density-dense_&]:[&_>div]:px-4"
+    >
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         <CardDescription>{description}</CardDescription>

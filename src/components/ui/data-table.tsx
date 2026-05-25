@@ -46,6 +46,7 @@ import {
   useContextMenu,
   type ContextMenuItem,
 } from "@/components/ui/context-menu";
+import { useDensity } from "@/lib/ui/density";
 
 // ----------------------------------------------------------------- types
 
@@ -252,10 +253,19 @@ export function DataTable<Row>({
   rowClassName,
   contextMenuItems,
 }: DataTableProps<Row>) {
-  // Density: support both controlled (prop) and uncontrolled-with-toggle.
+  // Density precedence (highest → lowest):
+  //   1. Explicit `density` prop (controlled by caller).
+  //   2. In-table density toggle (`internalDensity`) once the user clicks it.
+  //   3. The user's saved global preference from `useDensity()`.
+  //
+  // The global preference syncs across tabs and other surfaces, so a user
+  // who set "Dense" in /settings/preferences sees every DataTable in
+  // dense mode without per-table opt-in.
+  const { density: preferenceDensity } = useDensity();
   const [internalDensity, setInternalDensity] =
-    React.useState<DataTableDensity>("comfortable");
-  const density: DataTableDensity = densityProp ?? internalDensity;
+    React.useState<DataTableDensity | null>(null);
+  const density: DataTableDensity =
+    densityProp ?? internalDensity ?? preferenceDensity;
 
   // Tri-state sort: asc → desc → null.
   const [sort, setSort] = React.useState<SortState | null>(null);

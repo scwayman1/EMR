@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/empty-illustrations";
 import { Button } from "@/components/ui/button";
 import { patientMatchesQuery } from "@/lib/search/patient-search";
+import { useDensity, densityClass } from "@/lib/ui/density";
+import { cn } from "@/lib/utils/cn";
 import { UniversalPatientSearch } from "@/components/clinic/UniversalPatientSearch";
 import { BulkActionBar, useBulkSelection } from "@/components/ui/bulk-action-bar";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -339,6 +341,9 @@ export function PatientListClient({
   const [search, setSearch] = useState(initialSearch);
   const [powerFilter, setPowerFilter] = useState<PowerFilter>("all");
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  // Density preference — propagates to the roster cards' vertical
+  // breathing room via CSS variables defined in globals.css.
+  const { density } = useDensity();
   // Shared motion: stagger the roster fan-in. No-op under reduced motion.
   const reduceMotion = useReducedMotion() ?? false;
   const listStaggerProps = useMemo(() => listStagger(reduceMotion), [reduceMotion]);
@@ -597,7 +602,7 @@ export function PatientListClient({
   /*  Render                                                           */
   /* ---------------------------------------------------------------- */
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", densityClass(density))}>
       {/* Summary metric tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricTile
@@ -754,7 +759,7 @@ export function PatientListClient({
                         handleRowToggle(p.id, { shift: true });
                       }
                     }}
-                    className={`card-hover flex items-center gap-4 px-5 py-4 transition-colors duration-150 group ${
+                    className={`card-hover flex items-center gap-4 density-row transition-colors duration-150 group ${
                       isSelected
                         ? "bg-accent-soft/40"
                         : "hover:bg-surface-muted/50"

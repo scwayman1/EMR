@@ -23,7 +23,7 @@ const grantSchema = z.object({
   email: z.string().email().max(254),
 });
 
-export async function GET(req: Request) {
+export async function GET() {
   const gate = await requireApiAuth({ role: "super_admin" });
   if (gate.error) return gate.error;
 
@@ -71,73 +71,73 @@ export async function GET(req: Request) {
 export const POST = withAdminMutation(
   { bucket: "admin.super_admin.grant" },
   async (req, { actor }) => {
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
-  }
-  const parsed = grantSchema.safeParse(raw);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "invalid_input", issues: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
+    let raw: unknown;
+    try {
+      raw = await req.json();
+    } catch {
+      return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    }
+    const parsed = grantSchema.safeParse(raw);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "invalid_input", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
 
-  const email = parsed.data.email.trim().toLowerCase();
-  const targetUser = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, email: true, firstName: true, lastName: true },
-  });
-  if (!targetUser) {
-    return NextResponse.json(
-      {
-        error: "user_not_found",
-        hint: "Have them sign in once first — Clerk creates the User row on first sign-in.",
+    const email = parsed.data.email.trim().toLowerCase();
+    const targetUser = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, firstName: true, lastName: true },
+    });
+    if (!targetUser) {
+      return NextResponse.json(
+        {
+          error: "user_not_found",
+          hint: "Have them sign in once first — Clerk creates the User row on first sign-in.",
+        },
+        { status: 404 },
+      );
+    }
+
+    const hqOrgId = await ensureLeafjourneyHq();
+    await prisma.membership.upsert({
+      where: {
+        userId_organizationId_role: {
+          userId: targetUser.id,
+          organizationId: hqOrgId,
+          role: "super_admin",
+        },
       },
-      { status: 404 },
-    );
-  }
-
-  const hqOrgId = await ensureLeafjourneyHq();
-  await prisma.membership.upsert({
-    where: {
-      userId_organizationId_role: {
+      update: {},
+      create: {
         userId: targetUser.id,
         organizationId: hqOrgId,
         role: "super_admin",
       },
-    },
-    update: {},
-    create: {
-      userId: targetUser.id,
-      organizationId: hqOrgId,
-      role: "super_admin",
-    },
-  });
+    });
 
-  await logControllerAction({
-    actor: {
-      id: actor.id,
-      email: actor.email,
-      roles: actor.roles,
-      organizationId: actor.organizationId,
-    },
-    action: "controller.super_admin.grant",
-    targetId: targetUser.id,
-    after: { email: targetUser.email },
-    reason: `Granted super_admin to ${targetUser.email}`,
-  });
+    await logControllerAction({
+      actor: {
+        id: actor.id,
+        email: actor.email,
+        roles: actor.roles,
+        organizationId: actor.organizationId,
+      },
+      action: "controller.super_admin.grant",
+      targetId: targetUser.id,
+      after: { email: targetUser.email },
+      reason: `Granted super_admin to ${targetUser.email}`,
+    });
 
-  return NextResponse.json({
-    ok: true,
-    user: {
-      userId: targetUser.id,
-      email: targetUser.email,
-      firstName: targetUser.firstName,
-      lastName: targetUser.lastName,
-    },
-  });
+    return NextResponse.json({
+      ok: true,
+      user: {
+        userId: targetUser.id,
+        email: targetUser.email,
+        firstName: targetUser.firstName,
+        lastName: targetUser.lastName,
+      },
+    });
   },
 );
