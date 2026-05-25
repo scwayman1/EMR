@@ -37,6 +37,7 @@ const SUPER_ADMIN_SECTIONS: NavSection[] = [
       { label: "Practices", href: "/practices" },
       { label: "Onboarding", href: "/onboarding" },
       { label: "Templates", href: "/templates" },
+      { label: "System banners", href: "/admin/banners" },
       { label: "Cross-tenant search", href: "/admin/search" },
     ],
   },

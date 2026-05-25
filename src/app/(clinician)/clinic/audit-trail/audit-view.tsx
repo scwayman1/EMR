@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { useDensity, densityClass } from "@/lib/ui/density";
+import { PatientHoverCard, ProviderHoverCard } from "@/components/preview";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -393,6 +394,12 @@ export function AuditTrailView({
                                     <span className="font-mono text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
                                       {log.actorAgent}
                                     </span>
+                                  ) : log.actorUserId ? (
+                                    <ProviderHoverCard userId={log.actorUserId}>
+                                      <span className="font-medium cursor-default">
+                                        {log.actorName}
+                                      </span>
+                                    </ProviderHoverCard>
                                   ) : (
                                     <span className="font-medium">
                                       {log.actorName}
@@ -414,11 +421,18 @@ export function AuditTrailView({
                                     <span className="font-medium text-text-subtle">
                                       {log.subjectType}
                                     </span>
-                                    {log.subjectId && (
+                                    {log.subjectId &&
+                                    log.subjectType.toLowerCase() === "patient" ? (
+                                      <PatientHoverCard patientId={log.subjectId}>
+                                        <span className="font-mono text-[10px] ml-1 cursor-default underline-offset-2 hover:underline">
+                                          {log.subjectId.slice(0, 12)}
+                                        </span>
+                                      </PatientHoverCard>
+                                    ) : log.subjectId ? (
                                       <span className="font-mono text-[10px] ml-1">
                                         {log.subjectId.slice(0, 12)}
                                       </span>
-                                    )}
+                                    ) : null}
                                   </span>
                                 )}
                               </div>

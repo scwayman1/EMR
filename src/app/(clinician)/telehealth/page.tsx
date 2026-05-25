@@ -16,6 +16,8 @@ import { EditorialRule, LeafSprig } from "@/components/ui/ornament";
 import { PreVisitChecklistClient } from "./pre-visit-checklist-client";
 import { AmbientMicToggle } from "./ambient-mic-toggle";
 import { LaunchVideoPopup } from "./launch-video-popup";
+import { VisitWeekCalendar } from "./visit-week-calendar";
+import type { CalendarEvent } from "@/components/ui/calendar";
 
 export const metadata = { title: "Telehealth" };
 
@@ -99,6 +101,31 @@ export default async function TelehealthDashboardPage() {
     (e) => e.status === "scheduled",
   ).length;
 
+  // Build CalendarEvents for the week-view widget. Includes today (live +
+  // scheduled) plus upcoming.
+  const weekEvents: CalendarEvent[] = [...todaysVisits, ...upcoming]
+    .filter((v) => v.scheduledFor)
+    .map((v) => {
+      const start = v.scheduledFor!;
+      // Encounter rows store scheduledFor only; assume 30-min slots.
+      const end = new Date(start.getTime() + 30 * 60_000);
+      return {
+        id: v.id,
+        start: start.toISOString(),
+        end: end.toISOString(),
+        title: `${v.patient.firstName} ${v.patient.lastName}`,
+        description: v.reason ?? undefined,
+        patientId: v.patient.id,
+        href: `/clinic/patients/${v.patient.id}/telehealth`,
+        color:
+          v.status === "in_progress"
+            ? "danger"
+            : v.status === "complete"
+              ? "neutral"
+              : "info",
+      };
+    });
+
   return (
     <PageShell maxWidth="max-w-[1200px]">
       <PageHeader
@@ -150,6 +177,20 @@ export default async function TelehealthDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
+          {weekEvents.length > 0 && (
+            <Card tone="raised">
+              <CardHeader>
+                <CardTitle className="text-base">This week</CardTitle>
+                <CardDescription>
+                  All scheduled and live video visits this week.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="overflow-x-auto p-0">
+                <VisitWeekCalendar events={weekEvents} />
+              </CardContent>
+            </Card>
+          )}
+
           <Card tone="raised">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

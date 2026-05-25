@@ -229,6 +229,12 @@ export function ScheduleCalendar({
           <Button variant="ghost" size="sm" onClick={() => goWeek(1)}>
             Next →
           </Button>
+          <Link
+            href="/clinic/schedule/month"
+            className="text-xs font-medium text-text-subtle hover:text-text underline-offset-4 hover:underline ml-1"
+          >
+            Month view
+          </Link>
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabList, Trigger, Panel } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils/cn";
 
 export interface Terpene {
@@ -48,33 +49,13 @@ export function TerpenesView({
   const [tab, setTab] = useState<Tab>("grid");
 
   return (
-    <>
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab("grid")}
-          className={cn(
-            "h-9 px-4 rounded-full text-sm font-medium border transition-all",
-            tab === "grid"
-              ? "bg-accent text-accent-ink border-accent"
-              : "bg-surface-raised text-text-muted border-border hover:border-accent/40"
-          )}
-        >
-          Terpene grid
-        </button>
-        <button
-          onClick={() => setTab("correlation")}
-          className={cn(
-            "h-9 px-4 rounded-full text-sm font-medium border transition-all",
-            tab === "correlation"
-              ? "bg-accent text-accent-ink border-accent"
-              : "bg-surface-raised text-text-muted border-border hover:border-accent/40"
-          )}
-        >
-          Outcome correlations
-        </button>
-      </div>
+    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} variant="pill">
+      <TabList aria-label="Terpene view" className="mb-6">
+        <Trigger value="grid">Terpene grid</Trigger>
+        <Trigger value="correlation">Outcome correlations</Trigger>
+      </TabList>
 
-      {tab === "grid" && (
+      <Panel value="grid">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {terpenes.map((t) => (
             <Card key={t.name} tone="raised">
@@ -128,9 +109,9 @@ export function TerpenesView({
             </Card>
           ))}
         </div>
-      )}
+      </Panel>
 
-      {tab === "correlation" && (
+      <Panel value="correlation" lazy>
         <Card tone="raised">
           <CardHeader>
             <CardTitle>Terpene × outcome correlation</CardTitle>
@@ -189,7 +170,7 @@ export function TerpenesView({
             </div>
           </CardContent>
         </Card>
-      )}
-    </>
+      </Panel>
+    </Tabs>
   );
 }

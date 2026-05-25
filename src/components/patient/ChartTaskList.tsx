@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/badge";
 import { formatRelative } from "@/lib/utils/format";
 import { SortableList, reorder } from "@/components/ui/sortable";
+import { EntityTagEditor, EntityTagStrip } from "@/components/ui/entity-tag-editor";
 
 // EMR-180 — Chart Task List / To-Do on Open
 //
@@ -273,6 +274,8 @@ export function ChartTaskList({
                   </span>
                   {item.severity === "danger" && <Badge tone="danger">Urgent</Badge>}
                   {item.severity === "warning" && <Badge tone="warning">Attention</Badge>}
+                  {/* Read-only tag strip (editor sits outside the Link). */}
+                  <EntityTagStrip scope="chart-task" entityId={item.id} />
                 </div>
                 <p className="text-sm text-text font-medium leading-snug">
                   {item.title}
@@ -287,6 +290,10 @@ export function ChartTaskList({
                 </span>
               )}
             </Link>
+            {/* Tag affordance outside the Link so the popover doesn't navigate. */}
+            <div className="self-center pr-2">
+              <EntityTagEditor scope="chart-task" entityId={item.id} compact />
+            </div>
           </div>
         )}
       />
