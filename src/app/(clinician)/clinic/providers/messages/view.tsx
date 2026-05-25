@@ -33,6 +33,7 @@ import {
   type ActionResult,
 } from "./actions";
 import { CallLaunchButtons } from "@/components/communications/call-launch-buttons";
+import { SplitPane } from "@/components/ui/split-pane";
 
 export interface DecryptedThread {
   id: string;
@@ -131,9 +132,18 @@ export function ProviderInboxView({ threads, currentUserId, directory }: Props) 
     : null;
 
   return (
-    <div className="grid grid-cols-12 gap-0 min-h-[640px] rounded-2xl border border-border overflow-hidden bg-surface">
+    <>
+    <div className="h-[640px] rounded-2xl border border-border overflow-hidden bg-surface">
+      <SplitPane
+        orientation="horizontal"
+        defaultSize={360}
+        minSize={260}
+        maxSize={560}
+        storageKey="providers-messages"
+        ariaLabel="Resize provider directory"
+      >
       {/* Left pane — directory search + chat list */}
-      <aside className="col-span-4 border-r border-border flex flex-col bg-surface-muted/40">
+      <aside className="h-full border-r border-border flex flex-col bg-surface-muted/40">
         <div className="p-3 border-b border-border">
           <Input
             type="search"
@@ -184,7 +194,7 @@ export function ProviderInboxView({ threads, currentUserId, directory }: Props) 
       </aside>
 
       {/* Right pane — active thread or composer */}
-      <section className="col-span-8 flex flex-col bg-surface">
+      <section className="h-full flex flex-col bg-surface">
         {right.kind === "compose" ? (
           <NewConversationCard
             directory={directory}
@@ -221,6 +231,8 @@ export function ProviderInboxView({ threads, currentUserId, directory }: Props) 
           </div>
         )}
       </section>
+      </SplitPane>
+    </div>
 
       {/* Provider info pop-up */}
       <Dialog
@@ -250,7 +262,7 @@ export function ProviderInboxView({ threads, currentUserId, directory }: Props) 
           />
         )}
       </Dialog>
-    </div>
+    </>
   );
 }
 
