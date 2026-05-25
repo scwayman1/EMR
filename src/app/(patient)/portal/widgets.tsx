@@ -21,6 +21,8 @@ import { applyFreezeTokenAction } from "@/app/(patient)/portal/apply-freeze-acti
 import { withTimeout } from "@/lib/utils/with-timeout";
 import { PWASyncNextVisit, PWASyncTasks, PWASyncStreak } from "@/components/portal/pwa-sync";
 import { FadeInWidget } from "@/components/ui/fade-in-widget";
+import { BirthdayCelebration } from "@/components/patient/birthday-celebration";
+import { BirthdayBadge } from "@/components/patient/birthday-badge";
 
 
 
@@ -154,6 +156,12 @@ export async function HeroGreetingWidget({ userId }: { userId: string }) {
 
   return (
     <FadeInWidget>
+      <BirthdayCelebration
+        dateOfBirth={patient.dateOfBirth}
+        patientFirstName={patient.firstName}
+        patientId={patient.id}
+        audience="patient"
+      />
       <section className="relative overflow-hidden rounded-2xl md:rounded-3xl liquid-glass-strong mb-6 md:mb-8">
       <PWASyncStreak streak={patient.dailyStreak} />
       <div className="relative px-6 sm:px-8 md:px-12 py-8 md:py-12 max-w-2xl">
@@ -177,9 +185,12 @@ export async function HeroGreetingWidget({ userId }: { userId: string }) {
             />
           )}
         </div>
-        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl leading-[1.1] tracking-tight text-text">
-          {greeting()},{" "}
-          <span className="italic text-accent">{patient.firstName}</span>.
+        <h1 className="font-display text-2xl sm:text-3xl md:text-4xl leading-[1.1] tracking-tight text-text flex items-center gap-2 flex-wrap">
+          <span>
+            {greeting()},{" "}
+            <span className="italic text-accent">{patient.firstName}</span>.
+          </span>
+          <BirthdayBadge dateOfBirth={patient.dateOfBirth} />
         </h1>
         <p className="text-sm text-text-muted mt-3 leading-relaxed max-w-lg">
           Here is your health dashboard. A quick check-in helps your care team

@@ -58,6 +58,8 @@ import { PatientActivityTimeline } from "@/components/patient/PatientActivityTim
 import { loadPatientActivity } from "@/lib/domain/patient-activity";
 import { UnresolvedFollowUpsPanel } from "@/components/patient/UnresolvedFollowUpsPanel";
 import { buildUnresolvedFollowUps } from "@/lib/domain/unresolved-followups";
+import { BirthdayCelebration } from "@/components/patient/birthday-celebration";
+import { BirthdayBadge } from "@/components/patient/birthday-badge";
 import { logger } from "@/lib/observability/log";
 import { BirthdayBanner } from "./birthday-banner";
 import { MessagePatientDock } from "@/app/(clinician)/clinic/messages/dock-compose";
@@ -562,6 +564,15 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
         avatarUrl={intake.photoUrl ?? null}
       />
 
+      {/* EMR-780: celebratory popup fires once-per-session when opening
+          the chart on the patient's birthday. */}
+      <BirthdayCelebration
+        dateOfBirth={patient.dateOfBirth}
+        patientFirstName={patient.firstName}
+        patientId={patient.id}
+        audience="clinician"
+      />
+
       {/* ── Dossier header ────────────────────────────────── */}
       <Card tone="ambient" className="mb-8 !overflow-visible">
         <CardContent className="pt-8 pb-8">
@@ -580,7 +591,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   benchmarkSeconds={benchmarkSeconds}
                 />
               </div>
-              <h1 className="font-display text-3xl text-text tracking-tight leading-tight flex items-center gap-2">
+              <h1 className="font-display text-3xl text-text tracking-tight leading-tight flex items-center gap-2 flex-wrap">
                 <span>
                   {patient.firstName} {patient.lastName}
                   {age !== null ? (
@@ -588,6 +599,11 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                       {" "}({age}, {sex === "Female" ? "F" : sex === "Male" ? "M" : sex})
                     </span>
                   ) : null}
+                </span>
+                {/* EMR-780: birthday indicator — renders 🎂 only when
+                    today matches the patient's DOB. Auto-clears at 00:01
+                    local the following day. */}
+                <BirthdayBadge dateOfBirth={patient.dateOfBirth} />
                 </span>
                 {isBirthday && (
                   <span aria-hidden="true" className="text-2xl leading-none">🎂</span>
