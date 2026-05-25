@@ -9,6 +9,7 @@ import {
   SUBMISSION_RETRY_LIMIT,
   type PriorSubmissionInput,
   validateForSubmission,
+  derivePrimaryControlNumbers,
 } from "./clearinghouse-submission-agent";
 
 // ---------------------------------------------------------------------------
@@ -362,3 +363,13 @@ describe("evaluateRetryGuard", () => {
     }
   });
 });
+
+describe("derivePrimaryControlNumbers", () => {
+  it("generates deterministic and unique control numbers", () => {
+    const numbers = derivePrimaryControlNumbers("claim-abc", 0);
+    expect(numbers.isaControlNumber).toBeGreaterThan(0);
+    expect(numbers.gsControlNumber).toBeGreaterThan(0);
+    expect(numbers.stControlNumber).toBe("0001");
+  });
+});
+
