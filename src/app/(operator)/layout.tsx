@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { SystemBannerRail } from "@/components/ui/system-banner";
 import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -243,15 +244,20 @@ export default async function OperatorLayout({
   }
 
   return (
-    <AppShell
-      user={user}
-      activeRole="operator"
-      sections={sections}
-      roleLabel="Practice ops"
-      showNavPrefs={false}
-    >
-      <CommandPalette role="operator" userId={user.id} />
-      {children}
-    </AppShell>
+    <>
+      {/* System-wide banners. Mounted above AppShell so the sticky banner
+          spans the full viewport. */}
+      <SystemBannerRail surface="operator" />
+      <AppShell
+        user={user}
+        activeRole="operator"
+        sections={sections}
+        roleLabel="Practice ops"
+        showNavPrefs={false}
+      >
+        <CommandPalette role="operator" userId={user.id} />
+        {children}
+      </AppShell>
+    </>
   );
 }
