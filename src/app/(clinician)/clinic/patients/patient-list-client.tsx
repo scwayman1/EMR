@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { listStagger, listStaggerChild } from "@/lib/ui/motion";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { PatientTagStrip } from "@/components/ui/patient-tag-strip";
 import { MetricTile } from "@/components/ui/metric-tile";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -819,6 +820,8 @@ export function PatientListClient({
                             Last visit {formatShortDate(p.lastVisit)}
                           </Badge>
                         )}
+                        {/* Tag strip — reads PatientTag selections from localStorage. */}
+                        <PatientTagStrip patientId={p.id} />
                       </div>
                     </div>
 
