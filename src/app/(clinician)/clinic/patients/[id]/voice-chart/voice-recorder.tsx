@@ -103,59 +103,6 @@ function parseMockTranscript(
 
 // ── Mock transcript by template ────────────────────────────────
 
-/**
- * Parse a template's mock transcript string into TranscriptSegment[]
- * scaled across `durationSec`. Lines look like:
- *   [00:08] Dr: How have you been?
- *   [00:14] Pt: Better, doctor.
- */
-function parseMockTranscript(
-  mockText: string,
-  durationSec: number,
-): TranscriptSegment[] {
-  const lines = mockText.split("\n").map((l) => l.trim()).filter(Boolean);
-  const segments: TranscriptSegment[] = [];
-  const lineRegex = /^\[(\d{1,2}):(\d{2})\]\s*(Dr|Pt|\?\?):\s*(.+)$/i;
-
-  for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(lineRegex);
-    if (!m) continue;
-    const start = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
-    const speakerRaw = m[3].toLowerCase();
-    const speaker: TranscriptSegment["speaker"] =
-      speakerRaw === "dr"
-        ? "clinician"
-        : speakerRaw === "pt"
-          ? "patient"
-          : "unknown";
-    segments.push({
-      speaker,
-      text: m[4],
-      startTime: start,
-      endTime: start, // patched below
-    });
-  }
-
-  // Patch end times = next start, or +6s for the last segment.
-  for (let i = 0; i < segments.length; i++) {
-    segments[i].endTime =
-      i + 1 < segments.length ? segments[i + 1].startTime : segments[i].startTime + 6;
-  }
-
-  // Scale to the actual recorded duration so timestamps line up
-  // with what the clinician saw on the timer.
-  if (segments.length > 0 && durationSec > 0) {
-    const maxTime = segments[segments.length - 1].endTime;
-    const scale = maxTime > 0 ? durationSec / maxTime : 1;
-    return segments.map((s) => ({
-      ...s,
-      startTime: Math.round(s.startTime * scale),
-      endTime: Math.round(s.endTime * scale),
-    }));
-  }
-  return segments;
-}
-
 // ── Simulated transcript ───────────────────────────────────────
 
 function buildSimulatedTranscript(
@@ -1200,92 +1147,12 @@ export function VoiceRecorder({
                   </button>
                 </div>
               </div>
-=======
-
-          {/* Record card */}
-          <Card tone="raised">
-            <CardContent className="pt-8 pb-8 flex flex-col items-center gap-6">
-              <div className="text-center space-y-1">
-                <p className="text-lg font-medium text-text">{patientName}</p>
-                {patientDob && (
-                  <p className="text-sm text-text-muted">DOB: {patientDob}</p>
-                )}
-                {presentingConcerns && (
-                  <p className="text-xs text-text-muted mt-2 max-w-xs">
-                    Concerns: {presentingConcerns}
-                  </p>
-                )}
-              </div>
-
-              <button
-                onClick={handleStart}
-                className="group relative w-20 h-20 rounded-full bg-gradient-to-b from-accent to-accent-strong shadow-lg
-                           hover:shadow-xl hover:scale-105 active:scale-95
-                           transition-all duration-200 ease-out
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                aria-label="Start recording"
-              >
-                <svg
-                  className="w-8 h-8 text-accent-ink mx-auto"
-                  fill="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h4v2H8v-2h4v-3.07z" />
-                </svg>
-              </button>
-
-              <div className="text-center space-y-0.5">
-                <p className="text-sm text-text-muted">Tap to start recording</p>
-                <p className="text-[11px] text-text-muted">
-                  {selectedTemplate.glyph} {selectedTemplate.label} ·{" "}
-                  {findToneLabel(toneId)} tone
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* ── Recording state ───────────────────────────────── */}
-      {state === "recording" && (
-        <Card tone="raised" className="max-w-lg mx-auto">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-6">
-            {/* Active template chip */}
-            <Badge tone="accent">
-              {selectedTemplate.glyph} {selectedTemplate.label} ·{" "}
-              {findToneLabel(toneId)}
-            </Badge>
-            {/* Pulsing red indicator + timer */}
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
-              </span>
-              <span className="text-2xl font-mono font-semibold text-text tabular-nums tracking-wider">
-                {formatDuration(duration)}
-              </span>
->>>>>>> origin/qa-storm/emr-782-scribe
-            </div>
-
-            <div className="border-t border-border pt-4 mt-6">
-              <div className="flex items-center justify-between text-[11px] text-text-subtle">
-                <span>Master Level</span>
-                <span className="font-mono">
-                  {state === "recording" && !clinicianMuted && !patientMuted ? "ACTIVE" : "STANDBY"}
-                </span>
-              </div>
-              <div className="h-1.5 bg-border rounded-full overflow-hidden mt-1.5 flex">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-300",
-                    state === "recording" ? "w-4/5 bg-accent" : "w-0"
-                  )}
-                />
-              </div>
             </div>
           </Card>
         </div>
       )}
+
+
 
       {/* ── Processing state ──────────────────────────────── */}
       {state === "processing" && (

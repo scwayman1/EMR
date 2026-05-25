@@ -604,10 +604,6 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                     today matches the patient's DOB. Auto-clears at 00:01
                     local the following day. */}
                 <BirthdayBadge dateOfBirth={patient.dateOfBirth} />
-                </span>
-                {isBirthday && (
-                  <span aria-hidden="true" className="text-2xl leading-none">🎂</span>
-                )}
               </h1>
               <p
                 className="text-[15px] text-text-muted mt-1.5 leading-relaxed max-w-xl"
@@ -722,8 +718,6 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
                   Print chart
                 </Button>
               </Link>
-=======
->>>>>>> origin/qa-storm/emr-785-chart-download
               <Link href={`/clinic/patients/${params.id}/voice-chart`}>
                 <Button variant="ghost" size="sm">
                   Voice chart
