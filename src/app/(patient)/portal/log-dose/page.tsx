@@ -41,6 +41,11 @@ export default async function LogDosePage() {
     doseUnit: r.volumeUnit,
     thcMg: r.calculatedThcMgPerDose,
     cbdMg: r.calculatedCbdMgPerDose,
+    // EMR-003 — concentrations passed through so the inhalation
+    // estimator can derive mg/puff for vape carts and flower.
+    thcConcentration: r.product.thcConcentration,
+    cbdConcentration: r.product.cbdConcentration,
+    concentrationUnit: r.product.concentrationUnit,
     active: r.active,
   }));
 

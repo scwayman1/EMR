@@ -468,20 +468,6 @@ export async function logCorrespondence(
     messageBody += "\n\nAttachments:";
     for (const att of attachments) {
       messageBody += `\n- ${att.name} (${Math.round(att.size / 1024)} KB)`;
-      
-      // Also create a Document entry in the database for this patient!
-      await prisma.document.create({
-        data: {
-          organizationId: user.organizationId!,
-          patientId,
-          uploadedById: user.id,
-          kind: "other",
-          originalName: att.name,
-          mimeType: att.type,
-          sizeBytes: att.size,
-          storageKey: `inline-attachment-${att.name}-${Date.now()}`,
-        },
-      });
     }
   }
 
@@ -506,6 +492,12 @@ export async function addPastMedicalConditionAction(
   notes?: string | null
 ) {
   const user = await requireUser();
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, organizationId: user.organizationId!, deletedAt: null },
+    select: { id: true },
+  });
+  if (!patient) throw new Error("Patient not found");
+
   await prisma.pastMedicalCondition.create({
     data: {
       patientId,
@@ -520,10 +512,20 @@ export async function addPastMedicalConditionAction(
 }
 
 export async function deletePastMedicalConditionAction(patientId: string, id: string) {
-  await prisma.pastMedicalCondition.update({
-    where: { id },
+  const user = await requireUser();
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, organizationId: user.organizationId!, deletedAt: null },
+    select: { id: true },
+  });
+  if (!patient) throw new Error("Patient not found");
+
+  const res = await prisma.pastMedicalCondition.updateMany({
+    where: { id, patientId, deletedAt: null },
     data: { deletedAt: new Date() },
   });
+  if (res.count === 0) {
+    throw new Error("Medical condition not found");
+  }
   revalidatePath(`/clinic/patients/${patientId}`);
   return { ok: true };
 }
@@ -534,6 +536,13 @@ export async function addPastSurgeryAction(
   performedDateText?: string | null,
   notes?: string | null
 ) {
+  const user = await requireUser();
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, organizationId: user.organizationId!, deletedAt: null },
+    select: { id: true },
+  });
+  if (!patient) throw new Error("Patient not found");
+
   await prisma.pastSurgery.create({
     data: {
       patientId,
@@ -548,10 +557,20 @@ export async function addPastSurgeryAction(
 }
 
 export async function deletePastSurgeryAction(patientId: string, id: string) {
-  await prisma.pastSurgery.update({
-    where: { id },
+  const user = await requireUser();
+  const patient = await prisma.patient.findFirst({
+    where: { id: patientId, organizationId: user.organizationId!, deletedAt: null },
+    select: { id: true },
+  });
+  if (!patient) throw new Error("Patient not found");
+
+  const res = await prisma.pastSurgery.updateMany({
+    where: { id, patientId, deletedAt: null },
     data: { deletedAt: new Date() },
   });
+  if (res.count === 0) {
+    throw new Error("Surgical history item not found");
+  }
   revalidatePath(`/clinic/patients/${patientId}`);
   return { ok: true };
 }

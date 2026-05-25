@@ -26,12 +26,20 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { withAdminMutation } from "@/lib/auth/with-admin-mutation";
 import { logControllerAction } from "@/lib/auth/audit-stub";
+import { withAdminMutation } from "@/lib/auth/with-admin-mutation";
 import { getSpecialtyTemplate } from "@/lib/specialty-templates/registry";
-import { readJson, invalidInput, notFound } from "../../_helpers";
+import {
+  readJson,
+  invalidInput,
+  notFound,
+} from "../../_helpers";
 
 export const runtime = "nodejs";
+
+interface Ctx {
+  params: { id: string };
+}
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 

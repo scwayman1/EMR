@@ -6,6 +6,7 @@
 
 import { prisma } from "../lib/db/prisma";
 import { dispatch } from "../lib/orchestration/dispatch";
+import { sendDueAppointmentReminders } from "../lib/scheduling/send-reminders";
 import { getDefaultAdapter } from "../lib/billing/clearinghouse/gateway";
 import { parse999, parse277CA, decide277Actions } from "../lib/billing/clearinghouse-ack";
 import { recordDeadLetter } from "../lib/billing/clearinghouse/dead-letter";
@@ -115,15 +116,23 @@ async function main() {
     cfoEnqueued += orgs.length;
   }
 
+  // 6. SMS appointment reminders — 7 days, 2 days, 1 day before the
+  //    appointment start. The scheduler runs every 15 minutes; the helper
+  //    scans every upcoming appointment within a 7d+1h window and sends
+  //    the SMS whose target window covers `now`. Idempotency is enforced
+  //    inside the helper via AuditLog.
+  const reminderResult = await sendDueAppointmentReminders({ now: new Date() });
+
   console.log(
-    `[scheduler] enqueued outcome=${patients.length} stalled=${stalled.length} adherence=${adherenceEnqueued} cfo=${cfoEnqueued}`,
+    `[scheduler] enqueued outcome=${patients.length} stalled=${stalled.length} adherence=${adherenceEnqueued} cfo=${cfoEnqueued} ` +
+      `sms=${reminderResult.sent} (skipped=${reminderResult.skipped})`,
   );
 
   // 6. Clearinghouse functional/payer acknowledgment polling
   await pollClearinghouseGateway();
 }
 
-async function pollClearinghouseGateway() {
+export async function pollClearinghouseGateway() {
   console.log("[scheduler] polling clearinghouse gateway");
 
   const org = await prisma.organization.findFirst();
@@ -475,11 +484,13 @@ async function pollClearinghouseGateway() {
   }, { timeout: 30000 });
 }
 
-main()
-  .catch((err) => {
-    console.error("[scheduler] error", err);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (process.argv[1]?.endsWith("scheduler.ts") || process.argv[1]?.endsWith("scheduler")) {
+  main()
+    .catch((err) => {
+      console.error("[scheduler] error", err);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

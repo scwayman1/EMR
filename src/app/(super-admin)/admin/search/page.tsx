@@ -8,17 +8,7 @@
 //
 // Auth is provided by the parent (super-admin)/layout.tsx, which gates
 // on requireSuperAdmin(). The API route in this PR is also super-admin
-// gated, so the data is double-gated regardless of which entry-point
 // the operator hits.
-//
-// TODO(EMR-738-hq-integration): wire this search box into /admin/hq as
-// a top-level command palette. Deferred from this PR to avoid merge
-// conflict with PR #344 (HQ shell). The standalone page exists in the
-// meantime so ops/support can use it day-one.
-//
-// TODO(EMR-738-csv-export): add a "Download CSV" button to the results
-// table once PR #341 (EMR-749) lands the streamCsvResponse utility.
-// Deferred from this PR to avoid blocking on the unmerged dependency.
 
 import { redirect } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
@@ -218,13 +208,22 @@ export default async function CrossTenantSearchPage({
         </div>
       )}
 
-      {hasQuery && nextCursorParam && (
-        <div className="mt-4">
+      {hasQuery && (
+        <div className="mt-4 flex items-center justify-between">
+          {nextCursorParam ? (
+            <a
+              href={`?q=${encodeURIComponent(qRaw)}&entity=${entity}&cursor=${encodeURIComponent(nextCursorParam)}`}
+              className="text-sm text-accent underline"
+            >
+              Next page →
+            </a>
+          ) : <div />}
+          
           <a
-            href={`?q=${encodeURIComponent(qRaw)}&entity=${entity}&cursor=${encodeURIComponent(nextCursorParam)}`}
-            className="text-sm text-accent underline"
+            href={`/api/admin/search/export?q=${encodeURIComponent(qRaw)}&entity=${entity}`}
+            className="text-sm text-text-muted hover:text-text underline"
           >
-            Next page →
+            Download CSV
           </a>
         </div>
       )}

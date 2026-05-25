@@ -85,6 +85,37 @@ function ageFromDob(dob: Date): number {
   return age;
 }
 
+async function requireEncounterForPatient(
+  encounterId: string,
+  patientId: string,
+  organizationId: string,
+) {
+  const encounter = await prisma.encounter.findFirst({
+    where: {
+      id: encounterId,
+      patientId,
+      organizationId,
+      patient: { deletedAt: null },
+    },
+    select: { id: true, patientId: true, organizationId: true },
+  });
+  if (!encounter) throw new Error("Encounter not found.");
+  return encounter;
+}
+
+async function requireEncounterInCurrentOrg(encounterId: string, organizationId: string) {
+  const encounter = await prisma.encounter.findFirst({
+    where: {
+      id: encounterId,
+      organizationId,
+      patient: { deletedAt: null },
+    },
+    select: { id: true, patientId: true, organizationId: true },
+  });
+  if (!encounter) throw new Error("Encounter not found.");
+  return encounter;
+}
+
 // ── Actions ────────────────────────────────────────────────────
 
 /**
@@ -119,6 +150,15 @@ export async function processTranscript(
 
     if (!patient) {
       return { ok: false, error: "Patient not found." };
+    }
+
+    try {
+      await requireEncounterForPatient(encounterId, patientId, user.organizationId!);
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Encounter not found.",
+      };
     }
 
     // Build patient context string
@@ -383,7 +423,8 @@ export async function saveTranscriptToEncounter(
   encounterId: string,
   transcript: TranscriptSegment[]
 ): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requireEncounterInCurrentOrg(encounterId, user.organizationId!);
 
   await prisma.encounter.update({
     where: { id: encounterId },

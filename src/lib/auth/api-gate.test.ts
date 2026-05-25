@@ -25,8 +25,13 @@ vi.mock("./super-admin-bootstrap", () => ({
   bootstrapSuperAdminIfAllowlisted: vi.fn(),
 }));
 
+vi.mock("./impersonation", () => ({
+  IMPERSONATION_COOKIE: "lj_impersonation",
+  verifyImpersonationCookie: vi.fn(),
+}));
+
 vi.mock("./session-kill-list", () => ({
-  isUserRevoked: () => Promise.resolve(false),
+  isUserRevoked: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("./super-admin-mfa", () => ({
@@ -46,10 +51,14 @@ vi.mock("@/lib/observability/log", () => ({
 
 import { requireUser } from "./session";
 import { bootstrapSuperAdminIfAllowlisted } from "./super-admin-bootstrap";
+import { verifyImpersonationCookie } from "./impersonation";
+import { isUserRevoked } from "./session-kill-list";
 import { requireApiAuth } from "./api-gate";
 
 const mockedRequireUser = vi.mocked(requireUser);
 const mockedBootstrap = vi.mocked(bootstrapSuperAdminIfAllowlisted);
+const mockedVerifyImpersonationCookie = vi.mocked(verifyImpersonationCookie);
+const mockedIsUserRevoked = vi.mocked(isUserRevoked);
 
 const baseUser = {
   id: "user_001",
@@ -64,6 +73,8 @@ const baseUser = {
 beforeEach(() => {
   vi.resetAllMocks();
   mockedBootstrap.mockResolvedValue(false);
+  mockedVerifyImpersonationCookie.mockReturnValue(null);
+  mockedIsUserRevoked.mockResolvedValue(false);
 });
 
 describe("requireApiAuth — authentication", () => {
@@ -75,6 +86,18 @@ describe("requireApiAuth — authentication", () => {
     expect(gate.error!.status).toBe(401);
     const body = await gate.error!.json();
     expect(body.error).toBe("UNAUTHORIZED");
+  });
+
+  it("returns 401 when the user is revoked on the session kill-list", async () => {
+    mockedRequireUser.mockResolvedValue(baseUser);
+    mockedIsUserRevoked.mockResolvedValue(true);
+    const gate = await requireApiAuth();
+    expect(gate.actor).toBeNull();
+    expect(gate.error).not.toBeNull();
+    expect(gate.error!.status).toBe(401);
+    const body = await gate.error!.json();
+    expect(body.error).toBe("UNAUTHORIZED");
+    expect(body.message).toBe("Session revoked.");
   });
 
   it("returns the actor when authenticated and no role required", async () => {
@@ -230,6 +253,61 @@ describe("requireApiAuth — rate limiting", () => {
     const gate = await requireApiAuth({ rateLimit: { limiter } });
     const body = await gate.error!.json();
     expect(body.bucket).toBeNull();
+  });
+});
+
+describe("requireApiAuth — impersonation read-only guard", () => {
+  it("blocks admin mutations while a verified impersonation cookie is active", async () => {
+    mockedRequireUser.mockResolvedValue({
+      ...baseUser,
+      roles: ["super_admin"],
+    });
+    mockedVerifyImpersonationCookie.mockReturnValue({
+      impersonatorUserId: baseUser.id,
+      practiceOrgId: "org_practice",
+      practiceName: "Practice",
+      startedAt: Date.now() - 1000,
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const gate = await requireApiAuth({
+      role: "super_admin",
+      request: new Request("https://app.example.com/api/admin/super-admins", {
+        method: "POST",
+        headers: { cookie: "lj_impersonation=signed" },
+      }),
+    });
+
+    expect(gate.actor).toBeNull();
+    expect(gate.error!.status).toBe(403);
+    expect(await gate.error!.json()).toMatchObject({
+      error: "IMPERSONATION_READ_ONLY",
+    });
+  });
+
+  it("allows the impersonation exit mutation so the operator can leave read-only mode", async () => {
+    mockedRequireUser.mockResolvedValue({
+      ...baseUser,
+      roles: ["super_admin"],
+    });
+    mockedVerifyImpersonationCookie.mockReturnValue({
+      impersonatorUserId: baseUser.id,
+      practiceOrgId: "org_practice",
+      practiceName: "Practice",
+      startedAt: Date.now() - 1000,
+      expiresAt: Date.now() + 60_000,
+    });
+
+    const gate = await requireApiAuth({
+      role: "super_admin",
+      request: new Request("https://app.example.com/api/admin/impersonate/exit", {
+        method: "POST",
+        headers: { cookie: "lj_impersonation=signed" },
+      }),
+    });
+
+    expect(gate.error).toBeNull();
+    expect(gate.actor?.id).toBe(baseUser.id);
   });
 });
 

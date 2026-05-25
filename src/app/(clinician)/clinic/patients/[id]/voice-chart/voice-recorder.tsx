@@ -101,6 +101,8 @@ function parseMockTranscript(
   return segments;
 }
 
+// ── Mock transcript by template ────────────────────────────────
+
 // ── Simulated transcript ───────────────────────────────────────
 
 function buildSimulatedTranscript(
@@ -518,7 +520,6 @@ export function VoiceRecorder({
   const [clinicianMuted, setClinicianMuted] = useState(false);
   const [patientVolume, setPatientVolume] = useState(70);
   const [patientMuted, setPatientMuted] = useState(false);
-
   // Heidi-style scribe format selection. Default to SOAP + clinical
   // + structured — covers ~80% of routine encounters. Changing the
   // template auto-switches the tone to whatever the template prefers,
@@ -547,7 +548,6 @@ export function VoiceRecorder({
   const [confidence, setConfidence] = useState(0);
   const [documentHeader, setDocumentHeader] = useState<string>("Clinical Note");
   const [sectionOrder, setSectionOrder] = useState<NoteBlockType[]>(APSO_ORDER);
-
   // Insights, Block Bodies and Drag-Reordering
   const [activeTab, setActiveTab] = useState<"summary" | "draft">("summary");
   const [isCindyOpen, setIsCindyOpen] = useState(false);
@@ -858,6 +858,7 @@ export function VoiceRecorder({
       {/* ── Note Template Selector (Idle state only) ── */}
       {state === "idle" && (
         <div className="w-full max-w-5xl mx-auto space-y-5 mb-6">
+          {/* Template picker — horizontally scrollable, iOS-style tile chips */}
           <Card tone="raised">
             <CardHeader className="pb-3">
               <div className="flex items-baseline justify-between">
@@ -903,6 +904,7 @@ export function VoiceRecorder({
                 })}
               </div>
 
+              {/* Tone + summary style as segmented controls */}
               <div className="mt-5 space-y-4">
                 <SegmentedControl
                   label="Tone"
@@ -941,6 +943,7 @@ export function VoiceRecorder({
                 )}
               </div>
 
+              {/* Selected template preview */}
               <div className="mt-5 rounded-xl bg-surface-muted border border-border-strong/30 p-3.5">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className="text-[11px] uppercase tracking-wider text-text-muted">
@@ -1145,26 +1148,11 @@ export function VoiceRecorder({
                 </div>
               </div>
             </div>
-
-            <div className="border-t border-border pt-4 mt-6">
-              <div className="flex items-center justify-between text-[11px] text-text-subtle">
-                <span>Master Level</span>
-                <span className="font-mono">
-                  {state === "recording" && !clinicianMuted && !patientMuted ? "ACTIVE" : "STANDBY"}
-                </span>
-              </div>
-              <div className="h-1.5 bg-border rounded-full overflow-hidden mt-1.5 flex">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-300",
-                    state === "recording" ? "w-4/5 bg-accent" : "w-0"
-                  )}
-                />
-              </div>
-            </div>
           </Card>
         </div>
       )}
+
+
 
       {/* ── Processing state ──────────────────────────────── */}
       {state === "processing" && (

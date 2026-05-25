@@ -2491,43 +2491,43 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 127 | Leafjourney Charitable Fund + Transparent Ledger | High | backlog |
 | 128 | Universal Feedback Icon with Annotation | High | backlog |
 | 129 | Provider Breathing Break Popup (30-min timer) | Normal | backlog |
-| 130 | My Garden Cannabis Grow Guide + Community | High | backlog |
+| 130 | My Garden Cannabis Grow Guide + Community | High | **done** |
 | 131 | AI Clinic Notes with Guardrails + Snapshot + APSO | High | backlog |
 | 132 | Charting Timer (selling point vs other EMRs) | Normal | backlog |
 | 133 | Patient Medication Explainer (3rd grade + cartoons) | High | backlog |
 | 134 | Emotional Vitals Emoji Scale in APSO Notes | Normal | backlog |
 | 135 | Voice Dictation (better than Dragon) | High | backlog |
-| 136 | AI Consciousness Overlay — WE ARE THE COMPETITION | Normal | backlog |
+| 136 | AI Consciousness Overlay — WE ARE THE COMPETITION | Normal | **done** |
 | 137 | Fitness Module with Personal Trainers + Care Team | High | backlog |
 | 138 | Mindfulness Emojis for Lifestyle | Normal | backlog |
 | 139 | Food Photo OCR + Barcode + Macro Tracking | High | backlog |
-| 140 | DICOM Viewer with Provider Annotations | High | backlog |
+| 140 | DICOM Viewer with Provider Annotations | High | **done** |
 | 141 | Patient Imaging Tab (Read-Only Annotations) | High | backlog |
 | 142 | Legal Module + AI Medico-Legal Library | Normal | aspirational |
 | 143 | HIPAA-Compliant Zoom Integration | High | backlog |
-| 144 | Emergency QR Code + NFC + Apple Wallet | High | backlog |
+| 144 | Emergency QR Code + NFC + Apple Wallet | High | **done** |
 | 145 | Cannabis Dispensary Billing + CMS $500 Reimbursement | High | backlog |
 | 146 | HIPAA Voicemail with Transcript | Normal | backlog |
-| 147 | Modular EMR Licensing Menu (Michelin-style PDF) | High | backlog |
-| 148 | Multi-Medication Prescribing + Double-Check | High | backlog |
-| 149 | Read-Only Patient Story Share Link (ER/travel) | High | backlog |
+| 147 | Modular EMR Licensing Menu (Michelin-style PDF) | High | **done** |
+| 148 | Multi-Medication Prescribing + Double-Check | High | **done** |
+| 149 | Read-Only Patient Story Share Link (ER/travel) | High | **done** |
 | 150 | Cannabis Combo Wheel on Patient Tab + Landing Page | High | backlog |
 | 151 | Symptom/Diagnosis Supplement Combo Wheel | High | backlog |
 | 152 | Heart-Centric EMR Consciousness (Art. IV) | Normal | backlog |
 | 153 | Marketing + Business Plan + Target Groups | High | backlog |
-| 154 | FDA Rx Database + Cannabis Rx + Supplement Rec Module | Urgent | backlog |
+| 154 | FDA Rx Database + Cannabis Rx + Supplement Rec Module | Urgent | **done** |
 | 155 | Hover-Over Lab/Result Explanations (Canopy/Enterprise) | High | backlog |
 | 156 | Subscription Pricing vs EPIC/Cerner/Practice Fusion | High | backlog |
 | 157 | Fix Claude Processing GIF Scroll Glitch | Urgent | backlog |
 | 158 | Collapsible/Expandable Patient Outcomes Check-Ins | High | backlog |
 | 159 | Remove or Merge "Care Plan" Patient Tab | Normal | backlog |
-| 160 | Rethink "Assessments" Tab (physician-first workflow) | Normal | backlog |
+| 160 | Rethink "Assessments" Tab (physician-first workflow) | Normal | **done** |
 | 161 | Merge Achievements + Lifestyle + Wearable Integration | High | backlog |
 | 162 | Rework My Story → Focus on Storybook | High | backlog |
 | 163 | Create "My Results" Patient Tab | High | backlog |
-| 164 | Imaging Access with Radiologist Report + Image Toggle | High | backlog |
-| 165 | Doctor Sign-Off Workflow for Patient Results | High | backlog |
-| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | backlog |
+| 164 | Imaging Access with Radiologist Report + Image Toggle | High | **done** |
+| 165 | Doctor Sign-Off Workflow for Patient Results | High | **done** |
+| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | **done** |
 | 167 | Full Offline + Airplane Mode Operation | High | aspirational |
 | 168 | International Access Regardless of Country | High | aspirational |
 | 169 | Full Dentistry Module | Normal | aspirational |
@@ -2538,26 +2538,26 @@ Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The se
 | 174 | Direct Insurance Company Phone Lines for Patients | Normal | aspirational |
 | 175 | Military-Grade Cybersecurity + AI Self-Audit Suite | High | aspirational |
 | 176 | Make EMR Fun and Engaging for ALL Users | Normal | backlog |
-| 177 | Patient Chart Tab Ribbon — Two Rows, No Scroll | High | backlog |
-| 178 | Billing Tab → Redirect to Financial Cockpit | High | backlog |
+| 177 | Patient Chart Tab Ribbon — Two Rows, No Scroll | High | **done** |
+| 178 | Billing Tab → Redirect to Financial Cockpit | High | **done** |
 | 179 | Research Articles Hyperlinked + Open in New Tab | High | backlog |
-| 180 | Patient Chart Task List / To-Do on Open | High | backlog |
-| 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | backlog |
-| 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | backlog |
-| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | backlog |
+| 180 | Patient Chart Task List / To-Do on Open | High | **done** |
+| 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | **done** |
+| 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | **done** |
+| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | **done** |
 | 184 | Patient Home Page: Next Appointment Card | High | **done** |
-| 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | backlog |
-| 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | backlog |
+| 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | **done** |
+| 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | **done** |
 | 187 | Landing Page: Fix Hero Demo Static Box (portrait mode) | High | **done** |
 | 188 | Integrated Marketplace/Store — Amazon-style ecosystem inside EMR (ref: normalizemarketplace.com) | High | backlog |
-| 189 | Landing Page: All Nav Tabs Visible in Mobile Portrait Mode | High | backlog |
+| 189 | Landing Page: All Nav Tabs Visible in Mobile Portrait Mode | High | **done** |
 | 190 | Set Up Linear for Project Management | Urgent | **done** |
-| 191 | Wellness Toolkit Redesign — remove ribbon, checkbox dropdowns, health score integration | High | backlog |
+| 191 | Wellness Toolkit Redesign — remove ribbon, checkbox dropdowns, health score integration | High | **done** |
 | 192 | Store Overhaul — remove old products, update to real partner URLs | High | **done** |
-| 193 | Patient Portal Home → "Log Check-in" + keep symptom graphs | High | backlog |
-| 194 | Log Dose — remove ribbon, all cannabis products + active/inactive filter | High | backlog |
-| 195 | "My Health Records" → "My Records" + two-row collapsible ribbon | High | backlog |
-| 196 | "My Journey" → "My Garden" + top ribbon | High | backlog |
+| 193 | Patient Portal Home → "Log Check-in" + keep symptom graphs | High | **done** |
+| 194 | Log Dose — remove ribbon, all cannabis products + active/inactive filter | High | **done** |
+| 195 | "My Health Records" → "My Records" + two-row collapsible ribbon | High | **done** |
+| 196 | "My Journey" → "My Garden" + top ribbon | High | **done** |
 | 197 | Messages — highlight + inline expand with video/phone + text box | High | backlog |
 | 198 | Q/A — remove all ribbon tabs | Normal | backlog |
 | 199 | Account ribbon — one row, remove Community | High | backlog |

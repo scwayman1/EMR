@@ -30,7 +30,8 @@ export default async function OperatorLayout({
     (r) => r === "operator" || r === "practice_owner" || r === "system"
   );
   if (!allowed) {
-    redirect(ROLE_HOME[primaryRole(user.roles)] ?? "/");
+    const primary = user.roles[0];
+    redirect(ROLE_HOME[primary] ?? "/");
   }
 
   if (!user.organizationId) {
