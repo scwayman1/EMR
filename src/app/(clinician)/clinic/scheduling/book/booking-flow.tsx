@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input, Label, Textarea, FieldGroup } from "@/components/ui/input";
+import { Stepper as UiStepper } from "@/components/ui/stepper";
 import { cn } from "@/lib/utils/cn";
 import { confirmBookingAction, type ConfirmBookingInput } from "./actions";
 
@@ -177,29 +178,11 @@ export function BookingFlow({ visitTypes, providers, slotsByProvider }: Props) {
 function Stepper({ step }: { step: Step }) {
   const idx = STEPS.indexOf(step);
   return (
-    <ol className="flex items-center gap-2 text-xs">
-      {STEPS.map((s, i) => {
-        const state = i < idx ? "done" : i === idx ? "current" : "upcoming";
-        return (
-          <li key={s} className="flex items-center gap-2">
-            <span
-              className={cn(
-                "h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-medium border tabular-nums",
-                state === "done" && "bg-accent text-accent-ink border-accent",
-                state === "current" && "bg-accent-soft text-accent border-accent",
-                state === "upcoming" && "bg-surface text-text-subtle border-border",
-              )}
-            >
-              {i + 1}
-            </span>
-            <span className={cn("uppercase tracking-wider", state === "current" ? "text-text" : "text-text-subtle")}>
-              {STEP_LABEL[s]}
-            </span>
-            {i < STEPS.length - 1 && <span className="h-px w-6 bg-border" />}
-          </li>
-        );
-      })}
-    </ol>
+    <UiStepper
+      steps={STEPS.map((s) => STEP_LABEL[s])}
+      current={idx}
+      aria-label="Booking progress"
+    />
   );
 }
 

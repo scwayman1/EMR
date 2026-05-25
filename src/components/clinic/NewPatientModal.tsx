@@ -7,8 +7,13 @@ import { Button } from "@/components/ui/button";
 import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { createPatientAction } from "@/app/(clinician)/clinic/patients/actions";
 import { DatePicker, toISODate } from "@/components/ui/date-picker";
+import { Stepper } from "@/components/ui/stepper";
 import { cn } from "@/lib/utils/cn";
 import { FormErrorSummary, buildErrors } from "@/lib/ui/form-helpers";
+
+// Labels for the unified Stepper primitive (PR: stepper-wizard-primitive).
+// Keeping the array here so the modal owns its UX copy.
+const STEP_LABELS = ["Personal", "Contacts", "Insurance"] as const;
 
 // EMR-UX: directive error copy. We never blame the user — every message
 // starts with "Please add a …" or similar imperative.
@@ -223,6 +228,14 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
           <DialogTitle className="font-display text-2xl text-text">Add New Patient Chart</DialogTitle>
         </DialogHeader>
 
+        <div className="pt-2 pb-1">
+          <Stepper
+            steps={STEP_LABELS as unknown as string[]}
+            current={step - 1}
+            aria-label="New patient chart progress"
+          />
+        </div>
+
         {step === 1 && (
           <form onSubmit={handleNext} className="space-y-6 py-2">
             <div className="space-y-4 animate-in fade-in duration-200">
@@ -413,14 +426,11 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
               <FormErrorSummary errors={buildErrors(errors, FIELD_LABELS)} />
             )}
 
-            <div className="pt-4 flex items-center justify-between border-t border-border mt-6">
-              <div className="text-xs text-text-muted font-medium">Step 1 of 3</div>
-              <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Next</Button>
-              </div>
+            <div className="pt-4 flex items-center justify-end gap-2 border-t border-border mt-6">
+              <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Next</Button>
             </div>
           </form>
         )}
@@ -512,14 +522,11 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
               <FormErrorSummary errors={buildErrors(errors, FIELD_LABELS)} />
             )}
 
-            <div className="pt-4 flex items-center justify-between border-t border-border mt-6">
-              <div className="text-xs text-text-muted font-medium">Step 2 of 3</div>
-              <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={handleBack}>
-                  Back
-                </Button>
-                <Button type="submit">Next</Button>
-              </div>
+            <div className="pt-4 flex items-center justify-end gap-2 border-t border-border mt-6">
+              <Button type="button" variant="secondary" onClick={handleBack}>
+                Back
+              </Button>
+              <Button type="submit">Next</Button>
             </div>
           </form>
         )}
@@ -594,16 +601,13 @@ export function NewPatientModal({ children }: { children: React.ReactNode }) {
               </p>
             )}
 
-            <div className="pt-4 flex items-center justify-between border-t border-border mt-6">
-              <div className="text-xs text-text-muted font-medium">Step 3 of 3</div>
-              <div className="flex gap-2">
-                <Button type="button" variant="secondary" onClick={handleBack} disabled={isPending}>
-                  Back
-                </Button>
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? "Creating Chart..." : "Create Patient"}
-                </Button>
-              </div>
+            <div className="pt-4 flex items-center justify-end gap-2 border-t border-border mt-6">
+              <Button type="button" variant="secondary" onClick={handleBack} disabled={isPending}>
+                Back
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Creating Chart..." : "Create Patient"}
+              </Button>
             </div>
           </form>
         )}
