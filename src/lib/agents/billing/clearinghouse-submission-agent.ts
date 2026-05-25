@@ -11,6 +11,10 @@ import {
   type Parsed277Ca,
 } from "@/lib/billing/clearinghouse-ack";
 import { resolvePayerRule } from "@/lib/billing/payer-rules";
+import { getDefaultAdapter, classifyFailure } from "@/lib/billing/clearinghouse/gateway";
+import { getEdiGeneratorMode, buildClaimEdi } from "@/lib/billing/edi/build-from-claim";
+import { recordDeadLetter } from "@/lib/billing/clearinghouse/dead-letter";
+
 
 // ---------------------------------------------------------------------------
 // Clearinghouse Submission Agent
@@ -30,7 +34,8 @@ import { resolvePayerRule } from "@/lib/billing/payer-rules";
 const input = z.object({
   claimId: z.string(),
   organizationId: z.string(),
-  scrubResultId: z.string(),
+  scrubResultId: z.string().optional(),
+  submissionId: z.string().optional(),
 });
 
 const output = z.object({
@@ -233,6 +238,20 @@ class RetryGuardError extends Error {
   }
 }
 
+export function derivePrimaryControlNumbers(claimId: string, attempt: number) {
+  const seed = `${claimId}-${attempt}`;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  const val = Math.abs(h);
+  return {
+    isaControlNumber: val % 1_000_000_000,
+    gsControlNumber: Math.max(1, val % 1_000_000),
+    stControlNumber: "0001",
+  };
+}
+
 export const clearinghouseSubmissionAgent: Agent<
   z.infer<typeof input>,
   z.infer<typeof output>
@@ -255,9 +274,9 @@ export const clearinghouseSubmissionAgent: Agent<
   // A human must sign off before any batch so we never wire a bad claim out.
   requiresApproval: true,
 
-  async run({ claimId, organizationId, scrubResultId }, ctx) {
+  async run({ claimId, organizationId, scrubResultId, submissionId }, ctx) {
     const trace = startReasoning("clearinghouseSubmission", "1.0.0", ctx.jobId);
-    trace.step("begin clearinghouse submission", { claimId, scrubResultId });
+    trace.step("begin clearinghouse submission", { claimId, scrubResultId, submissionId });
 
     ctx.assertCan("read.claim");
 
@@ -307,377 +326,605 @@ export const clearinghouseSubmissionAgent: Agent<
       };
     }
 
-    // ── Load and verify the scrub result ───────────────────────────
-    const scrubResult = await prisma.claimScrubResult.findUnique({
-      where: { id: scrubResultId },
-    });
-
-    if (!scrubResult) {
-      ctx.log("error", "Scrub result not found", { scrubResultId });
-      trace.conclude({ confidence: 1.0, summary: "Scrub result not found — cannot verify claim cleanliness." });
-      await trace.persist();
-      return { claimId, submissionId: null, status: "error_scrub_not_found", submitted: false };
-    }
-
-    if (scrubResult.status === "blocked") {
-      ctx.log("warn", "Scrub status is blocked — refusing to submit", { scrubResultId });
-      trace.conclude({
-        confidence: 1.0,
-        summary: "Scrub status is 'blocked'. Claim cannot be submitted until scrub issues are resolved.",
-      });
-      await trace.persist();
-      return { claimId, submissionId: null, status: "blocked_by_scrub", submitted: false };
-    }
-
-    trace.step("verified scrub result", {
-      scrubStatus: scrubResult.status,
-      scrubResultId,
-    });
-
-    // ── Retry guard + submission create (atomic) ───────────────────
-    // We re-read `submissions` inside a transaction and then create the new
-    // ClearinghouseSubmission row in the SAME transaction. This serializes
-    // the check+create pair so two concurrent agent runs for the same claim
-    // cannot both pass the retry check and both insert a row. A 60s
-    // cooldown layered on top provides a second safety net against a
-    // straggler job that holds a stale view.
-    ctx.assertCan("write.claim.status");
-
     let priorSubmissionCount = 0;
-    let submission:
-      | Awaited<ReturnType<typeof prisma.clearinghouseSubmission.create>>
-      | null = null;
+    let submission: any = null;
 
-    try {
-      const result = await prisma.$transaction(async (tx) => {
-        const priorSubmissions = await tx.clearinghouseSubmission.findMany({
-          where: { claimId },
-          orderBy: { submittedAt: "desc" },
-          select: { id: true, submittedAt: true },
+    if (submissionId) {
+      submission = await prisma.clearinghouseSubmission.findUnique({
+        where: { id: submissionId },
+      });
+      if (!submission) {
+        ctx.log("error", "Submission not found", { submissionId });
+        trace.conclude({ confidence: 1.0, summary: "Submission not found." });
+        await trace.persist();
+        return { claimId, submissionId: null, status: "error_submission_not_found", submitted: false };
+      }
+      priorSubmissionCount = submission.retryCount;
+      trace.step("loaded existing submission", { submissionId: submission.id });
+    } else {
+      // ── Load and verify the scrub result ───────────────────────────
+      if (!scrubResultId) {
+        ctx.log("error", "Scrub result ID missing", { claimId });
+        trace.conclude({ confidence: 1.0, summary: "Scrub result ID missing — cannot verify claim cleanliness." });
+        await trace.persist();
+        return { claimId, submissionId: null, status: "error_scrub_missing", submitted: false };
+      }
+      const scrubResult = await prisma.claimScrubResult.findUnique({
+        where: { id: scrubResultId },
+      });
+
+      if (!scrubResult) {
+        ctx.log("error", "Scrub result not found", { scrubResultId });
+        trace.conclude({ confidence: 1.0, summary: "Scrub result not found — cannot verify claim cleanliness." });
+        await trace.persist();
+        return { claimId, submissionId: null, status: "error_scrub_not_found", submitted: false };
+      }
+
+      if (scrubResult.status === "blocked") {
+        ctx.log("warn", "Scrub status is blocked — refusing to submit", { scrubResultId });
+        trace.conclude({
+          confidence: 1.0,
+          summary: "Scrub status is 'blocked'. Claim cannot be submitted until scrub issues are resolved.",
+        });
+        await trace.persist();
+        return { claimId, submissionId: null, status: "blocked_by_scrub", submitted: false };
+      }
+
+      trace.step("verified scrub result", {
+        scrubStatus: scrubResult.status,
+        scrubResultId,
+      });
+
+      // ── Retry guard + submission create (atomic) ───────────────────
+      ctx.assertCan("write.claim.status");
+
+      try {
+        const result = await prisma.$transaction(async (tx) => {
+          const priorSubmissions = await tx.clearinghouseSubmission.findMany({
+            where: { claimId },
+            orderBy: { submittedAt: "desc" },
+            select: { id: true, submittedAt: true },
+          });
+
+          const decision = evaluateRetryGuard(priorSubmissions, new Date());
+
+          if (decision.outcome === "retry_limit_exceeded") {
+            throw new RetryGuardError("retry_limit_exceeded", {
+              priorCount: decision.priorCount,
+            });
+          }
+          if (decision.outcome === "cooldown") {
+            throw new RetryGuardError("cooldown", {
+              priorCount: decision.priorCount,
+              msSinceLast: decision.msSinceLast,
+              lastSubmittedAt: decision.lastSubmittedAt,
+            });
+          }
+
+          // Build EDI payload if mode is real
+          let ediPayload = "";
+          let clearinghouseName = "SimulatedClearinghouse";
+          if (getEdiGeneratorMode() === "real") {
+            const adapter = getDefaultAdapter(process.env);
+            clearinghouseName = adapter.name;
+            const fullClaim = await tx.claim.findUnique({
+              where: { id: claimId },
+              include: {
+                patient: true,
+                organization: true,
+                provider: { include: { user: true } },
+              },
+            });
+            if (!fullClaim) {
+              throw new Error(`Claim ${claimId} not found`);
+            }
+            const validationErrors = validateForSubmission(fullClaim);
+            if (validationErrors.length > 0) {
+              throw new Error(`Scrub validation failed: ${validationErrors.join("; ")}`);
+            }
+            const renderingUser = fullClaim.provider?.user;
+            const controlNumbers = derivePrimaryControlNumbers(claimId, decision.attemptNumber);
+            const buildCtx = {
+              claim: fullClaim,
+              patient: fullClaim.patient,
+              organization: fullClaim.organization,
+              provider: fullClaim.provider,
+              renderingName: renderingUser
+                ? { firstName: renderingUser.firstName, lastName: renderingUser.lastName }
+                : null,
+              controlNumbers,
+              secondary: null,
+            };
+            const builtResult = buildClaimEdi(buildCtx);
+            ediPayload = builtResult.built.payload;
+          } else {
+            ediPayload = buildEdi837Stub(claim);
+          }
+
+          const created = await tx.clearinghouseSubmission.create({
+            data: {
+              claimId,
+              organizationId,
+              clearinghouseName,
+              retryCount: decision.attemptNumber,
+              responseStatus: "pending",
+              ediPayload,
+            },
+          });
+
+          return { created, attemptNumber: decision.attemptNumber };
         });
 
-        const decision = evaluateRetryGuard(priorSubmissions, new Date());
+        priorSubmissionCount = result.attemptNumber;
+        submission = result.created;
 
-        if (decision.outcome === "retry_limit_exceeded") {
-          throw new RetryGuardError("retry_limit_exceeded", {
-            priorCount: decision.priorCount,
-          });
-        }
-        if (decision.outcome === "cooldown") {
-          throw new RetryGuardError("cooldown", {
-            priorCount: decision.priorCount,
-            msSinceLast: decision.msSinceLast,
-            lastSubmittedAt: decision.lastSubmittedAt,
-          });
-        }
+        ctx.log("info", "clearinghouse submission created", {
+          claimId,
+          submissionId: submission.id,
+          attemptNumber: priorSubmissionCount + 1,
+          retryCount: priorSubmissionCount,
+        });
 
-        const created = await tx.clearinghouseSubmission.create({
-          data: {
+        trace.step("created submission record", {
+          submissionId: submission.id,
+          retryCount: priorSubmissionCount,
+        });
+      } catch (err: any) {
+        if (err instanceof RetryGuardError && err.kind === "retry_limit_exceeded") {
+          const { priorCount } = err.details as { priorCount: number };
+          ctx.log("warn", "Claim has been submitted 3+ times — escalating", {
             claimId,
+            retryCount: priorCount,
+          });
+
+          await ctx.emit({
+            name: "human.review.required",
+            sourceAgent: "clearinghouseSubmission",
+            category: "submission_retry_limit",
+            claimId,
+            patientId: claim.patientId,
+            summary: `Claim ${claimId} has been submitted ${priorCount} times and continues to fail. Manual review required.`,
+            suggestedAction:
+              "Review rejection reasons on prior submissions. Consider correcting the claim or contacting the clearinghouse directly.",
+            tier: 1,
             organizationId,
-            clearinghouseName: "SimulatedClearinghouse", // V1 placeholder
-            retryCount: decision.attemptNumber,
+          });
+
+          await writeAgentAudit(
+            "clearinghouseSubmission",
+            "1.0.0",
+            organizationId,
+            "submission.retry_limit_reached",
+            { type: "Claim", id: claimId },
+            { retryCount: priorCount },
+          );
+
+          trace.conclude({
+            confidence: 0.95,
+            summary: `Submission blocked: claim has ${priorCount} prior submissions (limit is 3). Escalated to human review.`,
+          });
+          await trace.persist();
+
+          return {
+            claimId,
+            submissionId: null,
+            status: "retry_limit_exceeded",
+            submitted: false,
+          };
+        }
+
+        if (err instanceof RetryGuardError && err.kind === "cooldown") {
+          const { priorCount, msSinceLast } = err.details as {
+            priorCount: number;
+            msSinceLast: number;
+            lastSubmittedAt: Date;
+          };
+          ctx.log("warn", "Cooldown: prior submission too recent — deferring", {
+            claimId,
+            priorCount,
+            msSinceLast,
+            cooldownMs: SUBMISSION_COOLDOWN_MS,
+          });
+
+          trace.conclude({
+            confidence: 0.9,
+            summary: `Submission deferred: previous submission was ${Math.round(
+              msSinceLast / 1000,
+            )}s ago (cooldown is ${SUBMISSION_COOLDOWN_MS / 1000}s). Likely concurrent job — backing off.`,
+          });
+          await trace.persist();
+
+          return {
+            claimId,
+            submissionId: null,
+            status: "cooldown_active",
+            submitted: false,
+          };
+        }
+
+        if (err instanceof Error && err.message.startsWith("Scrub validation failed")) {
+          // Pre-submission scrub validation failed: transition claim to scrub_blocked
+          await prisma.claim.update({
+            where: { id: claimId },
+            data: { status: "scrub_blocked" },
+          });
+
+          ctx.log("warn", "pre-submission scrub failed", { claimId, error: err.message });
+          trace.conclude({
+            confidence: 0.9,
+            summary: `Pre-submission scrub failed: ${err.message}`,
+          });
+          await trace.persist();
+          return {
+            claimId,
+            submissionId: null,
+            status: "rejected",
+            submitted: false,
+          };
+        }
+
+        throw err;
+      }
+    }
+
+    if (submission == null) {
+      throw new Error("Submission was not created and no guard error was thrown.");
+    }
+
+    // ── Submit payload ──────────────────────────────────────────────
+    if (getEdiGeneratorMode() === "real") {
+      ctx.log("info", "sending submission to real clearinghouse gateway", {
+        claimId,
+        submissionId: submission.id,
+        clearinghouseName: submission.clearinghouseName,
+      });
+
+      try {
+        const adapter = getDefaultAdapter(process.env);
+        const result = await adapter.submit({
+          ediPayload: submission.ediPayload ?? "",
+          correlationId: submission.id,
+        });
+
+        const now = new Date();
+        if (result.syncStatus === "rejected") {
+          ctx.log("warn", "clearinghouse rejected submission synchronously", {
+            claimId,
+            submissionId: submission.id,
+            rejection: result.rejection,
+          });
+
+          await prisma.clearinghouseSubmission.update({
+            where: { id: submission.id },
+            data: {
+              responseStatus: "rejected",
+              responseCode: result.rejection?.code ?? "REJECT",
+              responseMessage: result.rejection?.message ?? "Sync rejection",
+              respondedAt: now,
+              ediResponse: result.rawResponse,
+            },
+          });
+
+          await prisma.claim.update({
+            where: { id: claimId },
+            data: { status: "ch_rejected" },
+          });
+
+          await ctx.emit({
+            name: "clearinghouse.rejected",
+            claimId,
+            submissionId: submission.id,
+            rejectionCode: result.rejection?.code ?? "REJECT",
+            rejectionMessage: result.rejection?.message ?? "Sync rejection",
+            retryEligible: isRejectionRetryEligible(priorSubmissionCount),
+            organizationId,
+          });
+
+          trace.conclude({
+            confidence: 0.9,
+            summary: `Submission rejected by gateway: ${result.rejection?.message}`,
+          });
+          await trace.persist();
+          return { claimId, submissionId: submission.id, status: "rejected", submitted: false };
+        }
+
+        // On syncStatus accepted/pending, we mark as submitted pending async 999/277CA
+        await prisma.clearinghouseSubmission.update({
+          where: { id: submission.id },
+          data: {
             responseStatus: "pending",
-            ediPayload: buildEdi837Stub(claim),
+            respondedAt: now,
+            ediResponse: result.rawResponse,
           },
         });
 
-        return { created, attemptNumber: decision.attemptNumber };
-      });
-
-      priorSubmissionCount = result.attemptNumber;
-      submission = result.created;
-
-      ctx.log("info", "clearinghouse submission created", {
-        claimId,
-        submissionId: submission.id,
-        attemptNumber: priorSubmissionCount + 1,
-        retryCount: priorSubmissionCount,
-      });
-
-      trace.step("created submission record", {
-        submissionId: submission.id,
-        retryCount: priorSubmissionCount,
-      });
-    } catch (err) {
-      if (err instanceof RetryGuardError && err.kind === "retry_limit_exceeded") {
-        const { priorCount } = err.details as { priorCount: number };
-        ctx.log("warn", "Claim has been submitted 3+ times — escalating", {
-          claimId,
-          retryCount: priorCount,
+        await prisma.claim.update({
+          where: { id: claimId },
+          data: {
+            status: "submitted",
+            submittedAt: now,
+          },
         });
 
         await ctx.emit({
-          name: "human.review.required",
-          sourceAgent: "clearinghouseSubmission",
-          category: "submission_retry_limit",
+          name: "claim.submitted",
           claimId,
-          patientId: claim.patientId,
-          summary: `Claim ${claimId} has been submitted ${priorCount} times and continues to fail. Manual review required.`,
-          suggestedAction:
-            "Review rejection reasons on prior submissions. Consider correcting the claim or contacting the clearinghouse directly.",
-          tier: 1,
           organizationId,
         });
+
+        await ctx.emit({
+          name: "clearinghouse.accepted",
+          claimId,
+          submissionId: submission.id,
+          organizationId,
+        });
+
+        // ── Ledger entry ───────────────────────────────────────────────
+        ctx.assertCan("write.financialEvent");
+
+        await prisma.financialEvent.create({
+          data: {
+            organizationId,
+            patientId: claim.patientId,
+            claimId,
+            type: "claim_submitted",
+            amountCents: claim.billedAmountCents,
+            description: `Claim submitted to clearinghouse (${claim.payerName ?? "unknown payer"}). Billed: $${(claim.billedAmountCents / 100).toFixed(2)}.`,
+            metadata: {
+              submissionId: submission.id,
+              clearinghouseName: submission.clearinghouseName,
+              retryCount: priorSubmissionCount,
+              scrubResultId,
+            },
+            createdByAgent: "clearinghouseSubmission@1.0.0",
+          },
+        });
+
+        trace.conclude({
+          confidence: 0.95,
+          summary: `Claim submitted to gateway successfully. Tracking ID: ${result.gatewayTrackingId}`,
+        });
+        await trace.persist();
+        return { claimId, submissionId: submission.id, status: "submitted", submitted: true };
+      } catch (err: any) {
+        const failureCategory = classifyFailure({ err });
+        ctx.log("error", "clearinghouse gateway submission failed", { claimId, error: err });
+
+        if (failureCategory === "permanent_rejection" || failureCategory === "auth" || failureCategory === "malformed_response") {
+          // Route to DLQ
+          await recordDeadLetter({
+            organizationId,
+            submissionId: submission.id,
+            claimId,
+            gatewayName: submission.clearinghouseName,
+            failureCategory,
+            errorMessage: err instanceof Error ? err.message : String(err),
+            requestPayload: submission.ediPayload,
+            responseBody: null,
+          });
+
+          await prisma.clearinghouseSubmission.update({
+            where: { id: submission.id },
+            data: {
+              responseStatus: "rejected",
+              responseCode: "GATEWAY_ERROR",
+              responseMessage: err instanceof Error ? err.message : String(err),
+              respondedAt: new Date(),
+            },
+          });
+
+          await prisma.claim.update({
+            where: { id: claimId },
+            data: { status: "ch_rejected" },
+          });
+
+          trace.conclude({
+            confidence: 0.9,
+            summary: `Gateway submission failed permanently: ${err.message}. Routed to dead letter queue.`,
+          });
+          await trace.persist();
+          return { claimId, submissionId: submission.id, status: "error", submitted: false };
+        } else {
+          // Transient failure: keep status ready/queued for retry
+          trace.conclude({
+            confidence: 0.9,
+            summary: `Gateway submission failed transiently: ${err.message}. Retrying.`,
+          });
+          await trace.persist();
+          throw err;
+        }
+      }
+    } else {
+      // ── Simulate clearinghouse submission ───────────────────────────
+      ctx.log("info", "sending submission to clearinghouse (simulated)", {
+        claimId,
+        submissionId: submission.id,
+        clearinghouseName: "SimulatedClearinghouse",
+        attemptNumber: priorSubmissionCount + 1,
+      });
+
+      const validationErrors = validateForSubmission(claim);
+
+      if (validationErrors.length > 0) {
+        ctx.log("warn", "clearinghouse rejected submission (simulated)", {
+          claimId,
+          submissionId: submission.id,
+          rejectionCode: "VALIDATION_FAIL",
+          errors: validationErrors,
+        });
+
+        // Simulate a rejection
+        await prisma.clearinghouseSubmission.update({
+          where: { id: submission.id },
+          data: {
+            responseStatus: "rejected",
+            responseCode: "VALIDATION_FAIL",
+            responseMessage: validationErrors.join("; "),
+            respondedAt: new Date(),
+          },
+        });
+
+        await prisma.claim.update({
+          where: { id: claimId },
+          data: { status: "ch_rejected" },
+        });
+
+        const rejectionPolicy = classifyRejection({
+          rejectionCode: "VALIDATION_FAIL",
+          rejectionMessage: validationErrors.join("; "),
+          attemptNumber: priorSubmissionCount + 1,
+        });
+
+        await ctx.emit({
+          name: "clearinghouse.rejected",
+          claimId,
+          submissionId: submission.id,
+          rejectionCode: "VALIDATION_FAIL",
+          rejectionMessage: validationErrors.join("; "),
+          retryEligible:
+            rejectionPolicy.kind === "transient" &&
+            isRejectionRetryEligible(priorSubmissionCount),
+          organizationId,
+        });
+
+        if (rejectionPolicy.kind === "permanent") {
+          await ctx.emit({
+            name: "human.review.required",
+            sourceAgent: "clearinghouseSubmission",
+            category: "novel_situation",
+            claimId,
+            patientId: claim.patientId,
+            summary: `Clearinghouse rejected claim ${claim.claimNumber ?? claimId} — permanent failure: ${validationErrors.join("; ")}`,
+            suggestedAction: rejectionPolicy.reason,
+            tier: 1,
+            organizationId,
+          });
+        }
 
         await writeAgentAudit(
           "clearinghouseSubmission",
           "1.0.0",
           organizationId,
-          "submission.retry_limit_reached",
-          { type: "Claim", id: claimId },
-          { retryCount: priorCount },
+          "submission.rejected",
+          { type: "ClearinghouseSubmission", id: submission.id },
+          { claimId, errors: validationErrors },
         );
 
         trace.conclude({
-          confidence: 0.95,
-          summary: `Submission blocked: claim has ${priorCount} prior submissions (limit is 3). Escalated to human review.`,
-        });
-        await trace.persist();
-
-        return {
-          claimId,
-          submissionId: null,
-          status: "retry_limit_exceeded",
-          submitted: false,
-        };
-      }
-
-      if (err instanceof RetryGuardError && err.kind === "cooldown") {
-        const { priorCount, msSinceLast } = err.details as {
-          priorCount: number;
-          msSinceLast: number;
-          lastSubmittedAt: Date;
-        };
-        ctx.log("warn", "Cooldown: prior submission too recent — deferring", {
-          claimId,
-          priorCount,
-          msSinceLast,
-          cooldownMs: SUBMISSION_COOLDOWN_MS,
-        });
-
-        trace.conclude({
           confidence: 0.9,
-          summary: `Submission deferred: previous submission was ${Math.round(
-            msSinceLast / 1000,
-          )}s ago (cooldown is ${SUBMISSION_COOLDOWN_MS / 1000}s). Likely concurrent job — backing off.`,
+          summary: `Submission rejected by validation: ${validationErrors.join("; ")}`,
         });
         await trace.persist();
 
         return {
           claimId,
-          submissionId: null,
-          status: "cooldown_active",
+          submissionId: submission.id,
+          status: "rejected",
           submitted: false,
         };
       }
 
-      throw err;
-    }
+      // ── Accepted (simulated) ───────────────────────────────────────
+      const now = new Date();
 
-    if (submission == null) {
-      // Should be unreachable — retained for exhaustiveness.
-      throw new Error("Submission was not created and no guard error was thrown.");
-    }
-
-    // ── Simulate clearinghouse submission ───────────────────────────
-    // In production, this block would call the clearinghouse API with the
-    // EDI payload and parse the synchronous or async response. For V1 we
-    // perform basic validation and accept the claim.
-
-    ctx.log("info", "sending submission to clearinghouse", {
-      claimId,
-      submissionId: submission.id,
-      clearinghouseName: "SimulatedClearinghouse",
-      attemptNumber: priorSubmissionCount + 1,
-    });
-
-    const validationErrors = validateForSubmission(claim);
-
-    if (validationErrors.length > 0) {
-      ctx.log("warn", "clearinghouse rejected submission", {
-        claimId,
-        submissionId: submission.id,
-        rejectionCode: "VALIDATION_FAIL",
-        errors: validationErrors,
-      });
-
-      // Simulate a rejection
       await prisma.clearinghouseSubmission.update({
         where: { id: submission.id },
         data: {
-          responseStatus: "rejected",
-          responseCode: "VALIDATION_FAIL",
-          responseMessage: validationErrors.join("; "),
-          respondedAt: new Date(),
+          responseStatus: "accepted",
+          responseCode: "A1",
+          responseMessage: "Claim accepted by clearinghouse.",
+          respondedAt: now,
         },
       });
 
       await prisma.claim.update({
         where: { id: claimId },
-        data: { status: "ch_rejected" },
+        data: {
+          status: "submitted",
+          submittedAt: now,
+        },
       });
 
-      // Classify with the shared rejection policy so both synchronous
-      // rejections here and async 277CA rejections later route through
-      // one decision table.
-      const rejectionPolicy = classifyRejection({
-        rejectionCode: "VALIDATION_FAIL",
-        rejectionMessage: validationErrors.join("; "),
+      ctx.log("info", "clearinghouse accepted submission (simulated)", {
+        claimId,
+        submissionId: submission.id,
+        responseCode: "A1",
         attemptNumber: priorSubmissionCount + 1,
       });
 
-      await ctx.emit({
-        name: "clearinghouse.rejected",
-        claimId,
+      trace.step("clearinghouse accepted", {
         submissionId: submission.id,
-        rejectionCode: "VALIDATION_FAIL",
-        rejectionMessage: validationErrors.join("; "),
-        retryEligible:
-          rejectionPolicy.kind === "transient" &&
-          isRejectionRetryEligible(priorSubmissionCount),
+        responseCode: "A1",
+      });
+
+      // ── Emit events ────────────────────────────────────────────────
+      await ctx.emit({
+        name: "claim.submitted",
+        claimId,
         organizationId,
       });
 
-      if (rejectionPolicy.kind === "permanent") {
-        // Permanent — escalate immediately rather than wait for the retry
-        // cooldown, which will just produce an identical rejection.
-        await ctx.emit({
-          name: "human.review.required",
-          sourceAgent: "clearinghouseSubmission",
-          category: "novel_situation",
-          claimId,
-          patientId: claim.patientId,
-          summary: `Clearinghouse rejected claim ${claim.claimNumber ?? claimId} — permanent failure: ${validationErrors.join("; ")}`,
-          suggestedAction: rejectionPolicy.reason,
-          tier: 1,
-          organizationId,
-        });
-      }
+      await ctx.emit({
+        name: "clearinghouse.accepted",
+        claimId,
+        submissionId: submission.id,
+        organizationId,
+      });
 
+      // ── Ledger entry ───────────────────────────────────────────────
+      ctx.assertCan("write.financialEvent");
+
+      await prisma.financialEvent.create({
+        data: {
+          organizationId,
+          patientId: claim.patientId,
+          claimId,
+          type: "claim_submitted",
+          amountCents: claim.billedAmountCents,
+          description: `Claim submitted to clearinghouse (${claim.payerName ?? "unknown payer"}). Billed: $${(claim.billedAmountCents / 100).toFixed(2)}.`,
+          metadata: {
+            submissionId: submission.id,
+            clearinghouseName: "SimulatedClearinghouse",
+            retryCount: priorSubmissionCount,
+            scrubResultId,
+          },
+          createdByAgent: "clearinghouseSubmission@1.0.0",
+        },
+      });
+
+      trace.step("created financial event ledger entry", {
+        type: "claim_submitted",
+        amountCents: claim.billedAmountCents,
+      });
+
+      // ── Audit ──────────────────────────────────────────────────────
       await writeAgentAudit(
         "clearinghouseSubmission",
         "1.0.0",
         organizationId,
-        "submission.rejected",
+        "submission.accepted",
         { type: "ClearinghouseSubmission", id: submission.id },
-        { claimId, errors: validationErrors },
+        {
+          claimId,
+          billedAmountCents: claim.billedAmountCents,
+          payerName: claim.payerName,
+          retryCount: priorSubmissionCount,
+        },
       );
 
       trace.conclude({
-        confidence: 0.9,
-        summary: `Submission rejected by validation: ${validationErrors.join("; ")}`,
+        confidence: 0.95,
+        summary: `Claim ${claimId} submitted and accepted by clearinghouse. Billed $${(claim.billedAmountCents / 100).toFixed(2)} to ${claim.payerName ?? "unknown payer"}. Submission #${priorSubmissionCount + 1}.`,
       });
       await trace.persist();
 
       return {
         claimId,
         submissionId: submission.id,
-        status: "rejected",
-        submitted: false,
+        status: "accepted",
+        submitted: true,
       };
     }
-
-    // ── Accepted ───────────────────────────────────────────────────
-    const now = new Date();
-
-    await prisma.clearinghouseSubmission.update({
-      where: { id: submission.id },
-      data: {
-        responseStatus: "accepted",
-        responseCode: "A1",
-        responseMessage: "Claim accepted by clearinghouse.",
-        respondedAt: now,
-      },
-    });
-
-    await prisma.claim.update({
-      where: { id: claimId },
-      data: {
-        status: "submitted",
-        submittedAt: now,
-      },
-    });
-
-    ctx.log("info", "clearinghouse accepted submission", {
-      claimId,
-      submissionId: submission.id,
-      responseCode: "A1",
-      attemptNumber: priorSubmissionCount + 1,
-    });
-
-    trace.step("clearinghouse accepted", {
-      submissionId: submission.id,
-      responseCode: "A1",
-    });
-
-    // ── Emit events ────────────────────────────────────────────────
-    await ctx.emit({
-      name: "claim.submitted",
-      claimId,
-      organizationId,
-    });
-
-    await ctx.emit({
-      name: "clearinghouse.accepted",
-      claimId,
-      submissionId: submission.id,
-      organizationId,
-    });
-
-    // ── Ledger entry ───────────────────────────────────────────────
-    ctx.assertCan("write.financialEvent");
-
-    await prisma.financialEvent.create({
-      data: {
-        organizationId,
-        patientId: claim.patientId,
-        claimId,
-        type: "claim_submitted",
-        amountCents: claim.billedAmountCents,
-        description: `Claim submitted to clearinghouse (${claim.payerName ?? "unknown payer"}). Billed: $${(claim.billedAmountCents / 100).toFixed(2)}.`,
-        metadata: {
-          submissionId: submission.id,
-          clearinghouseName: "SimulatedClearinghouse",
-          retryCount: priorSubmissionCount,
-          scrubResultId,
-        },
-        createdByAgent: "clearinghouseSubmission@1.0.0",
-      },
-    });
-
-    trace.step("created financial event ledger entry", {
-      type: "claim_submitted",
-      amountCents: claim.billedAmountCents,
-    });
-
-    // ── Audit ──────────────────────────────────────────────────────
-    await writeAgentAudit(
-      "clearinghouseSubmission",
-      "1.0.0",
-      organizationId,
-      "submission.accepted",
-      { type: "ClearinghouseSubmission", id: submission.id },
-      {
-        claimId,
-        billedAmountCents: claim.billedAmountCents,
-        payerName: claim.payerName,
-        retryCount: priorSubmissionCount,
-      },
-    );
-
-    trace.conclude({
-      confidence: 0.95,
-      summary: `Claim ${claimId} submitted and accepted by clearinghouse. Billed $${(claim.billedAmountCents / 100).toFixed(2)} to ${claim.payerName ?? "unknown payer"}. Submission #${priorSubmissionCount + 1}.`,
-    });
-    await trace.persist();
-
-    return {
-      claimId,
-      submissionId: submission.id,
-      status: "accepted",
-      submitted: true,
-    };
   },
 };
 

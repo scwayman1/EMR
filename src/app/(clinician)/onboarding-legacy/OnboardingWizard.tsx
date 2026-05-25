@@ -10,6 +10,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FieldGroup, Input, Textarea } from "@/components/ui/input";
+import { Stepper } from "@/components/ui/stepper";
 import { cn } from "@/lib/utils/cn";
 import { submitClinicOnboarding } from "./actions";
 import type { OnboardingSubmitResult } from "./actions";
@@ -174,7 +175,11 @@ export function OnboardingWizard() {
 
   return (
     <div className="space-y-6">
-      <Stepper stepIndex={stepIndex} />
+      <Stepper
+        steps={STEPS.map((s) => ({ label: s.label, description: s.hint }))}
+        current={stepIndex}
+        aria-label="Clinic onboarding progress"
+      />
 
       <Card tone="raised">
         <CardContent className="pt-6">
@@ -220,48 +225,6 @@ export function OnboardingWizard() {
         )}
       </div>
     </div>
-  );
-}
-
-function Stepper({ stepIndex }: { stepIndex: number }) {
-  return (
-    <ol className="flex items-center gap-3">
-      {STEPS.map((s, i) => {
-        const active = i === stepIndex;
-        const done = i < stepIndex;
-        return (
-          <li key={s.key} className="flex-1">
-            <div
-              className={cn(
-                "flex items-start gap-3 rounded-md px-3 py-2 border",
-                active && "border-accent bg-accent/5",
-                done && "border-accent/40 bg-accent/5",
-                !active && !done && "border-border bg-surface",
-              )}
-            >
-              <span
-                className={cn(
-                  "mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
-                  active && "bg-accent text-accent-ink",
-                  done && "bg-accent/30 text-accent",
-                  !active && !done && "bg-surface-muted text-text-muted",
-                )}
-              >
-                {i + 1}
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text leading-tight">
-                  {s.label}
-                </p>
-                <p className="text-xs text-text-muted leading-tight mt-0.5">
-                  {s.hint}
-                </p>
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
   );
 }
 

@@ -18,8 +18,14 @@ const SUPER_ADMIN_SECTIONS: NavSection[] = [
   {
     pillar: "practices",
     icon: "building",
-    label: "Practices",
-    items: [{ label: "Practices", href: "/practices" }],
+    label: "Operations",
+    items: [
+      { label: "Practices", href: "/practices" },
+      { label: "Onboarding", href: "/onboarding" },
+      { label: "Templates", href: "/templates" },
+      { label: "System banners", href: "/admin/banners" },
+      { label: "Cross-tenant search", href: "/admin/search" },
+    ],
   },
   {
     pillar: "templates",

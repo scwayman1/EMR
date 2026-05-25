@@ -5,6 +5,21 @@ on:
     branches:
       - main
 
+# Newer pushes to main supersede in-flight runs. Without this, every push
+# queues a fresh run behind the Staging environment approval gate; we hit
+# 67 stale runs piled up for 65+ hours on 2026-05-24 before catching it.
+concurrency:
+  group: staging-to-prod
+  cancel-in-progress: true
+
+# Pipeline contract:
+#   verify → deploy_staging → test_staging → deploy_production
+#
+# Production only ships when every preceding job is green. The previous
+# arrangement had a separate `deploy-production.yml` that fired in
+# parallel with this pipeline on every push to main — meaning prod went
+# out regardless of staging, typecheck, lint, or Playwright. That
+# workflow is removed in this commit.
 jobs:
   verify:
     name: Typecheck & Lint

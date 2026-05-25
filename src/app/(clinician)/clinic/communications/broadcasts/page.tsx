@@ -15,6 +15,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { formatRelative } from "@/lib/utils/format";
 import { CampaignComposeForm } from "./compose-form";
 import { SendNowButton } from "./send-now-button";
+import { EntityTagEditor } from "@/components/ui/entity-tag-editor";
 
 export const metadata = { title: "Outreach broadcasts" };
 
@@ -136,6 +137,14 @@ export default async function BroadcastsPage() {
                         · {formatRelative(c.createdAt.toISOString())}
                       </p>
                       {canSend ? <SendNowButton campaignId={c.id} /> : null}
+                    </div>
+                    {/* Per-campaign audience tags (education / marketing / …). */}
+                    <div className="mt-1.5">
+                      <EntityTagEditor
+                        scope="broadcast-campaign"
+                        entityId={c.id}
+                        compact
+                      />
                     </div>
                   </div>
                 );

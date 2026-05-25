@@ -5,6 +5,7 @@ import type { KeyboardEvent } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
+import { SplitPane } from "@/components/ui/split-pane";
 import { cn } from "@/lib/utils/cn";
 import { approveRefillAction, denyRefillAction } from "./actions";
 
@@ -79,9 +80,16 @@ export function RefillsView({ rows }: { rows: RefillRow[] }) {
   const selected = rows.find((r) => r.id === selectedId) ?? null;
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <SplitPane
+      orientation="horizontal"
+      defaultSize={288}
+      minSize={220}
+      maxSize={480}
+      storageKey="sign-off-refills"
+      ariaLabel="Resize refills queue"
+    >
       {/* Left pane — queue list */}
-      <div className="w-72 shrink-0 border-r border-border overflow-y-auto bg-surface">
+      <div className="h-full overflow-y-auto bg-surface border-r border-border">
         <div className="px-4 py-3 border-b border-border/60 bg-surface-muted/40">
           <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-text-subtle">
             Refills · {rows.length} pending
@@ -100,7 +108,7 @@ export function RefillsView({ rows }: { rows: RefillRow[] }) {
       </div>
 
       {/* Right pane — Rx detail + e-sign */}
-      <div className="flex-1 min-w-0 overflow-y-auto bg-surface-raised">
+      <div className="h-full overflow-y-auto bg-surface-raised">
         {selected ? (
           <RxDetailPane key={selected.id} row={selected} onDone={handleDone} />
         ) : (
@@ -109,7 +117,7 @@ export function RefillsView({ rows }: { rows: RefillRow[] }) {
           </div>
         )}
       </div>
-    </div>
+    </SplitPane>
   );
 }
 

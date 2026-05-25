@@ -13,7 +13,9 @@ import {
   Pill,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { SplitPane } from "@/components/ui/split-pane";
 import { cn } from "@/lib/utils/cn";
+import { PatientHoverCard } from "@/components/preview";
 
 export type SignOffRow = {
   id: string;
@@ -184,9 +186,16 @@ export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <SplitPane
+      orientation="horizontal"
+      defaultSize={288}
+      minSize={220}
+      maxSize={520}
+      storageKey="sign-off-tree"
+      ariaLabel="Resize sign-off queue"
+    >
       {/* Tree panel */}
-      <div className="w-72 shrink-0 border-r border-border overflow-y-auto bg-surface">
+      <div className="h-full overflow-y-auto bg-surface border-r border-border">
         {/* Urgent group — shown only when urgent items exist */}
         {urgentItems.length > 0 && (
           <div>
@@ -250,7 +259,7 @@ export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
       </div>
 
       {/* Detail panel */}
-      <div className="flex-1 min-w-0 overflow-y-auto bg-surface-raised">
+      <div className="h-full overflow-y-auto bg-surface-raised">
         {selected ? (
           <SignOffDetail row={selected} />
         ) : (
@@ -260,7 +269,7 @@ export function SignOffTreeView({ rows }: { rows: SignOffRow[] }) {
           </div>
         )}
       </div>
-    </div>
+    </SplitPane>
   );
 }
 
@@ -271,10 +280,12 @@ function SignOffDetail({ row }: { row: SignOffRow }) {
       {/* Patient header */}
       <div className="flex items-center gap-3 mb-5">
         <PatientInitials name={row.patientName} />
-        <div>
-          <p className="text-[13px] font-semibold text-text leading-snug">{row.patientName}</p>
-          <p className="text-[11px] text-text-subtle">{formatRelative(row.receivedAt)}</p>
-        </div>
+        <PatientHoverCard patientId={row.patientId}>
+          <div className="cursor-default">
+            <p className="text-[13px] font-semibold text-text leading-snug">{row.patientName}</p>
+            <p className="text-[11px] text-text-subtle">{formatRelative(row.receivedAt)}</p>
+          </div>
+        </PatientHoverCard>
       </div>
 
       {/* Kind + urgency pills */}
