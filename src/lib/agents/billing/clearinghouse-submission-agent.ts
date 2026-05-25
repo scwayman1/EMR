@@ -543,10 +543,10 @@ export const clearinghouseSubmissionAgent: Agent<
         }
 
         if (err instanceof Error && err.message.startsWith("Scrub validation failed")) {
-          // Pre-submission scrub validation failed: transition claim to needs_correction
+          // Pre-submission scrub validation failed: transition claim to scrub_blocked
           await prisma.claim.update({
             where: { id: claimId },
-            data: { status: "needs_correction" },
+            data: { status: "scrub_blocked" },
           });
 
           ctx.log("warn", "pre-submission scrub failed", { claimId, error: err.message });
@@ -607,7 +607,7 @@ export const clearinghouseSubmissionAgent: Agent<
 
           await prisma.claim.update({
             where: { id: claimId },
-            data: { status: "needs_correction" },
+            data: { status: "ch_rejected" },
           });
 
           await ctx.emit({
@@ -715,7 +715,7 @@ export const clearinghouseSubmissionAgent: Agent<
 
           await prisma.claim.update({
             where: { id: claimId },
-            data: { status: "needs_correction" },
+            data: { status: "ch_rejected" },
           });
 
           trace.conclude({
