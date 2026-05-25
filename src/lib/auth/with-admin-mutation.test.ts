@@ -11,6 +11,8 @@ vi.mock("server-only", () => ({}));
 
 vi.mock("./impersonation", () => ({
   readImpersonationFromCookies: () => Promise.resolve(null),
+  verifyImpersonationCookie: vi.fn().mockReturnValue(null),
+  IMPERSONATION_COOKIE: "lj_impersonation",
 }));
 
 vi.mock("./session", () => ({
@@ -28,6 +30,7 @@ vi.mock("./super-admin-mfa", () => ({
 
 vi.mock("./impersonation", () => ({
   readImpersonationFromCookies: vi.fn().mockResolvedValue(null),
+  verifyImpersonationCookie: vi.fn().mockReturnValue(null),
   IMPERSONATION_COOKIE: "lj_impersonation",
 }));
 

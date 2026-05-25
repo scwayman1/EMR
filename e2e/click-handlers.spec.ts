@@ -425,6 +425,11 @@ async function clickAndObserve(
 test.describe.configure({ timeout: 300_000 });
 
 test.describe("Click handlers — find-and-fix pass 8", () => {
+  // Each route fires up to MAX_CLICKS_PER_ROUTE per-click pages; with
+  // CLICK_OBSERVE_MS=2s plus nav+probe time this easily breaches the
+  // 30s default test timeout. Give each route its own generous budget.
+  test.setTimeout(180_000);
+
   for (const route of ROUTES) {
     test(`crawl ${route}`, async ({ page, context }) => {
       stats.routesScanned += 1;

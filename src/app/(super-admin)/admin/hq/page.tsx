@@ -32,6 +32,7 @@ const HQ_NAV: NavLink[] = [
   { label: "Onboarding", href: "/onboarding" },
   { label: "Templates", href: "/templates" },
   { label: "Audit Log", href: "/admin/audit" },
+  { label: "Search", href: "/admin/search" },
 ];
 
 export default async function LeafjourneyHqPage() {

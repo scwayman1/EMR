@@ -99,7 +99,6 @@ export default async function PatientHome() {
     <PageShell maxWidth="max-w-[1040px]">
       <OnboardingTour />
       <QuickSymptomFab />
-
       {/* ── Hero greeting ── */}
       <Suspense fallback={<HeroGreetingSkeleton />}>
         <HeroGreetingWidget userId={user.id} />

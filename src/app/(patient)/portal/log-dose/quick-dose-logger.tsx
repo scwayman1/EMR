@@ -14,6 +14,8 @@ import {
   type QuickDoseLog,
 } from "@/lib/domain/emoji-outcomes";
 import { createFollowUpLog } from "./actions";
+import { InhalationDoseEstimator } from "@/components/prescription/inhalation-dose-estimator";
+import { isInhaledProductType } from "@/lib/domain/inhalation-dose";
 
 /* ── Types ──────────────────────────────────────────────── */
 
@@ -28,6 +30,10 @@ interface ProductInfo {
   doseUnit: string;
   thcMg: number | null;
   cbdMg: number | null;
+  // EMR-003 — surfaced for the inhalation estimator (mg per puff).
+  thcConcentration?: number | null;
+  cbdConcentration?: number | null;
+  concentrationUnit?: string | null;
   active: boolean;
 }
 
@@ -50,6 +56,11 @@ export function QuickDoseLogger({ patientId, products }: Props) {
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [prompt] = useState(getRandomPrompt);
   const [productFilter, setProductFilter] = useState<ProductFilter>("active");
+  const [inhaledDose, setInhaledDose] = useState<{
+    puffs: number;
+    estimatedThcMg: number;
+    estimatedCbdMg: number;
+  } | null>(null);
 
   const visibleProducts =
     productFilter === "all"
@@ -70,6 +81,7 @@ export function QuickDoseLogger({ patientId, products }: Props) {
     setEmoji(null);
     setScales({});
     setSelectedEffects([]);
+    setInhaledDose(null);
   }
 
   /* ── Step 1: Pick product ─────────────────────────────── */
@@ -187,6 +199,10 @@ export function QuickDoseLogger({ patientId, products }: Props) {
 
   /* ── Step 2: Emoji rating ─────────────────────────────── */
   if (step === "emoji") {
+    const isInhaled =
+      !!selectedProduct &&
+      isInhaledProductType(selectedProduct.productType);
+
     return (
       <Card className="rounded-2xl">
         <CardContent className="pt-8 pb-8">
@@ -194,6 +210,27 @@ export function QuickDoseLogger({ patientId, products }: Props) {
           <p className="text-center text-sm text-text-muted mb-8">
             {selectedProduct?.name} &middot; {selectedProduct?.doseAmount} {selectedProduct?.doseUnit}
           </p>
+
+          {/* Inhalation dose estimator (EMR-003) — vape carts, flower, etc. */}
+          {isInhaled && selectedProduct && (
+            <div className="mb-8">
+              <InhalationDoseEstimator
+                product={{
+                  name: selectedProduct.name,
+                  productType: selectedProduct.productType,
+                  thcConcentration: selectedProduct.thcConcentration ?? null,
+                  cbdConcentration: selectedProduct.cbdConcentration ?? null,
+                  concentrationUnit: selectedProduct.concentrationUnit ?? null,
+                }}
+                onChange={setInhaledDose}
+              />
+              {inhaledDose && inhaledDose.puffs > 0 && (
+                <p className="text-center text-[12px] text-text-subtle mt-3">
+                  We'll save this estimate with your check-in.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Emoji row */}
           <div className="flex justify-center gap-3 mb-8">

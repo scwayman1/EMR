@@ -5,11 +5,12 @@
 //   those transitions go through /publish and /archive.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireImplementationAdmin } from "@/lib/auth/super-admin";
-import { withAdminMutation } from "@/lib/auth/with-admin-mutation";
 import { logControllerAction } from "@/lib/auth/audit-stub";
+import { withAdminMutation } from "@/lib/auth/with-admin-mutation";
 // TODO(EMR-409): swap to the canonical `DraftPracticeConfigurationInput`
 // re-export from src/lib/practice-config/types.ts once that file lands. For
 // now we accept the partial JSON-blob shape EMR-409 documents.
@@ -56,6 +57,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 export const PATCH = withAdminMutation<{ id: string }>(
   { bucket: "admin.config.update", role: "implementation_admin" },
   async (req, { actor: admin, params }) => {
+  return (await withAuthErrors(async () => {
     const parsedBody = await readJson(req);
     if (!parsedBody.ok) return parsedBody.response;
 
@@ -84,5 +86,6 @@ export const PATCH = withAdminMutation<{ id: string }>(
     });
 
     return NextResponse.json(updated);
+  })) as NextResponse;
   },
 );
