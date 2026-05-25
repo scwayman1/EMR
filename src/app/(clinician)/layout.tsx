@@ -11,6 +11,7 @@ import { ClinicianTour } from "@/components/onboarding/clinician-tour";
 import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { HelpDrawer } from "@/components/help/help-drawer";
 import { RecentPatientsStrip } from "@/components/patient/recent-patients-strip";
+import { SystemBannerRail } from "@/components/ui/system-banner";
 import { prisma } from "@/lib/db/prisma";
 import {
   computeApprovalsBadge,
@@ -179,7 +180,12 @@ export default async function ClinicianLayout({
   }
 
   return (
-    <AppShell
+    <>
+      {/* System-wide banners (status / maintenance / announcements).
+          Mounted above AppShell so the sticky-top banner spans the
+          viewport rather than being clipped by the role rail / drawer. */}
+      <SystemBannerRail surface="clinician" />
+      <AppShell
       user={user}
       activeRole="clinician"
       sections={sections}
@@ -197,5 +203,6 @@ export default async function ClinicianLayout({
       <RecentPatientsStrip userId={user.id} />
       {children}
     </AppShell>
+    </>
   );
 }
