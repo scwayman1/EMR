@@ -1,250 +1,245 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useMemo, useState, useTransition } from "react";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FieldGroup, Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils/cn";
+import { AgentDraftedCard } from "@/components/supplies/agent-drafted-card";
+import type { SupplyOrderRow, SupplyOrderStatus } from "./_placeholder-types";
+import {
+  cancelSupplyOrder,
+  markSupplyOrderDelivered,
+  markSupplyOrderShipped,
+} from "./actions";
 
-export interface Supply {
-  id: string;
-  name: string;
-  unit: string;
-  quantity: number;
-  reorderPoint: number;
-  supplier: string;
-}
+type TabKey = "drafted" | "submitted" | "shipped" | "delivered";
 
-interface Order {
-  id: string;
-  supplyId: string;
-  supplyName: string;
-  quantity: number;
-  supplier: string;
-  placedAt: string;
-  status: "pending" | "delivered";
-  deliveredAt?: string;
-}
-
-const SUPPLIERS = [
-  "Henry Schein",
-  "McKesson",
-  "Medline",
-  "Welch Allyn",
-  "Siemens Lab",
-  "BD",
-  "Clorox Pro",
-  "Purell",
-  "Staples",
+const TABS: { key: TabKey; label: string; statuses: SupplyOrderStatus[] }[] = [
+  { key: "drafted", label: "Agent-drafted", statuses: ["agent_drafted", "awaiting_approval"] },
+  { key: "submitted", label: "Submitted", statuses: ["approved", "submitted"] },
+  { key: "shipped", label: "Shipped", statuses: ["shipped"] },
+  { key: "delivered", label: "Delivered", statuses: ["delivered"] },
 ];
 
-export function SuppliesView({ initialSupplies }: { initialSupplies: Supply[] }) {
-  const [supplies, setSupplies] = useState<Supply[]>(initialSupplies);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [ordering, setOrdering] = useState<Supply | null>(null);
-  const [orderQty, setOrderQty] = useState<number>(0);
-  const [orderSupplier, setOrderSupplier] = useState<string>("");
+const EMPTY: Record<TabKey, { title: string; description: string }> = {
+  drafted: {
+    title: "All caught up",
+    description:
+      "No supply orders are waiting on you. The agent will draft new orders here as stock dips below reorder points.",
+  },
+  submitted: {
+    title: "No orders in flight",
+    description: "Once you approve a draft, it shows up here until the supplier ships.",
+  },
+  shipped: {
+    title: "Nothing in transit",
+    description: "Suppliers will mark orders shipped here once they leave the warehouse.",
+  },
+  delivered: {
+    title: "No deliveries yet",
+    description: "Closed-out orders live here for your audit trail.",
+  },
+};
 
-  const lowStock = useMemo(
-    () => supplies.filter((s) => s.quantity <= s.reorderPoint),
-    [supplies],
-  );
+function formatCents(c: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(c / 100);
+}
 
-  const pendingOrders = orders.filter((o) => o.status === "pending");
-  const deliveredOrders = orders.filter((o) => o.status === "delivered");
+function shortDate(iso: string | null) {
+  return iso ? new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—";
+}
 
-  function placeOrder() {
-    if (!ordering || orderQty <= 0) return;
-    const order: Order = {
-      id: `ord-${Date.now()}`,
-      supplyId: ordering.id,
-      supplyName: ordering.name,
-      quantity: orderQty,
-      supplier: orderSupplier || ordering.supplier,
-      placedAt: new Date().toISOString(),
-      status: "pending",
-    };
-    setOrders((prev) => [order, ...prev]);
-    setOrdering(null);
-    setOrderQty(0);
-    setOrderSupplier("");
-  }
-
-  function markDelivered(o: Order) {
-    setOrders((prev) =>
-      prev.map((x) =>
-        x.id === o.id ? { ...x, status: "delivered", deliveredAt: new Date().toISOString() } : x,
-      ),
-    );
-    setSupplies((prev) =>
-      prev.map((s) => (s.id === o.supplyId ? { ...s, quantity: s.quantity + o.quantity } : s)),
-    );
-  }
+export function SuppliesInbox({ initialRows }: { initialRows: SupplyOrderRow[] }) {
+  const [active, setActive] = useState<TabKey>("drafted");
+  const rowsByTab = useMemo(() => {
+    const map = { drafted: [], submitted: [], shipped: [], delivered: [] } as Record<
+      TabKey,
+      SupplyOrderRow[]
+    >;
+    for (const tab of TABS) {
+      map[tab.key] = initialRows.filter((r) => tab.statuses.includes(r.status));
+    }
+    return map;
+  }, [initialRows]);
+  const rows = rowsByTab[active];
 
   return (
     <div className="space-y-6">
-      {lowStock.length > 0 && (
-        <Card tone="raised" className="border-amber-300/60 bg-amber-50/60">
-          <CardContent className="py-4">
-            <p className="text-sm font-medium text-amber-900">
-              {lowStock.length} {lowStock.length === 1 ? "supply is" : "supplies are"} at or below reorder point
-            </p>
-            <p className="text-xs text-amber-800/80 mt-1">
-              {lowStock.map((s) => s.name).slice(0, 4).join(" · ")}
-              {lowStock.length > 4 && ` · +${lowStock.length - 4} more`}
-            </p>
-          </CardContent>
+      <nav
+        role="tablist"
+        aria-label="Supply order status"
+        className="flex flex-wrap gap-1 p-1 rounded-xl bg-surface-muted/60 border border-border/60 w-fit"
+      >
+        {TABS.map((tab) => {
+          const count = rowsByTab[tab.key].length;
+          const isActive = active === tab.key;
+          return (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActive(tab.key)}
+              className={cn(
+                "h-10 px-4 rounded-lg text-sm font-medium inline-flex items-center gap-2 transition-all duration-200 ease-smooth",
+                isActive ? "bg-surface text-text shadow-sm" : "text-text-muted hover:text-text hover:bg-surface/60",
+              )}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] tabular-nums",
+                  isActive ? "bg-accent text-accent-ink" : "bg-surface-raised text-text-muted border border-border/70",
+                )}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {rows.length === 0 ? (
+        <EmptyState title={EMPTY[active].title} description={EMPTY[active].description} />
+      ) : active === "drafted" ? (
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <AgentDraftedCard key={row.id} row={row} />
+          ))}
+        </div>
+      ) : (
+        <Card tone="raised">
+          <ul className="divide-y divide-border/60">
+            {rows.map((row) => (
+              <FollowupRow key={row.id} row={row} tab={active} />
+            ))}
+          </ul>
         </Card>
       )}
+    </div>
+  );
+}
 
-      <Card tone="raised">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-text-subtle border-b border-border">
-                <th className="px-5 py-3 font-medium">Supply</th>
-                <th className="px-5 py-3 font-medium">Supplier</th>
-                <th className="px-5 py-3 font-medium text-right">On hand</th>
-                <th className="px-5 py-3 font-medium text-right">Reorder at</th>
-                <th className="px-5 py-3 font-medium">Status</th>
-                <th className="px-5 py-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {supplies.map((s) => {
-                const low = s.quantity <= s.reorderPoint;
-                return (
-                  <tr key={s.id} className="border-b border-border/40 hover:bg-surface-muted/40">
-                    <td className="px-5 py-3.5">
-                      <p className="font-medium text-text">{s.name}</p>
-                      <p className="text-[11px] text-text-subtle">{s.unit}</p>
-                    </td>
-                    <td className="px-5 py-3.5 text-text-muted text-xs">{s.supplier}</td>
-                    <td className="px-5 py-3.5 text-right tabular-nums">{s.quantity}</td>
-                    <td className="px-5 py-3.5 text-right tabular-nums text-text-muted">{s.reorderPoint}</td>
-                    <td className="px-5 py-3.5">
-                      {low ? <Badge tone="warning">Low</Badge> : <Badge tone="success">OK</Badge>}
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <Button
-                        size="sm"
-                        variant={low ? "primary" : "secondary"}
-                        onClick={() => {
-                          setOrdering(s);
-                          setOrderQty(Math.max(s.reorderPoint * 2, 5));
-                          setOrderSupplier(s.supplier);
-                        }}
-                      >
-                        Order
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+function FollowupRow({ row, tab }: { row: SupplyOrderRow; tab: TabKey }) {
+  const detail =
+    tab === "submitted"
+      ? `Submitted ${shortDate(row.submittedAt)}${row.expectedDeliveryAt ? ` · ETA ${shortDate(row.expectedDeliveryAt)}` : ""}`
+      : tab === "shipped"
+        ? `Shipped ${shortDate(row.shippedAt)}${row.expectedDeliveryAt ? ` · ETA ${shortDate(row.expectedDeliveryAt)}` : ""}`
+        : `Delivered ${shortDate(row.deliveredAt)}`;
+  return (
+    <li className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 hover:bg-surface-muted/30">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-text truncate">{row.supplyName}</p>
+          <Badge tone={row.proposedBy.kind === "agent" ? "accent" : "neutral"}>
+            {row.proposedByLabel}
+          </Badge>
+          {row.autoSubmitted && <Badge tone="highlight">Auto-submitted</Badge>}
         </div>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card tone="raised">
-          <CardContent className="py-5">
-            <p className="text-sm font-medium text-text mb-3">Pending orders</p>
-            {pendingOrders.length === 0 ? (
-              <p className="text-xs text-text-subtle">No pending orders.</p>
-            ) : (
-              <ul className="divide-y divide-border/70 text-sm">
-                {pendingOrders.map((o) => (
-                  <li key={o.id} className="flex items-center justify-between py-2.5 gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-text truncate">{o.supplyName}</p>
-                      <p className="text-[11px] text-text-subtle">
-                        {o.quantity} · {o.supplier} · {new Date(o.placedAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Button size="sm" variant="secondary" onClick={() => markDelivered(o)}>
-                      Mark delivered
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card tone="raised">
-          <CardContent className="py-5">
-            <p className="text-sm font-medium text-text mb-3">Delivered orders</p>
-            {deliveredOrders.length === 0 ? (
-              <p className="text-xs text-text-subtle">No delivered orders yet.</p>
-            ) : (
-              <ul className="divide-y divide-border/70 text-sm">
-                {deliveredOrders.slice(0, 10).map((o) => (
-                  <li key={o.id} className="flex items-center justify-between py-2.5 gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-text truncate">{o.supplyName}</p>
-                      <p className="text-[11px] text-text-subtle">
-                        {o.quantity} · {o.supplier} · {o.deliveredAt ? new Date(o.deliveredAt).toLocaleDateString() : "—"}
-                      </p>
-                    </div>
-                    <Badge tone="success">Delivered</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+        <p className="text-[11px] text-text-subtle mt-1">
+          {row.supplierName ?? "—"} · {row.qty} × {formatCents(row.unitCostCents)} ·{" "}
+          <span className="text-text-muted">{formatCents(row.totalCents)}</span> · {detail}
+        </p>
       </div>
+      <div className="flex items-center gap-2">
+        {tab === "submitted" && <SubmittedActions row={row} />}
+        {tab === "shipped" && <ShippedActions row={row} />}
+        {tab === "delivered" && <Badge tone="success">Delivered</Badge>}
+      </div>
+    </li>
+  );
+}
 
-      {ordering && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          onClick={() => setOrdering(null)}
-        >
-          <Card tone="raised" className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-            <CardContent className="py-6 space-y-4">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-text-subtle mb-1">Order</p>
-                <h3 className="font-display text-lg text-text">{ordering.name}</h3>
-                <p className="text-xs text-text-muted mt-1">
-                  Current stock: {ordering.quantity} · Reorder at {ordering.reorderPoint}
-                </p>
-              </div>
-              <FieldGroup label={`Quantity (${ordering.unit})`}>
-                <Input
-                  type="number"
-                  min={1}
-                  value={orderQty}
-                  onChange={(e) => setOrderQty(Number(e.target.value) || 0)}
-                  autoFocus
-                />
-              </FieldGroup>
-              <FieldGroup label="Supplier">
-                <select
-                  value={orderSupplier}
-                  onChange={(e) => setOrderSupplier(e.target.value)}
-                  className={cn(
-                    "flex w-full rounded-md border border-border-strong bg-surface px-3 h-10 text-sm text-text",
-                  )}
-                >
-                  {SUPPLIERS.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </FieldGroup>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setOrdering(null)}>
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={placeOrder} disabled={orderQty <= 0}>
-                  Place order
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+function useAsync() {
+  const [pending, t] = useTransition();
+  const [err, setErr] = useState<string | null>(null);
+  const run = (fn: () => Promise<void>, ok?: () => void, ve?: string | null) => {
+    if (ve) return setErr(ve);
+    setErr(null);
+    t(async () => {
+      try {
+        await fn();
+        ok?.();
+      } catch (e) {
+        setErr(e instanceof Error ? e.message : "Action failed");
+      }
+    });
+  };
+  return { pending, err, run };
+}
+
+function SubmittedActions({ row }: { row: SupplyOrderRow }) {
+  const { pending, err, run } = useAsync();
+  const [mode, setMode] = useState<"idle" | "ship" | "cancel">("idle");
+  const [text, setText] = useState("");
+  if (mode === "idle")
+    return (
+      <>
+        <Button size="sm" variant="primary" onClick={() => setMode("ship")}>Mark shipped</Button>
+        <Button size="sm" variant="ghost" onClick={() => setMode("cancel")}>Cancel</Button>
+        {err && <span className="text-xs text-danger">{err}</span>}
+      </>
+    );
+  const isCancel = mode === "cancel";
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        placeholder={isCancel ? "Cancellation reason" : "Supplier PO ref (optional)"}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        className="w-56"
+        disabled={pending}
+      />
+      <Button
+        size="sm"
+        variant={isCancel ? "danger" : "primary"}
+        onClick={() =>
+          run(
+            () => (isCancel ? cancelSupplyOrder(row.id, text.trim()) : markSupplyOrderShipped(row.id, text.trim() || undefined)),
+            () => { setMode("idle"); setText(""); },
+            isCancel && !text.trim() ? "Reason required." : null,
+          )
+        }
+        disabled={pending}
+      >
+        {isCancel ? "Cancel order" : "Confirm shipped"}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setMode("idle")} disabled={pending}>Back</Button>
+      {err && <span className="text-xs text-danger">{err}</span>}
+    </div>
+  );
+}
+
+function ShippedActions({ row }: { row: SupplyOrderRow }) {
+  const { pending, err, run } = useAsync();
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState<number>(row.qty);
+  if (!open)
+    return (
+      <>
+        <Button size="sm" variant="primary" onClick={() => setOpen(true)}>Mark delivered</Button>
+        {err && <span className="text-xs text-danger">{err}</span>}
+      </>
+    );
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        type="number"
+        min={0}
+        value={qty}
+        onChange={(e) => setQty(Math.max(0, Number(e.target.value) || 0))}
+        className="w-24"
+        disabled={pending}
+        aria-label="Delivered quantity"
+      />
+      <Button size="sm" onClick={() => run(() => markSupplyOrderDelivered(row.id, qty), () => setOpen(false))} disabled={pending}>
+        Confirm delivered
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={pending}>Cancel</Button>
+      {err && <span className="text-xs text-danger">{err}</span>}
     </div>
   );
 }

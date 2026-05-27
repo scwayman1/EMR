@@ -14,6 +14,8 @@ import {
   type QuickDoseLog,
 } from "@/lib/domain/emoji-outcomes";
 import { createFollowUpLog } from "./actions";
+import { InhalationDoseEstimator } from "@/components/prescription/inhalation-dose-estimator";
+import { isInhaledProductType } from "@/lib/domain/inhalation-dose";
 
 /* ── Types ──────────────────────────────────────────────── */
 
@@ -28,7 +30,14 @@ interface ProductInfo {
   doseUnit: string;
   thcMg: number | null;
   cbdMg: number | null;
+  // EMR-003 — surfaced for the inhalation estimator (mg per puff).
+  thcConcentration?: number | null;
+  cbdConcentration?: number | null;
+  concentrationUnit?: string | null;
+  active: boolean;
 }
+
+type ProductFilter = "all" | "active" | "inactive";
 
 interface Props {
   patientId: string;
@@ -46,6 +55,22 @@ export function QuickDoseLogger({ patientId, products }: Props) {
   const [scales, setScales] = useState<Record<string, number>>({});
   const [selectedEffects, setSelectedEffects] = useState<string[]>([]);
   const [prompt] = useState(getRandomPrompt);
+  const [productFilter, setProductFilter] = useState<ProductFilter>("active");
+  const [inhaledDose, setInhaledDose] = useState<{
+    puffs: number;
+    estimatedThcMg: number;
+    estimatedCbdMg: number;
+  } | null>(null);
+
+  const visibleProducts =
+    productFilter === "all"
+      ? products
+      : productFilter === "active"
+        ? products.filter((p) => p.active)
+        : products.filter((p) => !p.active);
+
+  const activeCount = products.filter((p) => p.active).length;
+  const inactiveCount = products.length - activeCount;
 
   // Only show the 3 most relevant scales based on product type
   const relevantScales = OUTCOME_SCALES.slice(0, 3);
@@ -56,6 +81,7 @@ export function QuickDoseLogger({ patientId, products }: Props) {
     setEmoji(null);
     setScales({});
     setSelectedEffects([]);
+    setInhaledDose(null);
   }
 
   /* ── Step 1: Pick product ─────────────────────────────── */
@@ -74,44 +100,109 @@ export function QuickDoseLogger({ patientId, products }: Props) {
       );
     }
 
+    const filterChips: { key: ProductFilter; label: string; count: number }[] = [
+      { key: "all", label: "All", count: products.length },
+      { key: "active", label: "Active", count: activeCount },
+      { key: "inactive", label: "Inactive", count: inactiveCount },
+    ];
+
     return (
-      <div className="space-y-3">
-        <p className="text-center text-sm text-text-muted mb-4">
+      <div className="space-y-4">
+        <p className="text-center text-sm text-text-muted">
           What did you just take?
         </p>
-        {products.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => {
-              setSelectedProduct(p);
-              setStep("emoji");
-            }}
-            className="w-full text-left rounded-2xl border border-border bg-white p-5 hover:border-accent hover:shadow-sm transition-all active:scale-[0.98]"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-base font-semibold text-text">{p.name}</p>
-                <p className="text-sm text-text-muted mt-0.5">
-                  {p.brand} &middot; {p.route} &middot; {p.doseAmount} {p.doseUnit}
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                {p.thcMg && p.thcMg > 0 && (
-                  <Badge tone="warning" className="text-[10px]">THC {p.thcMg.toFixed(0)}mg</Badge>
+
+        <div className="flex justify-center gap-2">
+          {filterChips.map((chip) => {
+            const isActive = productFilter === chip.key;
+            return (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setProductFilter(chip.key)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all active:scale-95",
+                  isActive
+                    ? "bg-accent text-white border-accent shadow-sm"
+                    : "bg-surface text-text-muted border-border hover:border-accent hover:text-accent",
                 )}
-                {p.cbdMg && p.cbdMg > 0 && (
-                  <Badge tone="success" className="text-[10px]">CBD {p.cbdMg.toFixed(0)}mg</Badge>
+              >
+                {chip.label}
+                <span
+                  className={cn(
+                    "tabular-nums text-[10px] rounded-full px-1.5",
+                    isActive ? "bg-white/20" : "bg-surface-muted",
+                  )}
+                >
+                  {chip.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {visibleProducts.length === 0 ? (
+          <Card className="rounded-2xl text-center py-10">
+            <CardContent>
+              <p className="text-3xl mb-2">🌿</p>
+              <p className="text-sm text-text-muted">
+                {productFilter === "active"
+                  ? "No active products. Switch to All or Inactive to see paused regimens."
+                  : productFilter === "inactive"
+                    ? "No inactive products. Everything you have is currently active."
+                    : "No cannabis products on your chart yet."}
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {visibleProducts.map((p) => (
+              <button
+                key={p.regimenId}
+                onClick={() => {
+                  setSelectedProduct(p);
+                  setStep("emoji");
+                }}
+                className={cn(
+                  "w-full text-left rounded-2xl border bg-white p-5 hover:border-accent hover:shadow-sm transition-all active:scale-[0.98]",
+                  p.active ? "border-border" : "border-border/60 opacity-80",
                 )}
-              </div>
-            </div>
-          </button>
-        ))}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-base font-semibold text-text">{p.name}</p>
+                      {!p.active && (
+                        <Badge tone="neutral" className="text-[10px]">Inactive</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-text-muted mt-0.5">
+                      {p.brand} &middot; {p.route} &middot; {p.doseAmount} {p.doseUnit}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {p.thcMg && p.thcMg > 0 && (
+                      <Badge tone="warning" className="text-[10px]">THC {p.thcMg.toFixed(0)}mg</Badge>
+                    )}
+                    {p.cbdMg && p.cbdMg > 0 && (
+                      <Badge tone="success" className="text-[10px]">CBD {p.cbdMg.toFixed(0)}mg</Badge>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
 
   /* ── Step 2: Emoji rating ─────────────────────────────── */
   if (step === "emoji") {
+    const isInhaled =
+      !!selectedProduct &&
+      isInhaledProductType(selectedProduct.productType);
+
     return (
       <Card className="rounded-2xl">
         <CardContent className="pt-8 pb-8">
@@ -119,6 +210,27 @@ export function QuickDoseLogger({ patientId, products }: Props) {
           <p className="text-center text-sm text-text-muted mb-8">
             {selectedProduct?.name} &middot; {selectedProduct?.doseAmount} {selectedProduct?.doseUnit}
           </p>
+
+          {/* Inhalation dose estimator (EMR-003) — vape carts, flower, etc. */}
+          {isInhaled && selectedProduct && (
+            <div className="mb-8">
+              <InhalationDoseEstimator
+                product={{
+                  name: selectedProduct.name,
+                  productType: selectedProduct.productType,
+                  thcConcentration: selectedProduct.thcConcentration ?? null,
+                  cbdConcentration: selectedProduct.cbdConcentration ?? null,
+                  concentrationUnit: selectedProduct.concentrationUnit ?? null,
+                }}
+                onChange={setInhaledDose}
+              />
+              {inhaledDose && inhaledDose.puffs > 0 && (
+                <p className="text-center text-[12px] text-text-subtle mt-3">
+                  We'll save this estimate with your check-in.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Emoji row */}
           <div className="flex justify-center gap-3 mb-8">

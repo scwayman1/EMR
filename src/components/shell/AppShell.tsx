@@ -2,150 +2,173 @@ import * as React from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Wordmark } from "@/components/ui/logo";
-import { logoutAction } from "@/lib/auth/actions";
+import { SignOutButton } from "@clerk/nextjs";
 import type { AuthedUser } from "@/lib/auth/session";
 import type { Role } from "@prisma/client";
 import { ROLE_HOME } from "@/lib/rbac/roles";
 import { cn } from "@/lib/utils/cn";
 import { MobileNav } from "./MobileNav";
+import { NavSections } from "./NavSections";
+import { NotificationCenter } from "@/components/ui/notification-center";
+import { PillarNav } from "./PillarNav";
+import { RailIdentityMenu } from "./RailIdentityMenu";
+import { NavPrefsProvider } from "./NavPrefsContext";
+import { NavPrefsSections } from "./NavPrefsSections";
+import { NavVisitTracker } from "./NavVisitTracker";
+import { IdleTimeoutGuard } from "@/components/auth/IdleTimeoutGuard";
+import { hasPillarIcons, type NavItem, type NavSection } from "./nav-sections";
 
-export interface NavItem {
-  label: string;
-  href: string;
-  icon?: React.ReactNode;
-  /**
-   * Optional live count shown as a pill next to the nav label. Use for
-   * "needs your attention" counters like pending approvals. Hidden when 0.
-   */
-  count?: number;
-  /**
-   * Optional tone hint for the count pill. Defaults to "highlight" (warm
-   * call-to-action). Use "danger" for emergencies in the queue.
-   */
-  countTone?: "highlight" | "danger" | "accent";
-}
+export type { NavItem, NavSection } from "./nav-sections";
+export type { BadgeSeverity, NavBadge } from "@/lib/domain/nav-badges";
 
 export interface AppShellProps {
   user: AuthedUser;
   activeRole: Role;
-  nav: NavItem[];
+  sections?: NavSection[];
+  nav?: NavItem[];
   roleLabel: string;
+  showNavPrefs?: boolean;
   children: React.ReactNode;
 }
 
-export function AppShell({ user, activeRole, nav, roleLabel, children }: AppShellProps) {
-  // Logo links to the user's role home, not the public landing page.
-  // This prevents the "logo click = logged out" UX bug.
+function normalizeSections(
+  sections: NavSection[] | undefined,
+  nav: NavItem[] | undefined,
+): NavSection[] {
+  if (sections && sections.length > 0) return sections;
+  if (nav && nav.length > 0) return [{ items: nav }];
+  return [];
+}
+
+export function AppShell({
+  user,
+  activeRole,
+  sections,
+  nav,
+  roleLabel,
+  showNavPrefs = true,
+  children,
+}: AppShellProps) {
   const homeHref = ROLE_HOME[activeRole] ?? "/";
+  const resolved = normalizeSections(sections, nav);
+  const useRail = hasPillarIcons(resolved);
+  const isPatient = activeRole === "patient";
+
+  const hasClerk = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
   return (
-    <div className="min-h-screen bg-bg flex">
-      {/* Side nav */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-surface relative">
-        {/* Subtle radial glow at the top of the rail for warmth */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-0 h-40 opacity-70"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 60% at 20% 0%, var(--highlight-soft), transparent 70%)",
-          }}
-        />
+    <NavPrefsProvider>
+      <NavVisitTracker sections={resolved} />
+      {hasClerk && <IdleTimeoutGuard roles={user.roles} />}
+      <div
+        className={cn(
+          "min-h-screen bg-bg flex",
+          isPatient && "patient-liquid-shell",
+        )}
+        data-role={activeRole}
+      >
+        {useRail ? (
+          <div className="hidden md:block md:sticky md:top-0 md:self-start md:h-screen z-40">
+            <PillarNav
+              sections={resolved}
+              header={
+                <Link
+                  href={homeHref}
+                  aria-label="Home"
+                  className="flex h-14 w-14 items-center justify-center"
+                >
+                  <Wordmark size="sm" />
+                </Link>
+              }
+              footer={
+                <div className="flex flex-col items-center gap-1 pb-1">
+                  <NotificationCenter userId={user.id} variant="rail" />
+                  <RailIdentityMenu user={user} roleLabel={roleLabel} />
+                </div>
+              }
+            />
+          </div>
+        ) : (
+          <aside className="hidden md:flex md:sticky md:top-0 md:self-start md:h-screen z-40 w-64 shrink-0 flex-col border-r border-border bg-surface relative">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-40 opacity-70"
+              style={{
+                background:
+                  "radial-gradient(ellipse 80% 60% at 20% 0%, var(--highlight-soft), transparent 70%)",
+              }}
+            />
 
-        <div className="relative px-5 pt-6 pb-5">
-          <Link href={homeHref} className="block">
-            <Wordmark size="md" />
-          </Link>
-          <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-text-subtle">
-            {roleLabel}
-          </p>
-        </div>
-
-        <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2">
-          <ul className="space-y-0.5">
-            {nav.map((item) => {
-              const count = item.count ?? 0;
-              const tone = item.countTone ?? "highlight";
-              const toneClass =
-                tone === "danger"
-                  ? "bg-danger/10 text-danger border-danger/30 animate-pulse"
-                  : tone === "accent"
-                    ? "bg-accent-soft text-accent border-accent/25"
-                    : "bg-highlight-soft text-[color:var(--highlight-hover)] border-highlight/30";
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-label={
-                      count > 0
-                        ? `${item.label} (${count} waiting)`
-                        : item.label
-                    }
-                    className={cn(
-                      "group flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-text-muted",
-                      "hover:bg-surface-muted hover:text-text transition-colors duration-200 ease-smooth"
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-1 w-1 rounded-full bg-border-strong group-hover:bg-accent transition-colors"
-                    />
-                    <span className="flex-1">{item.label}</span>
-                    {count > 0 && (
-                      <span
-                        className={cn(
-                          "text-[10px] font-semibold leading-none rounded-full border px-1.5 py-0.5 tabular-nums",
-                          toneClass
-                        )}
-                      >
-                        {count > 99 ? "99+" : count}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="relative p-3 border-t border-border/80">
-          <div className="flex items-center gap-2.5 px-2 py-2 rounded-md bg-surface-muted/50">
-            <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-text truncate">
-                {user.firstName} {user.lastName}
-              </div>
-              <div className="text-xs text-text-subtle truncate">{user.email}</div>
+            <div className="relative px-5 pt-6 pb-5">
+              <Link href={homeHref} className="block">
+                <Wordmark size="md" />
+              </Link>
+              <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-text-subtle">
+                {roleLabel}
+              </p>
             </div>
-          </div>
-          <form action={logoutAction} className="mt-2">
-            <button
-              type="submit"
-              className="w-full text-left text-xs text-text-subtle hover:text-text px-3 py-1.5 transition-colors"
-            >
-              Sign out →
-            </button>
-          </form>
-          <p className="text-[9px] text-text-subtle italic leading-tight mt-3 px-2 line-clamp-2">
-            Cannabis should be considered a medicine — please use it carefully
-            and judiciously. Respect the plant and its healing properties.
-          </p>
-        </div>
-      </aside>
 
-      {/* Main column */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="md:hidden flex items-center justify-between px-4 h-16 border-b border-border bg-surface">
-          <Link href={homeHref} className="flex items-center gap-2">
-            <Wordmark size="sm" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <MobileNav nav={nav} />
-            <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
-          </div>
-        </header>
-        <main id="main-content" className="flex-1 min-w-0">{children}</main>
+            <nav aria-label="Main navigation" className="relative px-3 flex-1 mt-2 overflow-y-auto">
+              {showNavPrefs && <NavPrefsSections sections={resolved} />}
+              <NavSections sections={resolved} />
+            </nav>
+
+            <div className="relative p-3 border-t border-border/80">
+              <div className="flex items-center gap-2.5 px-2 py-2 rounded-md bg-surface-muted/50">
+                <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-text truncate">
+                    {user.firstName} {user.lastName}
+                  </div>
+                  <div className="text-xs text-text-subtle truncate">{user.email}</div>
+                </div>
+                <NotificationCenter userId={user.id} variant="header" />
+              </div>
+              <div className="mt-2">
+                {hasClerk ? (
+                  <SignOutButton redirectUrl="/sign-in">
+                    <button className="w-full text-left text-xs text-text-subtle hover:text-text px-3 py-1.5 transition-colors">
+                      Sign out →
+                    </button>
+                  </SignOutButton>
+                ) : (
+                  <Link href="/sign-in" className="w-full block text-left text-xs text-text-subtle hover:text-text px-3 py-1.5 transition-colors">
+                    Sign out →
+                  </Link>
+                )}
+              </div>
+              <p className="text-[9px] text-text-subtle italic leading-tight mt-3 px-2 line-clamp-2">
+                Cannabis should be considered a medicine — please use it carefully
+                and judiciously. Respect the plant and its healing properties.
+              </p>
+            </div>
+          </aside>
+        )}
+
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Mobile header — sticky, glassy, and notch-safe. The
+              `pt-[env(safe-area-inset-top)]` keeps the wordmark + avatar
+              below the Dynamic Island on iPhone 14/15/16 Pro models. */}
+          <header
+            className={cn(
+              "md:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-16 border-b border-border",
+              "bg-surface/85 backdrop-blur-xl supports-[backdrop-filter]:bg-surface/70",
+              "pt-[env(safe-area-inset-top)] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]",
+            )}
+            style={{ height: "calc(4rem + env(safe-area-inset-top))" }}
+          >
+            <Link href={homeHref} className="flex items-center gap-2 min-h-[44px]">
+              <Wordmark size="sm" />
+            </Link>
+            <div className="flex items-center gap-2">
+              <NotificationCenter userId={user.id} variant="header" />
+              <MobileNav sections={resolved} />
+              <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
+            </div>
+          </header>
+          <main id="main-content" className="flex-1 min-w-0">{children}</main>
+        </div>
       </div>
-    </div>
+    </NavPrefsProvider>
   );
 }

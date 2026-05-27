@@ -1,12 +1,30 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { AppShell, type NavItem } from "@/components/shell/AppShell";
-import { ROLE_HOME } from "@/lib/rbac/roles";
+import { AppShell, type NavSection } from "@/components/shell/AppShell";
+import { SplitWorkspace } from "@/components/shell/SplitWorkspace";
+import { ContextPane } from "@/components/shell/ContextPane";
+import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
 import { CommandPalette } from "@/components/ui/command-palette";
+import { ConsciousnessOverlay } from "@/components/ui/consciousness-overlay";
+import { ClinicianTour } from "@/components/onboarding/clinician-tour";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
+import { HelpDrawer } from "@/components/help/help-drawer";
+import { RecentPatientsStrip } from "@/components/patient/recent-patients-strip";
+import { SystemBannerRail } from "@/components/ui/system-banner";
 import { prisma } from "@/lib/db/prisma";
+import {
+  computeApprovalsBadge,
+  computeLabsBadge,
+  computeRefillsBadge,
+} from "@/lib/domain/nav-badges";
+import {
+  getActiveAgentActivity,
+  indexActivityByHref,
+} from "@/lib/domain/nav-agent-activity";
+import { logger } from "@/lib/observability/log";
 
 export default async function ClinicianLayout({
   children,
@@ -14,29 +32,44 @@ export default async function ClinicianLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (!user.roles.some((r) => r === "clinician" || r === "practice_owner")) {
-    const primary = user.roles[0];
-    redirect(ROLE_HOME[primary] ?? "/");
+  if (!user) redirect("/sign-in");
+
+  const CLINIC_FLOOR_ROLES: Array<typeof user.roles[number]> = [
+    "clinician",
+    "midlevel",
+    "back_office",
+    "front_office",
+    "practice_owner",
+  ];
+
+  if (!user.roles.some((r) => CLINIC_FLOOR_ROLES.includes(r))) {
+    redirect(ROLE_HOME[primaryRole(user.roles)] ?? "/");
   }
 
-  // Live counts so the nav can telegraph agent activity the moment you log in.
-  // Pending AI drafts = Nurse Nora (et al.) needs your sign-off.
-  // Emergency count promotes the pill to red + pulse.
-  // Each count is wrapped: a missing table (P2021) or any transient DB error
-  // must never block login. The nav falls back to 0 and the page still renders.
   const safeCount = async (fn: () => Promise<number>) => {
     try {
       return await fn();
     } catch (err) {
-      console.error("[clinician-layout] count failed, defaulting to 0:", err);
+      logger.error({ event: "clinician.layout.count_failed", err });
       return 0;
     }
   };
 
-  const [pendingCount, emergencyCount, labsPendingCount, refillsPendingCount] = await (async () => {
+  const activityIndex = indexActivityByHref(
+    user.organizationId
+      ? await getActiveAgentActivity(user.organizationId)
+      : [],
+  );
+
+  const [
+    pendingCount,
+    emergencyCount,
+    labsPendingCount,
+    labsAbnormalCount,
+    refillsPendingCount,
+  ] = await (async () => {
     const orgId = user.organizationId;
-    if (!orgId) return [0, 0, 0, 0] as const;
+    if (!orgId) return [0, 0, 0, 0, 0] as const;
     return Promise.all([
       safeCount(() =>
         prisma.message.count({
@@ -61,10 +94,12 @@ export default async function ClinicianLayout({
       ),
       safeCount(() =>
         prisma.labResult.count({
-          where: {
-            organizationId: orgId,
-            signedAt: null,
-          },
+          where: { organizationId: orgId, signedAt: null },
+        })
+      ),
+      safeCount(() =>
+        prisma.labResult.count({
+          where: { organizationId: orgId, signedAt: null, abnormalFlag: true },
         })
       ),
       safeCount(() =>
@@ -79,48 +114,97 @@ export default async function ClinicianLayout({
     ]);
   })();
 
-  const nav: NavItem[] = [
-    { label: "Command Center", href: "/clinic/command" },
-    { label: "Today", href: "/clinic" },
-    { label: "Brief", href: "/clinic/morning-brief" },
-    { label: "Roster", href: "/clinic/patients" },
-    { label: "Inbox", href: "/clinic/messages" },
+  const sections: NavSection[] = [
     {
-      label: "Approvals",
-      href: "/clinic/approvals",
-      count: pendingCount,
-      countTone: emergencyCount > 0 ? "danger" : "highlight",
+      label: "Today",
+      pillar: "today",
+      icon: "clipboard-check",
+      items: [
+        { label: "Overview", href: "/clinic" },
+        { label: "Command Center", href: "/clinic/command" },
+        { label: "Schedule", href: "/clinic/schedule" },
+        { label: "Telehealth", href: "/telehealth" },
+      ],
     },
     {
-      label: "Labs",
-      href: "/clinic/labs-review",
-      count: labsPendingCount,
-      countTone: "highlight",
+      label: "Patients",
+      pillar: "patients",
+      icon: "users",
+      items: [
+        { label: "Roster", href: "/clinic/patients" },
+      ],
     },
     {
-      label: "Refills",
-      href: "/clinic/refills",
-      count: refillsPendingCount,
-      countTone: "highlight",
+      label: "Inbox",
+      pillar: "inbox",
+      icon: "inbox",
+      items: [
+        { label: "Messages", href: "/clinic/messages" },
+        // EMR-165: unified sign-off queue rolls up labs + refills +
+        // notes + messages — clinician's single place to clear the day.
+        { 
+          label: "Sign-off", 
+          href: "/clinic/sign-off",
+          badge: computeApprovalsBadge({ pendingCount, emergencyCount }) // Or a combined badge
+        },
+      ],
     },
-    { label: "Providers", href: "/clinic/providers" },
-    { label: "Research", href: "/clinic/research" },
-    { label: "Library", href: "/clinic/library" },
-    { label: "Audit", href: "/clinic/audit-trail" },
+    {
+      label: "Reference",
+      pillar: "reference",
+      icon: "book-open",
+      items: [
+        { label: "Providers", href: "/clinic/providers" },
+        { label: "Research", href: "/clinic/research" },
+        { label: "Library", href: "/clinic/library" },
+        { label: "Communications", href: "/clinic/communications" },
+      ],
+    },
+    {
+      label: "Admin",
+      pillar: "admin",
+      icon: "settings",
+      items: [
+        { label: "Audit", href: "/clinic/audit-trail" },
+        { label: "Brief", href: "/clinic/morning-brief" },
+      ],
+    },
   ];
 
+  for (const section of sections) {
+    for (const item of section.items) {
+      const hit = activityIndex[item.href];
+      if (hit) item.activity = hit;
+    }
+  }
+
   return (
-    <AppShell
+    <>
+      {/* System-wide banners (status / maintenance / announcements).
+          Mounted above AppShell so the sticky-top banner spans the
+          viewport rather than being clipped by the role rail / drawer. */}
+      <SystemBannerRail surface="clinician" />
+      <AppShell
       user={user}
       activeRole="clinician"
-      nav={nav}
+      sections={sections}
       roleLabel="Provider"
+      showNavPrefs={false}
     >
       <QuoteWelcomeModal userName={user.firstName} />
       <BreathingBreak />
       <KeyboardShortcuts />
-      <CommandPalette />
-      {children}
+      <CommandPalette role="clinician" userId={user.id} />
+      <ConsciousnessOverlay />
+      <ClinicianTour />
+      <InstallPrompt />
+      <HelpDrawer />
+      <RecentPatientsStrip userId={user.id} />
+      <SplitWorkspace>
+        <ContextPane />
+        {children}
+      </SplitWorkspace>
     </AppShell>
+    </>
   );
 }

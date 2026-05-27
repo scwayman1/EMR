@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "linear": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
+    "playwright": {
+      "command": "node",
+      "args": ["./scripts/playwright-mcp-launch.mjs"]
     }
   }
 }

@@ -8,8 +8,21 @@ import {
   type CannabisConditionPair,
 } from "@/lib/domain/chatcb";
 import { searchPubMed, type PubMedSearchResult } from "@/lib/domain/pubmed";
+import { fetchPubMedCitations } from "@/lib/agents/research/pubmed-citation-service";
+import {
+  getComboWheelCompounds,
+  type ComboWheelCompound,
+} from "@/lib/domain/combo-wheel";
 
 export type { PubMedSearchResult };
+
+/**
+ * Server action returning the active Combo Wheel catalog.
+ * Wraps `getComboWheelCompounds` so client components can fetch on mount.
+ */
+export async function fetchComboWheelCompounds(): Promise<ComboWheelCompound[]> {
+  return getComboWheelCompounds();
+}
 
 export interface ChatCBResponse {
   answer: string;
@@ -39,10 +52,14 @@ export async function askChatCB(question: string): Promise<ChatCBResponse> {
     return { answer: "Please enter a question about cannabis medicine.", citations: [] };
   }
 
-  // Find relevant knowledge base entries for context
+  // Pull static knowledge-base matches and live PubMed citations in parallel
+  // so the slower network call doesn't serialize behind the local lookup.
   const matches = searchKnowledgeBase(q);
+  const pubmedResult = await fetchPubMedCitations(q, { maxResults: 5 }).catch(
+    () => ({ query: q, totalResults: 0, citations: [] as Citation[], searchTime: 0 }),
+  );
 
-  // Build context from matches
+  // Build context from KB matches
   const kbContext =
     matches.length > 0
       ? "\n\nRelevant knowledge base entries:\n" +
@@ -54,11 +71,25 @@ export async function askChatCB(question: string): Promise<ChatCBResponse> {
           .join("\n")
       : "";
 
-  const systemPrompt = buildChatCBSystemPrompt();
-  const fullPrompt = `${systemPrompt}\n${kbContext}\n\nUser question: ${q}`;
+  // Build context from live PubMed hits — gives the model fresh citations
+  // it can reference by PMID inline.
+  const pubmedContext =
+    pubmedResult.citations.length > 0
+      ? "\n\nLive PubMed results (cite by PMID when relevant):\n" +
+        pubmedResult.citations
+          .map(
+            (c) =>
+              `- [PMID ${c.pmid}] ${c.title} — ${c.journal} ${c.year} (${c.evidenceLevel}): ${c.summary}`
+          )
+          .join("\n")
+      : "";
 
-  // Build citations from knowledge base matches
-  const citations: Citation[] = matches.slice(0, 5).map((m, i) => ({
+  const systemPrompt = buildChatCBSystemPrompt();
+  const fullPrompt = `${systemPrompt}${kbContext}${pubmedContext}\n\nUser question: ${q}`;
+
+  // Citations: surface live PubMed hits first (fresher, more authoritative),
+  // then top up with KB entries up to a cap of 8 total.
+  const kbCitations: Citation[] = matches.slice(0, 5).map((m, i) => ({
     id: `kb-${i}`,
     title: `${m.cannabinoid} and ${m.condition}`,
     authors: "Cannabis Knowledge Base",
@@ -68,6 +99,11 @@ export async function askChatCB(question: string): Promise<ChatCBResponse> {
     studyType: "review" as const,
     summary: m.summary,
   }));
+
+  const citations: Citation[] = [
+    ...pubmedResult.citations,
+    ...kbCitations,
+  ].slice(0, 8);
 
   try {
     const model = resolveModelClient();
@@ -111,13 +147,24 @@ function buildFallbackResponse(
               ? "Insufficient data"
               : "Neutral";
 
-    response += `**${m.cannabinoid} for ${m.condition}** (${levelLabel}, ${m.studyCount} studies)\n`;
+    response += `🌿 ${m.cannabinoid} for ${m.condition} — ${levelLabel}, ${m.studyCount} studies\n`;
     response += `${m.summary}\n\n`;
   }
 
   response +=
-    `---\n\n*This information is sourced from our curated cannabis research database. ` +
-    `Always consult with a healthcare provider before making any treatment decisions.*`;
+    `🌿\n\nThis information is sourced from our curated cannabis research database. ` +
+    `Always consult with a healthcare provider before making any treatment decisions.`;
 
-  return response;
+  return stripStrayMarkdown(response);
+}
+
+/**
+ * Defensive cleanup for any `**bold**` or `*italic*` artifacts that the
+ * upstream LLM occasionally leaks into the chat surface — the chat panel
+ * renders raw text, so unparsed asterisks read as literal characters.
+ */
+function stripStrayMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(^|\s)\*(\S[^*]*?\S|\S)\*(?=\s|$|[.,;:!?])/g, "$1$2");
 }

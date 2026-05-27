@@ -242,6 +242,20 @@ export const workflows: WorkflowDefinition[] = [
       },
     ],
   },
+  {
+    name: "cfo-report",
+    on: ["cfo.report.generate", "cfo.expense.recorded", "cfo.cash.recorded"],
+    steps: [
+      {
+        agent: "cfo",
+        input: (e) => ({
+          organizationId: (e as any).organizationId,
+          period: (e as any).period ?? "weekly",
+          anchorISO: (e as any).anchorISO,
+        }),
+      },
+    ],
+  },
   // ─────────────────────────────────────────────────────────────────
   // RCM Fleet — Phase 5 pre-submission pipeline (Layer 8, Flow 1)
   // ─────────────────────────────────────────────────────────────────
@@ -272,6 +286,20 @@ export const workflows: WorkflowDefinition[] = [
           claimId: (e as any).claimId,
           organizationId: (e as any).organizationId,
           scrubResultId: (e as any).scrubResultId,
+        }),
+      },
+    ],
+  },
+  {
+    name: "clearinghouse-queued-submission",
+    on: ["clearinghouse.queued"],
+    steps: [
+      {
+        agent: "clearinghouseSubmission",
+        input: (e) => ({
+          claimId: (e as any).claimId,
+          organizationId: (e as any).organizationId,
+          submissionId: (e as any).submissionId,
         }),
       },
     ],
@@ -411,6 +439,16 @@ export const workflows: WorkflowDefinition[] = [
           regimenId: (e as any).regimenId,
           patientId: (e as any).patientId,
         }),
+      },
+    ],
+  },
+  {
+    name: "diagnosis-safety-check",
+    on: ["patient.diagnosis.updated"],
+    steps: [
+      {
+        agent: "diagnosisSafety",
+        input: (e) => ({ patientId: (e as any).patientId }),
       },
     ],
   },

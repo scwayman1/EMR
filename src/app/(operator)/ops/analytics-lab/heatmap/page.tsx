@@ -12,6 +12,7 @@ export default async function HeatmapPage() {
   const sleep = generateHeatmapData(90, "mixed");
   const anxiety = generateHeatmapData(90, "mixed");
   const mood = generateHeatmapData(90, "improving");
+  const nausea = generateHeatmapData(90, "improving");
 
   return (
     <PageShell maxWidth="max-w-[1320px]">
@@ -26,6 +27,7 @@ export default async function HeatmapPage() {
           sleep,
           anxiety,
           mood,
+          nausea,
         }}
       />
     </PageShell>

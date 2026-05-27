@@ -6,28 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LeafSprig, EditorialRule } from "@/components/ui/ornament";
 import { cn } from "@/lib/utils/cn";
+import { ShareButton } from "@/components/portal/share-button";
+import { SoundtrackPicker } from "@/components/portal/soundtrack-picker";
+import { SHARE_PRESETS } from "@/lib/portal/social-share";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-// ---------------------------------------------------------------------------
-// Storybook view (v2 polish)
-// ---------------------------------------------------------------------------
-// Renders the fairytale produced by FairytaleSummaryAgent as a scrollable
-// timeline. Adds:
-//   • Hero "Your health story"
-//   • Chapter timeline with emoji markers
-//   • Prev / Next chapter pager (also smoothly scrolls into view)
-//   • Save as PDF (window.print(); the print stylesheet handles paging)
-// ---------------------------------------------------------------------------
-
-const CHAPTER_EMOJI = ["\uD83C\uDF31", "\uD83C\uDF3F", "\uD83C\uDF3C", "\uD83C\uDF3B", "\uD83C\uDF40", "\uD83C\uDF38", "\uD83C\uDF3A", "\u2728"];
+const CHAPTER_EMOJI = ["🌱", "🌿", "🌼", "🌻", "🍀", "🌸", "🌺", "✨"];
+const GRADIENTS = [
+  "from-[#e0e8e4] to-[#f0f4f2]", // green-ish
+  "from-[#e2e8f0] to-[#f8fafc]", // blue-ish
+  "from-[#fef3c7] to-[#fffbeb]", // yellow-ish
+  "from-[#ffedd5] to-[#fff7ed]", // orange-ish
+];
 
 function chapterEmojiFor(index: number, heading: string): string {
   const lower = heading.toLowerCase();
-  if (lower.includes("sleep")) return "\uD83C\uDF19";
-  if (lower.includes("pain")) return "\uD83E\uDE79";
-  if (lower.includes("anxiet") || lower.includes("calm")) return "\uD83C\uDF24\uFE0F";
-  if (lower.includes("mood") || lower.includes("joy")) return "\u2600\uFE0F";
-  if (lower.includes("visit") || lower.includes("clinic")) return "\uD83E\uDE7A";
-  if (lower.includes("garden") || lower.includes("grow")) return "\uD83C\uDF31";
+  if (lower.includes("sleep")) return "🌙";
+  if (lower.includes("pain")) return "🩹";
+  if (lower.includes("anxiet") || lower.includes("calm")) return "🌤️";
+  if (lower.includes("mood") || lower.includes("joy")) return "☀️";
+  if (lower.includes("visit") || lower.includes("clinic")) return "🩺";
+  if (lower.includes("garden") || lower.includes("grow")) return "🌱";
   return CHAPTER_EMOJI[index % CHAPTER_EMOJI.length];
 }
 
@@ -37,7 +37,6 @@ export function StorybookView() {
   const [autoRan, setAutoRan] = useState(false);
   const [activeChapter, setActiveChapter] = useState(0);
 
-  // Auto-generate on first mount
   useEffect(() => {
     if (autoRan) return;
     setAutoRan(true);
@@ -45,8 +44,7 @@ export function StorybookView() {
       const r = await generateFairytale();
       setResult(r);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [autoRan]);
 
   function handleRegenerate() {
     setActiveChapter(0);
@@ -56,27 +54,19 @@ export function StorybookView() {
     });
   }
 
-  function gotoChapter(i: number) {
-    setActiveChapter(i);
-    if (typeof document !== "undefined") {
-      const el = document.getElementById(`storybook-chapter-${i}`);
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+  function gotoPrev() {
+    if (activeChapter > 0) setActiveChapter((prev) => prev - 1);
   }
 
-  function gotoPrev() {
-    if (activeChapter > 0) gotoChapter(activeChapter - 1);
-  }
   function gotoNext() {
     const max = (result?.story?.chapters.length ?? 1) - 1;
-    if (activeChapter < max) gotoChapter(activeChapter + 1);
+    if (activeChapter < max) setActiveChapter((prev) => prev + 1);
   }
 
   function handleSaveAsPdf() {
     if (typeof window !== "undefined") window.print();
   }
 
-  // ── Loading state ────────────────────────────────────────────────
   if (isPending && !result) {
     return (
       <Card tone="ambient" className="text-center py-20">
@@ -84,12 +74,9 @@ export function StorybookView() {
           <div className="flex flex-col items-center gap-5">
             <LeafSprig size={32} className="text-accent animate-pulse" />
             <div>
-              <p className="font-display text-xl text-text">
-                Writing your story...
-              </p>
+              <p className="font-display text-xl text-text">Writing your story...</p>
               <p className="text-sm text-text-muted mt-2">
-                The agent is gathering your chart and turning it into a chapter
-                of your journey.
+                The agent is gathering your chart and turning it into a chapter of your journey.
               </p>
             </div>
           </div>
@@ -98,7 +85,6 @@ export function StorybookView() {
     );
   }
 
-  // ── Error state ──────────────────────────────────────────────────
   if (result && !result.ok) {
     return (
       <Card tone="raised" className="border-l-4 border-l-danger">
@@ -114,13 +100,18 @@ export function StorybookView() {
 
   if (!result?.story) return null;
   const { story } = result;
-  const lastIdx = story.chapters.length - 1;
+  const chapter = story.chapters[activeChapter];
+  if (!chapter) return null;
 
-  // ── Rendered story ───────────────────────────────────────────────
+  const emoji = chapterEmojiFor(activeChapter, chapter.heading);
+  const gradient = GRADIENTS[activeChapter % GRADIENTS.length];
+  const isFirst = activeChapter === 0;
+  const isLast = activeChapter === story.chapters.length - 1;
+
   return (
     <div className="space-y-10">
       {/* Hero */}
-      <Card tone="ambient" className="text-center py-16 print:break-after-page">
+      <Card tone="ambient" className="text-center py-16 print:break-after-page max-w-[700px] mx-auto">
         <CardContent>
           <div className="flex flex-col items-center gap-5">
             <LeafSprig size={36} className="text-accent" />
@@ -135,123 +126,117 @@ export function StorybookView() {
         </CardContent>
       </Card>
 
-      {/* Opening line */}
       <p className="font-display text-2xl md:text-3xl text-text leading-snug italic text-center max-w-2xl mx-auto px-6">
         &ldquo;{story.openingLine}&rdquo;
       </p>
 
-      {/* Chapter timeline (jump nav) */}
-      <nav
-        aria-label="Chapter timeline"
-        className="flex flex-wrap justify-center gap-2 print:hidden"
-      >
-        {story.chapters.map((c, i) => {
-          const emoji = chapterEmojiFor(i, c.heading);
-          const isActive = activeChapter === i;
-          return (
-            <button
-              key={i}
-              type="button"
-              onClick={() => gotoChapter(i)}
-              className={cn(
-                "flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs transition-all",
-                isActive
-                  ? "bg-accent-soft border-accent text-accent shadow-sm"
-                  : "bg-surface border-border text-text-muted hover:border-accent/50 hover:text-text",
-              )}
-            >
-              <span aria-hidden="true">{emoji}</span>
-              <span className="font-medium">Ch. {i + 1}</span>
-            </button>
-          );
-        })}
-      </nav>
+      {/* The Folio Container */}
+      <div className="w-full max-w-5xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-border/40 relative min-h-[600px] flex flex-col md:flex-row print:shadow-none print:border-none print:block">
+        
+        {/* Top Progress & Tools */}
+        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 print:hidden pointer-events-none">
+          <div className="bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-border/50 pointer-events-auto">
+            <SoundtrackPicker chapterHeadings={story.chapters.map((c) => c.heading)} />
+          </div>
+          <div className="flex gap-1.5 w-48">
+            {story.chapters.map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "h-1.5 flex-1 rounded-full transition-colors duration-300",
+                  i === activeChapter
+                    ? "bg-accent"
+                    : i < activeChapter
+                    ? "bg-accent/40"
+                    : "bg-border-strong/30"
+                )}
+              />
+            ))}
+          </div>
+        </div>
 
-      <EditorialRule />
-
-      {/* Chapters */}
-      <div className="space-y-16 max-w-2xl mx-auto px-6">
-        {story.chapters.map((chapter, i) => {
-          const emoji = chapterEmojiFor(i, chapter.heading);
-          return (
-            <article
-              key={i}
-              id={`storybook-chapter-${i}`}
-              className="space-y-4 scroll-mt-24"
+        {/* Left Pane: Art & Identity */}
+        <div className={cn("flex-1 p-12 md:p-16 flex flex-col justify-center bg-gradient-to-br border-b md:border-b-0 md:border-r border-border/30 transition-colors duration-700", gradient)}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeChapter}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-start"
             >
-              <div className="flex items-start gap-4">
-                <div className="flex flex-col items-center shrink-0 print:hidden">
-                  <span className="text-3xl" aria-hidden="true">
-                    {emoji}
-                  </span>
-                  <span className="font-display text-2xl text-accent/40 mt-1">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-accent">
-                    Chapter {i + 1} ·{" "}
-                    {new Date(story.generatedAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                  <h2 className="font-display text-2xl md:text-3xl text-text tracking-tight">
-                    {chapter.heading}
-                  </h2>
-                </div>
-              </div>
-              <p className="text-[17px] text-text-muted leading-relaxed first-letter:font-display first-letter:text-4xl first-letter:text-accent first-letter:float-left first-letter:mr-2 first-letter:mt-1">
+              <span className="text-7xl md:text-8xl mb-8 opacity-90 filter drop-shadow-sm">{emoji}</span>
+              <p className="font-display text-xs uppercase tracking-[0.25em] text-accent font-semibold mb-4">
+                Chapter {activeChapter + 1}
+              </p>
+              <h2 className="font-display text-4xl md:text-5xl text-accent leading-[1.1] tracking-tight">
+                {chapter.heading}
+              </h2>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Right Pane: The Story */}
+        <div className="flex-[1.2] p-12 md:p-20 flex flex-col justify-center relative bg-white overflow-hidden print:p-0">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeChapter}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              <p className="text-lg md:text-xl text-text-muted leading-[1.8] first-letter:font-display first-letter:text-[5.5rem] first-letter:leading-[0.8] first-letter:float-left first-letter:pr-3 first-letter:pt-2 first-letter:text-accent first-letter:font-normal">
                 {chapter.body}
               </p>
-            </article>
-          );
-        })}
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Navigation Controls */}
+          <div className="absolute bottom-8 right-8 md:bottom-12 md:right-12 flex gap-3 print:hidden">
+            <Button
+              variant="secondary"
+              size="md"
+              className="rounded-full h-12 w-12 shadow-sm border-border-strong/30 bg-surface hover:bg-surface-muted"
+              onClick={gotoPrev}
+              disabled={isFirst}
+            >
+              <ChevronLeft className="w-5 h-5 text-text" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
+              className="rounded-full h-12 w-12 shadow-sm border-border-strong/30 bg-surface hover:bg-surface-muted"
+              onClick={gotoNext}
+              disabled={isLast}
+            >
+              <ChevronRight className="w-5 h-5 text-text" />
+            </Button>
+          </div>
+        </div>
+
       </div>
 
-      <EditorialRule />
-
-      {/* Closing line */}
-      <p className="font-display text-xl md:text-2xl text-text leading-snug italic text-center max-w-xl mx-auto px-6">
+      <p className="font-display text-xl md:text-2xl text-text leading-snug italic text-center max-w-xl mx-auto px-6 mt-16">
         &mdash; {story.closingLine}
       </p>
 
-      {/* Chapter pager */}
-      <div className="flex flex-wrap items-center justify-between gap-3 max-w-2xl mx-auto px-6 print:hidden">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={gotoPrev}
-          disabled={activeChapter === 0}
-        >
-          &larr; Previous chapter
-        </Button>
-        <p className="text-xs text-text-subtle tabular-nums">
-          Chapter {activeChapter + 1} of {story.chapters.length}
-        </p>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={gotoNext}
-          disabled={activeChapter >= lastIdx}
-        >
-          Next chapter &rarr;
-        </Button>
-      </div>
-
       {/* Actions */}
-      <div className="flex flex-wrap items-center justify-center gap-3 pt-8 print:hidden">
+      <div className="flex flex-wrap items-center justify-center gap-3 pt-8 print:hidden max-w-[700px] mx-auto">
         <Button onClick={handleSaveAsPdf} variant="primary">
           Save as PDF
         </Button>
         <Button onClick={handleRegenerate} variant="secondary" disabled={isPending}>
           {isPending ? "Writing..." : "Generate a new chapter"}
         </Button>
+        <ShareButton
+          milestone={SHARE_PRESETS.storybook(story.chapters.length)}
+          label="Share story"
+        />
       </div>
 
-      {/* Generation footer */}
-      <p className="text-[11px] text-text-subtle text-center">
+      <p className="text-[11px] text-text-subtle text-center max-w-[700px] mx-auto mt-4">
         Written {new Date(story.generatedAt).toLocaleString()} ·{" "}
         {(result.durationMs / 1000).toFixed(1)}s
       </p>

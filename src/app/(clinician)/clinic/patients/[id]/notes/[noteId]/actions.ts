@@ -3,6 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
+import {
+  ForbiddenError,
+  assertChartAccess,
+  hasPermission,
+  requiresCosignature,
+} from "@/lib/rbac/permissions";
 import { dispatch } from "@/lib/orchestration/dispatch";
 import { runTick } from "@/lib/orchestration/runner";
 import {
@@ -11,6 +17,13 @@ import {
   type ModelErrorCode,
 } from "@/lib/orchestration/model-client";
 import { z } from "zod";
+import { freezeNoteSnapshot } from "@/lib/agents/guardrails/note-guardrails";
+import { ensureConsentDisclaimerBlock } from "@/lib/clinical/ai-consent-disclaimer";
+import { logger } from "@/lib/observability/log";
+import {
+  PATIENT_DEMEANOR_OPTIONS,
+  type PatientDemeanor,
+} from "@/lib/domain/notes";
 
 const blockSchema = z.object({
   heading: z.string(),
@@ -35,6 +48,13 @@ export async function saveNoteBlocks(
 ): Promise<SaveNoteResult> {
   const user = await requireUser();
 
+  // EMR-786 — Back-office staff have read access to notes but cannot
+  // edit. Front-office staff are denied entirely. Mid-levels +
+  // clinicians + practice_owner all carry notes.edit.
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Forbidden: read-only access to notes" };
+  }
+
   const note = await prisma.note.findUnique({
     where: { id: noteId },
     include: { encounter: true },
@@ -50,9 +70,26 @@ export async function saveNoteBlocks(
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  // EMR-786 — Chart privacy gate. A note on a restricted chart can only
+  // be edited by a user on the chart's provider allowlist.
+  try {
+    await assertChartAccess(user, encounter.patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Forbidden: chart is restricted" };
+    }
+    throw err;
+  }
+  // EMR-784: AI-drafted notes (voice/ambient scribe) must keep the
+  // patient verbal-consent disclaimer even if the clinician edited the
+  // draft. Re-inject if it was stripped.
+  const blocksToSave = note.aiDrafted
+    ? ensureConsentDisclaimerBlock(blocks)
+    : blocks;
+
   await prisma.note.update({
     where: { id: noteId },
-    data: { blocks: blocks as any },
+    data: { blocks: blocksToSave as any },
   });
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
@@ -65,6 +102,10 @@ export async function saveNoteBlocks(
  */
 export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
   const user = await requireUser();
+
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Forbidden: read-only access to notes" };
+  }
 
   const note = await prisma.note.findUnique({
     where: { id: noteId },
@@ -80,9 +121,48 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  try {
+    await assertChartAccess(user, encounter.patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Forbidden: chart is restricted" };
+    }
+    throw err;
+  }
+  // EMR-784: Before finalizing, ensure an AI-drafted note still carries
+  // the patient verbal-consent disclaimer. Defends against a clinician
+  // deleting it during cleanup before signing.
+  const blocksAtFinalize =
+    note.aiDrafted && Array.isArray(note.blocks)
+      ? ensureConsentDisclaimerBlock(
+          note.blocks as unknown as { heading?: string; body?: string }[],
+        )
+      : null;
+
+  // EMR-786 — Mid-level providers cannot finalize on their own; the
+  // note must be routed to a clinician for co-signature first. Mark
+  // the note as "pending_cosign" and surface it on the clinician's
+  // sign-off queue instead of moving straight to finalized.
+  if (requiresCosignature(user)) {
+    await prisma.note.update({
+      where: { id: noteId },
+      data: {
+        // Reuse the existing status enum value used elsewhere in the
+        // codebase for "ready for clinician sign-off". The note still
+        // belongs to the mid-level as authorUserId.
+        status: "pending_cosign",
+        authorUserId: user.id,
+        ...(blocksAtFinalize ? { blocks: blocksAtFinalize as any } : {}),
+      },
+    });
+    revalidatePath(`/clinic/patients/${encounter.patientId}`);
+    return { ok: true, status: "pending_cosign" };
+  }
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
+      ...(blocksAtFinalize ? { blocks: blocksAtFinalize as any } : {}),
       status: "finalized",
       finalizedAt: new Date(),
       authorUserId: user.id,
@@ -94,6 +174,10 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     where: { id: note.encounterId },
     data: { status: "complete", completedAt: new Date() },
   });
+
+  // If every note for this encounter is now finalized, stamp
+  // chartingCompletedAt so the Clinical Flow tile can compute carryover.
+  await markChartingCompletedIfReady(note.encounterId);
 
   // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
@@ -121,6 +205,24 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
 }
 
 /**
+ * If all notes for an encounter are finalized, set
+ * Encounter.chartingCompletedAt to now (if not already set). This is the
+ * documentation-complete marker, distinct from completedAt (= when the
+ * physician stopped seeing the patient).
+ */
+async function markChartingCompletedIfReady(encounterId: string): Promise<void> {
+  const unfinalized = await prisma.note.count({
+    where: { encounterId, status: { not: "finalized" } },
+  });
+  if (unfinalized > 0) return;
+
+  await prisma.encounter.update({
+    where: { id: encounterId },
+    data: { chartingCompletedAt: new Date() },
+  });
+}
+
+/**
  * Save blocks and finalize in a single action.
  */
 export async function saveAndFinalizeNote(
@@ -128,6 +230,10 @@ export async function saveAndFinalizeNote(
   blocks: { heading: string; body: string }[]
 ): Promise<SaveNoteResult> {
   const user = await requireUser();
+
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Forbidden: read-only access to notes" };
+  }
 
   const note = await prisma.note.findUnique({
     where: { id: noteId },
@@ -143,21 +249,72 @@ export async function saveAndFinalizeNote(
   });
   if (!encounter) return { ok: false, error: "Unauthorized" };
 
+  try {
+    await assertChartAccess(user, encounter.patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Forbidden: chart is restricted" };
+    }
+    throw err;
+  }
+  // EMR-784: AI-drafted notes (voice/ambient scribe) must keep the
+  // patient verbal-consent disclaimer through finalize, even if the
+  // clinician edited it out.
+  const blocksToFinalize = note.aiDrafted
+    ? ensureConsentDisclaimerBlock(blocks)
+    : blocks;
+
+  // EMR-131: Freeze a snapshot of the AI draft + transcript at sign
+  // time. Hashes go to AuditLog so we can prove provenance later
+  // (defense against "the AI made that up" complaints).
+  const snapshot = buildSnapshotFromNoteBlocks(note.blocks, blocksToFinalize);
+  // EMR-786 — Mid-level providers route to pending_cosign instead of
+  // finalized; the clinician sign-off queue picks them up.
+  if (requiresCosignature(user)) {
+    await prisma.note.update({
+      where: { id: noteId },
+      data: {
+        blocks: blocksToFinalize as any,
+        status: "pending_cosign",
+        authorUserId: user.id,
+      },
+    });
+    revalidatePath(`/clinic/patients/${encounter.patientId}`);
+    return { ok: true, status: "pending_cosign" };
+  }
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
-      blocks: blocks as any,
+      blocks: blocksToFinalize as any,
       status: "finalized",
       finalizedAt: new Date(),
       authorUserId: user.id,
     },
   });
 
+  if (snapshot) {
+    await prisma.auditLog.create({
+      data: {
+        organizationId: user.organizationId!,
+        actorUserId: user.id,
+        action: "note.finalized.snapshot",
+        subjectType: "Note",
+        subjectId: noteId,
+        metadata: snapshot as any,
+      },
+    });
+  }
+
   // Also mark the encounter as complete
   await prisma.encounter.update({
     where: { id: note.encounterId },
     data: { status: "complete", completedAt: new Date() },
   });
+
+  // If every note for this encounter is now finalized, stamp
+  // chartingCompletedAt so the Clinical Flow tile can compute carryover.
+  await markChartingCompletedIfReady(note.encounterId);
 
   // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
@@ -181,6 +338,90 @@ export async function saveAndFinalizeNote(
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
   return { ok: true, status: "finalized" };
+}
+
+/**
+ * Pull the guardrails block off the original AI draft (planted by
+ * processTranscript) and freeze a snapshot pairing the original draft
+ * blocks with the clinician-edited blocks the user is signing.
+ */
+function buildSnapshotFromNoteBlocks(
+  storedBlocks: unknown,
+  signedBlocks: { heading: string; body: string }[],
+) {
+  if (!Array.isArray(storedBlocks)) return null;
+  const guardrailsBlock = storedBlocks.find(
+    (b: any) => b && b.heading === "_guardrails",
+  ) as any;
+  if (!guardrailsBlock?.metadata?.guardrails) return null;
+  const draftBlocks = (storedBlocks as any[])
+    .filter((b: any) => b && b.heading !== "_guardrails")
+    .map((b: any) => ({ type: b.type ?? "block", body: b.body ?? "" }));
+  const transcript = guardrailsBlock.metadata.transcriptPreview ?? "";
+  const guardrails = guardrailsBlock.metadata.guardrails;
+  return {
+    ...freezeNoteSnapshot({
+      draftBlocks,
+      transcript,
+      hallucinationConfidence: guardrails.hallucinationConfidence ?? 1,
+      redactionCounts: guardrails.redactionCounts ?? {
+        phone: 0, ssn: 0, email: 0, mrn: 0, dob: 0, name: 0,
+      },
+      flaggedSpans: guardrails.flaggedSpans ?? [],
+    }),
+    // Track whether the clinician edited the AI draft before signing.
+    blockCountDraft: draftBlocks.length,
+    blockCountSigned: signedBlocks.length,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Emotional Vitals — EMR-134
+// ---------------------------------------------------------------------------
+// Persists the clinician's emoji read of the patient's demeanor on the
+// encounter (briefingContext.patientDemeanor). No schema migration needed —
+// briefingContext is already a Json field used for visit metadata.
+
+// Definitions moved to @/lib/domain/notes to prevent "use server" client bundle issues
+
+const VALID_DEMEANORS: ReadonlySet<string> = new Set(
+  PATIENT_DEMEANOR_OPTIONS.map((o) => o.value),
+);
+
+export async function saveEmotionalVital(
+  encounterId: string,
+  demeanor: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+  if (!VALID_DEMEANORS.has(demeanor)) {
+    return { ok: false, error: "Unknown demeanor value" };
+  }
+
+  const encounter = await prisma.encounter.findFirst({
+    where: { id: encounterId, organizationId: user.organizationId! },
+    select: { id: true, briefingContext: true, patientId: true },
+  });
+  if (!encounter) return { ok: false, error: "Unauthorized" };
+
+  const ctx =
+    encounter.briefingContext && typeof encounter.briefingContext === "object"
+      ? (encounter.briefingContext as Record<string, unknown>)
+      : {};
+
+  await prisma.encounter.update({
+    where: { id: encounterId },
+    data: {
+      briefingContext: {
+        ...ctx,
+        patientDemeanor: demeanor,
+        patientDemeanorRecordedAt: new Date().toISOString(),
+        patientDemeanorRecordedBy: user.id,
+      },
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${encounter.patientId}`);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -256,14 +497,15 @@ Return ONLY the refined text — no JSON, no markdown, no explanation. Just the 
     // the friendly message to the client. Raw provider JSON must never
     // reach the clinician's screen (Art. VI §2: "no cryptic error messages").
     if (isModelError(err)) {
-      console.warn("[refineSection] model error", {
+      logger.warn({
+        event: "clinic.refine_section.model_error",
         code: err.code,
         status: err.status,
         providerBody: err.providerBody,
       });
       return { ok: false, error: err.friendly, code: err.code };
     }
-    console.warn("[refineSection] unexpected error", err);
+    logger.warn({ event: "clinic.refine_section.unexpected_error", err });
     return {
       ok: false,
       error: "AI refinement failed. Try again in a moment.",

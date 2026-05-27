@@ -105,8 +105,10 @@ export default async function CarePlanPage() {
 
   return (
     <PageShell maxWidth="max-w-[960px]">
+      <PatientSectionNav section="health" />
+
       {/* ==================== Hero ==================== */}
-      <div className="mb-10">
+      <div className="mb-6">
         <Eyebrow className="mb-3">Care plan</Eyebrow>
         <h1 className="font-display text-3xl md:text-4xl text-text tracking-tight leading-[1.1]">
           Your care plan
@@ -117,6 +119,20 @@ export default async function CarePlanPage() {
         </p>
       </div>
 
+      {/* EMR-159: Care plan tab merged. Surface the consolidated home so
+          patients learn the new location instead of bouncing between tabs. */}
+      <div className="mb-8 rounded-xl border border-border/60 bg-surface-muted/40 px-5 py-3 text-[13px] text-text-muted">
+        We are merging your care plan into your{" "}
+        <a
+          href="/portal"
+          className="text-accent underline-offset-2 hover:underline"
+        >
+          home dashboard
+        </a>
+        . You can keep using this page; it will quietly retire over the next
+        few weeks.
+      </div>
+
       {/* ==================== Section 1: Treatment goals ==================== */}
       <section>
         <Card tone="raised">
@@ -124,7 +140,6 @@ export default async function CarePlanPage() {
             <CardTitle className="flex items-center gap-2">
               <LeafSprig size={16} className="text-accent/80" />
               What we&apos;re working toward together
-      <PatientSectionNav section="health" />
             </CardTitle>
             <CardDescription>
               These goals guide the care plan your team builds with you.

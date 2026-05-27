@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useCart } from "@/components/marketplace/CartProvider";
+import { CheckoutForm } from "./checkout-form";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,9 +17,6 @@ function formatCurrency(cents: number): string {
 }
 
 const TAX_RATE = 0.08;
-
-const INPUT_CLASS =
-  "flex w-full rounded-md border border-border-strong bg-surface px-3 h-10 text-sm text-text placeholder:text-text-subtle focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -32,6 +29,11 @@ export default function CheckoutPage() {
   const estimatedTax = subtotal * TAX_RATE;
   const total = subtotal + estimatedTax;
   const isEmpty = items.length === 0;
+
+  const handleSuccess = () => {
+    clearCart();
+    setConfirmed(true);
+  };
 
   // ── Order confirmed state ───────────────────────────────────────────────
   if (confirmed) {
@@ -58,8 +60,7 @@ export default function CheckoutPage() {
             Order Confirmed
           </h1>
           <p className="text-sm text-text-muted mt-2 max-w-md">
-            Thank you for your order. You will receive a confirmation email
-            shortly with tracking details.
+            Thank you for your order. Your order has been placed successfully and logged to the medical registry.
           </p>
           <Link href="/portal/shop" className="mt-8">
             <Button variant="primary" size="lg">
@@ -96,13 +97,6 @@ export default function CheckoutPage() {
         />
       </PageShell>
     );
-  }
-
-  // ── Handle place order ──────────────────────────────────────────────────
-  function handlePlaceOrder(e: React.FormEvent) {
-    e.preventDefault();
-    clearCart();
-    setConfirmed(true);
   }
 
   // ── Checkout layout ─────────────────────────────────────────────────────
@@ -167,130 +161,13 @@ export default function CheckoutPage() {
 
         {/* ── Right: Shipping + payment form ─────────────────────────── */}
         <div>
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="text-base font-semibold text-text mb-5">
-                Shipping Information
-              </h2>
-
-              <form onSubmit={handlePlaceOrder} className="space-y-4">
-                {/* Name */}
-                <div>
-                  <label
-                    htmlFor="checkout-name"
-                    className="block text-sm font-medium text-text mb-1.5"
-                  >
-                    Full name
-                  </label>
-                  <input
-                    id="checkout-name"
-                    type="text"
-                    required
-                    placeholder="Jane Doe"
-                    className={INPUT_CLASS}
-                  />
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label
-                    htmlFor="checkout-email"
-                    className="block text-sm font-medium text-text mb-1.5"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="checkout-email"
-                    type="email"
-                    required
-                    placeholder="jane@example.com"
-                    className={INPUT_CLASS}
-                  />
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label
-                    htmlFor="checkout-address"
-                    className="block text-sm font-medium text-text mb-1.5"
-                  >
-                    Address
-                  </label>
-                  <input
-                    id="checkout-address"
-                    type="text"
-                    required
-                    placeholder="123 Main St"
-                    className={INPUT_CLASS}
-                  />
-                </div>
-
-                {/* City / State / Zip */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-1">
-                    <label
-                      htmlFor="checkout-city"
-                      className="block text-sm font-medium text-text mb-1.5"
-                    >
-                      City
-                    </label>
-                    <input
-                      id="checkout-city"
-                      type="text"
-                      required
-                      placeholder="Portland"
-                      className={INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <label
-                      htmlFor="checkout-state"
-                      className="block text-sm font-medium text-text mb-1.5"
-                    >
-                      State
-                    </label>
-                    <input
-                      id="checkout-state"
-                      type="text"
-                      required
-                      placeholder="OR"
-                      className={INPUT_CLASS}
-                    />
-                  </div>
-                  <div className="col-span-1">
-                    <label
-                      htmlFor="checkout-zip"
-                      className="block text-sm font-medium text-text mb-1.5"
-                    >
-                      Zip
-                    </label>
-                    <input
-                      id="checkout-zip"
-                      type="text"
-                      required
-                      placeholder="97201"
-                      className={INPUT_CLASS}
-                    />
-                  </div>
-                </div>
-
-                {/* Trust line */}
-                <p className="text-xs text-text-muted text-center pt-2">
-                  Secure checkout — your information is protected.
-                </p>
-
-                {/* Submit */}
-                <Button
-                  type="submit"
-                  variant="primary"
-                  size="lg"
-                  className="w-full"
-                >
-                  Place order
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <CheckoutForm
+            items={items}
+            subtotal={subtotal}
+            tax={estimatedTax}
+            total={total}
+            onSuccess={handleSuccess}
+          />
         </div>
       </div>
     </PageShell>

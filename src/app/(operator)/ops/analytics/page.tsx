@@ -13,6 +13,11 @@ import { Badge } from "@/components/ui/badge";
 import { Sparkline } from "@/components/ui/sparkline";
 import { LeafSprig } from "@/components/ui/ornament";
 import { ProductivityDashboard } from "./productivity";
+import {
+  linearForecast,
+  exponentialSmoothing,
+  bucketByDay,
+} from "@/lib/analytics/extrapolation";
 
 export const metadata = { title: "Analytics" };
 
@@ -243,6 +248,36 @@ export default async function AnalyticsPage() {
     cbdValues.length > 0
       ? (cbdValues.reduce((a, b) => a + b, 0) / cbdValues.length).toFixed(1)
       : null;
+
+  // ----- EMR-035: data extrapolation -----
+  // Bucket the last 30 days of outcome logs into 10 segments (~3 days
+  // each), then forecast next-segment volume + smoothed value.
+  const segmentCount = 10;
+  const outcomeVolumeBuckets = bucketByDay(
+    outcomeLogs30d.map((l) => ({ at: l.loggedAt, value: 1 })),
+    thirtyDaysAgo,
+    new Date(),
+    segmentCount,
+  );
+  const volumeForecast = linearForecast(outcomeVolumeBuckets);
+  const painSegmentValues = bucketByDay(
+    outcomeLogs30d
+      .filter((l) => l.metric === "pain")
+      .map((l) => ({ at: l.loggedAt, value: l.value })),
+    thirtyDaysAgo,
+    new Date(),
+    segmentCount,
+  ).map((v, i) => {
+    // Replace zeroes (no logs in the segment) with the running average so the
+    // forecast doesn't get yanked by sparsity. Quick and good enough.
+    if (v > 0) return v;
+    const recent = outcomeLogs30d
+      .filter((l) => l.metric === "pain")
+      .slice(-Math.max(1, i + 1))
+      .map((l) => l.value);
+    return recent.length === 0 ? 0 : recent.reduce((a, b) => a + b, 0) / recent.length;
+  });
+  const painSmoothed = exponentialSmoothing(painSegmentValues);
 
   return (
     <PageShell maxWidth="max-w-[1320px]">
@@ -584,6 +619,68 @@ export default async function AnalyticsPage() {
           )}
         </CardContent>
       </Card>
+      {/* ================== Forecast (EMR-035) ================== */}
+      <Card tone="raised" className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LeafSprig size={16} className="text-accent/80" />
+            Data extrapolation
+          </CardTitle>
+          <CardDescription>
+            Linear and exponential-smoothing forecasts on the last 30 days of practice signal.
+            Wide bands = noisy series; tight bands = trustworthy projection.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                Outcome-log volume · next segment
+              </p>
+              <p className="font-display text-2xl text-text mt-1 tabular-nums">
+                {Math.max(0, Math.round(volumeForecast.next))}
+              </p>
+              <p className="text-xs text-text-muted mt-1">
+                95% PI:{" "}
+                <span className="tabular-nums">
+                  {Math.max(0, Math.round(volumeForecast.lower))}-
+                  {Math.max(0, Math.round(volumeForecast.upper))}
+                </span>
+              </p>
+              <p className="text-[10px] text-text-subtle mt-1">
+                R² = {(volumeForecast.rSquared * 100).toFixed(0)}%
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                Pain trend · Holt forecast
+              </p>
+              <p className="font-display text-2xl text-text mt-1 tabular-nums">
+                {painSmoothed.forecast.toFixed(1)}
+              </p>
+              <p className="text-xs text-text-muted mt-1">
+                level {painSmoothed.level.toFixed(1)} · trend{" "}
+                <span className={painSmoothed.trend < 0 ? "text-success" : "text-danger"}>
+                  {painSmoothed.trend > 0 ? "+" : ""}
+                  {painSmoothed.trend.toFixed(2)}/seg
+                </span>
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-text-subtle">
+                Logging cadence · linear slope
+              </p>
+              <p className="font-display text-2xl text-text mt-1 tabular-nums">
+                {volumeForecast.next > 0
+                  ? `${(((volumeForecast.next - outcomeVolumeBuckets[0]) / Math.max(1, outcomeVolumeBuckets[0])) * 100).toFixed(0)}%`
+                  : "—"}
+              </p>
+              <p className="text-xs text-text-muted mt-1">vs. 30 days ago</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ================== Productivity ================== */}
       <Card tone="raised" className="mb-8">
         <CardHeader>

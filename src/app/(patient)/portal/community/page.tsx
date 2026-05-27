@@ -130,11 +130,11 @@ export default async function CommunityPage() {
   return (
     <PageShell maxWidth="max-w-[860px]">
       <PageHeader
-        eyebrow="Community"
+        eyebrow="Chat & Learn"
         title="Community"
         description="Anonymous peer support — moderated and never tied to your real name."
       />
-      <PatientSectionNav section="account" />
+      <PatientSectionNav section="chatLearn" />
       <CommunityView initialPosts={posts} myHandle={myHandle} />
     </PageShell>
   );

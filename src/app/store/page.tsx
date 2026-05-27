@@ -1,49 +1,86 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/ui/logo";
 import { Eyebrow, EditorialRule, LeafSprig } from "@/components/ui/ornament";
+import { SiteHeader } from "@/components/marketing/SiteHeader";
+import { SiteFooter } from "@/components/marketing/SiteFooter";
+import {
+  AFFILIATE_PARTNERS,
+  decorateAffiliateUrl,
+  type AffiliatePartnerInfo,
+} from "@/lib/affiliate/partners";
 
-const PRODUCTS = [
-  {
-    name: "Pain and Recovery Formula",
-    brand: "PhytoRx",
-    category: "Beverages",
-    description:
-      "CBD + CBG beverage concentrate for pain and recovery. Physician-formulated, fast-absorbing emulsion technology.",
-    price: "$89.99",
-    url: "https://phytorx.co/products/cbd-cbg-beverage-concentrate",
-    badge: "Best seller",
-  },
-  {
-    name: "CBD Wellness Products",
-    brand: "Flower Powered Products",
-    category: "Topicals",
-    description:
-      "Full line of CBD-only wellness products. Topicals, balms, and creams. Third-party tested, physician-recommended.",
-    price: "From $34.99",
-    url: "https://flowerpoweredproductsllc.com/shop",
-    badge: null,
-  },
+// EMR-039 — store cards now mirror the AffiliatePartner registry so
+// the partner list, disclaimer copy, and joint-decision note can be
+// updated in one place. Local product entries (Gold Skin Serum, etc.)
+// stay inline because they aren't part of the partner program.
+
+interface StoreCard {
+  name: string;
+  brand: string;
+  category: string;
+  description: string;
+  price: string;
+  url: string;
+  badge: string | null;
+  partnerSlug?: string;
+  disclaimerText?: string;
+  jointDecisionNote?: string;
+}
+
+const ACTIVE_PARTNERS = AFFILIATE_PARTNERS.filter((p) => p.status === "active").sort(
+  (a, b) => a.sortOrder - b.sortOrder,
+);
+
+const PARTNER_CARDS: StoreCard[] = ACTIVE_PARTNERS.map((p: AffiliatePartnerInfo) => ({
+  name:
+    p.slug === "phytorx"
+      ? "Pain and Recovery Formula"
+      : p.slug === "flower-powered-products"
+        ? "CBD Wellness Products"
+        : p.slug === "aulv"
+          ? "Plant-Based Wellness Collective"
+          : p.name,
+  brand: p.name,
+  category: p.category,
+  description: p.description,
+  price:
+    p.slug === "phytorx"
+      ? "$89.99"
+      : p.slug === "flower-powered-products"
+        ? "From $34.99"
+        : "Visit site for pricing",
+  url: decorateAffiliateUrl(p),
+  badge: p.slug === "phytorx" ? "Best seller" : p.slug === "aulv" ? "New" : null,
+  partnerSlug: p.slug,
+  disclaimerText: p.disclaimerText,
+  jointDecisionNote: p.jointDecisionNote,
+}));
+
+const LOCAL_CARDS: StoreCard[] = [
   {
     name: "Gold Skin Serum",
-    brand: "Potency 710",
+    brand: "CBD",
     category: "Skincare",
     description:
       "Luxurious CBD-infused skin serum with 24K gold flakes. Designed for anti-aging, hydration, and radiance. Lab-tested, clean ingredients.",
     price: "$89.99",
     url: "https://www.potency710.com/product/gold-skin-serum/",
-    badge: "New",
+    badge: null,
   },
 ];
 
-const CATEGORIES = ["All", "Beverages", "Topicals", "Skincare"];
+const PRODUCTS: StoreCard[] = [...PARTNER_CARDS, ...LOCAL_CARDS];
+
+const CATEGORIES = Array.from(
+  new Set<string>(["All", ...PRODUCTS.map((p) => p.category)]),
+);
 
 export default function StorePage() {
   const [category, setCategory] = useState("All");
-  const [disclaimerUrl, setDisclaimerUrl] = useState<string | null>(null);
+  const [disclaimerCard, setDisclaimerCard] = useState<StoreCard | null>(null);
+  const disclaimerUrl = disclaimerCard?.url ?? null;
 
   const filtered =
     category === "All"
@@ -62,29 +99,8 @@ export default function StorePage() {
         }}
       />
 
-      {/* Nav */}
-      <nav className="max-w-[1280px] mx-auto flex items-center justify-between px-6 lg:px-12 h-20">
-        <Link href="/">
-          <Wordmark size="md" />
-        </Link>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/about"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            About
-          </Link>
-          <Link
-            href="/login"
-            className="text-sm text-text-muted hover:text-text px-3 py-2 transition-colors"
-          >
-            Sign in
-          </Link>
-          <Link href="/signup">
-            <Button size="sm">Start your care</Button>
-          </Link>
-        </div>
-      </nav>
+      <SiteHeader />
+      <main id="main-content">
 
       {/* Hero */}
       <section className="max-w-[1280px] mx-auto px-6 lg:px-12 pt-12 pb-10 text-center">
@@ -139,9 +155,13 @@ export default function StorePage() {
               <span className="text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
                 {product.brand} &middot; {product.category}
               </span>
-              <h3 className="font-display text-xl text-text tracking-tight mt-2">
+              {/* h2 (not h3) — page h1 lives in the hero; the next
+                  heading after it must be h2 for axe's heading-order
+                  rule. The "Browse the shelf" h2 below this section
+                  keeps the order valid. (EMR-713 cleanup.) */}
+              <h2 className="font-display text-xl text-text tracking-tight mt-2">
                 {product.name}
-              </h3>
+              </h2>
               <p className="text-sm text-text-muted mt-2 leading-relaxed flex-1">
                 {product.description}
               </p>
@@ -153,7 +173,7 @@ export default function StorePage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => setDisclaimerUrl(product.url)}
+                  onClick={() => setDisclaimerCard(product)}
                 >
                   View product
                 </Button>
@@ -174,18 +194,18 @@ export default function StorePage() {
               Trusted by leading cannabis wellness brands
             </h2>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-8 text-text-muted">
-              <span className="font-display text-xl tracking-tight">PhytoRx</span>
+              <span className="font-display text-xl tracking-tight">Greenleaf Co.</span>
               <span className="text-border-strong">|</span>
-              <span className="font-display text-xl tracking-tight">Flower Powered</span>
-              <span className="text-border-strong">|</span>
-              <span className="font-display text-xl tracking-tight">AULV</span>
+              <span className="text-sm text-text-subtle italic">More partners coming soon</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Disclaimer modal */}
-      {disclaimerUrl && (
+      {/* Disclaimer modal — copy is partner-specific when the card carries
+          a registered AffiliatePartner; falls back to default disclaimer
+          for local cards (e.g. Gold Skin Serum). */}
+      {disclaimerCard && disclaimerUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-surface-raised rounded-2xl border border-border shadow-xl p-8 max-w-md w-full">
             <div className="flex items-center gap-3 mb-4">
@@ -196,28 +216,30 @@ export default function StorePage() {
                 Before you go
               </h3>
             </div>
-            <p className="text-sm text-text-muted leading-relaxed mb-6">
-              You are leaving Leafjourney to visit a partner website.
-              Please consult your healthcare provider before considering
-              these products. Cannabis products are not FDA-approved
-              medications and individual results may vary. This is a joint
-              decision between you and your care team.
+            <p className="text-sm text-text-muted leading-relaxed mb-4">
+              {disclaimerCard.disclaimerText ??
+                "You are leaving Leafjourney to visit a partner website. Please consult your healthcare provider before considering these products. Cannabis products are not FDA-approved medications and individual results may vary. This is a joint decision between you and your care team."}
             </p>
+            {disclaimerCard.jointDecisionNote && (
+              <p className="text-xs text-text-subtle leading-relaxed mb-6 border-l-2 border-accent/30 pl-3">
+                {disclaimerCard.jointDecisionNote}
+              </p>
+            )}
             <div className="flex gap-3">
               <Button
                 variant="secondary"
                 size="md"
                 className="flex-1"
-                onClick={() => setDisclaimerUrl(null)}
+                onClick={() => setDisclaimerCard(null)}
               >
                 Go back
               </Button>
               <a
                 href={disclaimerUrl}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener noreferrer sponsored"
                 className="flex-1"
-                onClick={() => setDisclaimerUrl(null)}
+                onClick={() => setDisclaimerCard(null)}
               >
                 <Button size="md" className="w-full">
                   Continue to site
@@ -228,22 +250,8 @@ export default function StorePage() {
         </div>
       )}
 
-      <footer className="border-t border-border">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-12 py-8 flex flex-col gap-4">
-          <p className="text-xs italic text-text-muted leading-relaxed max-w-2xl">
-            Cannabis should be considered a medicine so please use it carefully
-            and judiciously. Do not abuse Cannabis and please respect the plant
-            and its healing properties.
-          </p>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-            <Wordmark size="sm" />
-            <p className="text-xs text-text-subtle">
-              &copy; {new Date().getFullYear()} Leafjourney. A
-              demonstration product — not a substitute for medical advice.
-            </p>
-          </div>
-        </div>
-      </footer>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

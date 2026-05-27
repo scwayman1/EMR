@@ -11,6 +11,8 @@
  * adds confidence scoring + auto-fix for low-risk issues.
  */
 
+import { resolvePayerRule } from "@/lib/billing/payer-rules";
+
 export type ScrubSeverity = "error" | "warning" | "info";
 
 export interface ScrubIssue {
@@ -25,12 +27,21 @@ export interface ScrubIssue {
   relatedCode?: string;
   /** Whether the issue blocks submission */
   blocksSubmission: boolean;
+  /** Suggested workflow action hint */
+  workflowHint?: string;
 }
 
 export interface ScrubInput {
-  cptCodes: Array<{ code: string; label: string; units?: number; chargeAmount?: number }>;
+  cptCodes: Array<{
+    code: string;
+    label: string;
+    units?: number;
+    chargeAmount?: number;
+    modifiers?: string[];
+  }>;
   icd10Codes: Array<{ code: string; label?: string }>;
   payerName: string | null;
+  payerId?: string | null;
   serviceDate: Date;
   providerId: string | null;
   modifierCodes?: string[];
@@ -40,7 +51,56 @@ export interface ScrubInput {
   } | null;
   authRequired?: boolean;
   authNumber?: string | null;
+  /** true when this is a corrected-claim resubmission (frequency 7/8) */
+  corrected?: boolean;
+  /** true when this claim is completely self-pay (uninsured or cash-only) */
+  selfPay?: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// NCCI (procedure-to-procedure) edit pairs — minimal starter set
+// ---------------------------------------------------------------------------
+// CMS publishes quarterly NCCI tables; keeping a production-grade copy of
+// tens of thousands of pairs in code is impractical. This starter set
+// captures the highest-volume pairs for cannabis care (E/M + counseling
+// bundling) so the scrub catches the most common errors today. EMR-222
+// tracks the full table migration into the DB.
+
+interface NcciPair {
+  /** The code that gets denied when billed with `comprehensiveCode` without a modifier. */
+  componentCode: string;
+  comprehensiveCode: string;
+  /** Modifier that unbundles the pair (usually 25 or 59). null = never unbundleable. */
+  allowedModifier: "25" | "59" | null;
+  description: string;
+}
+
+const NCCI_PAIRS: NcciPair[] = [
+  // Counseling codes bundled into same-day E/M
+  { componentCode: "99406", comprehensiveCode: "99213", allowedModifier: "25", description: "Tobacco cessation counseling (3-10 min) bundles into 99213 without mod 25" },
+  { componentCode: "99406", comprehensiveCode: "99214", allowedModifier: "25", description: "Tobacco cessation counseling bundles into 99214 without mod 25" },
+  { componentCode: "99407", comprehensiveCode: "99214", allowedModifier: "25", description: "Tobacco cessation counseling (>10 min) bundles into 99214 without mod 25" },
+  { componentCode: "99407", comprehensiveCode: "99215", allowedModifier: "25", description: "Tobacco cessation counseling bundles into 99215 without mod 25" },
+  { componentCode: "96160", comprehensiveCode: "99213", allowedModifier: "25", description: "Health risk assessment bundles into same-day E/M without mod 25" },
+  { componentCode: "96161", comprehensiveCode: "99213", allowedModifier: "25", description: "Caregiver health risk assessment bundles into same-day E/M without mod 25" },
+  // Phlebotomy bundled into E/M when the lab is the reason for the visit
+  { componentCode: "36415", comprehensiveCode: "99213", allowedModifier: null, description: "Venipuncture is incidental to an office visit and should not be separately billed." },
+  { componentCode: "36415", comprehensiveCode: "99214", allowedModifier: null, description: "Venipuncture is incidental to an office visit and should not be separately billed." },
+];
+
+// ---------------------------------------------------------------------------
+// MUE (Medically Unlikely Edit) per-day unit caps — starter set
+// ---------------------------------------------------------------------------
+// CMS publishes MUE limits per CPT per day. The full table is thousands of
+// rows; here we keep the cannabis-care hot list.
+
+const MUE_LIMITS: Record<string, number> = {
+  "99202": 1, "99203": 1, "99204": 1, "99205": 1,
+  "99211": 1, "99212": 1, "99213": 1, "99214": 1, "99215": 1,
+  "99406": 4, "99407": 4,
+  "96160": 2, "96161": 2,
+  "36415": 3,
+};
 
 // ---------------------------------------------------------------------------
 // Cannabis-friendly E&M codes for sanity checks
@@ -90,7 +150,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
   }
 
   // ── Rule: payer required ──────────────────────────────────────
-  if (!input.payerName) {
+  if (!input.selfPay && !input.payerName) {
     issues.push({
       ruleCode: "MISSING_PAYER",
       severity: "error",
@@ -115,6 +175,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
 
   // ── Rule: eligibility recently checked ────────────────────────
   if (
+    !input.selfPay &&
     input.patientCoverage &&
     input.patientCoverage.eligibilityStatus !== "active"
   ) {
@@ -129,7 +190,7 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
   }
 
   // ── Rule: auth required but missing ──────────────────────────
-  if (input.authRequired && !input.authNumber) {
+  if (!input.selfPay && input.authRequired && !input.authNumber) {
     issues.push({
       ruleCode: "MISSING_PRIOR_AUTH",
       severity: "error",
@@ -191,20 +252,113 @@ export function scrubClaim(input: ScrubInput): ScrubIssue[] {
     }
   }
 
-  // ── Rule: timely filing window ───────────────────────────────
-  const ageDays = Math.floor(
-    (Date.now() - input.serviceDate.getTime()) / (1000 * 60 * 60 * 24),
+  // ── Rule: per-payer timely filing window ─────────────────────
+  const payerRule = resolvePayerRule({
+    payerId: input.payerId,
+    payerName: input.payerName,
+  });
+  if (!input.selfPay) {
+    const ageDays = Math.floor(
+      (Date.now() - input.serviceDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    const tfDays = input.corrected
+      ? payerRule.correctedTimelyFilingDays
+      : payerRule.timelyFilingDays;
+    if (ageDays > tfDays) {
+      issues.push({
+        ruleCode: "PAST_TIMELY_FILING",
+        severity: "error",
+        message: `Service date is ${ageDays} days old. ${payerRule.displayName}'s timely filing window is ${tfDays} days.`,
+        suggestion:
+          "Past timely filing. If there's proof of timely intent (clearinghouse acceptance log, prior correspondence) appeal with documentation; otherwise write off.",
+        blocksSubmission: true,
+      });
+    } else if (ageDays > tfDays * 0.8) {
+      issues.push({
+        ruleCode: "APPROACHING_TIMELY_FILING",
+        severity: "warning",
+        message: `Service date is ${ageDays} days old, approaching ${payerRule.displayName}'s ${tfDays}-day timely filing limit.`,
+        suggestion: "Submit today. Once submitted, keep the clearinghouse acceptance record on file as proof of timely intent.",
+        blocksSubmission: false,
+      });
+    }
+  }
+
+  // ── Rule: NCCI procedure-to-procedure edit pairs ─────────────
+  const cptCodeSet = new Set(input.cptCodes.map((c) => c.code));
+  for (const pair of NCCI_PAIRS) {
+    if (!cptCodeSet.has(pair.componentCode) || !cptCodeSet.has(pair.comprehensiveCode)) continue;
+    const comprehensiveLine = input.cptCodes.find((c) => c.code === pair.comprehensiveCode);
+    let hasAllowedModifier =
+      pair.allowedModifier != null &&
+      (comprehensiveLine?.modifiers ?? []).includes(pair.allowedModifier);
+    
+    // UnitedHealthcare ignores mod-25 on Z71 counseling
+    if (
+      pair.allowedModifier === "25" && 
+      input.payerName === "UnitedHealthcare" && 
+      pair.componentCode.startsWith("9940")
+    ) {
+      hasAllowedModifier = false;
+    }
+
+    if (!hasAllowedModifier) {
+      issues.push({
+        ruleCode: "NCCI_BUNDLED_PAIR",
+        severity: pair.allowedModifier && input.payerName !== "UnitedHealthcare" ? "warning" : "error",
+        message: `NCCI bundling: ${pair.componentCode} billed with ${pair.comprehensiveCode}. ${pair.description}`,
+        suggestion: pair.allowedModifier && input.payerName !== "UnitedHealthcare"
+          ? `Attach modifier ${pair.allowedModifier} to ${pair.comprehensiveCode} if the service is truly separately identifiable, or drop the line.`
+          : "Drop the component line — it is incidental to the comprehensive service.",
+        relatedCode: pair.componentCode,
+        blocksSubmission: !pair.allowedModifier || input.payerName === "UnitedHealthcare",
+      });
+    }
+  }
+
+  // ── Rule: MUE (Medically Unlikely Edits) per-day unit caps ───
+  for (const cpt of input.cptCodes) {
+    const limit = MUE_LIMITS[cpt.code];
+    if (limit != null && (cpt.units ?? 1) > limit) {
+      issues.push({
+        ruleCode: "MUE_EXCEEDED",
+        severity: "error",
+        message: `${cpt.code} billed ${cpt.units} units; MUE per-day limit is ${limit}.`,
+        suggestion:
+          "Either reduce units, split onto separate dates of service, or append modifier 76/77/91 if the higher count is clinically justified.",
+        relatedCode: cpt.code,
+        blocksSubmission: true,
+      });
+    }
+  }
+
+  // ── Rule: cannabis coverage routing ──────────────────────────
+  // If the payer excludes cannabis services and an F12/Z71 code is on
+  // the claim, block submission up front — appealing a benefit-exclusion
+  // burns the timely-filing window with no recovery.
+  const hasCannabisDx = input.icd10Codes.some(
+    (c) => c.code.startsWith("F12") || c.code.startsWith("Z71"),
   );
-  if (ageDays > 90) {
+  if (!input.selfPay && hasCannabisDx && payerRule.excludesCannabis) {
     issues.push({
-      ruleCode: "STALE_SERVICE_DATE",
-      severity: ageDays > 180 ? "error" : "warning",
-      message: `Service date is ${ageDays} days old. Many payers have 90-day timely filing windows.`,
+      ruleCode: "CANNABIS_PAYER_EXCLUDES",
+      severity: "error",
+      message: `${payerRule.displayName} excludes cannabis services per ${payerRule.cannabisPolicyCitation ?? "payer policy"}. Appealing is a dead end.`,
       suggestion:
-        ageDays > 180
-          ? "This claim is likely past timely filing for most payers. Consider write-off or appeal with documentation."
-          : "Submit ASAP. If this is approaching the payer's timely filing limit, attach proof of timely intent.",
-      blocksSubmission: false,
+        "Route this encounter to self-pay using the practice's published rate. Issue a written ABN for the next visit.",
+      blocksSubmission: true,
+      workflowHint: "route_to_self_pay",
+    });
+  }
+  if (!input.selfPay && hasCannabisDx && payerRule.requiresPriorAuthForCannabis && !input.authNumber) {
+    issues.push({
+      ruleCode: "CANNABIS_PA_HOLD",
+      severity: "error",
+      message: `${payerRule.displayName} requires prior authorization for cannabis services and none is on file.`,
+      suggestion:
+        "Obtain PA before submission. PA packet should include DSM-5 severity, prior treatment failures, and a written treatment plan.",
+      blocksSubmission: true,
+      workflowHint: "create_pa_task",
     });
   }
 

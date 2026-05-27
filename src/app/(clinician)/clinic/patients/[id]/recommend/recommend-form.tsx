@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import Link from "next/link";
 import {
@@ -8,6 +9,7 @@ import {
   type Recommendation,
 } from "./actions";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   Card,
   CardContent,
@@ -91,9 +93,15 @@ function RecommendationCard({
                     >
                       {cite.title}
                     </a>
-                    <span className="text-text-subtle font-mono text-xs ml-2">
+                    <a
+                      href={`https://pubmed.ncbi.nlm.nih.gov/${cite.pmid}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`Open PubMed article ${cite.pmid}`}
+                      className="text-text-subtle hover:text-accent font-mono text-xs ml-2 underline-offset-2 hover:underline"
+                    >
                       PMID:{cite.pmid}
-                    </span>
+                    </a>
                     <p className="text-text-muted text-xs mt-0.5 leading-relaxed">
                       {cite.summary}
                     </p>
@@ -148,6 +156,17 @@ export function RecommendForm({
     generateRecommendation,
     null
   );
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (state?.ok === false) {
+      toast({
+        title: "Couldn't generate recommendation",
+        description: state.error,
+        variant: "error",
+      });
+    }
+  }, [state, toast]);
 
   return (
     <div>
@@ -159,7 +178,7 @@ export function RecommendForm({
             <CardTitle>Patient summary</CardTitle>
             <CardDescription>
               The recommendation engine will use this data along with outcome
-              trends, assessment scores, and the research corpus.
+              trends, assessment scores, and the research database.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -176,9 +195,6 @@ export function RecommendForm({
             </div>
           </CardContent>
           <CardFooter>
-            {state?.ok === false && (
-              <p className="text-sm text-danger">{state.error}</p>
-            )}
             <div className="ml-auto">
               <GenerateButton />
             </div>

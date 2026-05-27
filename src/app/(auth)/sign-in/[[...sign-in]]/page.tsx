@@ -1,30 +1,26 @@
-// Clerk Sign-In page — used when AUTH_PROVIDER=clerk
-// Falls back to a message when Clerk is not configured.
+// Clerk Sign-In page — gated behind AUTH_PROVIDER=clerk.
+//
+// EMR-205: the top-level `import { SignIn } from "@clerk/nextjs"` used to
+// run at module load and crashed the whole (auth) route group when Clerk
+// env vars weren't set — including /login, which shares this group.
+// Dynamic-importing inside the render path keeps @clerk/nextjs out of
+// the hot boot path until Clerk is actually wired.
 
-import { SignIn } from "@clerk/nextjs";
-import Link from "next/link";
+import nextDynamic from "next/dynamic";
 
 export const metadata = { title: "Sign in — Leafjourney" };
 
+// Disable caching on this route so every visit pulls a fresh sign-in
+// widget — addresses the "Sign in button must always open with all login
+// methods available" requirement.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const ClerkSignInBox = nextDynamic(() => import("./clerk-signin-box"), {
+  ssr: false,
+});
+
 export default function SignInPage() {
-  const clerkEnabled = process.env.AUTH_PROVIDER === "clerk";
-
-  if (!clerkEnabled) {
-    return (
-      <div className="text-center space-y-4">
-        <h1 className="font-display text-2xl text-text tracking-tight">
-          Clerk not yet enabled
-        </h1>
-        <p className="text-sm text-text-muted leading-relaxed">
-          Clerk authentication is configured but not active. Use the legacy sign-in instead.
-        </p>
-        <Link href="/login" className="inline-block text-sm text-accent hover:underline">
-          Go to legacy sign-in →
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col items-center">
       <h1 className="font-display text-2xl text-text tracking-tight mb-2">
@@ -33,29 +29,11 @@ export default function SignInPage() {
       <p className="text-sm text-text-muted mb-8 text-center">
         Sign in to your Leafjourney account
       </p>
-
-      <SignIn
-        signUpUrl="/sign-up"
-        appearance={{
-          elements: {
-            rootBox: "w-full",
-            card: "bg-transparent shadow-none border-0 p-0",
-            headerTitle: "hidden",
-            headerSubtitle: "hidden",
-            formButtonPrimary:
-              "bg-accent hover:bg-accent/90 text-white font-medium rounded-md shadow-sm",
-            socialButtonsBlockButton:
-              "border border-border hover:bg-surface-muted rounded-md",
-            formFieldInput:
-              "rounded-md border border-border-strong bg-surface focus:border-accent focus:ring-2 focus:ring-accent/20",
-            footerActionLink: "text-accent hover:text-accent/80",
-          },
-          layout: {
-            socialButtonsPlacement: "top",
-            socialButtonsVariant: "blockButton",
-          },
-        }}
-      />
+      <ClerkSignInBox />
+      <p className="mt-6 text-xs text-text-muted text-center max-w-sm leading-relaxed">
+        Your password must contain 8 or more characters including one capital
+        letter and a special character.
+      </p>
     </div>
   );
 }

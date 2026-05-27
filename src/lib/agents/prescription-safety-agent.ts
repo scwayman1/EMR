@@ -66,6 +66,49 @@ const CONTRAINDICATION_SEVERITY: Record<
   caution: "notable",
 };
 
+const SEVERITY_ORDER: ObservationSeverity[] = ["info", "notable", "concern", "urgent"];
+
+/** Escalate an observation severity by one tier (notable→concern, concern→urgent).
+ * Returning unchanged when we're already at the top. Exposed for tests. */
+export function escalateSeverity(s: ObservationSeverity): ObservationSeverity {
+  const idx = SEVERITY_ORDER.indexOf(s);
+  if (idx < 0) return s;
+  return SEVERITY_ORDER[Math.min(idx + 1, SEVERITY_ORDER.length - 1)];
+}
+
+function ageFromDob(dob: Date): number {
+  const now = new Date();
+  let age = now.getFullYear() - dob.getFullYear();
+  const md = now.getMonth() - dob.getMonth();
+  if (md < 0 || (md === 0 && now.getDate() < dob.getDate())) age--;
+  return age;
+}
+
+/** Extract the human-written override reason from a regimen's override
+ * blob. Returns null if the override is missing, malformed, or if the
+ * reason string is shorter than 20 characters — anything shorter is
+ * treated as "no reason provided" since it can't meaningfully justify
+ * prescribing through a contraindication. */
+export function extractOverrideReason(override: unknown): string | null {
+  if (!override || typeof override !== "object") return null;
+  const reason = (override as { reason?: unknown }).reason;
+  if (typeof reason !== "string") return null;
+  const trimmed = reason.trim();
+  if (trimmed.length < 20) return null;
+  return trimmed;
+}
+
+function isPregnantOrLactating(text: string): boolean {
+  return (
+    text.includes("pregnan") ||
+    text.includes("gravid") ||
+    text.includes("embarazada") ||
+    text.includes("lactation") ||
+    text.includes("breastfeed") ||
+    text.includes("nursing")
+  );
+}
+
 export const prescriptionSafetyAgent: Agent<
   z.infer<typeof input>,
   z.infer<typeof output>
@@ -104,12 +147,35 @@ export const prescriptionSafetyAgent: Agent<
         id: true,
         firstName: true,
         lastName: true,
+        dateOfBirth: true,
         presentingConcerns: true,
         contraindications: true,
         allergies: true,
       },
     });
     if (!patient) throw new Error(`Patient not found: ${patientId}`);
+
+    // Vulnerability escalator — pediatric or pregnant/lactating patients
+    // bump every observation one severity tier. A "notable" drug-cannabinoid
+    // interaction becomes a "concern" when the patient is 9 years old.
+    const age = patient.dateOfBirth ? ageFromDob(patient.dateOfBirth) : null;
+    const vulnText = [
+      patient.presentingConcerns ?? "",
+      ...(patient.contraindications ?? []),
+    ]
+      .join(" ")
+      .toLowerCase();
+    const isVulnerable = (age !== null && age < 18) || isPregnantOrLactating(vulnText);
+    const escalate = (s: ObservationSeverity): ObservationSeverity =>
+      isVulnerable ? escalateSeverity(s) : s;
+    if (isVulnerable) {
+      ctx.log("info", "Vulnerability escalator active", {
+        patientId,
+        age,
+        reason:
+          age !== null && age < 18 ? "pediatric" : "pregnant_or_lactating",
+      });
+    }
 
     // Identify cannabinoids present in the prescribed product.
     const cannabinoids: string[] = [];
@@ -142,12 +208,22 @@ export const prescriptionSafetyAgent: Agent<
       .join(" ")
       .toLowerCase();
 
-    // If the clinician already overrode a contraindication at prescribe
-    // time, don't re-surface it — they documented the override reason
-    // and that's the record of decision.
-    const overriddenIds = new Set<string>(
+    // Contraindication override handling. Two rules:
+    //   (a) If the clinician documented an override WITH a meaningful
+    //       reason (≥20 chars), we trust it and skip re-surfacing those
+    //       contraindications.
+    //   (b) If the override blob exists but the reason is missing or too
+    //       short to justify prescribing through a contraindication, we
+    //       REFUSE to honor it — the contraindications are still surfaced
+    //       AND we emit an explicit concern-severity "override without
+    //       reason" observation so audit trails capture the gap.
+    const allOverriddenIds = new Set<string>(
       extractOverriddenContraindicationIds(regimen.contraindicationOverride),
     );
+    const overrideReason = extractOverrideReason(regimen.contraindicationOverride);
+    const overrideIsHonored = overrideReason !== null;
+    const overriddenIds = overrideIsHonored ? allOverriddenIds : new Set<string>();
+    const overrideLacksReason = allOverriddenIds.size > 0 && !overrideIsHonored;
 
     const matchedContraindications = historyText.trim()
       ? CANNABIS_CONTRAINDICATIONS.filter(
@@ -163,7 +239,11 @@ export const prescriptionSafetyAgent: Agent<
       contraindicationsFound: matchedContraindications.length,
     });
 
-    if (interactions.length === 0 && matchedContraindications.length === 0) {
+    if (
+      interactions.length === 0 &&
+      matchedContraindications.length === 0 &&
+      !overrideLacksReason
+    ) {
       return {
         interactionsFound: 0,
         contraindicationsFound: 0,
@@ -178,8 +258,9 @@ export const prescriptionSafetyAgent: Agent<
     const productName = regimen.product.name;
 
     for (const i of interactions) {
-      const severity = INTERACTION_SEVERITY[i.severity];
-      if (!severity) continue;
+      const baseSeverity = INTERACTION_SEVERITY[i.severity];
+      if (!baseSeverity) continue;
+      const severity = escalate(baseSeverity);
       const obs = await recordObservation({
         patientId,
         observedBy: "prescriptionSafety@1.0.0",
@@ -196,6 +277,7 @@ export const prescriptionSafetyAgent: Agent<
           interactionSeverity: i.severity,
           drug: i.drug,
           cannabinoid: i.cannabinoid,
+          vulnerabilityEscalated: isVulnerable,
         },
       });
       observationIds.push(obs.id);
@@ -207,7 +289,7 @@ export const prescriptionSafetyAgent: Agent<
         observedBy: "prescriptionSafety@1.0.0",
         observedByKind: "agent",
         category: "red_flag",
-        severity: CONTRAINDICATION_SEVERITY[c.severity],
+        severity: escalate(CONTRAINDICATION_SEVERITY[c.severity]),
         summary: `${c.label} flagged in history vs. ${productName}: ${c.rationale}`,
         actionSuggested:
           c.severity === "absolute"
@@ -220,6 +302,29 @@ export const prescriptionSafetyAgent: Agent<
           checkKind: "contraindication",
           contraindicationId: c.id,
           contraindicationSeverity: c.severity,
+          vulnerabilityEscalated: isVulnerable,
+        },
+      });
+      observationIds.push(obs.id);
+    }
+
+    if (overrideLacksReason) {
+      const obs = await recordObservation({
+        patientId,
+        observedBy: "prescriptionSafety@1.0.0",
+        observedByKind: "agent",
+        category: "red_flag",
+        severity: escalate("concern"),
+        summary: `Contraindication override without a documented reason on ${productName}. Override blob listed ${allOverriddenIds.size} contraindication id(s) but no reason ≥20 chars was provided.`,
+        actionSuggested:
+          "Obtain a written rationale from the prescriber before the next dispense. The override is not honored until a reason is on file.",
+        evidence: {},
+        metadata: {
+          regimenId,
+          productId: regimen.productId,
+          checkKind: "override_missing_reason",
+          overriddenContraindicationIds: Array.from(allOverriddenIds),
+          vulnerabilityEscalated: isVulnerable,
         },
       });
       observationIds.push(obs.id);
@@ -227,7 +332,7 @@ export const prescriptionSafetyAgent: Agent<
 
     return {
       interactionsFound: interactions.length,
-      contraindicationsFound: matchedContraindications.length,
+      contraindicationsFound: matchedContraindications.length + (overrideLacksReason ? 1 : 0),
       observationsWritten: observationIds.length,
       observationIds,
     };

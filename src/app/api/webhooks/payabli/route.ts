@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { resolvePaymentGateway } from "@/lib/payments";
+import { logger } from "@/lib/observability/log";
 
 /**
  * Payabli webhook handler.
@@ -30,25 +31,65 @@ import { resolvePaymentGateway } from "@/lib/payments";
 const SIGNATURE_HEADER = "x-payabli-signature";
 
 export async function POST(req: Request) {
-  // Read raw body for signature verification
+  // Read raw body for signature verification (signature is computed over
+  // raw bytes; parsing JSON first would corrupt the comparison).
   const rawBody = await req.text();
   const signature = req.headers.get(SIGNATURE_HEADER) ?? "";
 
   const gateway = resolvePaymentGateway();
 
-  // Verify signature — refuse anything that doesn't check out
-  if (gateway.name === "payabli") {
-    const valid = gateway.verifyWebhookSignature({ signature, rawBody });
-    if (!valid) {
-      console.warn("[webhook/payabli] invalid signature", {
-        signaturePresent: !!signature,
-        bodyLength: rawBody.length,
-      });
+  // Fail closed when the live gateway isn't wired. The previous gate
+  // (\`if (gateway.name === "payabli")\`) skipped verification entirely
+  // whenever the env resolved to the stub gateway — which silently happens
+  // when PAYMENT_GATEWAY is unset OR when Payabli init throws and falls
+  // back to stub (see resolvePaymentGateway). In production that meant any
+  // unsigned POST to this route mutated the financial ledger.
+  //
+  // In production we require the real Payabli gateway. In non-prod, we
+  // still require signature verification — the stub's \`verifyWebhookSignature\`
+  // returns true for everything, so this also catches "we shipped a stub
+  // to staging and forgot to reconfigure."
+  const isProd = process.env.NODE_ENV === "production";
+  if (gateway.name !== "payabli") {
+    if (isProd) {
+      console.error(
+        "[webhook/payabli] refusing webhook — production must use the payabli gateway",
+        { gatewayName: gateway.name },
+      );
       return NextResponse.json(
-        { ok: false, error: "invalid signature" },
-        { status: 401 },
+        { ok: false, error: "gateway_misconfigured" },
+        { status: 503 },
       );
     }
+    // Non-prod with stub gateway: still refuse so dev environments don't
+    // build muscle memory of unverified webhook flows. Set
+    // PAYABLI_DEV_BYPASS=1 to opt in for local testing only.
+    if (process.env.PAYABLI_DEV_BYPASS !== "1") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "gateway_not_payabli",
+          hint: "Set PAYMENT_GATEWAY=payabli, or PAYABLI_DEV_BYPASS=1 in dev only.",
+        },
+        { status: 503 },
+      );
+    }
+  }
+
+  // Always verify signature — even with the dev-bypass flag, the stub's
+  // verifyWebhookSignature returns true so this is a no-op in dev. In
+  // prod (gateway.name === "payabli") this is the only thing standing
+  // between a forged ledger event and a financial mutation.
+  const valid = gateway.verifyWebhookSignature({ signature, rawBody });
+  if (!valid) {
+    console.warn("[webhook/payabli] invalid signature", {
+      signaturePresent: !!signature,
+      bodyLength: rawBody.length,
+    });
+    return NextResponse.json(
+      { ok: false, error: "invalid signature" },
+      { status: 401 },
+    );
   }
 
   // Parse the event
@@ -56,7 +97,7 @@ export async function POST(req: Request) {
   try {
     event = gateway.parseWebhook(rawBody);
   } catch (err) {
-    console.error("[webhook/payabli] parse error:", err);
+    logger.error({ event: "webhook.payabli.parse_failed", err });
     return NextResponse.json(
       { ok: false, error: "invalid payload" },
       { status: 400 },
@@ -212,7 +253,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[webhook/payabli] processing error:", err);
+    logger.error({ event: "webhook.payabli.processing_failed", err });
     return NextResponse.json(
       { ok: false, error: "processing error" },
       { status: 500 },

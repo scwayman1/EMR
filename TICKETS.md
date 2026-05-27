@@ -326,6 +326,7 @@ Create a SOAP note but in the order of: Assessment, Plan, Subjective, Objective 
 ### EMR-021: AI-Recommended Initial Treatment Plan
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create an AI-prompted and recommended initial care plan that physicians can use as a starting point, modify, and then sign off on before giving to patient. The AI uses research corpus + patient data + outcomes to generate evidence-based recommendations. Physician has final authority.
 
@@ -336,6 +337,7 @@ Create an AI-prompted and recommended initial care plan that physicians can use 
 ### EMR-022: Cannabis Plant Health Companion
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a virtual cannabis plant that GROWS or DIES based on how well the patient takes care of their health:
 - Exercise done 2x/week = new leaves
@@ -353,6 +355,7 @@ This is the gamification of health. Visual, interactive, emotional.
 ### EMR-023: Gamify Health (Apple Rings Style)
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Gamify health metrics like Apple's activity rings:
 - Exercise workouts completed
@@ -367,6 +370,7 @@ Gamify health metrics like Apple's activity rings:
 ### EMR-024: Positive Input Requirement
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 For every "problem" a patient inputs (poor sleep, pain, stress, digestive issues), prompt that they MUST input one POSITIVE thing about their life/health — family, finance, weather, gratitude, etc.
 "They don't have problems, this is a process."
@@ -379,6 +383,7 @@ Patients should focus on both challenges AND positives.
 ### EMR-025: Cannabis-Themed Design Palette
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Design updates:
 - Cannabis plants in light shade in background
@@ -392,6 +397,7 @@ Design updates:
 ### EMR-026: Cannabis Emojis
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create custom cannabis emojis for use in messaging, notes, and the UI:
 stems, leaves, plant, fire, tincture drop, pain icon, sleep icon, anxiety icon, depression icon, cancer ribbon
@@ -401,6 +407,7 @@ stems, leaves, plant, fire, tincture drop, pain icon, sleep icon, anxiety icon, 
 ### EMR-027: Platform Disclaimer
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a disclaimer at the bottom of the platform:
 "Cannabis should be considered a medicine so please use it carefully and judiciously. Do not abuse Cannabis and please respect the plant and its healing properties."
@@ -412,6 +419,7 @@ Create a disclaimer at the bottom of the platform:
 ### EMR-028: Split Window / Multi-Tab View
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** done
 **Description:**
 Create split window ability WITHIN the EMR so up to 3 MAX tabs can be open at the same time. Makes it easier to maneuver instead of clicking back and forth. Think Bloomberg Terminal or VS Code split panes — but for clinical workflows.
 
@@ -420,6 +428,7 @@ Create split window ability WITHIN the EMR so up to 3 MAX tabs can be open at th
 ### EMR-029: ADA Compliance
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Maintain American Disability Act (ADA) friendly website:
 - WCAG 2.1 AA compliance
@@ -435,6 +444,7 @@ Maintain American Disability Act (ADA) friendly website:
 ### EMR-030: Multi-Language Support
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create language conversions for:
 English, Spanish, Vietnamese, Gujarati, Hindi, and more.
@@ -445,6 +455,7 @@ i18n framework with per-page translations. AI-assisted translation for dynamic c
 ### EMR-031: Responsive Cross-Device Experience
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 "We want the EMR seamless from desktop, phone to iPad."
 Full responsive audit and optimization across all breakpoints. Touch-friendly interactions on mobile. Consider PWA or native app wrapper.
@@ -454,6 +465,7 @@ Full responsive audit and optimization across all breakpoints. Touch-friendly in
 ### EMR-032: Patient Lab/Document Email & Print
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Allow patients to EMAIL labs, notes, chart documents AND print right from the portal in OCR PDF format. Clean, professional document formatting.
 
@@ -464,6 +476,7 @@ Allow patients to EMAIL labs, notes, chart documents AND print right from the po
 ### EMR-033: Physician-to-Physician Secure Portal
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create two communication portals:
 1. Patient ↔ Physician portal (already exists — enhance it)
@@ -474,6 +487,7 @@ Create two communication portals:
 ### EMR-034: Phone & Video Capability in Messaging
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create phone and video capability + icons within the messaging/inbox tab. Click-to-call, video visit launch, call logging.
 
@@ -484,6 +498,7 @@ Create phone and video capability + icons within the messaging/inbox tab. Click-
 ### EMR-035: Backend Data Extrapolation Dashboard
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Backend data extrapolation with BOTH identifying and de-identifying information. Allow backend user to click on all applicable fields (DOB, name, age, sex, etc.) to build custom reports and research datasets. Support for de-identified exports for research purposes.
 
@@ -494,6 +509,7 @@ Backend data extrapolation with BOTH identifying and de-identifying information.
 ### EMR-036: Justin Kander's Book & Free Resources
 **Priority:** 4 — Low
 **Source:** Justin Kander
+**Status:** in_progress
 **Description:**
 Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a free resource. It's the largest integration of human cases and research demonstrating how cannabis fights cancer. Good resource for patients and providers, even though dosing isn't well-characterized in all cases.
 
@@ -530,7 +546,7 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 | 025 | Cannabis Design Palette | High | Design | **done** |
 | 026 | Cannabis Emojis | Low | Design | **done** |
 | 027 | Platform Disclaimer | Low | Design | **done** |
-| 028 | Split Window / Multi-Tab | High | Platform | backlog |
+| 028 | Split Window / Multi-Tab | High | Platform | **done** |
 | 029 | ADA Compliance | High | Platform | **done** |
 | 030 | Multi-Language Support | Normal | Platform | **done** |
 | 031 | Responsive Cross-Device | High | Platform | backlog |
@@ -547,6 +563,7 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 ### EMR-037: End-to-End Communications Overlay
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - E2E encrypted text messaging with transcription
 - HIPAA-compliant video calls
@@ -560,6 +577,7 @@ Add Justin's book (FreeCannabisCancerBook.com) to the educational library as a f
 ### EMR-038: Cannabis & Cancer Book Integration
 **Priority:** 3 — Normal
 **Source:** Dr. Patel / Justin Kander
+**Status:** in_progress
 **Description:**
 Integrate Justin's book (Cannabis and Cancer) into the backend as a reference guide and data source. Parse and index for the Research Agent and educational library. Source: Dropbox link provided.
 
@@ -568,6 +586,7 @@ Integrate Justin's book (Cannabis and Cancer) into the backend as a reference gu
 ### EMR-039: Product Store with Affiliate Links
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create "Store" button on top right. Include affiliate links for product selections:
 - phytorx.co
@@ -581,6 +600,7 @@ Full Amazon-style store framework for cannabis products. Joint decision language
 ### EMR-040: Cannabis Plant 101 — Front Page Feature
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a 101-word paragraph on the front page about the beauty, power, healing properties, and sacredness of the cannabis plant. Include that all who use the website shall respect the plant and use it with intention. Highlighted section with beautiful background and typography.
 
@@ -589,6 +609,7 @@ Create a 101-word paragraph on the front page about the beauty, power, healing p
 ### EMR-041: Ambient Classical Music on Front Page
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Front page plays beautiful, relaxing classical music (no words) at low volume with a small mute icon. Subtle, non-intrusive. Consider autoplay policies.
 
@@ -597,6 +618,7 @@ Front page plays beautiful, relaxing classical music (no words) at low volume wi
 ### EMR-042: MIPS Data Extrapolation
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 AI functionality to extrapolate data from chart notes and messages to obtain MIPS (Merit-based Incentive Payment System) data. Meet all CMS data requirements. Upload entire MIPS requirements and CMS rules around cannabis as Schedule 3.
 
@@ -605,6 +627,7 @@ AI functionality to extrapolate data from chart notes and messages to obtain MIP
 ### EMR-043: Animated Plant Companion (Enhanced)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 The health plant needs MOTION — live cartoon feel:
 - Positive actions: container pops up and pours water on plant, sun shines
@@ -617,6 +640,7 @@ The health plant needs MOTION — live cartoon feel:
 ### EMR-044: Modular Licensable EMR Framework
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Make the entire EMR built on a fully licensable, modular framework:
 - Clients can buy individual modules
@@ -630,6 +654,7 @@ Make the entire EMR built on a fully licensable, modular framework:
 ### EMR-045: Insurance Billing AI Agent System
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Build intricate backend insurance/coding/charting system with SEPARATE AI agents that communicate with each other to ensure highest possible billing amount correlating to proper documentation and coding. Maximize reimbursement rates from each major US insurance company.
 
@@ -638,6 +663,7 @@ Build intricate backend insurance/coding/charting system with SEPARATE AI agents
 ### EMR-046: Insurance Eligibility Checker
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Built-in eligibility software to determine if patient's insurance or conditions qualify them for insurance-reimbursed cannabis products or a state medical cannabis card. Document and note in chart if eligible.
 
@@ -646,6 +672,7 @@ Built-in eligibility software to determine if patient's insurance or conditions 
 ### EMR-047: Medicare CBD Reimbursement Framework
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create entire framework for the upcoming CMS program allowing Medicare recipients to purchase up to $500 of CBD with proper reimbursement. Track eligibility, purchases, and reimbursement status.
 
@@ -654,6 +681,7 @@ Create entire framework for the upcoming CMS program allowing Medicare recipient
 ### EMR-048: About Page — Founders & Mission
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create "About" section showing:
 - Scott Wayman — AI genius, successful entrepreneur, EMR savant (pull bio from LinkedIn)
@@ -666,6 +694,7 @@ Create "About" section showing:
 ### EMR-049: Pricing & Subscription Tiers Page
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create links or side website that breaks down EMR pricing and tiers of subscription options based on client needs. Modular pricing aligned with EMR-044's module structure.
 
@@ -674,6 +703,7 @@ Create links or side website that breaks down EMR pricing and tiers of subscript
 ### EMR-050: EMR Slogan
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a slogan for the EMR, max 10 words. Ideas to incorporate: "Personalized cannabis care at your fingertips from an EMR and providers who have heart and soul."
 
@@ -682,6 +712,7 @@ Create a slogan for the EMR, max 10 words. Ideas to incorporate: "Personalized c
 ### EMR-051: Native Mobile App (iOS, iPad, Android)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create the entire EMR as a NATIVE app for iOS, iPad, and Android with proper dimensions, stretching, and seamless cross-device experience. Consider React Native, Expo, or Capacitor wrapper.
 
@@ -690,6 +721,7 @@ Create the entire EMR as a NATIVE app for iOS, iPad, and Android with proper dim
 ### EMR-052: Clinical Trial Matching
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Connect patient chart data to the largest national clinical trial databases (ClinicalTrials.gov). AI determines if patient is eligible for trials based on their data. Send recommendation directly to patient's portal, email, or text — AI-summarized trial info including website, trial type, and what it consists of.
 
@@ -698,6 +730,7 @@ Connect patient chart data to the largest national clinical trial databases (Cli
 ### EMR-053: ProHub Integration
 **Priority:** 2 — High
 **Source:** Meeting notes (Ryan Castle, Jim Gerencser)
+**Status:** in_progress
 **Description:**
 Merge the ProHub's robust backend of dynamic, validated surveys and longitudinal tracking with the EMR's frontend. ProHub was built to be modular and API-friendly. Goal: centralized one-stop shop tying ProHub + Cancer Playbook + EMR into a full ecosystem.
 
@@ -706,6 +739,7 @@ Merge the ProHub's robust backend of dynamic, validated surveys and longitudinal
 ### EMR-054: Veterinary & Psilocybin Expansion
 **Priority:** 4 — Low
 **Source:** Meeting notes
+**Status:** in_progress
 **Description:**
 System architecture should support replication for:
 - Veterinary cannabis care
@@ -718,6 +752,7 @@ White-label + modular architecture from EMR-044 enables this.
 ### EMR-055: Data Ownership & Security Framework
 **Priority:** 2 — High
 **Source:** Ryan Castle
+**Status:** in_progress
 **Description:**
 Ensure proper data ownership — not just access via AWS/GCP but actual proprietary ownership. Document data ownership agreements, implement data sovereignty controls, and ensure the platform's uniqueness is protected even when hosted on cloud infrastructure.
 
@@ -757,6 +792,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-056: Comprehensive Product + Dosing Recommendation Engine
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Deploy a seamless recommendation engine for products, cannabinoid ratios, doses, and dominant terpenes based on ALL cannabinoid databases from online sources and well-published books. Expand beyond the current research corpus to include book references (e.g., Justin Kander's book, Russo's work, other canonical texts). AI agent cross-references patient data against the full corpus.
 **Relates to:** EMR-004 (Dosing Recommendation Engine — foundation done)
 
@@ -765,6 +801,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-057: Native Mobile App with HDMI/Projector Support
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Create the entire EMR as a NATIVE app that runs on iOS, iPad, and Android with proper dimensions, stretching, and seamlessly in both portrait and landscape mode with proper zooming proportions and proper stretching when connected via a projector or HDMI.
 **Expansion of:** EMR-051
 **Tech:** React Native or Capacitor wrapper; responsive scaling for external displays
@@ -774,6 +811,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-058: Clinical Trial Auto-Recommendation Delivery
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Create full framework to connect the patient chart and all chart information to the largest national clinical trial databases (ClinicalTrials.gov) to determine eligibility. AI-summarized recommendation delivered directly to patient via portal, email, OR text — including website, trial type, and description.
 **Relates to:** EMR-052 (basic matching done; needs delivery pipeline)
 
@@ -782,6 +820,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-059: Single-Page Prescription Module (No Scrolling)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Prescription module must fit on ONE page, FIXED, without scrolling. All necessary parameters visible at once: product, dose, sig, days supply, quantity, type, refills, interaction warning, note boxes, diagnosis link, patient instructions.
 **Status:** Current Rx form scrolls — needs layout redesign with tighter density
 
@@ -790,6 +829,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-060: Minimum Clicks, Minimum Scrolling UX Pass
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Global EMR audit: reduce clicks between tabs, reduce scrolling to find information. Patients and providers should see all critical information in a simple, clean format on a single viewport wherever possible. Information density over whitespace where it matters (clinical screens).
 
 ---
@@ -797,6 +837,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-061: Motivational Quotes System
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Motivational quotes pop-up on login. Every page has a rotating quote that refreshes. Draw from keywords covering positive emotions: God, love, faith, emotions, energy, happiness, resilience, persistence, not giving up, etc. A curated library of 100+ quotes with themes.
 
 ---
@@ -804,6 +845,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-062: Ancillary Services EMR Module (OT, PT, Speech, Case Mgmt, Home Health)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Full ancillary EMR module including Occupational Therapy, Physical Therapy, Speech Therapy, Case Management, and Home Health documentation. Sign-off workflow back to primary provider. Seamless communication between all services within the platform.
 
 ---
@@ -811,6 +853,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-063: Pharmacy Communication Module with Dual Sign-Off
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Backend pharmacy communication module — direct access to pharmacists for clarifications or recommendations. Any medication change requires BOTH pharmacist AND provider sign-off before taking effect. Audit trail captures who approved what and when.
 
 ---
@@ -818,6 +861,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-064: Audit Log PDF Export
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Full running log of documentation and backend clicks: who accessed each chart, timestamps, what was viewed/modified. Exportable as a PDF for HIPAA auditing purposes. Filter by date range, user, patient.
 **Status:** AuditLog model already exists; needs export UI
 
@@ -826,6 +870,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-065: AI Compliance Auditing Agent
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Full automated AI agent that continuously audits all notes, labs, and communications for compliance with CMS standards. Cross-references with major insurance company auditing requirements (Aetna, BCBS, UHC, Cigna, Humana, Medicare, Medicaid). Flags gaps before submission.
 
 ---
@@ -833,6 +878,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-066: Validated Assessment Library Expansion
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Add ALL peer-reviewed validated surveys under the Assessments tab:
 - Pain: BPI, PEG, McGill Pain Questionnaire
 - Anxiety: GAD-7 (done), BAI, HAM-A
@@ -850,6 +896,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-067: Lab Ordering Module (Quest/LabCorp) with Nature-Themed Patient View
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - Direct lab ordering connected to Quest + LabCorp databases
 - Cross-reference patient's ICD codes for highest-use labs
@@ -865,6 +912,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-068: Patient Billing Portal with AI EOB Summaries
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - Patient access to EOBs, invoices
 - AI-summarized explanations in 3rd-grade language: why they got the bill, how much, what it covers, how to dispute
@@ -879,6 +927,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-069: AI Fairytale Chart Summary
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Full AI-driven one-page summary of the patient's chart in a beautiful fairytale storybook format. Reads seamlessly like a book. Easy for providers to interpret at a glance AND for patients to understand. Complements the "My Story" ebook with a more narrative, literary voice.
 
 ---
@@ -886,6 +935,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-070: USPSTF Preventive Screening Reminders with Emoji Checklist
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - Implement full USPSTF A and B grade recommended screening measures
 - Each screening gets an emoji (pap smear, colonoscopy, mammogram, DEXA, CT chest screening, etc.)
@@ -898,6 +948,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-071: AI Chatbot + DoxGPT Integration
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** AI chatbot that integrates patient information with DoxGPT to retrieve properly vetted resources and evidence-based treatments and suggestions. Physician has final say on all recommendations before they reach the patient.
 
 ---
@@ -905,6 +956,7 @@ Ensure proper data ownership — not just access via AWS/GCP but actual propriet
 ### EMR-072: Lifestyle Checkboxes → Plant Growth
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Add checkboxes next to every aspect of the wellness toolkit on the Lifestyle tab. Growth mechanics:
 - Every check = another leaf
 - One check from each category in a day = new stem
@@ -916,6 +968,7 @@ Ties directly into My Garden plant companion.
 ### EMR-073: Customizable Patient Portal Layouts
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Allow patients to customize their portal:
 - Organize/rearrange tabs via drag-and-drop
 - Choose color palette (themes)
@@ -926,6 +979,7 @@ Ties directly into My Garden plant companion.
 ### EMR-074: Music Integration (Spotify / Apple Music)
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Allow patients to connect their Spotify or Apple Music to play music while reviewing their chart. The AI fairytale summary (EMR-069) can include a soundtrack that patients can post on social media or email.
 
 ---
@@ -933,6 +987,7 @@ Ties directly into My Garden plant companion.
 ### EMR-075: Social Media Sharing Module
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Allow patients to share their results and progress on the Lifestyle tab and My Garden plant tab to social media. Generate beautiful share cards with stats and plant visuals.
 
 ---
@@ -940,6 +995,7 @@ Ties directly into My Garden plant companion.
 ### EMR-076: AI-Driven Prior Authorization
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Prior authorization framework where all medications that need a PA are initially handled by AI — pulls all data, proper coding, submits to insurance. Only on second denial does provider involvement kick in, with messaging and phone calls happening WITHIN the system.
 
 ---
@@ -947,6 +1003,7 @@ Ties directly into My Garden plant companion.
 ### EMR-077: Full Modular EMAR Framework
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Full modular API framework EMAR (Electronic Medication Administration Record) that includes ALL current prescription medications on the market — doses, standard amounts, available through all large pharmaceutical companies and pharmacy networks.
 
 ---
@@ -954,6 +1011,7 @@ Ties directly into My Garden plant companion.
 ### EMR-078: Specialist Referral Module with AI Packet Generation
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Modular referral framework:
 - Patient looks up specialists in their network by location + ratings
 - One-click to create appointment request or generate message to office
@@ -965,6 +1023,7 @@ Ties directly into My Garden plant companion.
 ### EMR-079: Dementia / Alzheimer's Screening + Mindspan Integration
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - Connect to Mindspan.co for self-assessment memory tests within the EMR
 - Results stored in chart
@@ -976,6 +1035,7 @@ Ties directly into My Garden plant companion.
 ### EMR-080: Cannabis Education Library (Laws + Research + Data)
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Full cannabis education library:
 - All peer-reviewed journal articles
 - All patient data collected on cannabis
@@ -987,6 +1047,7 @@ Ties directly into My Garden plant companion.
 ### EMR-081: OCR Scan & Auto-Populate
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Scanned documents go through OCR and auto-populate proper chart fields. Example: patient brings a two-page paper with medications, supplements, surgeries, emergency contacts → EMR extracts all data, places it in the right fields, sorts chronologically.
 
 ---
@@ -994,6 +1055,7 @@ Ties directly into My Garden plant companion.
 ### EMR-082: Electronic Medical Record Release Between Doctors
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Electronic record release framework — doctors can request charts from other doctors, patient e-signs, provider e-signs, chart arrives seamlessly through the EMR. Replaces fax-based record requests.
 
 ---
@@ -1001,6 +1063,7 @@ Ties directly into My Garden plant companion.
 ### EMR-083: Pediatric Module
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** Pediatric module with:
 - Growth charts (height, weight, head circumference, BMI)
 - Vaccine schedule tracking
@@ -1013,6 +1076,7 @@ Ties directly into My Garden plant companion.
 ### EMR-084: Military-Grade Encryption + Legal Licensing Framework
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - Military-grade encryption (uncopyrightable)
 - Legal framework for licensing to Epic, Cerner, outpatient clinics, PT/OT locations, hospitals
@@ -1025,6 +1089,7 @@ Ties directly into My Garden plant companion.
 ### EMR-085: iCal / Google Calendar Export
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:** All scheduled appointments can be exported and added directly to the patient's iCal or Google Calendar via standard ICS file. One-click "Add to calendar" button on the appointment card.
 
 ---
@@ -1034,6 +1099,7 @@ Ties directly into My Garden plant companion.
 ### EMR-086: Community Resource Connector
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Modular framework to connect patients to trusted community resources and organizations based on their current medical conditions, within a 50-mile radius.
 
@@ -1056,6 +1122,7 @@ Example: A patient with Dementia in Orange County gets connected to:
 ### EMR-087: Legislative Advocacy Portal
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Patient-facing module to message and email local representatives and congress members advocating for cannabis reform.
 
@@ -1072,6 +1139,7 @@ Patient-facing module to message and email local representatives and congress me
 ### EMR-088: Cannabis Contraindication Override Warning
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Pop-up warning during prescribing when patient has a major cannabis contraindication.
 
@@ -1098,6 +1166,7 @@ Pop-up warning during prescribing when patient has a major cannabis contraindica
 ### EMR-089: Cannabis-Infused Recipe Library
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Curated "food as medicine" recipe library on the Lifestyle tab. 5-20 minute recipes for breakfast, lunch, dinner, snacks, and appetizers — each infused with cannabis and aligned to a dietary philosophy.
 
@@ -1123,6 +1192,7 @@ Curated "food as medicine" recipe library on the Lifestyle tab. 5-20 minute reci
 ### EMR-090: ER/Hospital Admission Notification + Inpatient EMR Module
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 **Part 1 — Notification:**
 - Text notification sent to the primary care provider when a patient is sent to the ER or admitted to the hospital
@@ -1142,6 +1212,7 @@ Curated "food as medicine" recipe library on the Lifestyle tab. 5-20 minute reci
 ### EMR-091: Medical Cannabis Dispensary Module
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Full medical-cannabis dispensary integration. **Medicinal use only — recreational is explicitly excluded.**
 
@@ -1174,6 +1245,7 @@ Full medical-cannabis dispensary integration. **Medicinal use only — recreatio
 ### EMR-092: Dual Treatment Protocols — Western + Eastern (Holistic) Medicine
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** blocked (Needs more detail from Dr. Patel)
 **Description:**
 For EVERY medical diagnosis in the system, provide TWO treatment protocols side-by-side:
 
@@ -1199,13 +1271,13 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 086 | Community Resource Connector | High | **done** |
-| 087 | Legislative Advocacy Portal | Normal | backlog |
-| 088 | Cannabis Contraindication Override | Urgent | **done** |
-| 089 | Cannabis-Infused Recipe Library | Normal | backlog |
-| 090 | ER Admission Notification + Inpatient EMR | Urgent | backlog |
-| 091 | Medical Cannabis Dispensary Module | Urgent | backlog |
-| 092 | Dual Treatment Protocols (Western + Eastern) | High | backlog |
+| 086 | Community Resource Connector | High | in_progress |
+| 087 | Legislative Advocacy Portal | Normal | in_progress |
+| 088 | Cannabis Contraindication Override | Urgent | in_progress |
+| 089 | Cannabis-Infused Recipe Library | Normal | in_progress |
+| 090 | ER Admission Notification + Inpatient EMR | Urgent | in_progress |
+| 091 | Medical Cannabis Dispensary Module | Urgent | in_progress |
+| 092 | Dual Treatment Protocols (Western + Eastern) | High | in_progress |
 
 **Grand total: 92 tickets. ~50 shipped, 42 remaining.**
 
@@ -1241,11 +1313,11 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 | 078 | Referral Module + AI Packet | High | backlog |
 | 079 | Dementia Screening + Mindspan | Normal | backlog |
 | 080 | Cannabis Education Library | Normal | backlog |
-| 081 | OCR Scan & Auto-Populate | High | backlog |
-| 082 | Electronic Record Release | High | backlog |
-| 083 | Pediatric Module | High | backlog |
-| 084 | Military Encryption + Legal Framework | Urgent | backlog |
-| 085 | iCal / Google Calendar Export | Normal | **done** |
+| 081 | OCR Scan & Auto-Populate | High | in_progress |
+| 082 | Electronic Record Release | High | in_progress |
+| 083 | Pediatric Module | High | in_progress |
+| 084 | Military Encryption + Legal Framework | Urgent | in_progress |
+| 085 | iCal / Google Calendar Export | Normal | in_progress |
 
 **Grand total: 85 tickets. 44 shipped, 41 remaining.**
 
@@ -1254,7 +1326,7 @@ For EVERY medical diagnosis in the system, provide TWO treatment protocols side-
 - EMR-013: Conventional EMR Integration (needs HL7 FHIR adapter)
 - EMR-017: Dispensary Locator (needs Google Maps API key)
 - EMR-018: Leafly Strain Database (needs Leafly API)
-- EMR-028: Split Window / Multi-Tab (complex UI architecture)
+- EMR-028: Split Window / Multi-Tab (completed)
 - EMR-031: Responsive Cross-Device (audit pass)
 - EMR-037: Communications Overlay (needs Twilio/WebRTC)
 - EMR-038: Cannabis Book Integration (needs content parsing)
@@ -1653,6 +1725,7 @@ These are captured as tickets but flagged as strategic roadmap items, not immedi
 ### EMR-093: Four Pillars of Health Bar Graph
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a "Four Pillars of Health" visualization on the Lifestyle tab: Physical, Mental, Emotional, and Spiritual. Each pillar rendered as a colored bar graph whose height/fill is computed from the underlying patient data:
 - **Physical**: exercise logs, vitals, dose logs, outcome pain/sleep
@@ -1667,6 +1740,7 @@ The visualization surfaces which pillar has the lowest "score" so the patient an
 ### EMR-094: Mental Health Chart Security Overlay
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Mental health notes and chart documents must be separated from standard medical records with a security overlay. When a provider attempts to access any mental-health-tagged record, a popup requires them to electronically sign their name acknowledging HIPAA-sensitive access. Each access is logged in the immutable audit trail.
 
@@ -1683,6 +1757,7 @@ Aligns with 42 CFR Part 2 substance-use confidentiality too.
 ### EMR-095: Spiritual Wellness Lifestyle Category
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Add a "Spiritual" category to the Lifestyle tab alongside sleep, nutrition, movement, stress, family, habits, and social. Tracks:
 - Connection to higher power / faith practice
@@ -1698,6 +1773,7 @@ Feeds into EMR-093 (Four Pillars) and EMR-072 (lifestyle checkboxes → plant gr
 ### EMR-096: Double-Blind Study Module
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Module that allows patient data to be incorporated into double-blind clinical studies and validated. Researcher creates a study protocol, randomizes patients (blinded), collects data from the EMR automatically, and generates results. Must preserve blinding and IRB-ready audit trail.
 
@@ -1706,6 +1782,7 @@ Module that allows patient data to be incorporated into double-blind clinical st
 ### EMR-097: Data Research & Reports Module
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 "Accounting software for clinical data." Operator can select and de-select any data point across the EMR, build custom datasets, and generate reports as:
 - Bar charts
@@ -1721,6 +1798,7 @@ Beautiful, graphically-pleasing interface (think Tableau meets Linear). Supports
 ### EMR-098: AI Coach with Personalized Style
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 AI coach that texts the patient at least 2x/day with encouragement or a push to keep going. Coach style is personalized based on the patient's emotional maturity + resilience:
 - **Gentle**: warm, affirming, no pressure
@@ -1734,6 +1812,7 @@ Style is assessed at intake via a short questionnaire and can be changed anytime
 ### EMR-099: Endocannabinoid System Labwork Framework
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Modular labwork framework specifically for measuring the endocannabinoid system. Curated lab sets from Quest and LabCorp catalogs:
 - Anandamide (AEA) levels
@@ -1750,6 +1829,7 @@ Results flow into the patient chart with trends over time. Critical for dosing o
 ### EMR-100: AI Tutorial Videos (30-second reels)
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 AI-generated tutorial videos for every EMR feature, delivered as short 30-second reels (Instagram-style carousel). Accessible from every page via a ? help icon. Video content auto-generated by narrating what the feature does while showing screen recordings.
 
@@ -1758,6 +1838,7 @@ AI-generated tutorial videos for every EMR feature, delivered as short 30-second
 ### EMR-101: Complete CPT/ICD-10 Code Book + Superbills
 **Priority:** 1 — Urgent
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 - Full integration of the ENTIRE CPT code book (all ~10,000 codes, all modifiers)
 - Full ICD-10 code set (~70,000 codes)
@@ -1771,6 +1852,7 @@ AI-generated tutorial videos for every EMR feature, delivered as short 30-second
 ### EMR-102: Novel Cannabis ICD-10 / CPT Code Proposal
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Create a brand-new classification of ICD-10 and CPT codes specifically for cannabis medicine — cannabis use disorders, cannabis therapy for approved medical conditions, cannabis product dispensing, cannabinoid titration, etc. Robust and presentable to CMS as a formal proposal for inclusion in the next ICD-10-CM update.
 
@@ -1779,6 +1861,7 @@ Create a brand-new classification of ICD-10 and CPT codes specifically for canna
 ### EMR-103: Practice Analytics Deep Dive
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Analytics dashboard showing practice-wide counts and trends for:
 - Labs ordered / resulted
@@ -1795,6 +1878,7 @@ Broken down by provider, patient cohort, time range.
 ### EMR-104: Click Counter / Workflow Efficiency Tracking
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Real-time click counter that measures how many clicks it takes to accomplish common tasks (start visit, finalize note, send Rx, check labs, etc.). Data drives ongoing UX optimization — the goal is to make every workflow as few clicks as possible. Per-user aggregations. "Average clicks to finalize a note: 7" should be a metric we can show and improve over time.
 
@@ -1803,6 +1887,7 @@ Real-time click counter that measures how many clicks it takes to accomplish com
 ### EMR-105: Philanthropy / Donations Module
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Module listing cannabis advocacy orgs and major medical charities the patient can donate to directly from the portal:
 - Cannabis: Weed for Warriors, NORML, Last Prisoner Project, Sweetleaf Collective
@@ -1814,6 +1899,7 @@ Track total donations per patient as a wellness metric (civic engagement feeds t
 ### EMR-106: Hospital System Integration (Closed Loop)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Modular system that integrates outpatient clinics and inpatient hospitals into a closed loop. A patient's chart follows them wherever they go within the system — outpatient visit → ER admission → inpatient stay → discharge → back to outpatient follow-up. All data flows seamlessly. HL7 FHIR backbone.
 
@@ -1822,6 +1908,7 @@ Modular system that integrates outpatient clinics and inpatient hospitals into a
 ### EMR-107: Expected Reimbursement Rate Prediction
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 For every encounter, display:
 - Amount billed
@@ -1834,6 +1921,7 @@ Use the information to auto-optimize coding for maximum reimbursement within com
 ### EMR-108: Modular Full Revenue Cycle System
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Fully modular accounts receivable + billing/revenue cycle system based on insurance + ICD-10 + chart notes. Builds on the existing billing foundation (Phases 1-4 already shipped) but adds:
 - Contracted fee schedule modeling
@@ -1846,6 +1934,7 @@ Fully modular accounts receivable + billing/revenue cycle system based on insura
 ### EMR-109: Age-Based Chart Overlays
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Pediatric, pregnant, adult, and geriatric chart overlays that unlock relevant features based on demographics:
 - **Pediatric**: growth charts, weight/height percentiles, developmental milestones, vaccine schedule
@@ -1860,6 +1949,7 @@ System auto-selects based on DOB + intake answers, but provider can override.
 ### EMR-110: AI Patient Education Sheets by ICD-10
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Beautiful, colorful, one-page patient education sheets auto-generated for every ICD-10 code linked to the visit. Written at 3rd-grade reading level with pictures and practical explanations. Sharable via text, email, print, or in-portal. Provider can tweak before sending.
 
@@ -1868,6 +1958,7 @@ Beautiful, colorful, one-page patient education sheets auto-generated for every 
 ### EMR-111: Cannabis Education Database
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Proprietary cannabis education database with beautiful illustrations and simple terminology covering:
 - Terpenes (profiles, effects, aromatherapy)
@@ -1883,6 +1974,7 @@ Fully searchable directory. Builds on the existing Research Corpus (50+ studies 
 ### EMR-112: Medication Wallet Card (Printable)
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Credit-card-sized printable card with the patient's current medications (cannabis + conventional + supplements). Auto-updates when meds change. Contains: name, strength, frequency. Portable so patients can carry it in their wallet. Downloadable PDF formatted for wallet dimensions.
 
@@ -1891,6 +1983,7 @@ Credit-card-sized printable card with the patient's current medications (cannabi
 ### EMR-113: Allergies + Contraindications in Profile Tab
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Add a dedicated Allergies section and a Major Contraindications section to the Demographics/Profile tab. Currently the contraindication check runs on prescribe but the data isn't surfaced on the main chart. Make it a prominent top-of-chart alert that's visible from the first page load.
 
@@ -1899,6 +1992,7 @@ Add a dedicated Allergies section and a Major Contraindications section to the D
 ### EMR-114: Credit Card + ACH Payment Storage
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Secure tokenized storage of patient credit card and ACH details so they can pay bills directly from the portal. Receipts auto-generated with date, invoice number. Patient sees their credit balance (if any) or amount owed right on the billing tab. **Status: partially done — StoredPaymentMethod model exists; Payabli integration is scaffolded.**
 
@@ -1907,6 +2001,7 @@ Secure tokenized storage of patient credit card and ACH details so they can pay 
 ### EMR-115: EOB Into Patient + Doctor Portal
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 When an EOB arrives from a payer, parse it and display it both in the patient portal (billing tab) AND the doctor's chart view. AI-summarized in plain language for patients. Shows what was billed, what was paid, what was adjusted, and what the patient owes.
 
@@ -1915,6 +2010,7 @@ When an EOB arrives from a payer, parse it and display it both in the patient po
 ### EMR-116: International Multi-Country Billing Framework
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Modular billing system that adapts to every country's rules, regulations, and coding system. Integrated with major insurance carriers per country. Optimized for maximum reimbursement within local compliance. Starts with US, UK, Canada, Germany, Australia.
 
@@ -1923,6 +2019,7 @@ Modular billing system that adapts to every country's rules, regulations, and co
 ### EMR-117: iOS App Portrait Mode Nav Fix
 **Priority:** 3 — Normal
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 The native iOS app currently only shows the side nav options in landscape mode. Make all side options available in portrait mode as well, either via a collapsible drawer or a bottom tab bar that surfaces the most common destinations.
 
@@ -1931,6 +2028,7 @@ The native iOS app currently only shows the side nav options in landscape mode. 
 ### EMR-118: Active Nav Tab Highlighting
 **Priority:** 4 — Low
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 When a user clicks a side nav tab, highlight it in a different color so they know what section of the chart they're on. Simple polish. **Status: done in Wave 17.**
 
@@ -1939,6 +2037,7 @@ When a user clicks a side nav tab, highlight it in a different color so they kno
 ### EMR-119: Tab Consolidation — Reduce Patient Chart Tabs
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 The patient chart is accumulating tabs (Demographics, Records, Images, Labs, Notes, Correspondence, Cannabis Rx, Billing — and more coming). Too many tabs is overwhelming for providers and patients. Think through which tabs can be consolidated, grouped, or moved to secondary navigation.
 
@@ -1954,6 +2053,7 @@ Proposed grouping:
 ### EMR-120: Medicare RPM Program Integration
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Integrate Medicare RPM (Remote Patient Monitoring) programs for diabetes, hypertension, and weight monitoring. Features:
 - Pull RPM data from device partners (Omron, Dexcom, etc.)
@@ -1968,6 +2068,7 @@ Integrate Medicare RPM (Remote Patient Monitoring) programs for diabetes, hypert
 ### EMR-121: Master Access Log + Click Analytics
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Immutable master log recording every single chart access:
 - Who logged in
@@ -1984,6 +2085,7 @@ Builds on the existing AuditLog model. Export as PDF for HIPAA audits.
 ### EMR-122: In-App Translation + Live Video Captions
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Translation layer for the entire platform:
 - Messaging: auto-translate incoming/outgoing messages per patient language preference
@@ -1996,6 +2098,7 @@ Translation layer for the entire platform:
 ### EMR-123: Researcher / Scientist Portal with De-identified Data
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Entirely new authentication role: "researcher / scientist." Features:
 - Access to de-identified patient data (no names, but keep DOB, race, sex, socioeconomic status, smoking/drug history, etc.)
@@ -2016,6 +2119,7 @@ This is the research ecosystem layer that turns Leafjourney into a longitudinal 
 ### EMR-124: Nav Tab Reduction Proposal (UX audit)
 **Priority:** 2 — High
 **Source:** Dr. Patel (duplicate of EMR-119 for tracking)
+**Status:** in_progress
 **Description:** See EMR-119.
 
 ---
@@ -2023,6 +2127,7 @@ This is the research ecosystem layer that turns Leafjourney into a longitudinal 
 ### EMR-125: Volunteer & Donation Module with Geographic Registry
 **Priority:** 1 — Urgent (Constitutional Article VII)
 **Source:** Scott Wayman (Constitution pledge)
+**Status:** in_progress
 **Description:**
 The beating heart of Leafjourney's community commitment. A full volunteer and donation tracking system baked into both the patient and provider portals.
 
@@ -2052,6 +2157,7 @@ This is Article VII of the Constitution in code form. Must ship before the Patie
 ### EMR-126: Provider CME Credits via Medical Research Searches
 **Priority:** 2 — High
 **Source:** Dr. Patel
+**Status:** in_progress
 **Description:**
 Automatically award CME (Continuing Medical Education) credits to providers when they conduct cannabis-related medical research inside Leafjourney — literature searches, study reviews, research corpus queries, de-identified data exploration.
 
@@ -2070,6 +2176,7 @@ This turns every minute a provider spends researching cannabis medicine inside L
 ### EMR-127: Leafjourney Charitable Fund + Transparent Ledger
 **Priority:** 2 — High (Constitutional Article VII, §5)
 **Source:** Scott Wayman (Constitution pledge)
+**Status:** in_progress
 **Description:**
 Leafjourney operates its **own** charitable fund. A portion of platform revenue, volunteer-offset donations, and voluntary contributions flow into the fund, which distributes to reputable cannabis advocacy organizations and medical charities globally.
 
@@ -2092,6 +2199,7 @@ This is how we prove — not claim — that we are not an extraction engine. The
 ### EMR-128: Universal Feedback Icon with Visual Annotation
 **Priority:** 2 — High
 **Source:** Scott Wayman
+**Status:** in_progress
 **Description:**
 A small, ever-present feedback icon fixed in a corner of every single page of the application — portal-wide, role-wide. One click opens a feedback capture flow that includes:
 
@@ -2113,28 +2221,257 @@ We are trying to build something no one has built before. The people who use thi
 
 ---
 
+## Wave — Patient Portal Cleanup + Reference Guide (Dr. Patel whiteboard + pamphlet prompt)
+
+### EMR-193: Patient Portal Home → "Log Check-in" + Keep Symptom Graphs
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Rename the patient portal Home primary action to "Log Check-in." Keep the pain, sleep, anxiety, and mood graphs visible so patients see trend lines the moment they open the portal.
+
+**Acceptance criteria:**
+- Home CTA reads "Log Check-in"
+- Pain / sleep / anxiety / mood sparklines render above the fold
+- Tapping a graph opens detailed per-symptom history
+
+---
+
+### EMR-194: Log Dose Tab — Remove Ribbon, Show All Cannabis Products (Active/Inactive Filter)
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Remove all secondary ribbon tabs on Log Dose (My Results, Meds, Dosing Plan, Care Plan, Labs, Assessments, Outcomes, Care Guide, Learn). Replace with a single product list showing EVERY cannabis product tied to the patient — bought, scanned, or prescribed — with an All / Active / Inactive filter.
+
+**Acceptance criteria:**
+- Ribbon tabs removed from /patient/log-dose
+- Product list includes bought + scanned + prescribed sources
+- Filter chip: All / Active / Inactive
+- Tap product → one-tap emoji + dose + time log flow
+
+---
+
+### EMR-195: Rename "My Health Records" → "My Records" + Two-Row Collapsible Ribbon
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Rename "My Health Records" to "My Records." Add TWO collapsible ribbons at the top:
+- Row 1: All, Notes, Labs, Imaging, Letters, Other
+- Row 2: Medications, Dosing Plan, Assessments, Outcomes, Care Plan, Care Guide, Learn
+
+**Acceptance criteria:**
+- Tab, nav, and breadcrumb renamed everywhere
+- Two ribbon rows render at the top, each collapsible via chevron
+- Each entry filters or deep-links to the correct sub-view
+
+---
+
+### EMR-196: Rename "My Journey" → "My Garden" + Top Ribbon
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Rename "My Journey" to "My Garden." Keep a top ribbon: Lifestyle • My Garden • Storybook • Roadmap. (Cannabis Wheel moves to Chat & Learn per EMR-200.)
+
+**Acceptance criteria:**
+- Tab, nav, breadcrumbs renamed to "My Garden"
+- Top ribbon order: Lifestyle • My Garden • Storybook • Roadmap
+- Cannabis Wheel reference removed from this page
+
+---
+
+### EMR-197: Messages — Highlight + Inline Expand with Video/Phone + Text Box
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+When a patient clicks a message, highlight the row and expand inline to show full thread, reply text box, and video/phone call buttons.
+
+**Acceptance criteria:**
+- Click row → highlight + inline expand
+- Expanded panel: message history, text box, attach, video icon, phone icon
+- Collapses cleanly when another message is opened
+
+---
+
+### EMR-198: Q/A Tab — Remove All Ribbon Tabs
+**Priority:** 3 — Normal
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Strip all secondary ribbon tabs from the Q/A page. One clean feed.
+
+**Acceptance criteria:**
+- Q/A page renders without any secondary ribbon
+- Any filters collapse into a single dropdown / chip row
+
+---
+
+### EMR-199: Account Ribbon — Fit One Row, Remove Community
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Fit the Account ribbon on ONE row: Profile • Billing • Intake • Settings. Remove "Community" (moves to Chat & Learn per EMR-200).
+
+**Acceptance criteria:**
+- Ribbon on a single row without horizontal scroll at 375px width
+- "Community" removed from Account
+- Order: Profile • Billing • Intake • Settings
+
+---
+
+### EMR-200: Chat & Learn — Consolidate Ribbon + Reddit-Style Community Threads
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard: CLEAN UP TABS)
+**Status:** in_progress
+**Description:**
+Chat & Learn becomes the social + education hub. Top ribbon: Community • Cannabis Wheel • ChatCB • Research.
+
+Clicking a Community post opens a Reddit-style thread: message/question at top, nested replies below, bottom text box with cannabis emoji picker. Indent replies, collapse threads, search posts.
+
+**Acceptance criteria:**
+- Top ribbon: Community • Cannabis Wheel • ChatCB • Research
+- Community post view: header, nested replies, text box with cannabis emojis
+- Reddit-like indentation + collapse
+- Search bar indexes all posts
+
+---
+
+### EMR-201: Cannabis Combo Wheel — Colors POP + Larger Wheel & Letters
+**Priority:** 2 — High
+**Source:** Dr. Patel (whiteboard)
+**Status:** in_progress
+**Description:**
+Visual tune: saturate baseline colors so they pop (vs. current muted tones), and increase wheel diameter + label type size for mobile + tablet readability.
+
+**Acceptance criteria:**
+- Baseline palette has stronger chroma / saturation
+- Wheel fills viewport in mobile portrait
+- Labels readable without pinch-zoom at iPhone 12 portrait width
+
+---
+
+### EMR-202: Education Page — Justin Kander Research PDF Under "Research" Tab
+**Priority:** 3 — Normal
+**Source:** Dr. Patel (whiteboard)
+**Status:** in_progress
+**Description:**
+On the public Education page, add Justin Kander's research PDF as a downloadable resource under the "Research" tab, positioned below the "Search PubMed" text box.
+
+**Acceptance criteria:**
+- PDF hosted under /public/guides (or S3) and linked from Education → Research
+- Appears directly below Search PubMed input
+- Download tracked in analytics
+
+---
+
+### EMR-203: LeafJourney Trifold Reference Guide (Cannabinoids + Terpenes + Bioavailability + Family Tree)
+**Priority:** 2 — High
+**Source:** Dr. Patel (pamphlet prompt, derived from TheAmazingFlower 2024 Pocket Guide)
+**Status:** in_progress
+**Description:**
+Three-fold reference pamphlet in the LeafJourney aesthetic — cream background, LeafJourney green accent, Apple-grade type hierarchy — usable by both providers and patients. Copy must be readable at a 3rd-grade level while remaining clinically useful. Emoji-first, color-banded, no dense tables.
+
+**Content (three panels front, three panels back):**
+- **Panel 1 — Major Cannabinoids:** CBDA, CBGA, THCA, THCVA, CBC, CBD, CBDV, CBG, CBN, Δ8-THC, Δ9-THC, THCV — each with a one-line "may help with" list in plain language.
+- **Panel 2 — Terpene Spectrum:** Uplifting → Calming rainbow (Terpinolene, Ocimene, Limonene, Pinene, Caryophyllene, Linalool, Myrcene, etc.) with aroma cues and boiling points.
+- **Panel 3 — Bioavailability:** Emulsion, Vapor, Smoke, Tincture, Edible — onset time, duration, absorption level.
+- **Panel 4 — Cannabinoid Family Tree:** CBGA / CBGVA → heat/light/oxygen/time → daughter cannabinoids → further conversion products.
+- **Panel 5 — How to Start:** "Start Low, Go Slow" message with a simple emoji-first step-by-step.
+- **Panel 6 — Safety & QR:** Bi-phasic effect note, safety reminders, QR code to ChatCB.
+
+**Output formats:**
+- Print-ready PDF (US Letter, trifold, 0.25" bleed) under /public/guides/
+- Web-flip version linkable from Education tab
+- Screen-reader-accessible alt-text version
+
+**Design constraints:**
+- Cream background (#F5F1E8 range), LeafJourney green accent
+- Apple-grade type hierarchy, no numeric codes user-facing
+- 3rd-grade reading level across all copy
+- Emoji-first iconography
+- Dual-audience framing: the same copy serves patient and provider
+
+---
+
+### EMR-204: Landing Page — Fix "POTENCY 710" Label + Remove Unconfirmed Partner Brands
+**Priority:** 3 — Normal
+**Source:** Dr. Patel (leafjourney.com screenshot annotation)
+**Status:** in_progress
+**Description:**
+Two marketing polish items on the public landing page:
+1. The category label "POTENCY 710 · SKINCARE" above Gold Skin Serum reads like an internal SKU — replace with a human-readable category label such as "CBD SKINCARE."
+2. Partner Brands section currently lists "PhytoRx" and "Flower Powered." Both flagged for removal until real, confirmed partners are in place.
+
+**Acceptance criteria:**
+- No numeric / internal codes rendered as user-facing category labels
+- "PhytoRx" and "Flower Powered" removed from Partner Brands
+- Partner Brands section hides gracefully (or shows "Coming soon" placeholder) if no confirmed partners remain
+
+---
+
+### EMR-205: P1 BUG — Patient Portal Stuck on Loading Skeleton (`/portal`)
+**Priority:** 1 — Urgent
+**Source:** Dr. Patel (live demo environment, 2026-04-20)
+**Status:** done
+
+**Symptom:**
+Hitting `/portal` (and `/clinic` per Dr. Patel) shows the shell + sidebar + authed user correctly, but the main content area is stuck on the skeleton placeholders from `src/app/(patient)/portal/loading.tsx`. Nav items do not click — hydration never completes, so client-side Link clicks are no-ops.
+
+**Diagnosis so far:**
+Layout renders (auth + AppShell complete), so `getCurrentUser()` is fine. The server component `PatientHome` in `src/app/(patient)/portal/page.tsx:126` never returns → Suspense boundary stays on `loading.tsx` → React never hydrates → clicks dead.
+
+**Top suspects (ordered):**
+1. `prisma.patient.findUnique(...)` at `page.tsx:129` with 6 nested includes — DB pool exhaustion or unreachable DATABASE_URL yields a silent hang (not an error).
+2. `computePlantHealth(patient.id)` at `page.tsx:157` — fires multiple Prisma queries; same pool exposure.
+3. Clerk auth scaffolding (`commit 7bf2d4d`) — if `AUTH_PROVIDER=clerk` is set in the env but keys are missing/invalid, the dynamic import in `getCurrentUser` can hang.
+
+**Demo-time triage (already communicated):**
+1. Hard refresh (Cmd+Shift+R)
+2. Sign out → sign back in
+3. Redeploy (Vercel) to reset the DB pool
+4. Demo from a sub-route (`/portal/log-dose`, `/portal/garden`, `/portal/combo-wheel`) which each load independently
+
+**Fix plan (post-demo):**
+- Wrap the home-page data loads in `Promise.race` with a 5s timeout + graceful empty-state fallback so a hanging DB call never wedges the whole page.
+- Add query-level timeouts to `computePlantHealth`.
+- Audit DB pool size vs. deployed concurrency; confirm DATABASE_URL reachable from the runtime.
+- Verify `AUTH_PROVIDER` env var matches the running auth backend; fail fast if misconfigured.
+- Add an observability hook (server log + Sentry) around the home-page query so the next hang surfaces with context, not silence.
+
+**Acceptance criteria:**
+- `/portal` returns content (or a graceful empty state) within 5s even if one downstream query stalls
+- Hydration completes; nav links clickable
+- Root cause of the hang documented and fixed at the source
+- Regression test: integration test that mocks a slow Prisma response and asserts the page still renders
+
+---
+
 ## Updated Summary (after Wave 16+ backlog expansion)
 
 | # | Title | Priority | Status |
 |---|---|---|---|
-| 093 | Four Pillars Bar Graph | High | backlog |
-| 094 | Mental Health Security Overlay | Urgent | backlog |
-| 095 | Spiritual Wellness Category | Normal | backlog |
-| 096 | Double-Blind Study Module | Normal | backlog |
-| 097 | Data Research & Reports Module | High | backlog |
-| 098 | AI Coach (gentle/moderate/tough) | High | backlog |
-| 099 | Endocannabinoid Labwork | High | backlog |
-| 100 | AI Tutorial Videos | Normal | backlog |
-| 101 | Full CPT/ICD-10 Code Book + Superbills | Urgent | backlog |
-| 102 | Novel Cannabis ICD-10 Code Proposal | High | backlog |
-| 103 | Practice Analytics Deep Dive | High | backlog |
-| 104 | Click Counter / Workflow Efficiency | Normal | backlog |
-| 105 | Philanthropy / Donations Module | Low | backlog |
-| 106 | Hospital System Integration | High | backlog |
-| 107 | Expected Reimbursement Rate | High | backlog |
-| 108 | Full Revenue Cycle System | High | partial |
-| 109 | Age-Based Chart Overlays | High | backlog |
-| 110 | AI Patient Education Sheets | High | backlog |
+| 093 | Four Pillars Bar Graph | High | in_progress |
+| 094 | Mental Health Security Overlay | Urgent | in_progress |
+| 095 | Spiritual Wellness Category | Normal | in_progress |
+| 096 | Double-Blind Study Module | Normal | in_progress |
+| 097 | Data Research & Reports Module | High | in_progress |
+| 098 | AI Coach (gentle/moderate/tough) | High | in_progress |
+| 099 | Endocannabinoid Labwork | High | in_progress |
+| 100 | AI Tutorial Videos | Normal | in_progress |
+| 101 | Full CPT/ICD-10 Code Book + Superbills | Urgent | in_progress |
+| 102 | Novel Cannabis ICD-10 Code Proposal | High | in_progress |
+| 103 | Practice Analytics Deep Dive | High | in_progress |
+| 104 | Click Counter / Workflow Efficiency | Normal | in_progress |
+| 105 | Philanthropy / Donations Module | Low | in_progress |
+| 106 | Hospital System Integration | High | in_progress |
+| 107 | Expected Reimbursement Rate | High | in_progress |
+| 108 | Full Revenue Cycle System | High | in_progress |
+| 109 | Age-Based Chart Overlays | High | in_progress |
+| 110 | AI Patient Education Sheets | High | in_progress |
 | 111 | Cannabis Education Database | Normal | backlog |
 | 112 | Medication Wallet Card | High | backlog |
 | 113 | Allergies + Contraindications Profile | High | backlog |
@@ -2154,43 +2491,43 @@ We are trying to build something no one has built before. The people who use thi
 | 127 | Leafjourney Charitable Fund + Transparent Ledger | High | backlog |
 | 128 | Universal Feedback Icon with Annotation | High | backlog |
 | 129 | Provider Breathing Break Popup (30-min timer) | Normal | backlog |
-| 130 | My Garden Cannabis Grow Guide + Community | High | backlog |
+| 130 | My Garden Cannabis Grow Guide + Community | High | **done** |
 | 131 | AI Clinic Notes with Guardrails + Snapshot + APSO | High | backlog |
 | 132 | Charting Timer (selling point vs other EMRs) | Normal | backlog |
 | 133 | Patient Medication Explainer (3rd grade + cartoons) | High | backlog |
 | 134 | Emotional Vitals Emoji Scale in APSO Notes | Normal | backlog |
 | 135 | Voice Dictation (better than Dragon) | High | backlog |
-| 136 | AI Consciousness Overlay — WE ARE THE COMPETITION | Normal | backlog |
+| 136 | AI Consciousness Overlay — WE ARE THE COMPETITION | Normal | **done** |
 | 137 | Fitness Module with Personal Trainers + Care Team | High | backlog |
 | 138 | Mindfulness Emojis for Lifestyle | Normal | backlog |
 | 139 | Food Photo OCR + Barcode + Macro Tracking | High | backlog |
-| 140 | DICOM Viewer with Provider Annotations | High | backlog |
+| 140 | DICOM Viewer with Provider Annotations | High | **done** |
 | 141 | Patient Imaging Tab (Read-Only Annotations) | High | backlog |
 | 142 | Legal Module + AI Medico-Legal Library | Normal | aspirational |
 | 143 | HIPAA-Compliant Zoom Integration | High | backlog |
-| 144 | Emergency QR Code + NFC + Apple Wallet | High | backlog |
+| 144 | Emergency QR Code + NFC + Apple Wallet | High | **done** |
 | 145 | Cannabis Dispensary Billing + CMS $500 Reimbursement | High | backlog |
 | 146 | HIPAA Voicemail with Transcript | Normal | backlog |
-| 147 | Modular EMR Licensing Menu (Michelin-style PDF) | High | backlog |
-| 148 | Multi-Medication Prescribing + Double-Check | High | backlog |
-| 149 | Read-Only Patient Story Share Link (ER/travel) | High | backlog |
+| 147 | Modular EMR Licensing Menu (Michelin-style PDF) | High | **done** |
+| 148 | Multi-Medication Prescribing + Double-Check | High | **done** |
+| 149 | Read-Only Patient Story Share Link (ER/travel) | High | **done** |
 | 150 | Cannabis Combo Wheel on Patient Tab + Landing Page | High | backlog |
 | 151 | Symptom/Diagnosis Supplement Combo Wheel | High | backlog |
 | 152 | Heart-Centric EMR Consciousness (Art. IV) | Normal | backlog |
 | 153 | Marketing + Business Plan + Target Groups | High | backlog |
-| 154 | FDA Rx Database + Cannabis Rx + Supplement Rec Module | Urgent | backlog |
+| 154 | FDA Rx Database + Cannabis Rx + Supplement Rec Module | Urgent | **done** |
 | 155 | Hover-Over Lab/Result Explanations (Canopy/Enterprise) | High | backlog |
 | 156 | Subscription Pricing vs EPIC/Cerner/Practice Fusion | High | backlog |
 | 157 | Fix Claude Processing GIF Scroll Glitch | Urgent | backlog |
 | 158 | Collapsible/Expandable Patient Outcomes Check-Ins | High | backlog |
 | 159 | Remove or Merge "Care Plan" Patient Tab | Normal | backlog |
-| 160 | Rethink "Assessments" Tab (physician-first workflow) | Normal | backlog |
+| 160 | Rethink "Assessments" Tab (physician-first workflow) | Normal | **done** |
 | 161 | Merge Achievements + Lifestyle + Wearable Integration | High | backlog |
 | 162 | Rework My Story → Focus on Storybook | High | backlog |
 | 163 | Create "My Results" Patient Tab | High | backlog |
-| 164 | Imaging Access with Radiologist Report + Image Toggle | High | backlog |
-| 165 | Doctor Sign-Off Workflow for Patient Results | High | backlog |
-| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | backlog |
+| 164 | Imaging Access with Radiologist Report + Image Toggle | High | **done** |
+| 165 | Doctor Sign-Off Workflow for Patient Results | High | **done** |
+| 166 | Medical Imaging Upload Backend (CT/MRI/X-ray/US/PET) | High | **done** |
 | 167 | Full Offline + Airplane Mode Operation | High | aspirational |
 | 168 | International Access Regardless of Country | High | aspirational |
 | 169 | Full Dentistry Module | Normal | aspirational |
@@ -2201,21 +2538,565 @@ We are trying to build something no one has built before. The people who use thi
 | 174 | Direct Insurance Company Phone Lines for Patients | Normal | aspirational |
 | 175 | Military-Grade Cybersecurity + AI Self-Audit Suite | High | aspirational |
 | 176 | Make EMR Fun and Engaging for ALL Users | Normal | backlog |
-| 177 | Patient Chart Tab Ribbon — Two Rows, No Scroll | High | backlog |
-| 178 | Billing Tab → Redirect to Financial Cockpit | High | backlog |
+| 177 | Patient Chart Tab Ribbon — Two Rows, No Scroll | High | **done** |
+| 178 | Billing Tab → Redirect to Financial Cockpit | High | **done** |
 | 179 | Research Articles Hyperlinked + Open in New Tab | High | backlog |
-| 180 | Patient Chart Task List / To-Do on Open | High | backlog |
-| 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | backlog |
-| 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | backlog |
-| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | backlog |
+| 180 | Patient Chart Task List / To-Do on Open | High | **done** |
+| 181 | Cannabis Combo Wheel Front and Center (Patient + Provider) | High | **done** |
+| 182 | Schedule Calendar Overhaul (Square Boxes, Drag, Views) | High | **done** |
+| 183 | Revenue Tab: Dispensary Inventory + Gross/Net Module | High | **done** |
 | 184 | Patient Home Page: Next Appointment Card | High | **done** |
-| 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | backlog |
-| 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | backlog |
+| 185 | Patient UX: Reduce Scrolling + Consolidate Data | High | **done** |
+| 186 | Patient Modular Dashboard (health score, lifestyle rings, labs, AI tips, mood, cannabis intake) | Urgent | **done** |
 | 187 | Landing Page: Fix Hero Demo Static Box (portrait mode) | High | **done** |
 | 188 | Integrated Marketplace/Store — Amazon-style ecosystem inside EMR (ref: normalizemarketplace.com) | High | backlog |
-| 189 | Landing Page: All Nav Tabs Visible in Mobile Portrait Mode | High | backlog |
+| 189 | Landing Page: All Nav Tabs Visible in Mobile Portrait Mode | High | **done** |
 | 190 | Set Up Linear for Project Management | Urgent | **done** |
-| 191 | Wellness Toolkit Redesign — remove ribbon, checkbox dropdowns, health score integration | High | backlog |
+| 191 | Wellness Toolkit Redesign — remove ribbon, checkbox dropdowns, health score integration | High | **done** |
 | 192 | Store Overhaul — remove old products, update to real partner URLs | High | **done** |
+| 193 | Patient Portal Home → "Log Check-in" + keep symptom graphs | High | **done** |
+| 194 | Log Dose — remove ribbon, all cannabis products + active/inactive filter | High | **done** |
+| 195 | "My Health Records" → "My Records" + two-row collapsible ribbon | High | **done** |
+| 196 | "My Journey" → "My Garden" + top ribbon | High | **done** |
+| 197 | Messages — highlight + inline expand with video/phone + text box | High | backlog |
+| 198 | Q/A — remove all ribbon tabs | Normal | backlog |
+| 199 | Account ribbon — one row, remove Community | High | backlog |
+| 200 | Chat & Learn — consolidate ribbon + Reddit-style community threads | High | backlog |
+| 201 | Cannabis Combo Wheel — colors POP + larger wheel & letters | High | backlog |
+| 202 | Education page — Justin Kander research PDF under Research tab | Normal | backlog |
+| 203 | LeafJourney Trifold Reference Guide (cannabinoids + terpenes + bioavailability) | High | backlog |
+| 204 | Landing page — fix "POTENCY 710" label + remove unconfirmed partner brands | Normal | backlog |
+| 205 | **P1 BUG** — Patient portal stuck on loading skeleton (`/portal` + `/clinic`) | **Urgent** | **done** |
+| 206 | Self-Serve Online Scheduling | **Urgent** | backlog |
+| 207 | No-Show Prediction Model + De-Risking | **Urgent** | backlog |
+| 208 | Algorithmic Follow-Up Cadence per Condition | **Urgent** | backlog |
+| 209 | Smart Slot Recommender | High | backlog |
+| 210 | Intelligent Waitlist + Cancellation Fill | High | backlog |
+| 211 | Multi-Channel Reminder Orchestration | High | backlog |
+| 212 | New-Patient Intake-to-Visit Gate Pipeline | High | backlog |
+| 213 | Group Visit + Block + Recurring Scheduling | Normal | backlog |
+| 214 | Provider Preference Engine + Burnout Guardrails | High | backlog |
+| 215 | Scheduling Analytics Cockpit | High | backlog |
 
-**Grand total: 192 tickets.** Product Drop #9.
+---
+
+## Wave 17 — Scheduling Command Center (EMR-206..EMR-215)
+
+These 10 tickets turn scheduling from a stub into the practice's
+competitive weapon. Tied to the v2 cadence engine (src/lib/agents/
+scheduling-agent.ts) and the practice-manager hardening pass.
+
+### EMR-206: Self-Serve Online Scheduling
+**Priority:** Urgent
+**Why now:** Patients expect OpenTable for their doctor. Phone-only
+booking costs us new-patient conversions and burns operator time.
+
+**Acceptance criteria:**
+- Public booking URL (per-provider + per-practice) with no login wall
+- Visit-type picker (new patient 60min, follow-up 30min, urgent 15min)
+  drives duration + prep requirements
+- Real-time slot availability respecting provider calendar, block
+  rules, and intake-gate status (EMR-212)
+- Insurance pre-screen step — capture member id + payer for
+  eligibility check before confirmation
+- Email + SMS confirmation with ICS attachment and one-tap cancel
+- HIPAA-compliant form; all PII encrypted at rest
+- Analytics event on every step so we can measure conversion funnel
+
+### EMR-207: No-Show Prediction Model + De-Risking
+**Priority:** Urgent
+**Why now:** No-shows cost ~$200/visit in lost revenue + scheduler
+reschedule burden. A probabilistic model + auto-mitigations pays for
+itself in week one.
+
+**Acceptance criteria:**
+- Feature set: prior no-show rate, lead-time, visit type, weather,
+  distance, insurance friction, reminder-opens
+- Model trained on Appointment + Encounter history, served per-slot
+- Risk tiers (low / medium / high) surfaced on the Schedule tile
+- High-risk slots auto-trigger: human call nudge, deposit hold
+  (if enabled), and waitlist backfill preparation
+- Weekly no-show report for the practice owner
+- Model retrains nightly; feature drift alerts if accuracy < baseline
+
+### EMR-208: Algorithmic Follow-Up Cadence per Condition
+**Priority:** Urgent
+**Why now:** The v2 cadence engine (this sprint) resolves 7 primary
+rules. EMR-208 expands it from "condition class" to "condition-level
+evidence-based cadence" so cancer patients on CBD:THC 1:1 aren't on
+the same cycle as a general anxiety follow-up.
+
+**Acceptance criteria:**
+- Per-condition cadence table (migraine, neuropathic pain, PTSD, CUD,
+  insomnia, oncologic) with literature citations
+- Cadence respects active regimen phase (titration vs. maintenance)
+- Physician can override with a reason; overrides feed the model
+- Outcome-driven adjustment — worsening trend shortens the cycle; a
+  stable cohort lengthens it
+- Export: cadence audit log per patient per quarter
+
+### EMR-209: Smart Slot Recommender
+**Priority:** High
+**Why now:** Operators waste minutes per booking hunting the "right"
+slot. A recommender collapses that to seconds.
+
+**Acceptance criteria:**
+- Given a patient + visit type, returns ranked slots by:
+  no-show risk, travel distance, provider continuity, time-of-day
+  preference (from prior bookings), and insurance-in-network status
+- Explain each recommendation in one sentence ("9:30 is your usual
+  slot with Dr. Patel; in-network; low no-show risk")
+- Integrates with EMR-206 flow and operator booking UI
+- A/B test framework to compare recommender vs. manual booking
+  outcomes over 4 weeks
+
+### EMR-210: Intelligent Waitlist + Cancellation Fill
+**Priority:** High
+**Why now:** A cancelled slot is revenue on the floor. Auto-fill beats
+the operator scrambling to text patients manually.
+
+**Acceptance criteria:**
+- Patients can opt-in to waitlist with acceptable-window + visit-type
+  preferences
+- On cancellation, the engine ranks waitlisted patients by: urgency
+  (cadence engine), no-show risk, flexibility score, patient VIP flag
+- Sends staggered offers (top-3 parallel, then top-5, then blast)
+- Operator sees status in real time; can override ordering
+- Record fill-rate + fill-time metrics for weekly report
+
+### EMR-211: Multi-Channel Reminder Orchestration
+**Priority:** High
+**Why now:** One-size reminders don't work. Different patients respond
+to different channels; reminder fatigue drops open rates over time.
+
+**Acceptance criteria:**
+- Channels: SMS, email, voice-call (IVR), push notification, portal
+  inbox
+- Per-patient channel preference (with defaults by demographic)
+- Cadence: T-7d, T-48h, T-24h, T-2h, plus same-day confirmation
+- Content personalization: visit type, provider, prep instructions,
+  copay estimate, directions
+- Stops gracefully after confirmed-or-cancelled; never spams
+- Delivery receipts feed the no-show model (EMR-207)
+
+### EMR-212: New-Patient Intake-to-Visit Gate Pipeline
+**Priority:** High
+**Why now:** New patients who book before completing intake show up
+unprepared and burn the clinician's visit time on paperwork.
+
+**Acceptance criteria:**
+- New-patient booking requires intake completion (intake agent run
+  finishes) before the slot is confirmed
+- Auto-generated "finish your intake" nudges at 24h, 48h, 72h
+- If intake not complete 24h before slot, auto-downgrade to "pending"
+  and offer a new slot after completion
+- Intake captures insurance + ID + consent + state compliance form —
+  all stored in the patient record before the clinician walks in
+- Chart completeness score ≥ 70 required for slot to go "confirmed"
+
+### EMR-213: Group Visit + Block + Recurring Scheduling
+**Priority:** Normal
+**Why now:** Group visits (education, cohort check-ins) and recurring
+weekly/monthly follow-ups are standard in cannabis care. The MVP
+scheduler doesn't support them.
+
+**Acceptance criteria:**
+- Block scheduling: provider can reserve a recurring block (Wed 1–3pm
+  = group visit; Fri 8–10am = administrative)
+- Group-visit model: multi-patient appointment with shared prep notes
+  and per-patient post-visit follow-up
+- Recurring series: "weekly × 8" with automatic backfill of missed
+  weeks
+- ICS export for the patient; portal shows the full series
+
+### EMR-214: Provider Preference Engine + Burnout Guardrails
+**Priority:** High
+**Why now:** Our best asset is the provider. Over-booking clinicians
+is the fastest way to lose them — and retention matters in cannabis
+where specialists are scarce.
+
+**Acceptance criteria:**
+- Per-provider preference record: max patients/day, max hours/day,
+  lunch block, no-urgent-after, specific visit-type caps
+- Burnout index computed daily from: patient count, documentation
+  backlog, message-queue depth, after-hours time
+- Hard guardrails — scheduler will NOT book past max even if a slot
+  appears free
+- Soft nudges — when index trends high, suggest a lighter day, auto-
+  decline non-essential externals
+- Provider can override guardrails with a reason (logged for audit)
+
+### EMR-215: Scheduling Analytics Cockpit
+**Priority:** High
+**Why now:** We can't improve what we don't measure. An analytics
+cockpit turns scheduling from intuition-based to data-driven.
+
+**Acceptance criteria:**
+- Metrics: fill rate, no-show rate, cancellation rate, lead time
+  distribution, new-patient conversion, revenue per slot, provider
+  utilization, waitlist fill time
+- Slice by: provider, visit type, payer, day-of-week, time-of-day,
+  patient cohort (new / recurring / urgent)
+- Forecasts: 30/60/90-day demand, bottleneck detection
+- Export to CSV + weekly email digest to practice owner
+- Action triggers — "fill rate < 70% for 2 weeks" opens a ticket
+
+---
+
+**Grand total: 215 tickets.** Product Drop #9 + Wave 17 scheduling expansion.
+
+---
+
+## Wave 18 — Production Billing Automation (EMR-216..EMR-230)
+
+The night-sprint billing hardening pass shipped the foundations (payer
+rules registry, remittance taxonomy, 999/277CA parsers, stale-claim
+monitor). These tickets close the remaining gaps so the platform can
+run an end-to-end billed patient from claim construction to ERA
+posting without a biller babysitting every transition.
+
+| # | Title | Priority | Status |
+|---|---|---|---|
+| 216 | Real EDI 837P generator (ANSI X12 v5010) | **Urgent** | backlog |
+| 217 | Availity/Waystar/Change Healthcare gateway client | **Urgent** | backlog |
+| 218 | Payer rules → DB model + admin editor | High | backlog |
+| 219 | Secondary claim filing (Loop 2320 CAS) | **Urgent** | backlog |
+| 220 | Provider + Organization NPI + Tax ID schema | **Urgent** | backlog |
+| 221 | ERA / 835 raw-file ingestion pipeline | **Urgent** | backlog |
+| 222 | Full NCCI / MUE reference table (CMS quarterly) | High | backlog |
+| 223 | Per-payer contract allowable tables | High | backlog |
+| 224 | Lockbox / bank deposit matching | High | backlog |
+| 225 | Patient statement auto-generator + e-delivery | **Urgent** | backlog |
+| 226 | Payment plan engine + card-on-file autopay | High | backlog |
+| 227 | NSF / chargeback handler | Normal | backlog |
+| 228 | Appeal tracker + outcome learning loop | High | backlog |
+| 229 | Prior-auth workflow + payer portal adapters | High | backlog |
+| 230 | RCM daily-close report + exception dashboard | **Urgent** | backlog |
+
+### EMR-216: Real EDI 837P generator (ANSI X12 v5010)
+**Priority:** Urgent
+**Why now:** The current `buildEdi837Stub()` is placeholder text. Real
+clearinghouses will reject it. Production billing requires a valid
+X12 837P transaction set with every required loop.
+
+**Acceptance criteria:**
+- Full loop coverage: ISA/GS/ST envelope, 2000A billing provider,
+  2000B subscriber/payer, 2000C patient (when subscriber ≠ patient),
+  2300 claim, 2310 rendering provider, 2320 other payer (for
+  secondary), 2400 service lines, 2430 line adjudication
+- Segment generator handles the full data element set (BHT, HL, NM1,
+  N3, N4, DMG, SBR, PAT, CLM, HI, REF, NTE, CR1, CRC, SV1, DTP, CAS)
+- Delimiter / separator config (default `*` / `:` / `~`)
+- Line-length + character-set enforcement (printable ASCII, 80-char
+  max in strict mode)
+- Generator output validated against SNIP Types 1-5 before send
+- Unit tests with golden fixtures from CMS examples
+- Feature-flagged alongside the existing stub until the gateway path
+  (EMR-217) lands
+
+### EMR-217: Clearinghouse gateway client (Availity / Waystar / Change Healthcare)
+**Priority:** Urgent
+**Why now:** The submission agent simulates success today. Production
+means a real HTTP+SFTP client with auth, rate limits, retries, and
+response polling.
+
+**Acceptance criteria:**
+- Adapter interface so Availity / Waystar / Change / Office Ally can
+  plug in; one adapter wired as the default
+- Auth: OAuth2 client-credentials or API-key; token refresh on 401
+- SFTP and HTTPS ingestion paths (claims go out one way, ERAs /
+  277CAs come back another)
+- Rate limiting per gateway (bucket tokens, retry-after respect)
+- Exponential backoff on 5xx with jitter; max 5 retries
+- Response polling job polls for 277CA + 835 when async
+- Complete audit trail — every request + response written to
+  `ClearinghouseSubmission.ediPayload` + a new `ediResponse` field
+- Error handling: network, timeouts, malformed responses → dead-letter
+  queue
+- Secrets in env / vault — never in code
+
+### EMR-218: Payer rules → DB model + admin editor
+**Priority:** High
+**Why now:** The registry in `src/lib/billing/payer-rules.ts` is
+code-resident. Operations needs to edit rules without a deploy.
+
+**Acceptance criteria:**
+- `PayerRule` Prisma model mirrors the current TypeScript shape
+- Seed migration loads existing in-code rules
+- `resolvePayerRule()` prefers DB then falls back to in-code defaults
+- Admin UI for tier-2+ users to edit rules (timely filing, ack SLA,
+  cannabis exclusions, modifier rules)
+- Audit log on every edit with before/after snapshot
+- "Rule is out of date" banner when a payer's last edit is > 6 months
+
+### EMR-219: Secondary claim filing (Loop 2320 CAS)
+**Priority:** Urgent
+**Why now:** Primary adjudication produces the Loop 2320 CAS data the
+secondary claim needs. Today the fleet only flags the situation.
+
+**Acceptance criteria:**
+- Agent `secondaryClaimAgent` wakes on primary `claim.paid` /
+  `claim.partial`
+- Constructs a secondary 837P with primary payer's allowed / paid /
+  adjustment amounts in Loop 2320 CAS
+- References the primary ERA's payer control number
+- Uses secondary payer's rules (timely filing starts from primary
+  ERA date, not original DOS — payer-dependent)
+- Tests with golden fixtures for Medicare-secondary + commercial-
+  secondary flows
+
+### EMR-220: Provider + Organization NPI + Tax ID schema
+**Priority:** Urgent
+**Why now:** Claim construction escalates today because there's no
+place to store NPIs. Production billing can't proceed without them.
+
+**Acceptance criteria:**
+- `Provider.npi` (10-digit validated), `Provider.taxonomyCode`
+- `Organization.billingNpi`, `Organization.taxId` (EIN, encrypted),
+  `Organization.billingAddress`
+- `Organization.payToAddress` (if different from billing)
+- Admin UI on Settings → Practice + Settings → Providers
+- Validation: NPI Luhn check, EIN format
+- `resolveBillingIdentifiers()` reads from DB first, env second, bio
+  string last
+- Seed script populates a test org / test provider with known-good
+  NPIs for CI fixtures
+
+### EMR-221: ERA / 835 raw-file ingestion pipeline
+**Priority:** Urgent
+**Why now:** Today `AdjudicationResult` is populated manually. Real
+production ingests 835s from the clearinghouse, parses them, creates
+`AdjudicationResult` rows, and kicks off the adjudication agent.
+
+**Acceptance criteria:**
+- `ErrIngest` / `EraFile` model storing raw payload + checksum
+- Dedupe on (payer + checkNumber) so a retried delivery doesn't
+  double-post
+- ANSI X12 835 parser covering CLP / SVC / CAS / REF / DTM / PLB
+  segments
+- Creates `AdjudicationResult` rows + fires `adjudication.received`
+  events
+- Handles multi-claim payments (one check → many claims)
+- PLB provider-level adjustments (refunds / forward-balance /
+  takebacks) posted to the ledger
+- Parser works on JSON envelopes too (commercial gateway pre-parsed
+  format)
+- Integration test with a real CMS-published 835 sample
+
+### EMR-222: Full NCCI / MUE reference table
+**Priority:** High
+**Why now:** The scrub engine currently has a hand-written starter
+set of ~10 NCCI pairs and a dozen MUE limits. CMS publishes thousands
+quarterly; production billing needs the full table.
+
+**Acceptance criteria:**
+- `NcciEdit` + `MueLimit` Prisma models
+- Quarterly-refresh job pulls current-quarter CSVs from CMS PTP /
+  MUE public-use files
+- Scrub engine reads from DB (with in-memory cache) instead of the
+  code-resident starter set
+- Version tag on each load so "which quarter's rules" is auditable
+- Admin UI shows loaded quarter + manual refresh trigger
+
+### EMR-223: Per-payer contract allowable tables
+**Priority:** High
+**Why now:** The hardened underpayment detector now scales fee
+schedule by payer class (commercial/medicare). Real production
+compares against each payer's CONTRACT, which the practice has
+negotiated separately.
+
+**Acceptance criteria:**
+- `PayerContract` model with effective-date ranges
+- `PayerContractRate` per-CPT + per-modifier allowable
+- Underpayment agent flags when `allowed < contractRate * 0.95`
+- Admin UI for loading contract CSVs / PDFs (OCR optional)
+- Version history on contract changes
+
+### EMR-224: Lockbox / bank deposit matching
+**Priority:** High
+**Why now:** The reconciliation agent matches payments to ledger
+events but doesn't match bank deposits. Closing the day's books
+means matching every payment to an actual deposit.
+
+**Acceptance criteria:**
+- `BankDeposit` model (date, amount, bank reference, source)
+- Ingestion from the practice's bank statement CSV / OFX / BAI2
+- `balanceBatchAgainstCheck()` driven by bank deposit amounts
+- Variance report for unmatched deposits + unmatched payments
+- Daily close report (EMR-230) shows reconciliation status
+
+### EMR-225: Patient statement auto-generator + e-delivery
+**Priority:** Urgent
+**Why now:** The fleet records patient responsibility but doesn't
+produce statements. No statements = no patient collections.
+
+**Acceptance criteria:**
+- `Statement` model is already in schema — build the generator
+- Cadence: 30-day after first patient-responsibility posting, then
+  30-day cycle until paid
+- Plain-language summary (LLM-drafted, approval-gated)
+- Multi-channel delivery: portal + email + SMS + paper (fallback)
+- Delivery receipt tracking + open/viewed events
+- Integrates with EMR-211 reminder orchestration for escalation
+- Statement number format: STMT-YYYYMMDD-SEQ; unique constraint
+
+### EMR-226: Payment plan engine + card-on-file autopay
+**Priority:** High
+**Why now:** Patients with >$200 balances need a path besides lump-
+sum. Payment plans are referenced by the dunning ladder but the
+engine doesn't exist.
+
+**Acceptance criteria:**
+- Create plan: $50-$500/mo over 3–24 months, interest-free
+- Autopay: charge Payabli card on installment dates
+- Default handling: 2 missed installments → escalate to final_notice
+- Patient can modify / pause / cancel via portal
+- PaymentPlan.paymentPlanInDefault flag feeds resolveDunningIntent()
+- Notifications on each installment + default
+
+### EMR-227: NSF / chargeback handler
+**Priority:** Normal
+**Why now:** A patient's card payment can bounce (NSF) or be charged
+back. The ledger must handle negative payments without breaking
+reconciliation.
+
+**Acceptance criteria:**
+- `Payment` can be reversed via a negative adjustment (type=takeback)
+- Reverses the original FinancialEvent
+- Re-opens the patient balance on affected claims
+- Re-queues dunning with NSF-specific tone
+- Bank fee recorded as a practice expense
+
+### EMR-228: Appeal tracker + outcome learning loop
+**Priority:** High
+**Why now:** The appeals agent drafts letters but never measures
+which arguments win. Missed learning opportunity.
+
+**Acceptance criteria:**
+- `AppealOutcome` records (overturned / upheld / partial)
+- Learning signal: which CARC + payer + argument combination wins
+- Feedback writes to `BillingMemory` so future appeals use the
+  winning argument
+- Dashboard shows win-rate by payer + by CARC
+
+### EMR-229: Prior-auth workflow + payer portal adapters
+**Priority:** High
+**Why now:** Cannabis services require PA with most commercial payers.
+The flag exists in the payer-rules registry but no PA workflow.
+
+**Acceptance criteria:**
+- `PriorAuthorization` model: patient, payer, CPT, ICD-10, status,
+  submitted-at, approval-reference, expires-at
+- Portal adapters for top-5 commercial payers (headless submission)
+- PA packet generator (DSM-5 severity, treatment plan, prior
+  failures) shared with appeals
+- Claim construction checks for valid PA before submission
+- Expiration alerts (14-day, 7-day, 1-day)
+
+### EMR-230: RCM daily-close report + exception dashboard
+**Priority:** Urgent
+**Why now:** Operations needs a single daily view: how much was
+billed, collected, outstanding, aged, appealed, written off, credited.
+Today data is spread across 15 agents with no dashboard.
+
+**Acceptance criteria:**
+- Daily-close job runs at 23:59 local
+- Metrics: claims created, submitted, accepted, rejected, paid,
+  denied, appealed, written-off
+- Dollar metrics: billed, allowed, paid, adjustments, patient resp,
+  outstanding AR (by aging bucket)
+- Exceptions list: stale claims, unbalanced batches, pending
+  takebacks, unmatched deposits, overdue appeals
+- Trend view: 7-day, 30-day, 90-day
+- Export: CSV + PDF (for the practice owner)
+- Email digest to practice owner the next morning
+
+---
+
+**Grand total: 230 tickets.** Product Drop #10 — production-billing hardening.
+
+## Epic: E-Commerce, Identity & Content (Phase 4 Additions)
+
+### EMR-308: [BIG] AI-generated nature/leaf "Share" button + multi-platform sharing
+**Priority:** 1 — Urgent
+**Status:** in_progress
+**Description:**
+Implement a highly aesthetic, nature/leaf themed sharing button that allows users to seamlessly share content across multiple platforms.
+
+### EMR-312: [VERY BIG] Proprietary cannabis education curriculum (≥42 hrs, CME)
+**Priority:** 1 — Urgent
+**Status:** in_progress
+**Description:**
+Develop and integrate a massive 42+ hour proprietary education curriculum with CME tracking.
+
+### EMR-302: Distributor model + source framework
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Build out the distributor data model and source framework for tracking product provenance.
+
+### EMR-303: Rival Amazon / Theleafmart benchmark
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+UI/UX audit and feature alignment to rival Amazon's e-commerce experience on Theleafmart.
+
+### EMR-304: AI agent differentiation guardrail questions
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Establish differentiation guardrails for the various AI agents (clinical vs consumer) using structured prompting.
+
+### EMR-309: "Ask Cindy" highlight chatbot
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Introduce "Ask Cindy", a specialized highlight chatbot for guided user discovery.
+
+### EMR-311: Clinician application + directory + compliance matching
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Clinician onboarding flow, directory listing, and state compliance matching engine.
+
+### EMR-313: Loyalty/points system + gift cards
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Implement a consumer loyalty points system and gift card purchasing/redemption flow.
+
+### EMR-314: Rebrand to "Seed Trove" / nurture-harvest-fruit lexicon
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Execute rebranding efforts shifting the platform lexicon towards "Seed Trove" and nurture-harvest-fruit terminology.
+
+### EMR-315: Vendor tax docs + analytics dashboards
+**Priority:** 2 — High
+**Status:** in_progress
+**Description:**
+Vendor portal upgrades for tax document management and deep analytics dashboards.
+
+### EMR-305: Product Q&A expandable tab
+**Priority:** 3 — Normal
+**Status:** in_progress
+**Description:**
+Add an interactive, expandable Q&A tab on product detail pages.
+
+### EMR-306: Reviews with photos + AI moderation
+**Priority:** 3 — Normal
+**Status:** in_progress
+**Description:**
+Allow users to upload photos with their reviews, supported by an AI moderation pipeline.
+
+### EMR-307: Product Details list (AI-curated specifics)
+**Priority:** 3 — Normal
+**Status:** in_progress
+**Description:**
+Display AI-curated product specifics and details in a scannable list format on PDPs.
+
+### EMR-310: Checkout: Compare similar items + Share
+**Priority:** 3 — Normal
+**Status:** in_progress
+**Description:**
+Inject a "Compare similar items" and "Share" module directly into the checkout flow.

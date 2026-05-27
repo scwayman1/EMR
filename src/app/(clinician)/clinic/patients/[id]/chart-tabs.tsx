@@ -6,16 +6,43 @@ import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { useChartFrame, type ChartTabPosition } from "./chart-frame";
 
+// EMR-119/124: tabs are tagged with a `group` so the rail can cluster
+// related sections instead of presenting all 9 as one undifferentiated
+// row. Groups follow Dr. Patel's proposal — Overview / Clinical /
+// Documents / Financial. Deep links (`?tab=key`) are unchanged so
+// existing bookmarks and peek hrefs keep working.
 const TABS = [
-  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]" },
-  { key: "memory", label: "Memory", dot: "bg-accent" },
-  { key: "records", label: "Records", dot: "bg-accent" },
-  { key: "images", label: "Images", dot: "bg-[color:var(--info)]" },
-  { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]" },
-  { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]" },
-  { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]" },
-  { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]" },
-  { key: "billing", label: "Billing", dot: "bg-[color:var(--success)]" },
+  { key: "demographics", label: "Demographics", dot: "bg-[color:var(--info)]", group: "Overview" },
+  { key: "memory", label: "Memory", dot: "bg-accent", group: "Overview" },
+  // Unified chronological feed of every meaningful chart event
+  // (visits, messages, notes, labs, refills, tasks). Filterable and
+  // grouped by day — Linear/Notion style activity rail. Lives in
+  // Overview because it answers "what happened recently?" the same
+  // way Memory answers "what do we know?".
+  { key: "timeline", label: "Timeline", dot: "bg-[color:var(--info)]", group: "Overview" },
+  { key: "notes", label: "Notes", dot: "bg-[color:var(--highlight)]", group: "Clinical" },
+  // EMR-588 — Confidential clinician-only notes (private provider
+  // notes). NOT part of the legal chart, never released to the patient
+  // or to export packets. Rendered with a danger-toned dot so the rail
+  // already telegraphs "this is a sensitive surface" before click.
+  { key: "private_notes", label: "Private notes", dot: "bg-danger", group: "Clinical" },
+  { key: "labs", label: "Labs", dot: "bg-[color:var(--success)]", group: "Clinical" },
+  { key: "images", label: "Images", dot: "bg-[color:var(--info)]", group: "Clinical" },
+  { key: "rx", label: "Cannabis Rx", dot: "bg-[color:var(--highlight)]", group: "Clinical" },
+  { key: "records", label: "Records", dot: "bg-accent", group: "Documents" },
+  { key: "correspondence", label: "Correspondence", dot: "bg-[color:var(--info)]", group: "Documents" },
+  // EMR-178 — Billing tab is a deep-link to the standalone Financial
+  // Cockpit page rather than a query-param panel inside the chart.
+  // The cockpit is too rich (P&L, claim drilldowns, statements) to fit
+  // inside the chart frame; sending physicians straight there avoids
+  // the half-rendered summary view.
+  {
+    key: "billing",
+    label: "Financial cockpit",
+    dot: "bg-[color:var(--success)]",
+    group: "Financial",
+    redirectTo: (patientId: string) => `/clinic/patients/${patientId}/billing`,
+  },
 ] as const;
 
 export type TabKey = (typeof TABS)[number]["key"];
@@ -226,9 +253,12 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
         // (long lists overflow to a second row); vertical rails fill
         // the rail wrapper's height and pin the trailing controls to
         // the bottom via mt-auto on the trailing group.
+        // EMR-177: horizontal bars never use overflow-x — always
+        // wrap. The per-tab min-width below biases the wrap toward
+        // a clean 2-row layout instead of one long crowded row.
         isVertical
           ? "flex flex-col items-stretch h-full"
-          : "flex flex-wrap items-center",
+          : "flex flex-wrap items-center overflow-visible",
         // Border + outer spacing sit against the chart content (not
         // the page edge) regardless of which side the bar is on.
         onBottom && "border-t mt-8",
@@ -238,7 +268,7 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
       )}
       aria-label="Chart sections"
     >
-      {order.map((key) => {
+      {order.map((key, idx) => {
         const tab = TAB_BY_KEY.get(key);
         if (!tab) return null;
         const isActive = active === tab.key;
@@ -248,10 +278,35 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
         const isOpen = openKey === tab.key && !draggingKey;
         const isDragging = draggingKey === tab.key;
         const isDropTarget = dragOverKey === tab.key && draggingKey !== tab.key;
+        // EMR-119/124: render a group divider whenever the previous
+        // tab in the displayed order belongs to a different group.
+        // Vertical rails get an uppercase section label; horizontal
+        // bars get a thin hairline separator.
+        const prevKey = idx > 0 ? order[idx - 1] : null;
+        const prevGroup = prevKey ? TAB_BY_KEY.get(prevKey)?.group : null;
+        const showGroupBreak = prevGroup !== undefined && prevGroup !== tab.group;
+        const isFirstWithGroup = idx === 0;
 
         return (
+          <React.Fragment key={`grp-${tab.key}`}>
+            {isVertical && (isFirstWithGroup || showGroupBreak) && (
+              <p
+                className={cn(
+                  "px-3 text-[10px] uppercase tracking-[0.14em] font-medium text-text-subtle/70",
+                  isFirstWithGroup ? "pt-1 pb-1.5" : "pt-3 pb-1.5"
+                )}
+                aria-hidden="true"
+              >
+                {tab.group}
+              </p>
+            )}
+            {!isVertical && showGroupBreak && (
+              <span
+                aria-hidden="true"
+                className="self-stretch w-px bg-border/60 mx-1 my-1"
+              />
+            )}
           <div
-            key={tab.key}
             draggable
             onDragStart={handleDragStart(tab.key)}
             onDragOver={handleDragOver(tab.key)}
@@ -260,6 +315,10 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
             onDragEnd={handleDragEnd}
             className={cn(
               "relative group/tab transition-opacity",
+              // EMR-177: in horizontal mode tabs get a min width so a
+              // typical chart viewport yields two clean rows of ~5+4
+              // tabs that wrap on narrow screens — no swipe-only ribbon.
+              !isVertical && !compact && "min-w-[160px]",
               isDragging && "opacity-40"
             )}
             onMouseEnter={() => {
@@ -292,7 +351,11 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
               />
             )}
             <Link
-              href={`/clinic/patients/${patientId}?tab=${tab.key}`}
+              href={
+                "redirectTo" in tab && tab.redirectTo
+                  ? tab.redirectTo(patientId)
+                  : `/clinic/patients/${patientId}?tab=${tab.key}`
+              }
               scroll={false}
               draggable={false}
               aria-haspopup={hasPeek ? "true" : undefined}
@@ -377,6 +440,7 @@ export function ChartTabs({ patientId, counts, peeks, peekSummaries }: ChartTabs
               />
             )}
           </div>
+          </React.Fragment>
         );
       })}
 

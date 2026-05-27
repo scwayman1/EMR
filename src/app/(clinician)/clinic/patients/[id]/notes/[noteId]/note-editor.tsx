@@ -5,10 +5,25 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { saveNoteBlocks, saveAndFinalizeNote, refineSection, type RefineMode } from "./actions";
-import { APSO_ORDER, NOTE_BLOCK_LABELS } from "@/lib/domain/notes";
-import type { NoteBlockType } from "@/lib/domain/notes";
+import {
+  saveNoteBlocks,
+  saveAndFinalizeNote,
+  refineSection,
+  saveEmotionalVital,
+  type RefineMode,
+} from "./actions";
+import {
+  APSO_ORDER,
+  NOTE_BLOCK_LABELS,
+  PATIENT_DEMEANOR_OPTIONS,
+  type PatientDemeanor,
+  type NoteBlockType,
+} from "@/lib/domain/notes";
 import { LeafSprig } from "@/components/ui/ornament";
+import { DictateButton } from "@/components/ui/dictation";
+import { MarkdownEditor } from "@/components/ui/markdown-editor";
+import { NoteTemplatePicker, type PickerBlock } from "@/components/clinical/note-template-picker";
+import { NOTE_BLOCK_LABELS as NB_LABELS } from "@/lib/domain/notes";
 
 interface NoteBlock {
   type?: NoteBlockType;
@@ -29,6 +44,7 @@ interface NoteEditorProps {
     emLevel: string | null;
     rationale: string | null;
   } | null;
+  initialDemeanor?: PatientDemeanor | null;
 }
 
 const REFINE_OPTIONS: { mode: RefineMode; label: string; icon: string }[] = [
@@ -70,6 +86,7 @@ export function NoteEditor({
   aiDrafted,
   aiConfidence,
   codingSuggestion,
+  initialDemeanor,
 }: NoteEditorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,15 +98,23 @@ export function NoteEditor({
   // JSON never reaches here.
   const [refineErrors, setRefineErrors] = useState<Record<number, string>>({});
   const [blocks, setBlocks] = useState<NoteBlock[]>(() => {
+    // Defensive: a malformed JSON payload could deliver a non-array here
+    // (the parent already filters `_guardrails`, but we don't trust the
+    // wire shape). Treat anything non-array as empty so the editor renders
+    // an empty state rather than crashing the patient chart.
+    const safe: NoteBlock[] = Array.isArray(initialBlocks) ? initialBlocks : [];
     // Sort initial blocks in APSO order
-    const sorted = [...initialBlocks].sort((a, b) => {
+    const sorted = [...safe].sort((a, b) => {
       const aIdx = a.type ? APSO_ORDER.indexOf(a.type) : APSO_ORDER.length;
       const bIdx = b.type ? APSO_ORDER.indexOf(b.type) : APSO_ORDER.length;
       return (aIdx === -1 ? APSO_ORDER.length : aIdx) - (bIdx === -1 ? APSO_ORDER.length : bIdx);
     });
-    // Apply APSO display labels to headings
+    // Apply APSO display labels to headings + coerce `body` to a string so
+    // downstream `body.split` / template-string concatenation never hit
+    // null/undefined.
     return sorted.map((block) => ({
       ...block,
+      body: typeof block.body === "string" ? block.body : "",
       heading: block.type && NOTE_BLOCK_LABELS[block.type]
         ? NOTE_BLOCK_LABELS[block.type]
         : block.heading,
@@ -98,6 +123,23 @@ export function NoteEditor({
   const [isPending, startTransition] = useTransition();
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState(status);
+  const [demeanor, setDemeanor] = useState<PatientDemeanor | null>(initialDemeanor ?? null);
+  const [demeanorPending, setDemeanorPending] = useState(false);
+
+  function handleDemeanor(value: PatientDemeanor) {
+    if (demeanorPending) return;
+    const previous = demeanor;
+    setDemeanor(value);
+    setDemeanorPending(true);
+    void saveEmotionalVital(encounterId, value)
+      .then((res) => {
+        if (!res.ok) {
+          setDemeanor(previous);
+          setSaveMessage(res.error);
+        }
+      })
+      .finally(() => setDemeanorPending(false));
+  }
 
   const isEditable = currentStatus === "draft" || currentStatus === "needs_review";
 
@@ -107,6 +149,26 @@ export function NoteEditor({
       next[index] = { ...next[index], [field]: value };
       return next;
     });
+  }
+
+  // EMR-174 — applying a template overwrites the current blocks. Picker
+  // shows a confirm dialog before calling this when there's content to
+  // preserve, so we trust the call here. APSO-sort and APSO-label, same
+  // as the initial mount.
+  function applyTemplate(_templateName: string, incoming: PickerBlock[]) {
+    const sorted = [...incoming].sort((a, b) => {
+      const aIdx = a.type ? APSO_ORDER.indexOf(a.type) : APSO_ORDER.length;
+      const bIdx = b.type ? APSO_ORDER.indexOf(b.type) : APSO_ORDER.length;
+      return (aIdx === -1 ? APSO_ORDER.length : aIdx) - (bIdx === -1 ? APSO_ORDER.length : bIdx);
+    });
+    setBlocks(
+      sorted.map((b) => ({
+        type: b.type,
+        body: b.body,
+        heading: b.type && NB_LABELS[b.type] ? NB_LABELS[b.type] : b.heading,
+      })),
+    );
+    setSaveMessage(null);
   }
 
   function handleSave() {
@@ -207,48 +269,66 @@ export function NoteEditor({
         </Card>
       )}
 
-      {/* Status + AI badges */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <Badge
-          tone={
-            currentStatus === "finalized"
-              ? "success"
-              : currentStatus === "needs_review"
-                ? "warning"
-                : "neutral"
-          }
-        >
-          {currentStatus}
-        </Badge>
-        {aiDrafted && <Badge tone="highlight">AI-drafted</Badge>}
-        {aiConfidence !== null && (
-          <Badge tone="info">
-            Confidence {Math.round(aiConfidence * 100)}%
+      {/* Status + AI badges + template picker (EMR-174) */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            tone={
+              currentStatus === "finalized"
+                ? "success"
+                : currentStatus === "needs_review"
+                  ? "warning"
+                  : "neutral"
+            }
+          >
+            {currentStatus}
           </Badge>
-        )}
-        {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
+          {aiDrafted && <Badge tone="highlight">AI-drafted</Badge>}
+          {aiConfidence !== null && (
+            <Badge tone="info">
+              Confidence {Math.round(aiConfidence * 100)}%
+            </Badge>
+          )}
+          {fromBriefing && <Badge tone="accent">Briefing-seeded</Badge>}
+        </div>
+        <NoteTemplatePicker
+          disabled={!isEditable}
+          hasExistingContent={blocks.some((b) => b.body.trim().length > 0)}
+          onApply={(template, incoming) => applyTemplate(template.name, incoming)}
+        />
       </div>
 
-      {/* Emotional vitals — EMR-134: emoji mood indicator */}
+      {/* Emotional vitals — EMR-134: emoji demeanor scale persisted to encounter */}
       {isEditable && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <span className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">
             Patient demeanor:
           </span>
-          {[
-            { emoji: "😊", label: "Positive", value: "positive" },
-            { emoji: "😐", label: "Neutral", value: "neutral" },
-            { emoji: "😔", label: "Low", value: "low" },
-          ].map((mood) => (
-            <button
-              key={mood.value}
-              type="button"
-              title={mood.label}
-              className="text-2xl hover:scale-125 transition-transform focus:outline-none focus:ring-2 focus:ring-accent/40 rounded-lg p-1"
-            >
-              {mood.emoji}
-            </button>
-          ))}
+          {PATIENT_DEMEANOR_OPTIONS.map((mood) => {
+            const selected = demeanor === mood.value;
+            return (
+              <button
+                key={mood.value}
+                type="button"
+                title={mood.label}
+                onClick={() => handleDemeanor(mood.value)}
+                disabled={demeanorPending}
+                aria-pressed={selected}
+                className={`text-2xl rounded-lg p-1 transition-all focus:outline-none focus:ring-2 focus:ring-accent/40 ${
+                  selected
+                    ? "scale-125 bg-accent-soft ring-2 ring-accent/40"
+                    : "hover:scale-110 opacity-70 hover:opacity-100"
+                } disabled:opacity-50`}
+              >
+                {mood.emoji}
+              </button>
+            );
+          })}
+          {demeanor && (
+            <span className="text-[11px] text-text-subtle">
+              Recorded as {PATIENT_DEMEANOR_OPTIONS.find((o) => o.value === demeanor)?.label.toLowerCase()}
+            </span>
+          )}
         </div>
       )}
 
@@ -266,39 +346,76 @@ export function NoteEditor({
                     className="w-full font-display text-lg font-medium text-text tracking-tight bg-transparent border-0 border-b border-border/60 pb-1.5 focus:outline-none focus:border-accent transition-colors"
                     placeholder="Section heading"
                   />
-                  <textarea
-                    value={block.body}
-                    onChange={(e) => updateBlock(i, "body", e.target.value)}
-                    rows={Math.max(3, block.body.split("\n").length + 1)}
-                    className="w-full text-sm text-text-muted leading-relaxed bg-transparent border border-border/40 rounded-md p-3 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/20 transition-all resize-y"
-                    placeholder="Note content..."
-                  />
-                  {/* AI Refine buttons */}
-                  <div className="flex items-center gap-1.5 pt-1">
-                    <span className="text-[10px] text-text-subtle uppercase tracking-wider mr-1">
-                      AI:
-                    </span>
-                    {REFINE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.mode}
-                        onClick={() => handleRefine(i, opt.mode)}
-                        disabled={refiningIndex !== null}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
-                          refiningIndex === i
-                            ? "bg-accent/20 text-accent animate-pulse"
-                            : "bg-surface-muted text-text-subtle hover:bg-accent/10 hover:text-accent border border-border/40"
-                        } disabled:opacity-50`}
-                      >
-                        <span className="font-mono text-[9px]">{opt.icon}</span>
-                        {opt.label}
-                      </button>
-                    ))}
-                    {refiningIndex === i && (
-                      <span className="text-[10px] text-accent ml-1 animate-pulse">
-                        Refining...
-                      </span>
+                  <div className="relative">
+                    {/* EMR-135 + UX dictation + UX markdown editor: rich
+                        markdown surface (toolbar + slash menu + preview)
+                        for narrative SOAP/APSO sections, with the dictate
+                        button anchored top-right.
+
+                        CRITICAL: the Objective block (NoteBlockType
+                        "findings") is human-authored only per Dr. Patel
+                        and Doc 1 / Doc 3 in EMR/docs/product-feedback —
+                        the MarkdownEditor still renders (the user needs
+                        to write structured text!), but we (a) pass
+                        omitForObjective so the editor stamps the
+                        data-objective-gated attribute and future AI
+                        toolbar actions are suppressed, and (b) hide the
+                        DictateButton entirely. The AI Refine buttons row
+                        below is also conditionally hidden for findings. */}
+                    <MarkdownEditor
+                      value={block.body}
+                      onChange={(v) => updateBlock(i, "body", v)}
+                      rows={Math.max(4, block.body.split("\n").length + 1)}
+                      omitForObjective={block.type === "findings"}
+                      placeholder="Note content. Use the toolbar or type / for block commands."
+                      aria-label={`${block.heading} body`}
+                      textareaClassName={block.type === "findings" ? "" : "pr-10"}
+                    />
+                    {block.type !== "findings" && (
+                      <DictateButton
+                        onText={(text) => {
+                          const sep = block.body && !/\s$/.test(block.body) ? " " : "";
+                          updateBlock(i, "body", `${block.body}${sep}${text.trim()}`);
+                        }}
+                        className="absolute top-12 right-2"
+                      />
                     )}
                   </div>
+                  {/* AI Refine buttons — gated for Objective per Dr. Patel
+                      and Doc 1 / Doc 3: the SOAP/APSO Objective ("findings")
+                      block is human-authored only, so no AI affordance is
+                      offered for it. */}
+                  {block.type !== "findings" ? (
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <span className="text-[10px] text-text-subtle uppercase tracking-wider mr-1">
+                        AI:
+                      </span>
+                      {REFINE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.mode}
+                          onClick={() => handleRefine(i, opt.mode)}
+                          disabled={refiningIndex !== null}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                            refiningIndex === i
+                              ? "bg-accent/20 text-accent animate-pulse"
+                              : "bg-surface-muted text-text-subtle hover:bg-accent/10 hover:text-accent border border-border/40"
+                          } disabled:opacity-50`}
+                        >
+                          <span className="font-mono text-[9px]">{opt.icon}</span>
+                          {opt.label}
+                        </button>
+                      ))}
+                      {refiningIndex === i && (
+                        <span className="text-[10px] text-accent ml-1 animate-pulse">
+                          Refining...
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="pt-1 text-[10px] text-text-subtle italic">
+                      Human-authored only — no AI refine for Objective findings.
+                    </p>
+                  )}
                   {refineErrors[i] && (
                     <div
                       role="alert"

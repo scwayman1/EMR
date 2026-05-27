@@ -52,9 +52,9 @@ export function BuilderView({ totalPatients }: { totalPatients: number }) {
   const [dailyDoseMin, setDailyDoseMin] = useState<number>(0);
   const [dailyDoseMax, setDailyDoseMax] = useState<number>(100);
   // Step 4: outcomes
-  const [metric, setMetric] = useState<"pain" | "sleep" | "anxiety" | "mood">(
-    "pain"
-  );
+  const [metric, setMetric] = useState<
+    "pain" | "sleep" | "anxiety" | "mood" | "nausea"
+  >("pain");
   const [threshold, setThreshold] = useState<number>(25); // improvement %
   // Step 5: time
   const [windowDays, setWindowDays] = useState<number>(90);
@@ -335,7 +335,7 @@ export function BuilderView({ totalPatients }: { totalPatients: number }) {
                       Outcome metric
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {(["pain", "sleep", "anxiety", "mood"] as const).map(
+                      {(["pain", "sleep", "anxiety", "mood", "nausea"] as const).map(
                         (m) => (
                           <button
                             key={m}

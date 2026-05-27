@@ -98,3 +98,46 @@ export const signupLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000,
   max: 3,
 });
+
+/**
+ * /api/admin/** mutation rate limit. Applied via requireApiAuth's
+ * `rateLimit` option. 10 per minute per actor — fast enough for any
+ * realistic admin workflow (grant + revoke + practice switch are
+ * each one click), slow enough that a stolen super-admin session
+ * can't drain through the entire org membership table at speed.
+ */
+export const adminMutationLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 10,
+});
+
+/**
+ * Agent invocation rate limit. LLM endpoints (cindy, cfo/generate,
+ * agents/pharmacology, feedback/whisper) call paid upstream APIs —
+ * an unbounded request rate is an unbounded cost vector. 30 per
+ * minute per actor is conservative; production should refine these
+ * per-agent based on observed usage + budget.
+ */
+export const agentInvocationLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+});
+
+// ---------------------------------------------------------------------------
+// Roadmap: REDIS_URL / UPSTASH_REDIS_REST_URL backed limiter
+// ---------------------------------------------------------------------------
+//
+// The in-memory limiter above is correct for a single-process Render
+// service. Once we run multiple instances or move to a serverless
+// platform that horizontally scales, each instance will have its own
+// counters and the effective rate is `max × instances` — useless for
+// abuse prevention.
+//
+// Swap point: when UPSTASH_REDIS_REST_URL is set, `createRateLimiter`
+// should return an instance backed by `@upstash/ratelimit`. Same
+// interface, real distributed counters. The constants above are env-
+// agnostic; only the implementation under the hood changes.
+//
+// Tracked as a follow-up to keep this PR focused on the abstraction
+// + initial application surface.
+

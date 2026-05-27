@@ -362,8 +362,16 @@ export interface FeaturedSnapshot {
     actionSuggested: string | null;
     createdAt: Date;
   }>;
-  /** Last 30 days of pain OutcomeLog values for the sparkline. Oldest first. */
-  painSparkline: Array<{ value: number; loggedAt: Date }>;
+  /** Last 30 days of OutcomeLog values per metric for the peek sparkline
+   *  stack. Oldest first. Metrics with no logs return an empty array; the
+   *  caller filters out metrics with <2 points before rendering. */
+  metricSparklines: {
+    pain: Array<{ value: number; loggedAt: Date }>;
+    sleep: Array<{ value: number; loggedAt: Date }>;
+    anxiety: Array<{ value: number; loggedAt: Date }>;
+    mood: Array<{ value: number; loggedAt: Date }>;
+    adherence: Array<{ value: number; loggedAt: Date }>;
+  };
   /** Snippet from the most recently completed encounter's finalized note. */
   lastEncounter: {
     reason: string | null;
@@ -384,7 +392,7 @@ export async function loadFeaturedSnapshot(
     activeMeds,
     regimens,
     observations,
-    painLogs,
+    metricLogs,
     lastEncounter,
   ] = await Promise.all([
     prisma.patient
@@ -445,17 +453,21 @@ export async function loadFeaturedSnapshot(
         },
       })
       .catch(() => []),
+    // One grouped query for all five sparkline metrics; split in-memory
+    // below. Avoids five round-trips to the database per featured peek.
     prisma.outcomeLog
       .findMany({
         where: {
           patientId,
-          metric: "pain",
+          metric: { in: ["pain", "sleep", "anxiety", "mood", "adherence"] },
           loggedAt: { gte: thirtyDaysAgo },
         },
         orderBy: { loggedAt: "asc" },
-        select: { value: true, loggedAt: true },
+        select: { metric: true, value: true, loggedAt: true },
       })
-      .catch(() => []),
+      .catch(
+        () => [] as Array<{ metric: string; value: number; loggedAt: Date }>,
+      ),
     prisma.encounter
       .findFirst({
         where: {
@@ -505,6 +517,24 @@ export async function loadFeaturedSnapshot(
       }
     : null;
 
+  // Split the single grouped outcome-log query into per-metric arrays.
+  // The DB query is already sorted by loggedAt asc, so each bucket stays
+  // oldest-first after the push.
+  const metricSparklines: FeaturedSnapshot["metricSparklines"] = {
+    pain: [],
+    sleep: [],
+    anxiety: [],
+    mood: [],
+    adherence: [],
+  };
+  for (const log of metricLogs) {
+    const bucket =
+      metricSparklines[log.metric as keyof typeof metricSparklines];
+    if (bucket) {
+      bucket.push({ value: log.value, loggedAt: log.loggedAt });
+    }
+  }
+
   return {
     allergies: patient.allergies ?? [],
     activeMedCount,
@@ -517,7 +547,7 @@ export async function loadFeaturedSnapshot(
       frequencyPerDay: r.frequencyPerDay,
     })),
     recentObservations,
-    painSparkline: painLogs,
+    metricSparklines,
     lastEncounter: lastEncounterSummary,
   };
 }

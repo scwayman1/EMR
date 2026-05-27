@@ -5,11 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ProductGrid } from "@/components/marketplace/ProductGrid";
 import { TrustStrip } from "@/components/marketplace/TrustStrip";
 import { SearchBar } from "@/components/marketplace/SearchBar";
+import { RecommendedForYou } from "@/components/marketplace/RecommendedForYou";
+import { PatientsLikeYou } from "@/components/marketplace/PatientsLikeYou";
 import {
   getFeaturedProducts,
   getClinicianPicks,
   getCategories,
-} from "@/lib/marketplace/data";
+} from "@/lib/marketplace/queries";
+import { AffiliateProductCard } from "@/components/store/affiliate-product-card";
+import { getCurrentUser } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Shop" };
@@ -17,16 +21,20 @@ export const metadata = { title: "Shop" };
 const QUICK_BROWSE = [
   { label: "Calm", slug: "calm" },
   { label: "Focus", slug: "focus" },
-  { label: "Recovery", slug: "recovery" },
-  { label: "Sleep", slug: "sleep" },
+  { label: "Relief", slug: "recovery" },
+  { label: "Rest", slug: "sleep" },
   { label: "Energy", slug: "energy" },
 ] as const;
 
-export default function ShopPage() {
-  const featured = getFeaturedProducts();
-  const clinicianPicks = getClinicianPicks();
-  const symptomCategories = getCategories("symptom");
-  const goalCategories = getCategories("goal");
+export default async function ShopPage() {
+  const [user, featured, clinicianPicks, symptomCategories, goalCategories] =
+    await Promise.all([
+      getCurrentUser(),
+      getFeaturedProducts(),
+      getClinicianPicks(),
+      getCategories("symptom"),
+      getCategories("goal"),
+    ]);
 
   return (
     <PageShell maxWidth="max-w-[1100px]">
@@ -59,12 +67,62 @@ export default function ShopPage() {
       {/* ── Trust strip ───────────────────────────────────────────────── */}
       <TrustStrip className="rounded-lg mb-12" />
 
+      {/* ── Recommended for You (EMR-230 moat) ────────────────────────── */}
+      {user?.organizationId && (
+        <RecommendedForYou
+          userId={user.id}
+          organizationId={user.organizationId}
+        />
+      )}
+
+      {/* ── Patients Like You (EMR-270 cohort intelligence) ───────────── */}
+      {user?.organizationId && (
+        <PatientsLikeYou
+          userId={user.id}
+          organizationId={user.organizationId}
+        />
+      )}
+
       {/* ── Featured ──────────────────────────────────────────────────── */}
       <section className="mb-14">
         <h2 className="text-xl font-semibold tracking-tight text-text mb-6">
           Featured
         </h2>
         <ProductGrid products={featured} columns={4} />
+      </section>
+
+      {/* ── Partner Deals ──────────────────────────────────────────────── */}
+      <section className="mb-14">
+        <h2 className="text-xl font-semibold tracking-tight text-text mb-6">
+          Partner Deals
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <AffiliateProductCard 
+            product={{
+              id: "vape-1",
+              name: "Pax Plus Vaporizer",
+              brand: "PAX",
+              category: "Hardware",
+              price: 200,
+              imageUrl: "",
+              affiliateUrl: "https://pax.com",
+              rating: 4.8,
+              discountBadge: "15% Off"
+            }} 
+          />
+          <AffiliateProductCard 
+            product={{
+              id: "scale-1",
+              name: "Precision Scale 0.01g",
+              brand: "AWS",
+              category: "Hardware",
+              price: 25,
+              imageUrl: "",
+              affiliateUrl: "https://amazon.com",
+              rating: 4.5
+            }} 
+          />
+        </div>
       </section>
 
       {/* ── Clinician Picks ───────────────────────────────────────────── */}

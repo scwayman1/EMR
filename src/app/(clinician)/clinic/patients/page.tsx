@@ -3,27 +3,49 @@ import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
 import { PatientListClient } from "./patient-list-client";
-import Link from "next/link";
+import { NewPatientModal } from "@/components/clinic/NewPatientModal";
+import { RosterExportMenu } from "./roster-export-menu";
+import { RouterRefreshFreshness } from "@/components/ui/freshness-indicator.client";
+import { logger } from "@/lib/observability/log";
 
 export const metadata = { title: "Patient Roster" };
 
 export default async function PatientsPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: { q?: string };
 }) {
   const user = await requireUser();
   const orgId = user.organizationId!;
 
   // Fetch all non-deleted patients with chart summary
+  // EMR-debt: hard cap. A single render of the roster ships every row to
+  // the client; a 500+ patient org needs server-side pagination, not a page
+  // dump. 500 is a defensive ceiling — most orgs are well under it. When a
+  // practice grows past this we fail loud (the count below) and add proper
+  // pagination + filter UI.
+  const PATIENT_ROSTER_CAP = 500;
   const patients = await prisma.patient.findMany({
     where: { organizationId: orgId, deletedAt: null },
     include: { chartSummary: true },
     orderBy: { lastName: "asc" },
+    take: PATIENT_ROSTER_CAP,
   });
+  if (patients.length === PATIENT_ROSTER_CAP) {
+    logger.warn({
+      event: "clinic.patients_roster.cap_hit",
+      cap: PATIENT_ROSTER_CAP,
+      orgId,
+      message:
+        "Add server-side pagination before this org grows further.",
+    });
+  }
 
   // Fetch pain outcome logs (last 7 per patient) for sparklines
   const patientIds = patients.map((p) => p.id);
+  // 7 sparkline points per patient × up to 500 patients = 3500. Anything
+  // older isn't rendered anyway, so capping the read avoids dragging years
+  // of pain logs into memory just to throw most of them away.
   const outcomeLogs = patientIds.length
     ? await prisma.outcomeLog.findMany({
         where: {
@@ -36,6 +58,7 @@ export default async function PatientsPage({
           value: true,
           loggedAt: true,
         },
+        take: 7 * PATIENT_ROSTER_CAP,
       })
     : [];
 
@@ -50,6 +73,10 @@ export default async function PatientsPage({
   }
 
   // Fetch last encounter (completed) per patient for "last visit" date
+  // We only consume the FIRST completed encounter per patient (line 67
+  // breaks once each patient is mapped). Capping the read keeps a patient
+  // with 10 years of completed visits from dragging thousands of rows into
+  // a render that uses one date per patient.
   const lastEncounters = patientIds.length
     ? await prisma.encounter.findMany({
         where: {
@@ -61,6 +88,7 @@ export default async function PatientsPage({
           patientId: true,
           completedAt: true,
         },
+        take: PATIENT_ROSTER_CAP * 5,
       })
     : [];
 
@@ -71,12 +99,13 @@ export default async function PatientsPage({
     }
   }
 
-  // Compute status counts
+  // EMR-684: Dr. Patel removed the active/inactive toggles in Doc 2 — a
+  // patient is either visible or soft-deleted, no third state. We still
+  // surface "in intake" (prospects) because that drives clinician workflow,
+  // but "active" and "inactive" buckets are gone.
   const statusCounts = {
     all: patients.length,
-    active: patients.filter((p) => p.status === "active").length,
     prospect: patients.filter((p) => p.status === "prospect").length,
-    inactive: patients.filter((p) => p.status === "inactive").length,
   };
 
   // Compute avg chart readiness
@@ -95,14 +124,14 @@ export default async function PatientsPage({
     firstName: p.firstName,
     lastName: p.lastName,
     status: p.status as string,
+    dob: p.dateOfBirth?.toISOString() ?? null,
+    phone: p.phone,
     presentingConcerns: p.presentingConcerns,
     completenessScore: p.chartSummary?.completenessScore ?? null,
     updatedAt: p.updatedAt.toISOString(),
     lastVisit: lastVisitByPatient.get(p.id) ?? null,
     painTrend: painByPatient.get(p.id)?.reverse() ?? [], // chronological order
   }));
-
-  const activeStatus = searchParams.status ?? "all";
 
   return (
     <PageShell maxWidth="max-w-[1280px]">
@@ -111,10 +140,12 @@ export default async function PatientsPage({
         title="Patient roster"
         actions={
           <div className="flex items-center gap-3">
+            <RouterRefreshFreshness since={new Date().toISOString()} compact />
             <span className="text-sm text-text-muted tabular-nums">
               {patients.length} patient{patients.length === 1 ? "" : "s"}
             </span>
-            <Link href="/signup">
+            <RosterExportMenu />
+            <NewPatientModal>
               <Button variant="secondary" size="sm">
                 <svg
                   width="14"
@@ -133,7 +164,7 @@ export default async function PatientsPage({
                 </svg>
                 New patient
               </Button>
-            </Link>
+            </NewPatientModal>
           </div>
         }
       />
@@ -141,7 +172,7 @@ export default async function PatientsPage({
         patients={serialized}
         statusCounts={statusCounts}
         avgReadiness={avgReadiness}
-        initialStatus={activeStatus}
+        initialSearch={searchParams.q ?? ""}
       />
     </PageShell>
   );

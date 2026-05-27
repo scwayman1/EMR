@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { collectPayment, type CollectResult } from "./actions";
 import { Button } from "@/components/ui/button";
 
 type Method = "card" | "ach" | "cash" | "check";
+
+// Best-effort browser UUID. Falls back to a random-string shim for very
+// old browsers that don't expose crypto.randomUUID. Server-side validates
+// length (min 8) so both shapes pass.
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // Fallback: 32-char hex-ish string. Not cryptographically strong but
+  // still unique enough for double-submit protection on a given device.
+  return `idk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function CollectPaymentForm({
   patientId,
@@ -28,6 +40,10 @@ export function CollectPaymentForm({
   const [amount, setAmount] = useState(
     suggestedAmountCents > 0 ? (suggestedAmountCents / 100).toFixed(2) : "",
   );
+  // Stable across re-renders of this form instance. A retried submit
+  // (e.g. user double-clicks "Collect payment") reuses the same key, so
+  // the server short-circuits and returns the existing payment id.
+  const idempotencyKey = useMemo(() => generateIdempotencyKey(), []);
 
   if (state?.ok) {
     return (
@@ -55,6 +71,7 @@ export function CollectPaymentForm({
   return (
     <form action={formAction} className="space-y-3">
       <input type="hidden" name="patientId" value={patientId} />
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
       {/* Amount input */}
       <div>

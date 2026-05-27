@@ -37,9 +37,9 @@ export default async function RecordsPage({
   if (!patient) {
     return (
       <PageShell maxWidth="max-w-[960px]">
-        <PageHeader eyebrow="Records" title="Your documents" />
+        <PageHeader eyebrow="My Records" title="My Records" />
+        <PatientSectionNav section="health" />
         <p className="text-sm text-text-muted">No patient profile found.</p>
-      <PatientSectionNav section="health" />
       </PageShell>
     );
   }
@@ -86,15 +86,26 @@ export default async function RecordsPage({
   return (
     <PageShell maxWidth="max-w-[960px]">
       <PageHeader
-        eyebrow="Records"
-        title="Your documents"
+        eyebrow="My Records"
+        title="My Records"
         description="Upload notes, labs, and letters. We organize them so your care team is ready for your visit."
         actions={
-          <Link href="/portal/records?upload=1">
-            <Button>Upload a file</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/portal/records/download">
+              <Button variant="secondary">Download my chart</Button>
+            </Link>
+            <Link href="/portal/records/release">
+              <Button variant="secondary">Send to another doctor</Button>
+            </Link>
+            <Link href="/portal/records?upload=1">
+              <Button>Upload a file</Button>
+            </Link>
+          </div>
         }
       />
+
+      {/* EMR-195: section nav with two-row collapsible "More" ribbon */}
+      <PatientSectionNav section="health" />
 
       {/* Filter tabs */}
       <div className="flex items-center gap-1.5 mb-6 overflow-x-auto pb-1 -mx-1 px-1">

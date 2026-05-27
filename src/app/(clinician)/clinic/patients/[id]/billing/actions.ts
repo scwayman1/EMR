@@ -1,23 +1,26 @@
 "use server";
 
+import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { resolvePaymentGateway } from "@/lib/payments";
+import { logger } from "@/lib/observability/log";
 
 // ---------------------------------------------------------------------------
 // Collect payment — records a patient payment against open balance
 // ---------------------------------------------------------------------------
 
 const collectSchema = z.object({
-  patientId: z.string(),
-  amountCents: z.coerce.number().int().positive(),
+  patientId: z.string().min(1),
+  amountCents: z.coerce.number().int().min(1).max(500000), // max $5000 per txn
   method: z.enum(["card", "ach", "cash", "check"]),
   reference: z.string().optional(),
   claimId: z.string().optional(),
   notes: z.string().optional(),
   storedMethodToken: z.string().optional(),
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
 export type CollectResult =
@@ -42,20 +45,39 @@ export async function collectPayment(
     claimId: formData.get("claimId") || undefined,
     notes: formData.get("notes") || undefined,
     storedMethodToken: formData.get("storedMethodToken") || undefined,
+    idempotencyKey: formData.get("idempotencyKey") || undefined,
   });
 
   if (!parsed.success) {
     return { ok: false, error: "Invalid payment data" };
   }
 
-  // Verify patient belongs to org
+  // ── Verify patient belongs to caller's org (and isn't soft-deleted) ──
   const patient = await prisma.patient.findFirst({
     where: {
       id: parsed.data.patientId,
       organizationId: user.organizationId!,
+      deletedAt: null,
     },
   });
-  if (!patient) return { ok: false, error: "Patient not found" };
+  if (!patient) return { ok: false, error: "Patient not found." };
+
+  // ── Idempotency check ────────────────────────────────────────────────
+  // Prefer the client-supplied idempotencyKey (same form re-submit = same
+  // key). Fall back to a server-generated cryptographically strong nonce
+  // so every fresh call still gets a unique reference.
+  // NOTE (follow-up): add a DB-level unique constraint on
+  // Payment.reference once the migration window is available so this
+  // check is enforced at the storage layer too.
+  const clientReferenceId = parsed.data.idempotencyKey ?? `pmt_${randomUUID()}`;
+
+  const existing = await prisma.payment.findFirst({
+    where: { reference: clientReferenceId },
+    select: { id: true },
+  });
+  if (existing) {
+    return { ok: true, paymentId: existing.id };
+  }
 
   // Find the claim to apply payment to — use oldest unpaid claim if not specified
   let targetClaimId = parsed.data.claimId;
@@ -77,7 +99,6 @@ export async function collectPayment(
 
   // ── Route through the payment gateway ────────────────────────
   const gateway = resolvePaymentGateway();
-  const clientReferenceId = `pmt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   let gatewayIntentId: string | undefined;
   let gatewayLast4: string | undefined;
@@ -121,7 +142,7 @@ export async function collectPayment(
     gatewayLast4 = intent.last4;
     gatewayBrand = intent.brand;
   } catch (err) {
-    console.error("[collectPayment] gateway error:", err);
+    logger.error({ event: "clinic.billing.gateway_failed", err });
     return {
       ok: false,
       error:
@@ -133,12 +154,14 @@ export async function collectPayment(
 
   // ── Persist to ledger ─────────────────────────────────────────
   try {
+    // Store the idempotency key as Payment.reference so a retry with the
+    // same key hits the early-exit path above.
     const payment = await prisma.payment.create({
       data: {
         claimId: targetClaimId,
         source: "patient",
         amountCents: parsed.data.amountCents,
-        reference: gatewayIntentId ?? parsed.data.reference ?? null,
+        reference: clientReferenceId,
         notes: parsed.data.notes ?? null,
       },
     });
@@ -172,11 +195,30 @@ export async function collectPayment(
       },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        organizationId: user.organizationId!,
+        actorUserId: user.id,
+        action: "patient.payment.collected",
+        subjectType: "Patient",
+        subjectId: patient.id,
+        metadata: {
+          paymentId: payment.id,
+          claimId: targetClaimId,
+          amountCents: parsed.data.amountCents,
+          method: parsed.data.method,
+          gateway: gateway.name,
+          gatewayIntentId: gatewayIntentId ?? null,
+          paymentReference: clientReferenceId,
+        },
+      },
+    });
+
     revalidatePath(`/clinic/patients/${parsed.data.patientId}`);
     revalidatePath(`/ops/billing`);
     return { ok: true, paymentId: payment.id, gatewayIntentId };
   } catch (err) {
-    console.error("[collectPayment] persistence error:", err);
+    logger.error({ event: "clinic.billing.persist_failed", err });
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Payment persistence failed",
@@ -188,6 +230,12 @@ export async function collectPayment(
 // Record copay collection at check-in
 // ---------------------------------------------------------------------------
 
+const copaySchema = z.object({
+  patientId: z.string().min(1),
+  amountCents: z.coerce.number().int().min(1).max(500000), // max $5000 per copay txn
+  method: z.enum(["card", "cash", "ach", "check"]),
+});
+
 export async function collectCopay(
   patientId: string,
   amountCents: number,
@@ -195,31 +243,70 @@ export async function collectCopay(
 ): Promise<CollectResult> {
   const user = await requireUser();
 
+  // ── Validate inputs ──────────────────────────────────────────────────
+  const parsed = copaySchema.safeParse({ patientId, amountCents, method });
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid copay data" };
+  }
+
+  // ── Verify patient belongs to caller's org ───────────────────────────
+  const patient = await prisma.patient.findFirst({
+    where: {
+      id: parsed.data.patientId,
+      organizationId: user.organizationId!,
+      deletedAt: null,
+    },
+    select: { id: true },
+  });
+  if (!patient) {
+    return { ok: false, error: "Patient not found." };
+  }
+
+  const paymentReference = `copay_${randomUUID()}`;
+
   try {
-    // Create two events: assessed + collected
+    // Create two events: assessed + collected — both attributed to the
+    // acting user so we can audit every money-affecting row.
     await prisma.financialEvent.createMany({
       data: [
         {
           organizationId: user.organizationId!,
-          patientId,
+          patientId: patient.id,
           type: "copay_assessed",
-          amountCents,
+          amountCents: parsed.data.amountCents,
           description: "Copay assessed at check-in",
+          metadata: { paymentReference },
+          createdByUserId: user.id,
         },
         {
           organizationId: user.organizationId!,
-          patientId,
+          patientId: patient.id,
           type: "copay_collected",
-          amountCents,
-          description: `Copay collected (${method})`,
-          metadata: { method },
+          amountCents: parsed.data.amountCents,
+          description: `Copay collected (${parsed.data.method})`,
+          metadata: { method: parsed.data.method, paymentReference },
           createdByUserId: user.id,
         },
       ],
     });
 
-    revalidatePath(`/clinic/patients/${patientId}`);
-    return { ok: true, paymentId: "copay" };
+    await prisma.auditLog.create({
+      data: {
+        organizationId: user.organizationId!,
+        actorUserId: user.id,
+        action: "patient.copay.collected",
+        subjectType: "Patient",
+        subjectId: patient.id,
+        metadata: {
+          amountCents: parsed.data.amountCents,
+          method: parsed.data.method,
+          paymentReference,
+        },
+      },
+    });
+
+    revalidatePath(`/clinic/patients/${patient.id}`);
+    return { ok: true, paymentId: paymentReference };
   } catch (err) {
     return {
       ok: false,

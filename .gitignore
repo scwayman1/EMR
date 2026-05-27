@@ -29,6 +29,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Worktrees
+.worktrees/
+.claude/worktrees/
+
 # Claude Code local state — ignore everything except shared project config
 .claude/*
 !.claude/settings.json
@@ -49,3 +53,22 @@ coverage/
 *.tsbuildinfo
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# Scratch test files with credentials
+test-db.js
+test-prisma.js
+src/app/Untitled-1
+
+# Sensitive temp files
+prod_dump.sql
+env.json
+env_cron.json
+env_worker.json
+payload.json
+payload_cron.json
+payload_worker.json
+check_user.ts
+update_render_env.js
+
+# clerk configuration (can include secrets)
+/.clerk/

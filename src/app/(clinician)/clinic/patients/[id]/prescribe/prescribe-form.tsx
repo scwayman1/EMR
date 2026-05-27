@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { createPrescriptionAction, type PrescribeResult } from "./actions";
 import { Button } from "@/components/ui/button";
-import { Input, Textarea, FieldGroup } from "@/components/ui/input";
+import { Input, FieldGroup } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -19,9 +19,17 @@ import {
   checkInteractions,
   type DrugInteraction,
 } from "@/lib/domain/drug-interactions";
+import {
+  classifyDEASchedule,
+  DEA_SCHEDULE_LABEL,
+  DEA_SCHEDULE_TONE,
+} from "@/lib/domain/dea-schedule";
 import { PharmacySelector } from "./pharmacy-selector";
 import { RxPreview } from "./rx-preview";
 import type { Pharmacy } from "@/lib/domain/e-prescribe";
+import { CuresPlugin } from "@/components/cures/cures-plugin";
+import { CuresTextarea, CuresShortcutHint } from "@/components/cures/cures-textarea";
+import { recommendNarcan } from "@/components/cures/cures-client";
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -68,6 +76,16 @@ const PRODUCT_TYPES = [
   { value: "suppository", label: "Suppository" },
 ] as const;
 
+const mapFormatToProductType = (format: string): string => {
+  const f = format.toLowerCase();
+  if (f === "flower") return "flower";
+  if (f === "tincture") return "tincture";
+  if (f === "edible") return "edible";
+  if (f === "topical") return "topical";
+  if (f === "capsule") return "capsule";
+  return "other";
+};
+
 const DOSE_UNITS = [
   { value: "mg", label: "mg" },
   { value: "mL", label: "mL" },
@@ -75,6 +93,27 @@ const DOSE_UNITS = [
   { value: "puffs", label: "puffs" },
   { value: "grams", label: "grams" },
 ] as const;
+
+// EMR-360: cannabinoids the patient is open to. CBDA + CBG are flagged as
+// "preferred" because Dr. Patel considers their evidence most actionable
+// today; the rest are "promising" research-stage cannabinoids that some
+// patients explicitly want included in their prescription plan.
+const CANNABINOID_OPTIONS: Array<{
+  key: string;
+  label: string;
+  tier: "core" | "preferred" | "promising";
+  blurb: string;
+}> = [
+  { key: "THC", label: "THC", tier: "core", blurb: "Primary intoxicating cannabinoid. Strong evidence for pain, nausea, appetite." },
+  { key: "CBD", label: "CBD", tier: "core", blurb: "Non-intoxicating. Anti-inflammatory, anxiolytic, anti-seizure." },
+  { key: "CBDA", label: "CBDA", tier: "preferred", blurb: "Acidic precursor to CBD. Promising for nausea/inflammation, lower dose threshold." },
+  { key: "CBG", label: "CBG", tier: "preferred", blurb: "'Mother' cannabinoid. Anti-inflammatory, neuroprotective, antibacterial." },
+  { key: "THCV", label: "THCV", tier: "promising", blurb: "Appetite-suppressing, may reduce panic, neuroprotective." },
+  { key: "CBDV", label: "CBDV", tier: "promising", blurb: "Promising for seizures, autism-spectrum behaviors, GI inflammation." },
+  { key: "CBC", label: "CBC", tier: "promising", blurb: "Mood, anti-inflammatory, may enhance other cannabinoid effects." },
+  { key: "CBN", label: "CBN", tier: "promising", blurb: "Sedative profile, sometimes used adjunctively for sleep." },
+  { key: "CBGA", label: "CBGA", tier: "promising", blurb: "Acidic precursor to CBG. Early research; metabolic and antiviral signals." },
+];
 
 const DIAGNOSIS_OPTIONS: DiagnosisOption[] = [
   { code: "F41.1", label: "Generalized anxiety disorder" },
@@ -126,18 +165,27 @@ interface ContraindicationMatch {
   matchedOn: string;
 }
 
+interface CoSignerOption {
+  id: string;
+  label: string;
+}
+
 export function PrescribeForm({
   patientId,
   patientName,
+  patientAddress = "",
   products,
   medications,
   contraindicationMatches = [],
+  eligibleCoSigners = [],
 }: {
   patientId: string;
   patientName: string;
+  patientAddress?: string;
   products: Product[];
   medications: Medication[];
   contraindicationMatches?: ContraindicationMatch[];
+  eligibleCoSigners?: CoSignerOption[];
 }) {
   const [state, formAction] = useFormState<PrescribeResult | null, FormData>(
     createPrescriptionAction,
@@ -149,6 +197,19 @@ export function PrescribeForm({
   const [customProductName, setCustomProductName] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productType, setProductType] = useState("");
+
+  // --- Barcode / SKU scanning ---
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [scannedSku, setScannedSku] = useState<any | null>(null);
+  const [isLoadingSku, setIsLoadingSku] = useState(false);
+  const [barcodeError, setBarcodeError] = useState("");
+
+  // --- Dispensary locator / recommendations ---
+  const [searchAddress, setSearchAddress] = useState(patientAddress || "Seattle, WA");
+  const [nearbyDispensaries, setNearbyDispensaries] = useState<any[]>([]);
+  const [isLoadingNearby, setIsLoadingNearby] = useState(false);
+  const [nearbyError, setNearbyError] = useState("");
+  const [selectedDispensaryId, setSelectedDispensaryId] = useState<string | null>(null);
 
   // --- Dosing ---
   const [volumePerDose, setVolumePerDose] = useState("");
@@ -169,8 +230,15 @@ export function PrescribeForm({
     (m) => m.requiresOverride,
   );
   const hasBlockingContraindication = blockingContraindications.length > 0;
+  const hasAbsoluteContraindication = contraindicationMatches.some(
+    (m) => m.severity === "absolute",
+  );
   const [contraindicationOverrideReason, setContraindicationOverrideReason] = useState("");
   const [contraindicationAcknowledged, setContraindicationAcknowledged] = useState(false);
+  const [contraindicationCoSignerUserId, setContraindicationCoSignerUserId] = useState("");
+
+  // --- Cannabinoid preferences (EMR-360) ---
+  const [openCannabinoids, setOpenCannabinoids] = useState<string[]>(["THC", "CBD"]);
 
   // --- Diagnoses ---
   const [selectedDiagnoses, setSelectedDiagnoses] = useState<DiagnosisOption[]>(
@@ -188,11 +256,27 @@ export function PrescribeForm({
   const [signing, setSigning] = useState(false);
   const [signed, setSigned] = useState(false);
 
+  // --- EMR-781: CURES + Narcan ---
+  const [curesAcknowledged, setCuresAcknowledged] = useState(false);
+  const [narcanDecision, setNarcanDecision] =
+    useState<"co_prescribe" | "declined" | null>(null);
+
   // Derived state
   const selectedProduct = useMemo(
     () => products.find((p) => p.id === selectedProductId) ?? null,
     [products, selectedProductId]
   );
+
+  // EMR-350: classify the medication against the DEA schedule table so the
+  // "Controlled" badge + override guardrails can fire when applicable.
+  const controlledMatch = useMemo(() => {
+    const name = selectedProduct?.name ?? customProductName;
+    return name ? classifyDEASchedule(name) : null;
+  }, [selectedProduct, customProductName]);
+  const [controlledAcknowledged, setControlledAcknowledged] = useState(false);
+  useEffect(() => {
+    setControlledAcknowledged(false);
+  }, [controlledMatch?.schedule]);
 
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products;
@@ -233,22 +317,100 @@ export function PrescribeForm({
     }
   }, [volumePerDose, frequencyPerDay, daysSupply, quantityManual]);
 
+  const handleBarcodeSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const sku = barcodeInput.trim();
+    if (!sku) return;
+
+    setIsLoadingSku(true);
+    setBarcodeError("");
+    setScannedSku(null);
+
+    try {
+      const res = await fetch(`/api/dispensary/sku?sku=${encodeURIComponent(sku)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setScannedSku(data);
+        setCustomProductName(data.brand ? `${data.brand} - ${data.name}` : data.name);
+        setSelectedProductId(""); // clear selected formulary product
+        
+        const mappedType = mapFormatToProductType(data.format);
+        if (mappedType) {
+          setProductType(mappedType);
+        }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setBarcodeError(errData.error === "sku_not_found" ? "SKU or UPC not found in catalog." : "Failed to resolve barcode.");
+      }
+    } catch (err) {
+      setBarcodeError("Network error occurred.");
+    } finally {
+      setIsLoadingSku(false);
+    }
+  };
+
+  const fetchNearbyDispensaries = useCallback(async () => {
+    const address = searchAddress.trim();
+    if (!address) return;
+
+    setIsLoadingNearby(true);
+    setNearbyError("");
+
+    try {
+      let urlStr = `/api/dispensary/nearby?address=${encodeURIComponent(address)}`;
+      if (scannedSku) {
+        urlStr += `&sku=${encodeURIComponent(scannedSku.sku)}`;
+      } else if (selectedProduct) {
+        urlStr += `&name=${encodeURIComponent(selectedProduct.name)}`;
+      } else if (customProductName) {
+        urlStr += `&name=${encodeURIComponent(customProductName)}`;
+      }
+
+      const res = await fetch(urlStr);
+      if (res.ok) {
+        const data = await res.json();
+        setNearbyDispensaries(data.results || []);
+      } else {
+        setNearbyError("Failed to load nearby dispensaries.");
+      }
+    } catch (err) {
+      setNearbyError("Network error loading dispensaries.");
+    } finally {
+      setIsLoadingNearby(false);
+    }
+  }, [searchAddress, scannedSku, selectedProduct, customProductName]);
+
+  useEffect(() => {
+    fetchNearbyDispensaries();
+  }, [fetchNearbyDispensaries]);
+
   // Run interaction check when a product is selected and patient has medications
   const runInteractionCheck = useCallback(() => {
-    if (!selectedProduct || medications.length === 0) {
+    if (!selectedProduct && !scannedSku) {
+      setInteractions([]);
+      return;
+    }
+    if (medications.length === 0) {
       setInteractions([]);
       return;
     }
 
     const cannabinoids: string[] = [];
-    if (selectedProduct.thcConcentration && selectedProduct.thcConcentration > 0)
-      cannabinoids.push("THC");
-    if (selectedProduct.cbdConcentration && selectedProduct.cbdConcentration > 0)
-      cannabinoids.push("CBD");
-    if (selectedProduct.cbnConcentration && selectedProduct.cbnConcentration > 0)
-      cannabinoids.push("CBN");
-    if (selectedProduct.cbgConcentration && selectedProduct.cbgConcentration > 0)
-      cannabinoids.push("CBG");
+    if (selectedProduct) {
+      if (selectedProduct.thcConcentration && selectedProduct.thcConcentration > 0)
+        cannabinoids.push("THC");
+      if (selectedProduct.cbdConcentration && selectedProduct.cbdConcentration > 0)
+        cannabinoids.push("CBD");
+      if (selectedProduct.cbnConcentration && selectedProduct.cbnConcentration > 0)
+        cannabinoids.push("CBN");
+      if (selectedProduct.cbgConcentration && selectedProduct.cbgConcentration > 0)
+        cannabinoids.push("CBG");
+    } else if (scannedSku) {
+      if ((scannedSku.thcMgPerUnit && scannedSku.thcMgPerUnit > 0) || (scannedSku.thcPercent && scannedSku.thcPercent > 0))
+        cannabinoids.push("THC");
+      if ((scannedSku.cbdMgPerUnit && scannedSku.cbdMgPerUnit > 0) || (scannedSku.cbdPercent && scannedSku.cbdPercent > 0))
+        cannabinoids.push("CBD");
+    }
 
     if (cannabinoids.length === 0) {
       setInteractions([]);
@@ -259,7 +421,7 @@ export function PrescribeForm({
     const results = checkInteractions(medNames, cannabinoids);
     setInteractions(results);
     setInteractionAcknowledged(false);
-  }, [selectedProduct, medications]);
+  }, [selectedProduct, scannedSku, medications]);
 
   useEffect(() => {
     runInteractionCheck();
@@ -272,7 +434,33 @@ export function PrescribeForm({
   const mustAcknowledgeContraindication =
     hasBlockingContraindication &&
     (!contraindicationAcknowledged || contraindicationOverrideReason.trim().length < 20);
-  const mustAcknowledge = mustAcknowledgeInteraction || mustAcknowledgeContraindication;
+  const mustAcknowledgeControlled = !!controlledMatch && !controlledAcknowledged;
+
+  // EMR-781: Narcan recommendation — driven by the candidate Rx + the
+  // patient's existing opioid meds. The block on signing only fires
+  // when an opioid is detected and the prescriber hasn't recorded a
+  // decision yet.
+  const candidateMedicationName =
+    selectedProduct?.name ?? (customProductName.trim() || null);
+  const narcanRecommendation = useMemo(
+    () =>
+      recommendNarcan([
+        ...medications.map((m) => m.name),
+        ...(candidateMedicationName ? [candidateMedicationName] : []),
+      ]),
+    [medications, candidateMedicationName],
+  );
+  const mustAcknowledgeNarcan =
+    narcanRecommendation.recommended && narcanDecision === null;
+  const mustAcknowledgeCures =
+    !!controlledMatch && !curesAcknowledged;
+
+  const mustAcknowledge =
+    mustAcknowledgeInteraction ||
+    mustAcknowledgeContraindication ||
+    mustAcknowledgeControlled ||
+    mustAcknowledgeNarcan ||
+    mustAcknowledgeCures;
 
   // Toggle diagnosis selection
   function toggleDiagnosis(dx: DiagnosisOption) {
@@ -336,6 +524,13 @@ export function PrescribeForm({
             name="contraindicationIds"
             value={JSON.stringify(blockingContraindications.map((c) => c.id))}
           />
+          {contraindicationCoSignerUserId && (
+            <input
+              type="hidden"
+              name="contraindicationCoSignerUserId"
+              value={contraindicationCoSignerUserId}
+            />
+          )}
         </>
       )}
 
@@ -426,6 +621,35 @@ export function PrescribeForm({
                     I take clinical responsibility for this override
                   </label>
                 </div>
+
+                {hasAbsoluteContraindication && eligibleCoSigners.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border/60">
+                    <label
+                      htmlFor="contraindicationCoSigner"
+                      className="block text-xs font-medium uppercase tracking-wider text-text-subtle mb-2"
+                    >
+                      Optional dual sign-off (recommended for absolute contraindications)
+                    </label>
+                    <select
+                      id="contraindicationCoSigner"
+                      value={contraindicationCoSignerUserId}
+                      onChange={(e) =>
+                        setContraindicationCoSignerUserId(e.target.value)
+                      }
+                      className={SELECT_CLASS}
+                    >
+                      <option value="">No co-signer</option>
+                      {eligibleCoSigners.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[10px] text-text-subtle mt-1.5">
+                      A second clinician's name will be recorded alongside the override in the audit log.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -451,13 +675,163 @@ export function PrescribeForm({
       {/* ── Inscription — Medication ─────────────────────────── */}
       <Card className={CARD_CLASS}>
         <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Medication</CardTitle>
+          <CardTitle className="text-lg tracking-tight flex items-center gap-2 flex-wrap">
+            Medication
+            {controlledMatch && (
+              <Badge
+                tone={DEA_SCHEDULE_TONE[controlledMatch.schedule]}
+                className="text-[10px] uppercase tracking-wider gap-1"
+                aria-label={`Controlled substance: ${DEA_SCHEDULE_LABEL[controlledMatch.schedule]}`}
+              >
+                <span aria-hidden>🛂</span>
+                Controlled · {DEA_SCHEDULE_LABEL[controlledMatch.schedule]}
+              </Badge>
+            )}
+          </CardTitle>
           <CardDescription>
             Select from your organization&apos;s formulary or enter a custom
             medication.
           </CardDescription>
+          {controlledMatch && (
+            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100 dark:border-amber-900">
+              <p className="font-semibold flex items-center gap-1.5">
+                <span aria-hidden>⚠️</span>
+                {DEA_SCHEDULE_LABEL[controlledMatch.schedule]} controlled substance
+              </p>
+              <p className="mt-1 text-xs leading-relaxed">
+                {controlledMatch.rationale} A signed controlled-substance
+                attestation is required before this prescription can be
+                transmitted, and the action is logged to the audit trail.
+              </p>
+              <label className="mt-3 flex items-start gap-2 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="controlledAttested"
+                  checked={controlledAcknowledged}
+                  onChange={(e) => setControlledAcknowledged(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-700 focus:ring-amber-400/40"
+                />
+                <span>
+                  I confirm I&apos;m authorized to prescribe{" "}
+                  {DEA_SCHEDULE_LABEL[controlledMatch.schedule]} substances and
+                  have reviewed PMP/PDMP data for this patient.
+                </span>
+              </label>
+              <input
+                type="hidden"
+                name="controlledSchedule"
+                value={controlledMatch.schedule}
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Barcode / SKU scan input */}
+          <div className="border border-border/80 rounded-xl p-4 bg-muted/30">
+            <h4 className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <span>🏷️</span> Barcode & SKU Resolver
+            </h4>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Input
+                  id="barcodeInput"
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleBarcodeSubmit();
+                    }
+                  }}
+                  placeholder="Scan SKU/UPC barcode or enter SKU code..."
+                  className="bg-background pr-8"
+                />
+                {barcodeInput && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBarcodeInput("");
+                      setBarcodeError("");
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-subtle hover:text-text text-sm font-semibold"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleBarcodeSubmit()}
+                disabled={isLoadingSku || !barcodeInput.trim()}
+                className="btn btn-secondary px-4 py-2 text-sm flex items-center justify-center font-medium bg-white border border-border hover:bg-muted text-text font-medium disabled:opacity-50"
+              >
+                {isLoadingSku ? "Resolving..." : "Resolve"}
+              </button>
+            </div>
+            {barcodeError && (
+              <p className="text-xs text-red-600 mt-1.5 flex items-center gap-1">
+                <span>⚠️</span> {barcodeError}
+              </p>
+            )}
+          </div>
+
+          {/* Resolved SKU details */}
+          {scannedSku && (
+            <div className="p-4 rounded-xl border border-emerald-500/20 bg-emerald-50/50 flex items-start justify-between gap-4 animate-fadeIn">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Badge tone="success" className="text-[10px] uppercase tracking-wider">
+                    Resolved SKU
+                  </Badge>
+                  <span className="text-[10px] text-emerald-800 font-semibold px-2 py-0.5 rounded-full bg-emerald-100">
+                    {scannedSku.sku}
+                  </span>
+                </div>
+                <h4 className="text-sm font-semibold text-text mt-1">
+                  {scannedSku.brand && `${scannedSku.brand} - `}{scannedSku.name}
+                </h4>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Format: <span className="font-semibold text-text">{scannedSku.format}</span>
+                  {scannedSku.upc && ` · UPC: ${scannedSku.upc}`}
+                </p>
+                <div className="flex gap-4 mt-2 text-xs">
+                  {(scannedSku.thcMgPerUnit !== null || scannedSku.thcPercent !== null) && (
+                    <span className="text-emerald-800 font-medium">
+                      THC: <span className="font-semibold">{scannedSku.thcMgPerUnit !== null ? `${scannedSku.thcMgPerUnit} mg/unit` : `${scannedSku.thcPercent}%`}</span>
+                    </span>
+                  )}
+                  {(scannedSku.cbdMgPerUnit !== null || scannedSku.cbdPercent !== null) && (
+                    <span className="text-emerald-800 font-medium">
+                      CBD: <span className="font-semibold">{scannedSku.cbdMgPerUnit !== null ? `${scannedSku.cbdMgPerUnit} mg/unit` : `${scannedSku.cbdPercent}%`}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                {scannedSku.coaUrl && (
+                  <a
+                    href={scannedSku.coaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-accent hover:underline flex items-center gap-1 font-medium bg-white px-2.5 py-1 rounded-lg border border-border shadow-sm"
+                  >
+                    📄 COA Lab Report
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setScannedSku(null);
+                    setCustomProductName("");
+                  }}
+                  className="text-xs text-red-600 hover:underline"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Search / filter */}
           <FieldGroup label="Search products" htmlFor="productSearch">
             <Input
@@ -574,6 +948,211 @@ export function PrescribeForm({
               ))}
             </select>
           </FieldGroup>
+        </CardContent>
+      </Card>
+
+      {/* ── Cannabinoid preferences (EMR-360) ─────────────────── */}
+      <Card className={CARD_CLASS}>
+        <CardHeader>
+          <CardTitle className="text-lg tracking-tight">Cannabinoids open to</CardTitle>
+          <CardDescription>
+            Tag the cannabinoids this patient is willing to include in their
+            plan. Selections are saved with the prescription so future
+            recommendations can prioritize matching products.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <input
+            type="hidden"
+            name="openCannabinoids"
+            value={JSON.stringify(openCannabinoids)}
+          />
+          {(["core", "preferred", "promising"] as const).map((tier) => {
+            const options = CANNABINOID_OPTIONS.filter((c) => c.tier === tier);
+            if (options.length === 0) return null;
+            const tierLabel =
+              tier === "core"
+                ? "Core (most studied)"
+                : tier === "preferred"
+                  ? "Preferred (Dr. Patel: most actionable today)"
+                  : "Promising (research-stage, patient may opt in)";
+            return (
+              <div key={tier} className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-subtle">
+                  {tierLabel}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {options.map((c) => {
+                    const selected = openCannabinoids.includes(c.key);
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onClick={() =>
+                          setOpenCannabinoids((prev) =>
+                            prev.includes(c.key)
+                              ? prev.filter((k) => k !== c.key)
+                              : [...prev, c.key],
+                          )
+                        }
+                        aria-pressed={selected}
+                        title={c.blurb}
+                        className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
+                          selected
+                            ? "bg-accent text-white border-accent"
+                            : "bg-white text-text-muted border-border hover:border-accent/50"
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      {/* ── Fulfilling Provider / Dispensary Locator ─────────── */}
+      <Card tone="raised" className="relative overflow-hidden">
+        <CardHeader>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg tracking-tight">Fulfilling Provider</CardTitle>
+              <CardDescription>
+                Search and select a licensed dispensary within a 30-mile radius to fulfill this prescription.
+              </CardDescription>
+            </div>
+            <Badge tone={selectedDispensaryId ? "success" : "warning"} className="uppercase tracking-wider">
+              {selectedDispensaryId ? "Provider Locked" : "Select Provider"}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Address search inputs */}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <FieldGroup label="Patient search coordinates / address" htmlFor="searchAddress">
+                <Input
+                  id="searchAddress"
+                  value={searchAddress}
+                  onChange={(e) => setSearchAddress(e.target.value)}
+                  placeholder="Enter patient city, state, or address..."
+                  className="bg-background"
+                />
+              </FieldGroup>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchNearbyDispensaries()}
+              disabled={isLoadingNearby}
+              className="btn btn-secondary px-4 py-2 h-[42px] text-sm flex items-center justify-center font-medium bg-white border border-border hover:bg-muted text-text"
+            >
+              {isLoadingNearby ? "Searching..." : "Search"}
+            </button>
+          </div>
+
+          {/* Results list */}
+          {nearbyError && (
+            <p className="text-sm text-red-600 font-medium">
+              ⚠️ {nearbyError}
+            </p>
+          )}
+
+          {isLoadingNearby ? (
+            <div className="flex flex-col items-center justify-center py-6 text-text-muted gap-2">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600" />
+              <p className="text-xs">Finding matching dispensaries within 30 miles...</p>
+            </div>
+          ) : nearbyDispensaries.length === 0 ? (
+            <div className="p-4 rounded-xl border border-dashed border-border bg-muted/20 text-center text-text-muted">
+              <p className="text-sm">No matching dispensaries carrying this product found within 30 miles.</p>
+              <p className="text-xs mt-1">Try updating the search location or widening target parameters.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+                Nearby Dispensaries carrying item ({nearbyDispensaries.length})
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {nearbyDispensaries.map((disp) => {
+                  const isSelected = selectedDispensaryId === disp.id;
+                  const matchSku = disp.skus?.[0];
+                  return (
+                    <div
+                      key={disp.id}
+                      onClick={() => {
+                        setSelectedDispensaryId(isSelected ? null : disp.id);
+                      }}
+                      className={`relative flex flex-col p-4 rounded-xl border-2 transition-all cursor-pointer select-none ${
+                        isSelected
+                          ? "border-emerald-500 bg-emerald-50/40 shadow-sm"
+                          : "border-border hover:border-accent/40 hover:bg-muted/10"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h5 className="font-semibold text-sm text-text leading-tight">
+                            {disp.name}
+                          </h5>
+                          <p className="text-xs text-text-muted mt-0.5">
+                            📍 {disp.geo.addressLine1}, {disp.geo.city}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 shrink-0">
+                          {disp.distanceMiles.toFixed(1)} mi
+                        </span>
+                      </div>
+
+                      {/* Stock & pricing details */}
+                      {matchSku ? (
+                        <div className="mt-3 pt-3 border-t border-dashed border-border flex items-center justify-between text-xs">
+                          <div>
+                            <span className="text-text-muted">Price: </span>
+                            <span className="font-semibold text-text">${(matchSku.priceCents / 100).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-text-muted">Stock: </span>
+                            <span className={`font-semibold ${matchSku.inventoryCount && matchSku.inventoryCount > 0 ? "text-emerald-700" : "text-amber-700"}`}>
+                              {matchSku.inventoryCount !== null ? `${matchSku.inventoryCount} units` : "In Stock"}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 pt-3 border-t border-dashed border-border text-xs text-text-subtle">
+                          Stock levels synchronized recently
+                        </div>
+                      )}
+
+                      {/* Locked state indicator */}
+                      {isSelected && (
+                        <div className="absolute right-3 bottom-3 flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          <span>🔒</span> Fulfilling Provider
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Hidden inputs for selected pharmacy/dispensary to submit with the form */}
+          {selectedDispensaryId && (
+            <>
+              <input
+                type="hidden"
+                name="pharmacyId"
+                value={selectedDispensaryId}
+              />
+              <input
+                type="hidden"
+                name="pharmacyName"
+                value={nearbyDispensaries.find((d) => d.id === selectedDispensaryId)?.name ?? ""}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -721,19 +1300,19 @@ export function PrescribeForm({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!selectedProductId && (
+          {!selectedProductId && !scannedSku && (
             <p className="text-sm text-text-subtle italic">
-              Select a product from the formulary to run the interaction check.
+              Select a product from the formulary or scan a barcode to run the interaction check.
             </p>
           )}
 
-          {selectedProductId && medications.length === 0 && (
+          {(selectedProductId || scannedSku) && medications.length === 0 && (
             <p className="text-sm text-text-subtle italic">
               No conventional medications on file. No interactions to check.
             </p>
           )}
 
-          {selectedProductId && medications.length > 0 && interactions.length === 0 && (
+          {(selectedProductId || scannedSku) && medications.length > 0 && interactions.length === 0 && (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-accent-soft/50 border border-[color:var(--success)]/20">
               <InteractionBadge severity="green" />
               <span className="text-sm text-text">
@@ -799,12 +1378,35 @@ export function PrescribeForm({
         </CardContent>
       </Card>
 
+      {/* ── EMR-781: CURES plugin ──────────────────────────────── */}
+      <CuresPlugin
+        patientId={patientId}
+        patientName={patientName}
+        existingMedicationNames={medications.map((m) => m.name)}
+        candidateMedicationName={candidateMedicationName}
+        narcan={narcanRecommendation}
+        onCuresAcknowledgedChange={setCuresAcknowledged}
+        onNarcanDecisionChange={setNarcanDecision}
+      />
+
       {/* ── Section 4: Diagnosis Linking ───────────────────────── */}
       <Card tone="raised">
         <CardHeader>
-          <CardTitle className="text-lg tracking-tight">Diagnosis</CardTitle>
+          <CardTitle className="text-lg tracking-tight flex items-center gap-2">
+            Diagnosis
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200 dark:border-emerald-900"
+              title="A signed prescription with a linked ICD-10 classifies this as medical cannabis use (EMR-346)."
+            >
+              <span aria-hidden>🩺</span>
+              Medical use
+            </span>
+          </CardTitle>
           <CardDescription>
-            Link relevant ICD-10 diagnosis codes to this prescription.
+            Link relevant ICD-10 diagnosis codes to this prescription. A
+            documented diagnosis is what classifies cannabis use as
+            <em className="not-italic font-medium"> medical </em>
+            rather than recreational.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -914,28 +1516,30 @@ export function PrescribeForm({
             htmlFor="noteToPatient"
             hint="Shown to the patient on their medications page"
           >
-            <Textarea
+            <CuresTextarea
               id="noteToPatient"
               name="noteToPatient"
-              rows={3}
+              rows={4}
               value={noteToPatient}
-              onChange={(e) => setNoteToPatient(e.target.value)}
+              onChange={setNoteToPatient}
               placeholder="Take with food. Avoid driving for 2 hours after dose."
             />
+            <CuresShortcutHint />
           </FieldGroup>
           <FieldGroup
             label="Note to pharmacy"
             htmlFor="noteToPharmacy"
             hint="Internal only - not shown to patient"
           >
-            <Textarea
+            <CuresTextarea
               id="noteToPharmacy"
               name="noteToPharmacy"
-              rows={2}
+              rows={3}
               value={noteToPharmacy}
-              onChange={(e) => setNoteToPharmacy(e.target.value)}
+              onChange={setNoteToPharmacy}
               placeholder="Brand medically necessary. Do not substitute."
             />
+            <CuresShortcutHint />
           </FieldGroup>
         </CardContent>
       </Card>

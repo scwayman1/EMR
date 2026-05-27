@@ -14,6 +14,11 @@ import {
 } from "./memory/clinical-observation";
 import { startReasoning } from "./memory/agent-reasoning";
 import { formatPersonaForPrompt, resolvePersona } from "./persona";
+import {
+  scanForSafetyFlags,
+  tierToUrgency,
+  EMERGENCY_RESPONSE_COPY,
+} from "./safety/cannabis-red-flags";
 
 // ---------------------------------------------------------------------------
 // Correspondence Nurse Agent
@@ -115,70 +120,18 @@ const output = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Safety keywords — hard-coded list that ALWAYS flags regardless of LLM
+// Safety keywords — delegated to shared bilingual scanner in
+// `./safety/cannabis-red-flags.ts`. The cannabis-aware tier taxonomy
+// (emergency / cannabis_specific / high) replaces the old flat EN-only
+// keyword lists so a new red flag only needs to be added in one place.
 // ---------------------------------------------------------------------------
 
-const EMERGENCY_KEYWORDS = [
-  "chest pain",
-  "difficulty breathing",
-  "trouble breathing",
-  "can't breathe",
-  "suicidal",
-  "suicide",
-  "kill myself",
-  "hurting myself",
-  "hurt myself",
-  "end it all",
-  "bleeding",
-  "fainted",
-  "passed out",
-  "severe allergic",
-  "anaphylax",
-  "stroke",
-  "numbness on one side",
-  "slurred speech",
-  "worst headache",
-  "poisoning",
-  "overdose",
-];
-
-const HIGH_URGENCY_KEYWORDS = [
-  "worse",
-  "worsening",
-  "much worse",
-  "can't sleep",
-  "not working",
-  "side effect",
-  "rash",
-  "swelling",
-  "confused",
-  "fever",
-  "vomiting",
-  "severe",
-];
-
 function detectSafetyFlags(text: string): { flags: string[]; forceUrgency: string | null } {
-  const lowered = text.toLowerCase();
-  const flags: string[] = [];
-  let forceUrgency: string | null = null;
-
-  for (const kw of EMERGENCY_KEYWORDS) {
-    if (lowered.includes(kw)) {
-      flags.push(`🚨 Emergency keyword: "${kw}"`);
-      forceUrgency = "emergency";
-    }
-  }
-
-  if (!forceUrgency) {
-    for (const kw of HIGH_URGENCY_KEYWORDS) {
-      if (lowered.includes(kw)) {
-        flags.push(`⚠ High-urgency keyword: "${kw}"`);
-        forceUrgency = forceUrgency === "emergency" ? "emergency" : "high";
-      }
-    }
-  }
-
-  return { flags, forceUrgency };
+  const scan = scanForSafetyFlags(text);
+  return {
+    flags: scan.flags,
+    forceUrgency: tierToUrgency(scan.topTier),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -603,23 +556,41 @@ The newMemory field is optional but important. If this message reveals something
     if (!triage) {
       const fallbackUrgency =
         forceUrgency ?? (patientMessageText.length > 0 ? "routine" : "low");
+
+      // If the deterministic scan hit an emergency, the fallback draft MUST
+      // point the patient at 911 / 988 / Poison Control. A "we'll get back
+      // to you" reply to a stroke or suicidal-ideation message is
+      // unacceptable whether the LLM was available or not.
+      const isEmergency = fallbackUrgency === "emergency";
+      const fallbackBody = isEmergency
+        ? `Hi ${patient.firstName} — I read your message and I'm worried about you. ${EMERGENCY_RESPONSE_COPY.en}`
+        : `Hi ${patient.firstName}, thanks for reaching out. I want to make sure I give you a thoughtful response — ` +
+          `one of our care team members will review your message and get back to you shortly.`;
+
       triage = {
         urgency: fallbackUrgency as any,
-        category: "unknown",
+        category: isEmergency ? "symptom_report" : "unknown",
         safetyFlags: [],
-        summary: patientMessageText
-          ? `${patient.firstName} sent a message about their care. Needs human review.`
-          : `Thread with ${patient.firstName} — awaiting message.`,
-        suggestedNextActions: [
-          "Review the patient's message and craft a personalized response",
-        ],
-        draftBody:
-          `Hi ${patient.firstName}, thanks for reaching out. I want to make sure I give you a thoughtful response — ` +
-          `one of our care team members will review your message and get back to you shortly.`,
+        summary: isEmergency
+          ? `EMERGENCY flags detected in ${patient.firstName}'s message — fallback draft instructs them to call 911/988/Poison Control. Clinician touch needed immediately.`
+          : patientMessageText
+            ? `${patient.firstName} sent a message about their care. Needs human review.`
+            : `Thread with ${patient.firstName} — awaiting message.`,
+        suggestedNextActions: isEmergency
+          ? [
+              "Call the patient immediately",
+              "Verify emergency services / crisis line engagement",
+              "Document outreach in the chart",
+            ]
+          : [
+              "Review the patient's message and craft a personalized response",
+            ],
+        draftBody: fallbackBody,
         newMemory: null,
       };
       trace.step("used deterministic fallback triage", {
         urgency: fallbackUrgency,
+        emergencyCopy: isEmergency,
       });
     }
 

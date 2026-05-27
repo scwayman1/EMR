@@ -3,7 +3,26 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { formatSig, DEMO_PHARMACIES } from "@/lib/domain/e-prescribe";
+
+// EMR-350 — DEA schedule + controlled-substance gating.
+//
+// Cannabis is federally Schedule I; FDA-approved cannabinoid drugs sit
+// further down the schedule (Epidiolex → V, Marinol/Syndros → III). We
+// derive the schedule from the product type and the presence of THC so
+// the prescriber sees the correct controlled-substance posture before
+// they sign.
+type DeaSchedule = "I" | "II" | "III" | "IV" | "V";
+
+function deriveDeaSchedule(productType: string, thcMg?: number, cbdMg?: number): DeaSchedule | null {
+  const pt = productType.toLowerCase();
+  if (/epidiolex|cannabidiol oral/.test(pt)) return "V";
+  if (/marinol|dronabinol|syndros|cesamet|nabilone/.test(pt)) return "III";
+  if ((thcMg ?? 0) > 0) return "I";
+  if ((cbdMg ?? 0) > 0 && (thcMg ?? 0) === 0) return null; // hemp-derived CBD is not federally scheduled
+  return null;
+}
 
 interface RxPreviewProps {
   patientName: string;
@@ -59,6 +78,38 @@ export function RxPreview({
   const pharmacy = pharmacyId ? DEMO_PHARMACIES.find((p) => p.id === pharmacyId) : null;
   const sig = formatSig({ doseAmount, doseUnit, frequency, route, timingInstructions });
   const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  const deaSchedule = deriveDeaSchedule(productType, thcMg, cbdMg);
+  const isControlled = deaSchedule !== null;
+  const confirm = useConfirm();
+
+  async function handleSignClick() {
+    if (signing || signed) return;
+    if (isControlled) {
+      // Required confirmation step before signing a controlled prescription.
+      // ConfirmDialog gives us accessible focus + theme-aware copy; the
+      // server-side DEA gate is still the source of truth.
+      const ok = await confirm({
+        title: `Sign Schedule ${deaSchedule} prescription?`,
+        description: (
+          <span>
+            This is a controlled substance. By continuing you attest that:
+            <ul className="mt-2 ml-4 list-disc space-y-0.5">
+              <li>the patient and indication are correct,</li>
+              <li>quantity and refills follow Schedule {deaSchedule} limits,</li>
+              <li>
+                you are authorized to prescribe Schedule {deaSchedule} in this
+                state.
+              </li>
+            </ul>
+          </span>
+        ),
+        severity: "warning",
+        confirmLabel: "Sign and transmit",
+      });
+      if (!ok) return;
+    }
+    onSign();
+  }
 
   return (
     <Card className="border-2 border-accent/30 bg-white">
@@ -95,8 +146,13 @@ export function RxPreview({
           <p className="text-sm text-text-muted mt-1">
             {productType} &middot; {route}
           </p>
-          {(thcMg || cbdMg) && (
-            <div className="flex items-center gap-2 mt-2">
+          {(isControlled || thcMg || cbdMg) && (
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              {isControlled && (
+                <Badge tone="warning" className="text-[10px] uppercase tracking-wider">
+                  Controlled · DEA Schedule {deaSchedule}
+                </Badge>
+              )}
               {thcMg && thcMg > 0 && (
                 <Badge tone="warning" className="text-[10px]">THC {thcMg}mg</Badge>
               )}
@@ -175,8 +231,12 @@ export function RxPreview({
               <p className="text-sm font-medium text-text">{providerName}</p>
             </div>
             {!signed ? (
-              <Button onClick={onSign} disabled={signing} size="sm">
-                {signing ? "Signing..." : "Sign & send"}
+              <Button onClick={handleSignClick} disabled={signing} size="sm">
+                {signing
+                  ? "Signing..."
+                  : isControlled
+                    ? "Sign controlled Rx"
+                    : "Sign & send"}
               </Button>
             ) : (
               <div className="flex items-center gap-2">

@@ -2,11 +2,16 @@
 
 import { requireRole } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { generateShareToken } from "@/lib/auth/share-tokens";
+import {
+  createPatientShareLink,
+  PATIENT_SHARE_TTL_HOURS,
+} from "@/lib/patient/share-link";
 
 export interface ShareLinkResult {
   ok: boolean;
   url?: string;
+  expiresAt?: string;
+  ttlHours?: number;
   error?: string;
 }
 
@@ -22,9 +27,13 @@ export async function createShareLink(): Promise<ShareLinkResult> {
     return { ok: false, error: "Patient profile not found" };
   }
 
-  const token = generateShareToken(patient.id);
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://leafjourney.com";
-  const url = `${baseUrl}/share/${token}`;
+  const link = createPatientShareLink(patient.id, baseUrl);
 
-  return { ok: true, url };
+  return {
+    ok: true,
+    url: link.url,
+    expiresAt: link.expiresAt.toISOString(),
+    ttlHours: PATIENT_SHARE_TTL_HOURS,
+  };
 }

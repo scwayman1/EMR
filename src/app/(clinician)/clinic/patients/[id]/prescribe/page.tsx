@@ -16,26 +16,42 @@ export const metadata = { title: "New Prescription" };
 export default async function PrescribePage({ params }: PageProps) {
   const user = await requireUser();
 
-  const [patient, products, medications, chartSummary] = await Promise.all([
-    prisma.patient.findFirst({
-      where: {
-        id: params.id,
-        organizationId: user.organizationId!,
-        deletedAt: null,
-      },
-    }),
-    prisma.cannabisProduct.findMany({
-      where: { organizationId: user.organizationId!, active: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.patientMedication.findMany({
-      where: { patientId: params.id, active: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.chartSummary.findUnique({
-      where: { patientId: params.id },
-    }),
-  ]);
+  const [patient, products, medications, chartSummary, eligibleCoSigners] =
+    await Promise.all([
+      prisma.patient.findFirst({
+        where: {
+          id: params.id,
+          organizationId: user.organizationId!,
+          deletedAt: null,
+        },
+      }),
+      prisma.cannabisProduct.findMany({
+        where: { organizationId: user.organizationId!, active: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.patientMedication.findMany({
+        where: { patientId: params.id, active: true },
+        orderBy: { name: "asc" },
+      }),
+      prisma.chartSummary.findUnique({
+        where: { patientId: params.id },
+      }),
+      // EMR-088: optional dual sign-off — list other clinicians/owners in the
+      // org so the prescriber can route a high-risk override for co-signature.
+      prisma.user.findMany({
+        where: {
+          id: { not: user.id },
+          memberships: {
+            some: {
+              organizationId: user.organizationId!,
+              role: { in: ["clinician", "practice_owner"] },
+            },
+          },
+        },
+        select: { id: true, firstName: true, lastName: true },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+      }),
+    ]);
 
   if (!patient) notFound();
 
@@ -48,6 +64,16 @@ export default async function PrescribePage({ params }: PageProps) {
     historyText: chartSummary?.summaryMd ?? null,
     icd10Codes: [], // Could pull from problem list when we have one
   });
+
+  const patientAddress = [
+    patient.addressLine1,
+    patient.addressLine2,
+    patient.city,
+    patient.state,
+    patient.postalCode,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <PageShell maxWidth="max-w-[960px]">
@@ -69,6 +95,7 @@ export default async function PrescribePage({ params }: PageProps) {
       <PrescribeForm
         patientId={params.id}
         patientName={`${patient.firstName} ${patient.lastName}`}
+        patientAddress={patientAddress}
         contraindicationMatches={contraindicationMatches.map((m) => ({
           id: m.contraindication.id,
           label: m.contraindication.label,
@@ -76,6 +103,10 @@ export default async function PrescribePage({ params }: PageProps) {
           rationale: m.contraindication.rationale,
           requiresOverride: m.contraindication.requiresOverride,
           matchedOn: m.matchedOn,
+        }))}
+        eligibleCoSigners={eligibleCoSigners.map((u) => ({
+          id: u.id,
+          label: `${u.firstName} ${u.lastName}`.trim(),
         }))}
         products={products.map((p) => ({
           id: p.id,

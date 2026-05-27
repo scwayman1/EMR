@@ -9,6 +9,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import {
+  getServerCart,
+  setCartItemQuantity,
+  removeCartItem as removeServerCartItem,
+  clearServerCart,
+  type ServerCartItem,
+} from "@/app/(patient)/portal/shop/cart/actions";
 
 // ── Cart item shape ─────────────────────────────────────────────────────
 interface CartItemEntry {
@@ -17,6 +24,16 @@ interface CartItemEntry {
   quantity: number;
   price: number;
   name: string;
+}
+
+function entryFromServer(item: ServerCartItem): CartItemEntry {
+  return {
+    productId: item.productId,
+    variantId: item.variantId ?? undefined,
+    quantity: item.quantity,
+    price: item.price,
+    name: item.name,
+  };
 }
 
 interface CartContextValue {
@@ -83,19 +100,74 @@ function writeStorage(items: CartItemEntry[]) {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItemEntry[]>([]);
   const hydrated = useRef(false);
+  // Authenticated patient session — server is the source of truth. Falls back
+  // to localStorage-only for anon/clinician browsing.
+  const persistsToServer = useRef(false);
 
-  // Hydrate from localStorage on mount
+  // Hydrate: prefer server cart (authed patient); else localStorage. If the
+  // server cart is empty and localStorage has items, push them up so cross-
+  // device continuity survives the first server hit.
   useEffect(() => {
-    setItems(readStorage());
-    hydrated.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const server = await getServerCart();
+        if (cancelled) return;
+        persistsToServer.current = true;
+        if (server.length > 0) {
+          setItems(server.map(entryFromServer));
+        } else {
+          const local = readStorage();
+          if (local.length > 0) {
+            setItems(local);
+            await Promise.all(
+              local.map((l) =>
+                setCartItemQuantity(l.productId, l.variantId ?? null, l.quantity),
+              ),
+            );
+          }
+        }
+      } catch {
+        // Unauth or server error — stay in localStorage-only mode.
+        setItems(readStorage());
+      } finally {
+        hydrated.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Persist to localStorage whenever items change (skip the initial default)
+  // Persist to localStorage whenever items change (skip the initial default).
+  // Server sync happens per-mutation below.
   useEffect(() => {
     if (hydrated.current) {
       writeStorage(items);
     }
   }, [items]);
+
+  // Fire-and-forget server sync. Failures are logged but don't revert local
+  // state — localStorage still has the truth and the next hydrate will
+  // reconcile.
+  const syncSet = useCallback(
+    (productId: string, variantId: string | undefined, quantity: number) => {
+      if (!persistsToServer.current) return;
+      setCartItemQuantity(productId, variantId ?? null, quantity).catch((e) =>
+        console.warn("[cart] server sync failed", e),
+      );
+    },
+    [],
+  );
+  const syncRemove = useCallback(
+    (productId: string, variantId: string | undefined) => {
+      if (!persistsToServer.current) return;
+      removeServerCartItem(productId, variantId ?? null).catch((e) =>
+        console.warn("[cart] server remove failed", e),
+      );
+    },
+    [],
+  );
 
   const addItem = useCallback(
     (
@@ -104,16 +176,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       price: number,
       name: string
     ) => {
+      let nextQty = 1;
       setItems((prev) => {
         const idx = prev.findIndex((entry) =>
           matchesItem(entry, productId, variantId)
         );
         if (idx >= 0) {
           const updated = [...prev];
-          updated[idx] = {
-            ...updated[idx],
-            quantity: updated[idx].quantity + 1,
-          };
+          nextQty = updated[idx].quantity + 1;
+          updated[idx] = { ...updated[idx], quantity: nextQty };
           return updated;
         }
         return [
@@ -121,8 +192,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
           { productId, variantId, quantity: 1, price, name },
         ];
       });
+      syncSet(productId, variantId, nextQty);
     },
-    []
+    [syncSet]
   );
 
   const removeItem = useCallback(
@@ -130,8 +202,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems((prev) =>
         prev.filter((entry) => !matchesItem(entry, productId, variantId))
       );
+      syncRemove(productId, variantId);
     },
-    []
+    [syncRemove]
   );
 
   const updateQuantity = useCallback(
@@ -140,6 +213,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems((prev) =>
           prev.filter((entry) => !matchesItem(entry, productId, variantId))
         );
+        syncRemove(productId, variantId);
         return;
       }
       setItems((prev) =>
@@ -149,12 +223,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : entry
         )
       );
+      syncSet(productId, variantId, quantity);
     },
-    []
+    [syncSet, syncRemove]
   );
 
   const clearCart = useCallback(() => {
     setItems([]);
+    if (persistsToServer.current) {
+      clearServerCart().catch((e) =>
+        console.warn("[cart] server clear failed", e),
+      );
+    }
   }, []);
 
   const itemCount = items.reduce((sum, entry) => sum + entry.quantity, 0);

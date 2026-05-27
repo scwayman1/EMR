@@ -37,6 +37,9 @@ export type DomainEvent =
   | { name: "billing.underpayment.scan"; organizationId: string }
   | { name: "billing.credit.scan"; organizationId: string }
   | { name: "billing.command.brief"; organizationId: string }
+  | { name: "cfo.report.generate"; organizationId: string; period?: "weekly" | "monthly" | "quarterly" | "annual" | "daily"; anchorISO?: string }
+  | { name: "cfo.expense.recorded"; expenseId: string; organizationId: string }
+  | { name: "cfo.cash.recorded"; cashFlowEntryId: string; organizationId: string }
   // RCM Fleet events — Layer 4 (new)
   | { name: "encounter.documentation.updated"; encounterId: string; noteId: string; patientId: string }
   | { name: "charge.created"; chargeId: string; encounterId: string; patientId: string; organizationId: string }
@@ -49,6 +52,7 @@ export type DomainEvent =
   | { name: "coding.approved"; encounterId: string; patientId: string; approvedBy: string; organizationId: string }
   | { name: "claim.scrubbed"; claimId: string; organizationId: string; status: "clean" | "warnings" | "blocked"; scrubResultId: string }
   | { name: "claim.blocked"; claimId: string; organizationId: string; violations: string[] }
+  | { name: "clearinghouse.queued"; claimId: string; submissionId: string; organizationId: string; isSecondary: boolean }
   | { name: "clearinghouse.accepted"; claimId: string; submissionId: string; organizationId: string }
   | { name: "clearinghouse.rejected"; claimId: string; submissionId: string; rejectionCode: string; rejectionMessage: string; retryEligible: boolean; organizationId: string }
   | { name: "adjudication.received"; claimId: string; organizationId: string; adjudicationResultId: string; claimStatus: "paid" | "denied" | "partial"; totalPaidCents: number; totalDeniedCents: number }

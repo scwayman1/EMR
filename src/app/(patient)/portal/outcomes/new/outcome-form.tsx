@@ -1,6 +1,8 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect } from "react";
+
+import { useFormState } from "react-dom";
 import Link from "next/link";
 import { submitOutcomeAction, type OutcomeResult } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -14,17 +16,17 @@ import {
 } from "@/components/ui/card";
 import { Eyebrow } from "@/components/ui/ornament";
 import { LeafSprig } from "@/components/ui/ornament";
+import { LeafCelebration } from "@/components/ui/leaf-celebration";
+import { SubmitButton as SharedSubmitButton } from "@/lib/ui/form-helpers";
 
 // ---------------------------------------------------------------------------
-// Submit button
+// Submit button — uses shared `<SubmitButton>` so the spinner + "Saving check-in…"
+// pending state come from useFormStatus automatically.
 // ---------------------------------------------------------------------------
 
 function SubmitButton() {
-  const { pending } = useFormStatus();
   return (
-    <Button type="submit" size="lg" disabled={pending}>
-      {pending ? "Saving..." : "Save check-in"}
-    </Button>
+    <SharedSubmitButton size="lg" idleLabel="Save check-in" pendingLabel="Saving check-in…" />
   );
 }
 
@@ -33,6 +35,8 @@ function SubmitButton() {
 // ---------------------------------------------------------------------------
 
 function ScalePill({ name, value }: { name: string; value: number }) {
+  // EMR-031: 44px tap targets on phones (iOS/Android guideline) shrinking
+  // back to 36px on tablet+ where pointer accuracy isn't an issue.
   return (
     <label className="relative cursor-pointer">
       <input
@@ -43,10 +47,10 @@ function ScalePill({ name, value }: { name: string; value: number }) {
       />
       <span
         className={
-          "inline-flex items-center justify-center h-9 w-9 rounded-full border border-border-strong/70 " +
-          "bg-surface text-sm font-medium text-text-muted transition-all duration-200 " +
-          "peer-checked:bg-accent peer-checked:text-accent-ink peer-checked:border-accent peer-checked:shadow-md " +
-          "hover:bg-surface-muted hover:border-border-strong " +
+          "inline-flex items-center justify-center h-11 w-11 sm:h-9 sm:w-9 rounded-full border border-border-strong/70 " +
+          "bg-surface text-base sm:text-sm font-medium text-text-muted transition-all duration-200 " +
+          "peer-checked:bg-accent peer-checked:text-accent-ink peer-checked:border-accent peer-checked:shadow-md peer-checked:scale-105 " +
+          "hover:bg-surface-muted hover:border-border-strong active:scale-95 " +
           "peer-focus-visible:ring-2 peer-focus-visible:ring-accent/40 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface"
         }
       >
@@ -72,6 +76,7 @@ const METRICS: MetricConfig[] = [
   { name: "sleep", label: "Sleep quality", lowLabel: "Very poor", highLabel: "Excellent" },
   { name: "anxiety", label: "Anxiety", lowLabel: "None", highLabel: "Severe" },
   { name: "mood", label: "Mood", lowLabel: "Very low", highLabel: "Great" },
+  { name: "nausea", label: "Nausea", lowLabel: "None", highLabel: "Severe" },
 ];
 
 function MetricRow({ config }: { config: MetricConfig }) {
@@ -104,11 +109,25 @@ export function OutcomeForm() {
     null
   );
 
+  useEffect(() => {
+    if (state?.ok && state.newlyEarnedBadges && state.newlyEarnedBadges.length > 0) {
+      import("@/components/portal/confetti-canvas").then(({ confettiEmitter }) => {
+        confettiEmitter.emit({
+          id: `badge-${Date.now()}`,
+          type: "badge_earned",
+          message: "You earned a new badge!",
+        });
+      });
+    }
+  }, [state]);
+
   // Success state
   if (state?.ok) {
     return (
-      <Card tone="raised" className="max-w-xl mx-auto text-center">
-        <CardHeader className="pb-2">
+      <Card tone="raised" className="max-w-xl mx-auto text-center relative overflow-hidden">
+        {/* EMR-176: leaf + confetti shower greets the patient on save. */}
+        <LeafCelebration />
+        <CardHeader className="pb-2 relative">
           <Eyebrow className="justify-center mb-3">Check-in saved</Eyebrow>
           <CardTitle className="text-2xl">Thank you!</CardTitle>
         </CardHeader>

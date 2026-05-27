@@ -28,6 +28,15 @@ export interface MarketplaceProduct {
   useCases: string[];
   onsetTime?: string;
   duration?: string;
+  // EMR-278 — descriptive effect tags ("uplifting", "relaxing", "cerebral").
+  // Optional; PDP falls back to deriving from strain/cannabinoid/terpene
+  // profile when missing.
+  effectTags?: string[];
+
+  // EMR-282 — grow-accessory products (lights, tents, fans, fertilizer,
+  // trim tools) trigger a state-aware cultivation legality banner + hard
+  // disclaimer on the PDP.
+  growAccessory?: boolean;
 
   // Dosage
   dosageGuidance?: string;
@@ -38,6 +47,7 @@ export interface MarketplaceProduct {
   coaUrl?: string;
   clinicianPick: boolean;
   clinicianNote?: string;
+  requires21Plus?: boolean;
 
   // Inventory
   inStock: boolean;
@@ -45,6 +55,15 @@ export interface MarketplaceProduct {
   // Ratings
   averageRating: number;
   reviewCount: number;
+
+  // Storefront UI — pre-formatted display values for the Leafmart shelf.
+  // Optional; the UI mapper falls back to category/format-derived defaults.
+  bgColor?: string;
+  deepColor?: string;
+  displayShape?: "bottle" | "can" | "jar" | "tin" | "serum" | "box";
+  doseLabel?: string;
+  outcomePct?: number;
+  outcomeSampleSize?: number;
 
   // Features
   featured: boolean;
@@ -100,7 +119,9 @@ export type ProductFormat =
   | "capsule"
   | "vape"
   | "concentrate"
-  | "patch";
+  | "patch"
+  | "beverage"
+  | "serum";
 
 export type SortOption = "featured" | "price-asc" | "price-desc" | "rating" | "newest";
 
@@ -113,6 +134,8 @@ export const FORMAT_LABELS: Record<ProductFormat, string> = {
   vape: "Vaporizer",
   concentrate: "Concentrate",
   patch: "Patch",
+  beverage: "Beverage",
+  serum: "Serum",
 };
 
 export const SYMPTOM_OPTIONS = [

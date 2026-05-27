@@ -155,6 +155,18 @@ Direct pushes to `main` are blocked by a branch-protection ruleset. All changes 
 If CI fails, fix it on the branch — don't bypass the check. The rules that protect `main` also protect future-you from debugging a silent production outage at 3 AM.
 
 
+## Linear integration (tickets + pinned brief retrieval)
+
+Set `LINEAR_API_KEY` in `.env` (Personal API key from Linear).
+
+Then query the internal API endpoint:
+
+```bash
+curl http://localhost:3000/api/integrations/linear/issues/EMR-17
+```
+
+Response includes the issue payload and a `codexAgentBrief` field when a comment body contains 'Codex Agent Brief'. The endpoint is restricted to authenticated internal roles (`operator`, `practice_owner`, `system`).
+
 ## Security posture
 
 - RBAC enforced in layouts **and** every server action

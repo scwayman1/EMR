@@ -7,33 +7,107 @@
    Warm parchment base · deep forest accent · burnt amber highlight.
    See DESIGN_SYSTEM.md for rationale.
    ========================================================================== */
-:root {
-  /* Surfaces */
-  --bg: #F8F4EB;
-  --bg-deep: #F2ECDC;
-  --surface: #FEFCF6;
+.theme-leafmart {
+  /* Foundation — holds the room */
+  --bg: #FFFCF7;
+  --bg-deep: #F6F0E4;
+  --surface: #FFFFFF;
   --surface-raised: #FFFFFF;
-  --surface-muted: #EFE7D1;
+  --surface-muted: #F5F0E3;
+  --ink: #152119;
 
-  --border: #E6D9BB;
+  --border: #EAE3D2;
   --border-strong: #D4C28F;
 
   /* Text */
-  --text: #1C1A15;
-  --text-muted: #5B534A;
-  --text-subtle: #938975;
+  --text: #1F2A24;
+  --text-muted: #4A5651;
+  /* Bumped from #8A8578 (≈3.6:1) → #6E6A60 (≈5.0:1) for WCAG AA — same fix
+     that was already applied to --muted below; axe-core was still flagging
+     --text-subtle on `text-[11px] uppercase tracking-wider` eyebrows
+     across every public page (EMR-713). */
+  --text-subtle: #6E6A60;
+  --text-soft: #4A5651;
+  --muted: #6E6A60;
 
-  /* Accent — deep verdant forest */
+  /* Trust — clinical green (reserved, never decoration) */
+  --leaf: #1F4D37;
+  --leaf-soft: #E2ECE5;
   --accent: #1F4D37;
   --accent-hover: #163825;
   --accent-strong: #0E3225;
   --accent-soft: #E2ECE5;
-  --accent-ink: #FBFBF8;
+  --accent-ink: #FFF8E8;
+
+  /* Liquid glass - patient portal surfaces */
+  --glass-bg: rgba(255, 255, 255, 0.58);
+  --glass-bg-strong: rgba(255, 255, 255, 0.74);
+  --glass-border: rgba(255, 255, 255, 0.68);
+  --glass-shadow: 0 24px 64px -36px rgba(21, 33, 25, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --glass-sheen: rgba(255, 255, 255, 0.54);
 
   /* Highlight — burnt amber */
   --highlight: #B8782F;
   --highlight-hover: #9A6220;
-  --highlight-soft: #F4E7CA;
+  --highlight-soft: #F5E6B8;
+
+  /* Pastel shelves — category carriers */
+  --sage: #D8E5D0;
+  --sage-deep: #A9C098;
+  --peach: #F8DDC8;
+  --peach-deep: #E8B68F;
+  --butter: #F5E6B8;
+  --butter-deep: #D9BC6E;
+  --rose: #F1D4D0;
+  --rose-deep: #D89E97;
+  --lilac: #E2D8E8;
+  --lilac-deep: #B8A5C6;
+  --mint: #CFE3D8;
+  /* Sprint 2 — new shelf pastels so every category has its own world */
+  --coral: #F5C4B8;
+  --lavender: #D8D0E8;
+  --seafoam: #C5E0D8;
+  --honey: #F0DDA0;
+  --blush: #F2D4D8;
+  --sky: #C8DAE8;
+  --sand: #E8DCC8;
+  --moss: #C4D4B8;
+  --cream: #F5ECD8;
+  --stone: #D8D4CC;
+  --cloud: #E8E4E0;
+  --gold: #E8D8A0;
+  --sprout: #D0E0C0;
+
+  /* Translucent overlay used for icon chips on category cards.
+     Theme-aware: white in light mode (so dark stamp icons read on it),
+     dark in dark mode (so light stamp icons read on it). Without this
+     a fixed rgba(255,255,255,0.55) only works in light mode and fails
+     WCAG 1.4.11 (≥3:1 non-text contrast) in dark — verified ratios
+     ranged 1.13–1.65 before this fix. */
+  --chip-overlay: rgba(255, 255, 255, 0.55);
+
+  /* Stamp colors — strong silhouette fills that read against each pastel.
+     Theme-aware so dark mode flips them light, keeping silhouettes visible. */
+  --sage-stamp: #1F4D37;
+  --peach-stamp: #9E5621;
+  --butter-stamp: #8A6A1F;
+  --rose-stamp: #9E4D45;
+  --lilac-stamp: #5C4972;
+  --mint-stamp: #1F4D37;
+  --coral-stamp: #A0522D;
+  --lavender-stamp: #6B4C8A;
+  --seafoam-stamp: #2E8B6F;
+  --honey-stamp: #B8860B;
+  --blush-stamp: #9E4D45;
+  --sky-stamp: #3D5A80;
+  --sand-stamp: #7A6A4F;
+  --moss-stamp: #4A6A3A;
+  --cream-stamp: #A0793D;
+  --stone-stamp: #6B5B4A;
+  --cloud-stamp: #4A4A4A;
+  --gold-stamp: #1F4D37;
+  --sprout-stamp: #3A7A4A;
 
   /* Semantic */
   --success: #3A8560;
@@ -41,27 +115,39 @@
   --danger: #B83B2E;
   --info: #2E5B8C;
 
-  /* Typography stacks — all system/local to stay build-network-free.
-     `Inter` is picked up if the user has it installed; otherwise
-     modern OS stacks take over.                                           */
+  /* Typography stacks — Fraunces for display, Instrument Serif italic
+     accent, Inter for body, JetBrains Mono for data callouts */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text",
     "Segoe UI", Roboto, ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
-    Palatino, "Charter", Georgia, ui-serif, serif;
+  --font-display: "Fraunces", "Iowan Old Style", "Palatino Linotype",
+    "Book Antiqua", Palatino, Georgia, ui-serif, serif;
+  --font-accent: "Instrument Serif", Georgia, ui-serif, serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 @layer base {
-  html, body {
+.theme-leafmart {
     background-color: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "cv11", "ss01", "ss03";
   }
-  body {
+  .theme-leafmart {
     font-family: var(--font-sans);
     font-size: 15px;
     line-height: 24px;
+  }
+  .theme-leafmart.text-sm-base {
+    font-size: 14px;
+    line-height: 22px;
+  }
+  .theme-leafmart.text-base-base {
+    font-size: 15px;
+    line-height: 24px;
+  }
+  .theme-leafmart.text-lg-base {
+    font-size: 17px;
+    line-height: 26px;
   }
   *:focus-visible {
     outline: 2px solid var(--accent);
@@ -88,15 +174,20 @@
   .prose-clinical p { @apply mb-3 text-text-muted; }
   .prose-clinical strong { @apply text-text font-medium; }
 
-  /* Card that glows on hover — used sparingly on interactive tiles. */
+  /* Card that glows on hover — used sparingly on interactive tiles.
+     EMR-015: lift bumped from -1px to -3px and shadow strengthened so
+     hovers register at a glance during Justin's testing. */
   .card-hover {
-    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1),
-                box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+    transition: transform 220ms cubic-bezier(0.2, 0, 0, 1),
+                box-shadow 220ms cubic-bezier(0.2, 0, 0, 1);
   }
   .card-hover:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 10px 30px -12px rgba(28, 26, 21, 0.15),
-                0 0 0 1px rgba(212, 194, 143, 0.5);
+    transform: translateY(-3px);
+    box-shadow: 0 18px 40px -14px rgba(28, 26, 21, 0.22),
+                0 0 0 1px rgba(212, 194, 143, 0.6);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-hover:hover { transform: none; }
   }
 
   /* Subtle paper grain — applied as a pseudo-element on containers. */
@@ -129,11 +220,309 @@
     .ambient { animation: none; }
   }
 
+  .liquid-glass,
+  .liquid-glass-strong {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+  }
+
+  .liquid-glass {
+    background:
+      linear-gradient(135deg, var(--glass-bg-strong), var(--glass-bg)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
+  }
+
+  .liquid-glass-strong {
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.5)),
+      linear-gradient(180deg, rgba(226, 236, 229, 0.42), rgba(245, 230, 184, 0.2));
+  }
+
+  .liquid-glass::before,
+  .liquid-glass-strong::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(118deg, var(--glass-sheen), transparent 34%, rgba(255, 255, 255, 0.18) 68%, transparent);
+    opacity: 0.58;
+  }
+
+  .liquid-glass > *,
+  .liquid-glass-strong > * {
+    position: relative;
+  }
+
+  .patient-liquid-shell {
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0) 34%),
+      linear-gradient(135deg, rgba(226, 236, 229, 0.56), rgba(245, 230, 184, 0.3) 42%, rgba(255, 255, 255, 0) 80%);
+  }
+
+  .patient-liquid-shell [data-nav-rail] > aside,
+  .patient-liquid-shell [data-nav-rail] > [role="region"],
+  .patient-liquid-shell header {
+    background: rgba(255, 255, 255, 0.52);
+    backdrop-filter: blur(20px) saturate(135%);
+    -webkit-backdrop-filter: blur(20px) saturate(135%);
+  }
+
+  .patient-liquid-shell [data-nav-rail] button[aria-pressed="true"],
+  .patient-liquid-shell [data-nav-rail] a[aria-current="page"] {
+    background: rgba(255, 255, 255, 0.58);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .liquid-glass,
+    .liquid-glass-strong,
+    .patient-liquid-shell [data-nav-rail] > aside,
+    .patient-liquid-shell [data-nav-rail] > [role="region"],
+    .patient-liquid-shell header {
+      background: var(--surface-raised);
+    }
+  }
+
+  /* ── Leafmart micro-animations ───────────────────────────── */
+  @keyframes lmFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes lmFadeInUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes lmSlideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes lmAccordion {
+    from { opacity: 0; max-height: 0; }
+    to   { opacity: 1; max-height: 600px; }
+  }
+  @keyframes lmPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
+  }
+  @keyframes lmShimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .lm-fade-in {
+    opacity: 0;
+    animation: lmFadeInUp 600ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  }
+  .lm-fade-in-soft {
+    opacity: 0;
+    animation: lmFadeIn 500ms ease-out forwards;
+  }
+  .lm-stagger > * {
+    opacity: 0;
+    animation: lmFadeInUp 500ms cubic-bezier(0.2, 0, 0, 1) forwards;
+  }
+  .lm-stagger > *:nth-child(1)  { animation-delay:  40ms; }
+  .lm-stagger > *:nth-child(2)  { animation-delay:  90ms; }
+  .lm-stagger > *:nth-child(3)  { animation-delay: 140ms; }
+  .lm-stagger > *:nth-child(4)  { animation-delay: 190ms; }
+  .lm-stagger > *:nth-child(5)  { animation-delay: 240ms; }
+  .lm-stagger > *:nth-child(6)  { animation-delay: 290ms; }
+  .lm-stagger > *:nth-child(7)  { animation-delay: 340ms; }
+  .lm-stagger > *:nth-child(8)  { animation-delay: 390ms; }
+  .lm-stagger > *:nth-child(9)  { animation-delay: 440ms; }
+  .lm-stagger > *:nth-child(10) { animation-delay: 490ms; }
+
+  .lm-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-muted, #EDE6D6) 0%,
+      var(--surface, #F6EFE0) 50%,
+      var(--surface-muted, #EDE6D6) 100%
+    );
+    background-size: 200% 100%;
+    animation: lmShimmer 1.6s ease-in-out infinite;
+  }
+
+  .lm-pulse { animation: lmPulse 1.6s ease-in-out infinite; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateX(12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.4); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes draw-check {
+    to { stroke-dashoffset: 0; }
+  }
+  @keyframes gentle-bounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+  @keyframes slide-out-right {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(40px); }
+  }
+
+  /* ── Cart & checkout micro-interactions ─────────────────── */
+  @keyframes lm-item-enter {
+    0%   { opacity: 0; transform: translateX(28px) scale(0.96); }
+    60%  { opacity: 1; }
+    100% { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  @keyframes lm-item-exit {
+    from { opacity: 1; transform: translateX(0) scale(1); max-height: 200px; }
+    to   { opacity: 0; transform: translateX(40px) scale(0.96); max-height: 0; padding-top: 0; padding-bottom: 0; }
+  }
+  @keyframes lm-count-tick {
+    0%   { transform: translateY(0); }
+    40%  { transform: translateY(-3px) scale(1.08); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  @keyframes lm-shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(5px); }
+    60%      { transform: translateX(-3px); }
+    80%      { transform: translateX(2px); }
+  }
+  @keyframes lm-step-slide-right {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes lm-step-slide-left {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  /* Toast notification entrance — subtle slide-up + fade. */
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes lm-confirm-burst {
+    0%   { opacity: 0.55; transform: scale(0.4); }
+    70%  { opacity: 0.15; }
+    100% { opacity: 0; transform: scale(2.4); }
+  }
+  @keyframes lm-confetti-fall {
+    0%   { opacity: 0; transform: translate3d(0, -10px, 0) rotate(0deg); }
+    15%  { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(var(--lm-cx, 0), 220px, 0) rotate(var(--lm-cr, 360deg)); }
+  }
+  @keyframes lm-empty-float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+  }
+  @keyframes lm-progress-fill {
+    from { width: var(--lm-from, 0%); }
+    to   { width: var(--lm-to, 0%); }
+  }
+
+  .lm-item-enter   { animation: lm-item-enter 320ms cubic-bezier(0.2, 0, 0, 1) both; }
+  .lm-item-exit    { animation: lm-item-exit 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards; overflow: hidden; }
+  .lm-count-tick   { animation: lm-count-tick 240ms ease-out; }
+  .lm-shake        { animation: lm-shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+  .lm-step-in-right { animation: lm-step-slide-right 320ms cubic-bezier(0.2, 0, 0, 1) both; }
+  .lm-step-in-left  { animation: lm-step-slide-left  320ms cubic-bezier(0.2, 0, 0, 1) both; }
+  .lm-empty-float   { animation: lm-empty-float 3.4s ease-in-out infinite; }
+  .lm-confirm-burst { animation: lm-confirm-burst 1.1s ease-out forwards; }
+  .lm-confetti-piece { animation: lm-confetti-fall 1600ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lm-item-enter,
+    .lm-item-exit,
+    .lm-count-tick,
+    .lm-shake,
+    .lm-step-in-right,
+    .lm-step-in-left,
+    .lm-empty-float,
+    .lm-confirm-burst,
+    .lm-confetti-piece {
+      animation: none !important;
+    }
+  }
+
+  /* ── Design utility classes ─────────────────────────────── */
+  .text-balance { text-wrap: balance; }
+
+  .price {
+    font-family: var(--font-display);
+    font-feature-settings: "tnum", "kern";
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+
+  .product-thumb {
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lm-fade-in,
+    .lm-fade-in-soft,
+    .lm-stagger > *,
+    .lm-skeleton,
+    .lm-pulse {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
   /* Small utility for the display serif face. */
   .font-display {
     font-family: var(--font-display);
     font-feature-settings: "kern", "liga", "calt";
     letter-spacing: -0.015em;
+  }
+
+  /* Instrument Serif italic — the emotional word in every headline */
+  .font-accent {
+    font-family: var(--font-accent);
+    font-style: italic;
+  }
+
+  /* Leafmart product card hover — generous lift */
+  .card-lift {
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1),
+                box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 50px rgba(28, 40, 32, 0.10),
+               0 4px 16px rgba(184, 120, 47, 0.06);
+  }
+
+  /* Trust chip — rounded pill with Leaf Soft bg */
+  .trust-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--leaf-soft);
+    color: var(--leaf);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+
+  /* Eyebrow text — mono uppercase, restrained */
+  .eyebrow {
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
   }
 
   /* Screen-reader-only utility — visually hidden but announced. */
@@ -163,13 +552,17 @@
 /* ==========================================================================
    Dark mode
    ========================================================================== */
-[data-theme="dark"] {
+.theme-leafmart.dark,
+.theme-leafmart[data-theme="dark"] {
   /* Surfaces */
   --bg: #0F1210;
   --bg-deep: #0A0D0B;
   --surface: #1A1F1C;
   --surface-raised: #222926;
   --surface-muted: #2A322D;
+  /* `--ink` is the primary heading/text color across the storefront —
+     in dark mode it must read against --bg, so flip it warm-light. */
+  --ink: #F1EFE8;
 
   --border: #333D37;
   --border-strong: #4A5750;
@@ -177,7 +570,16 @@
   /* Text */
   --text: #E8E6E1;
   --text-muted: #A9A49C;
-  --text-subtle: #7A756D;
+  /* Bumped from #7A756D (4.0:1) → #B5AFA5 (~7:1) to pass WCAG AA for body text */
+  --text-subtle: #B5AFA5;
+  /* `--text-soft` and `--muted` are used for secondary/de-emphasized text
+     across cards, footers, captions — they must invert in dark mode */
+  --text-soft: #BFB9AE;
+  --muted: #9A958B;
+
+  /* Trust green pill bg — needs to dim down for dark surfaces */
+  --leaf: #4FA77B;
+  --leaf-soft: #163326;
 
   /* Accent — emerald forest, brightened for dark */
   --accent: #047857;
@@ -186,10 +588,69 @@
   --accent-soft: #0D2A20;
   --accent-ink: #F0FDF4;
 
+  --glass-bg: rgba(34, 41, 38, 0.58);
+  --glass-bg-strong: rgba(42, 50, 45, 0.76);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 24px 64px -34px rgba(0, 0, 0, 0.76),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --glass-sheen: rgba(255, 255, 255, 0.1);
+
   /* Highlight — warm amber, adjusted for dark */
   --highlight: #D4942E;
   --highlight-hover: #E5A940;
   --highlight-soft: #2A2010;
+
+  /* Pastel shelves dimmed for dark — preserve hue, drop value */
+  --sage: #1F2A24;
+  --sage-deep: #2F4036;
+  --peach: #2A1E14;
+  --peach-deep: #4A3320;
+  --butter: #2A2310;
+  --butter-deep: #4A3E1E;
+  --rose: #2A1716;
+  --rose-deep: #4A2825;
+  --lilac: #1F1A26;
+  --lilac-deep: #382E48;
+  --mint: #1A2620;
+  /* Sprint 2 — new shelf pastels in dark variants */
+  --coral: #2D1A14;
+  --lavender: #1F1A2A;
+  --seafoam: #16241F;
+  --honey: #2A2510;
+  --blush: #2A1A1C;
+  --sky: #1A1F26;
+  --sand: #1F1C18;
+  --moss: #1A2418;
+  --cream: #22201A;
+  --stone: #1E1C1A;
+  --cloud: #1F1D1B;
+  --gold: #262112;
+  --sprout: #1A2418;
+
+  /* Dark-mode chip overlay — near-black tint so light stamp icons clear
+     WCAG 1.4.11 against the chip background. */
+  --chip-overlay: rgba(10, 14, 12, 0.65);
+
+  /* Stamp colors — brightened to read on the dim dark shelf backgrounds */
+  --sage-stamp: #6FB695;
+  --peach-stamp: #E8B894;
+  --butter-stamp: #D4B570;
+  --rose-stamp: #E8A095;
+  --lilac-stamp: #B8A3CC;
+  --mint-stamp: #6FB695;
+  --coral-stamp: #E89A75;
+  --lavender-stamp: #B5A0D4;
+  --seafoam-stamp: #75C4A8;
+  --honey-stamp: #E5C470;
+  --blush-stamp: #E8A0A6;
+  --sky-stamp: #95B5D4;
+  --sand-stamp: #C5B294;
+  --moss-stamp: #95B5A0;
+  --cream-stamp: #D4B884;
+  --stone-stamp: #B5A89A;
+  --cloud-stamp: #B5B0AC;
+  --gold-stamp: #E5C470;
+  --sprout-stamp: #80B58A;
 
   /* Semantic */
   --success: #4ADE80;
@@ -198,25 +659,208 @@
   --info: #60A5FA;
 }
 
-[data-theme="dark"] body {
+.theme-leafmart.dark,
+.theme-leafmart[data-theme="dark"] {
   color-scheme: dark;
+}
+
+.theme-leafmart[data-theme="dark"] .liquid-glass {
+  background:
+    linear-gradient(135deg, var(--glass-bg-strong), var(--glass-bg)),
+    linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(212, 148, 46, 0.05));
+}
+
+.theme-leafmart[data-theme="dark"] .liquid-glass-strong {
+  background:
+    linear-gradient(135deg, rgba(42, 50, 45, 0.88), rgba(26, 31, 28, 0.62)),
+    linear-gradient(180deg, rgba(16, 185, 129, 0.12), rgba(212, 148, 46, 0.08));
+}
+
+.theme-leafmart[data-theme="dark"] .patient-liquid-shell [data-nav-rail] > aside,
+.theme-leafmart[data-theme="dark"] .patient-liquid-shell [data-nav-rail] > [role="region"],
+.theme-leafmart[data-theme="dark"] .patient-liquid-shell header {
+  background: rgba(26, 31, 28, 0.68);
+}
+
+/* ==========================================================================
+   Leafmart — Humanity / Portraits card (homepage)
+   EMR-331: card needs its own surface that respects dark mode. Light
+   mode keeps the cream gradient for warmth; dark mode uses the elevated
+   surface so headlines, names, and the Wellness checklist remain
+   readable instead of washing into a too-light gradient.
+   ========================================================================== */
+.lm-portraits-card {
+  background: linear-gradient(180deg, #FFFCF7 0%, #F6EFE0 100%);
+}
+.theme-leafmart.dark .lm-portraits-card {
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-muted) 100%);
+  border: 1px solid var(--border);
 }
 
 /* ==========================================================================
    ADA — High-contrast mode
    ========================================================================== */
 @media (prefers-contrast: more) {
-  :root {
+  .theme-leafmart {
     --border: #9E8C5F;
     --border-strong: #6F5E2E;
     --text-muted: #3A3530;
     --text-subtle: #5B534A;
   }
-  body {
+  .theme-leafmart {
     font-weight: 500;
   }
   *:focus-visible {
     outline-width: 3px;
+  }
+}
+
+/* ==========================================================================
+   EMR-780 — Birthday celebration keyframes
+   Used by <BirthdayBadge /> and <BirthdayCelebration /> for the inline
+   emoji bounce, modal entrance, fade-in backdrop, and floating balloons.
+   Scoped here (rather than tailwind.config.ts) so the names stay
+   discoverable next to the rest of the global motion vocabulary.
+   ========================================================================== */
+@keyframes birthday-bounce {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+
+@keyframes birthday-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes birthday-card-in {
+  0% { opacity: 0; transform: translateY(16px) scale(0.92); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes birthday-balloon-float {
+  0% {
+    transform: translateY(0) rotate(-3deg);
+    opacity: 0;
+  }
+  10% { opacity: 0.85; }
+  90% { opacity: 0.85; }
+  100% {
+    transform: translateY(-110vh) rotate(3deg);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   Utility — invisible scrollbar (used by horizontal sub-tab nav, etc.)
+   The bar still scrolls; we just hide its chrome to keep the row clean.
+   ========================================================================== */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==========================================================================
+   Mobile portrait iOS polish (ux/mobile-portrait-ios-polish)
+   These rules tighten the touch experience on phones to match Apple HIG
+   without disturbing desktop rendering. They are scoped via media queries
+   and utility classes so md+ remains untouched.
+   ========================================================================== */
+
+/* iOS Safari auto-zooms when a focused input has font-size < 16px. Bumping
+   the minimum font-size on mobile prevents the disorienting zoom that
+   otherwise hijacks the viewport when patients tap a search bar. We only
+   apply this below the md breakpoint so dense desktop forms stay compact. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Apple HIG — interactive elements must hit 44×44 pt. Mark any element that
+   is intrinsically smaller (e.g. icon-only chevrons) with this class on
+   mobile to expand its hit-area without inflating its visual footprint. */
+.ios-tap-target {
+  position: relative;
+}
+.ios-tap-target::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
+/* Suppress the dark blue tap flash on touch — iOS Safari paints this by
+   default; SF native apps don't, so the EMR's Apple aesthetic requires
+   we opt out across all interactive surfaces. */
+@media (hover: none) and (pointer: coarse) {
+  button, a, [role="button"], [role="tab"], [role="link"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Swipe-back affordance — a faint vertical scrim along the left 8px edge of
+   detail pages, mimicking the iOS edge swipe gesture hint. Apply to a
+   page wrapper with .ios-swipe-back-hint. Pure CSS, no JS gesture: the
+   browser's history.back() is already wired by Next router. */
+.ios-swipe-back-hint {
+  position: relative;
+}
+.ios-swipe-back-hint::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 8px;
+  pointer-events: none;
+  z-index: 30;
+  background: linear-gradient(
+    to right,
+    rgba(15, 18, 16, 0.06),
+    transparent
+  );
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+@media (max-width: 767px) {
+  .ios-swipe-back-hint::before {
+    opacity: 1;
+  }
+}
+
+/* Safe-area helpers — Tailwind doesn't ship arbitrary env() utilities, so
+   these classes are convenient escape hatches for the few spots that
+   need them (top header, bottom nav, FAB). */
+.safe-pt { padding-top: env(safe-area-inset-top); }
+.safe-pb { padding-bottom: env(safe-area-inset-bottom); }
+.safe-pr { padding-right: env(safe-area-inset-right); }
+.safe-pl { padding-left: env(safe-area-inset-left); }
+.safe-mt { margin-top: env(safe-area-inset-top); }
+.safe-mb { margin-bottom: env(safe-area-inset-bottom); }
+
+/* Mobile-only collapsing search bar (Apple Mail pattern). The full-width
+   bar shrinks to an icon-only pill once the page scrolls. Pages that
+   opt in toggle `data-collapsed="true"` on the bar via an IntersectionObserver
+   or scroll handler. Pure CSS handles the rest. */
+.ios-collapsing-search {
+  transition: max-width 260ms cubic-bezier(0.2, 0, 0, 1),
+              opacity 200ms ease;
+  max-width: 100%;
+}
+@media (max-width: 767px) {
+  .ios-collapsing-search[data-collapsed="true"] {
+    max-width: 44px;
+  }
+  .ios-collapsing-search[data-collapsed="true"] > .ios-search-label {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 
@@ -230,4 +874,452 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* ==========================================================================
+   Print stylesheet — clinical document chrome
+   ux/print-stylesheets-clinical (unticketed UX run)
+
+   Clinicians print chart summaries, lab results, Rx slips, and SOAP notes
+   constantly. The screen UI is a webapp; the printed page must read like a
+   real medical document — A4-friendly margins, serif body, hidden chrome,
+   no decorative gradients, no glass blurs, no ambient animations.
+
+   Two layers:
+     1) Global `@media print` resets — strip chrome, force black ink on
+        white paper, kill animations/gradients, smart link expansion.
+     2) `.print-document` opt-in container used by dedicated print routes
+        (`/clinic/patients/[id]/print`, `/clinic/sign-off/refills/[id]/print`,
+        `/clinic/sign-off/labs/[id]/print`, `.../notes/[noteId]/print`) for
+        the canonical clinical document layout (header / sections / footer).
+   ========================================================================== */
+@media print {
+  /* ── Page setup — Letter with conservative margins.
+        Letter, not A4: the US clinical workflow assumes 8.5×11 and front-desk
+        printers default to Letter trays. Margins kept tight so a one-page
+        chart summary fits without forcing a second sheet. */
+  @page {
+    size: letter;
+    margin: 0.6in;
+  }
+
+  /* ── Body reset — black ink, white paper, no decorative chrome.
+        WebKit needs `print-color-adjust: exact` to preserve abnormal-value
+        red and PHI-banner gold when the clinician explicitly wants them
+        printed; default is to strip backgrounds for ink economy. */
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    font-family: "Times New Roman", "Iowan Old Style", Palatino, Georgia,
+      ui-serif, serif;
+    font-size: 11pt;
+    line-height: 1.45;
+  }
+
+  /* Sans-serif for headers — visual contrast with the serif body, same
+     pattern as JAMA / NEJM article layouts. */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+      Arial, sans-serif;
+    color: #000 !important;
+  }
+
+  /* ── Hide app chrome.
+        Selectors below match the persistent app shell pieces (nav rails,
+        sidebars, drawer, toolbar, search dock) plus generic interactive
+        controls. Everything is opt-out via `.print-show`. */
+  nav,
+  aside,
+  header[role="banner"],
+  footer[role="contentinfo"],
+  [data-nav-rail],
+  [data-pillar-nav],
+  [data-context-drawer],
+  [data-app-shell-chrome],
+  [data-toolbar],
+  [data-omni-search],
+  [data-print-hide],
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Buttons / form controls — clinicians don't click on a printed page.
+     Scoped *outside* `.print-document` so opt-in print views can still
+     render purposeful signature lines/check boxes. */
+  body :is(button, [role="button"], input[type="button"], input[type="submit"],
+        input[type="reset"], select):not(.print-document button):not(.print-document [role="button"]) {
+    display: none !important;
+  }
+
+  /* ── Color flattening.
+        Tailwind's gradient utilities and our liquid-glass surfaces look
+        terrible printed in greyscale — drop the backgrounds and rely on
+        borders + typography for hierarchy. */
+  [class*="bg-gradient"],
+  .liquid-glass,
+  .liquid-glass-strong,
+  .ambient,
+  .grain::before {
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Force-disable animations even when reduced-motion isn't set on the
+     OS. Printers don't have a viewport — animations would freeze a frame
+     and could ship layouts in mid-transition. */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* ── Link expansion.
+        Show the href after EXTERNAL links only. Internal links (relative
+        URLs and our own domains) would print as long `/clinic/patients/...`
+        strings — useless on paper and visually noisy. We approximate
+        "external" with the `[href^="http"]` selector and exclude our own
+        hosts via `:not(...)`. The two-stage rule keeps mailto/tel readable. */
+  a[href^="http"]:not([href*="leafjourney.com"]):not([href*="localhost"]):not(.no-print-href)::after {
+    content: " [" attr(href) "]";
+    font-size: 9pt;
+    color: #444;
+    font-style: italic;
+    word-break: break-all;
+  }
+  a[href^="mailto:"]::after,
+  a[href^="tel:"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    color: #444;
+  }
+  /* Strip Next.js underline default for the link href echo. */
+  a, a:visited {
+    color: #000 !important;
+    text-decoration: underline;
+  }
+
+  /* ── Page-break hygiene.
+        Avoid orphaned single rows / split section headers. Tables and
+        cards explicitly opted into `break-inside: avoid` when they should
+        stay together; the global rule is a softer "try-not-to". */
+  h1, h2, h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  tr, li, blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  table {
+    border-collapse: collapse;
+  }
+  thead {
+    display: table-header-group; /* repeat header on each page */
+  }
+  tfoot {
+    display: table-footer-group;
+  }
+
+  /* Generic "card-ish" containers — keep small clinical cards together. */
+  .break-avoid,
+  .print-card,
+  article {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* ── Print document container ────────────────────────────────
+   Used by the dedicated `/.../print` routes. On screen, renders
+   as a centered letter-sized sheet so the clinician can preview
+   exactly what will land on paper. On print, the borders/shadow
+   disappear (handled inside @media print above + the rules below).
+   Reusing one container keeps Rx slips, lab printouts, SOAP notes,
+   and chart summaries visually consistent — same as a hospital
+   stamping every form with the same letterhead block. */
+.print-document {
+  background: #fff;
+  color: #111;
+  max-width: 8.5in;
+  margin: 0 auto;
+  padding: 0.6in;
+  box-shadow: 0 18px 40px -22px rgba(0, 0, 0, 0.22);
+  font-family: "Times New Roman", "Iowan Old Style", Palatino, Georgia,
+    ui-serif, serif;
+  font-size: 11pt;
+  line-height: 1.45;
+}
+.print-document :is(h1, h2, h3) {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
+    sans-serif;
+  color: #111;
+}
+.print-document .doc-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 2px solid #111;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.print-document .doc-eyebrow {
+  font-size: 9.5pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #444;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
+    sans-serif;
+  font-weight: 600;
+}
+.print-document .doc-section {
+  margin-bottom: 18px;
+}
+.print-document .doc-section h2 {
+  font-size: 10pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #444;
+  border-bottom: 1px solid #c7c7cc;
+  padding-bottom: 4px;
+  margin: 0 0 8px 0;
+  font-weight: 600;
+}
+.print-document .doc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 24px;
+}
+.print-document .doc-field-label {
+  font-size: 8.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6e6e73;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
+    sans-serif;
+}
+.print-document .doc-field-value {
+  font-size: 11pt;
+  color: #111;
+}
+.print-document .doc-footer {
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid #c7c7cc;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 9.5pt;
+  color: #444;
+}
+.print-document .doc-sig {
+  border-top: 1px solid #111;
+  width: 240px;
+  margin-top: 36px;
+  padding-top: 4px;
+  font-size: 9pt;
+  color: #444;
+  text-align: center;
+}
+.print-document table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+}
+.print-document table th {
+  text-align: left;
+  font-size: 9pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #444;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 1px solid #111;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial,
+    sans-serif;
+}
+.print-document table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e5ea;
+  vertical-align: top;
+}
+.print-document .doc-callout {
+  border: 1px solid #b3261e;
+  background: #fef2f1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 10pt;
+}
+
+/* On-screen preview frame — light grey backing so the white sheet pops. */
+.print-document-frame {
+  background: #f3f2ef;
+  min-height: 100vh;
+  padding: 32px 16px;
+}
+
+@media print {
+  .print-document {
+    box-shadow: none !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-document-frame {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .print-document .doc-section,
+  .print-document .doc-header,
+  .print-document table,
+  .print-document tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+/* -------------------------------------------------------------------
+ * Density-mode utilities (PR-follow-through to PR #467 / PR #460).
+ *
+ * Surfaces opt in by toggling `density-comfortable` or `density-dense`
+ * on their container (typically via `useDensity()` in
+ * `src/lib/ui/density.ts`). The CSS variables below let nested rows /
+ * tiles / cards consume a single tunable "step" instead of authoring
+ * two parallel className strings per surface.
+ * ------------------------------------------------------------------- */
+
+.density-comfortable {
+  --density-row-py: 0.875rem;   /* 14px — matches DataTable comfortable */
+  --density-row-px: 1rem;       /* 16px */
+  --density-row-gap: 0.625rem;  /* 10px */
+  --density-tile-py: 1rem;      /* 16px */
+  --density-tile-px: 1.25rem;   /* 20px */
+  --density-card-gap: 1rem;     /* 16px */
+  --density-stack-gap: 0.75rem; /* 12px */
+}
+
+.density-dense {
+  --density-row-py: 0.4375rem;  /* 7px — halves comfortable */
+  --density-row-px: 0.75rem;    /* 12px */
+  --density-row-gap: 0.375rem;  /* 6px */
+  --density-tile-py: 0.625rem;  /* 10px */
+  --density-tile-px: 0.875rem;  /* 14px */
+  --density-card-gap: 0.625rem; /* 10px */
+  --density-stack-gap: 0.5rem;  /* 8px */
+}
+
+/* Convenience helpers; surfaces can compose these without redefining
+ * every padding/gap rule. Authors are free to read the variables
+ * directly when they need to scope to a specific child. */
+.density-row {
+  padding-top: var(--density-row-py);
+  padding-bottom: var(--density-row-py);
+  padding-left: var(--density-row-px);
+  padding-right: var(--density-row-px);
+}
+.density-tile {
+  padding-top: var(--density-tile-py);
+  padding-bottom: var(--density-tile-py);
+  padding-left: var(--density-tile-px);
+  padding-right: var(--density-tile-px);
+}
+.density-stack > * + * {
+  margin-top: var(--density-stack-gap);
+}
+.density-grid {
+  gap: var(--density-card-gap);
+}
+
+/* MarkdownEditor preview pane — Apple-iOS aesthetic typography for the
+   rendered output of components/ui/markdown-editor.tsx. Scoped so it only
+   restyles markup that came out of renderMarkdownToHtml(). */
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+  font-family: var(--font-display, inherit);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.25;
+}
+.markdown-preview h1 { font-size: 1.5rem; }
+.markdown-preview h2 { font-size: 1.25rem; }
+.markdown-preview h3 { font-size: 1.05rem; }
+.markdown-preview p {
+  margin-bottom: 0.6rem;
+  color: var(--text);
+}
+.markdown-preview p:last-child { margin-bottom: 0; }
+.markdown-preview strong { font-weight: 600; color: var(--text); }
+.markdown-preview em { font-style: italic; }
+.markdown-preview a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.markdown-preview ul,
+.markdown-preview ol {
+  margin: 0.25rem 0 0.75rem 1.5rem;
+}
+.markdown-preview ul { list-style: disc; }
+.markdown-preview ol { list-style: decimal; }
+.markdown-preview li { margin-bottom: 0.2rem; }
+.markdown-preview blockquote {
+  margin: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-muted);
+  border-radius: 0 6px 6px 0;
+  color: var(--text-muted);
+}
+.markdown-preview blockquote p { margin-bottom: 0.25rem; }
+.markdown-preview code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  background: var(--surface-muted);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+.markdown-preview pre {
+  background: var(--surface-muted);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+.markdown-preview pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.markdown-preview hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 1rem 0;
 }

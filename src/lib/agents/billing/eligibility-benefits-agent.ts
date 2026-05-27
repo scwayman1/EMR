@@ -35,7 +35,79 @@ const output = z.object({
   usedCache: z.boolean(),
   blocked: z.boolean(),
   blockReason: z.string().nullable(),
+  /** Pre-screen warnings when the encounter's charges contain cannabis-risk
+   * ICD-10 or CPT codes. Commercial payers frequently deny these even with
+   * an active eligibility snapshot, so the billing team needs a heads-up. */
+  cannabisCoverageWarnings: z.array(z.string()),
 });
+
+// ---------------------------------------------------------------------------
+// Per-payer cache TTLs
+// ---------------------------------------------------------------------------
+// Commercial coverage data is more volatile than government programs (ERA
+// posting cadence, plan year resets, rider changes). We bias toward a fresh
+// check for commercial (4h) and trust the EDI response longer for govt
+// (12h). Anything else (self-pay, rare payers, unknowns) gets a 6h middle
+// ground.
+const COMMERCIAL_PAYERS = [
+  "aetna",
+  "united",
+  "uhc",
+  "cigna",
+  "bcbs",
+  "blue cross",
+  "blue shield",
+  "humana",
+  "anthem",
+  "kaiser",
+];
+const GOVT_PAYERS = ["medicare", "medicaid", "tricare", "champva", "va "];
+
+export function ttlForPayer(payerName: string | null | undefined): number {
+  if (!payerName) return 6 * 3600 * 1000;
+  const name = payerName.toLowerCase();
+  if (GOVT_PAYERS.some((k) => name.includes(k))) return 12 * 3600 * 1000;
+  if (COMMERCIAL_PAYERS.some((k) => name.includes(k))) return 4 * 3600 * 1000;
+  return 6 * 3600 * 1000;
+}
+
+// ---------------------------------------------------------------------------
+// Cannabis-risk code pre-screen
+// ---------------------------------------------------------------------------
+// ICD-10 prefixes and CPT codes that frequently trigger cannabis-related
+// coverage issues — benefit exclusions, PA requirements, or outright
+// denials even when the patient is eligible on the date of service.
+const CANNABIS_RISK_ICD10_PREFIXES = ["F12.", "Z71.41", "Z71.51", "Z71.89", "Z03.89"];
+const CANNABIS_RISK_CPT_CODES = new Set(["99406", "99407", "96160", "96161"]);
+
+export function screenCannabisCoverageRisks(
+  charges: Array<{ cptCode: string; icd10Codes: string[] }>,
+): string[] {
+  const warnings: string[] = [];
+  const icd10Hits = new Set<string>();
+  const cptHits = new Set<string>();
+  for (const c of charges) {
+    for (const icd of c.icd10Codes) {
+      if (CANNABIS_RISK_ICD10_PREFIXES.some((p) => icd.startsWith(p))) {
+        icd10Hits.add(icd);
+      }
+    }
+    if (CANNABIS_RISK_CPT_CODES.has(c.cptCode)) {
+      cptHits.add(c.cptCode);
+    }
+  }
+  if (icd10Hits.size > 0) {
+    warnings.push(
+      `Cannabis-risk diagnoses on this encounter (${Array.from(icd10Hits).join(", ")}). Commercial plans frequently deny these as non-covered or require PA — verify benefit language before submission.`,
+    );
+  }
+  if (cptHits.size > 0) {
+    warnings.push(
+      `Counseling/screening CPTs on this encounter (${Array.from(cptHits).join(", ")}) that are NOT reliably covered for cannabis indications. 99406/99407 are tobacco-specific; consider Z71.89 + E/M time for cannabis counseling.`,
+    );
+  }
+  return warnings;
+}
 
 export const eligibilityBenefitsAgent: Agent<
   z.infer<typeof input>,
@@ -67,6 +139,20 @@ export const eligibilityBenefitsAgent: Agent<
       where: { patientId, active: true, type: "primary" },
     });
 
+    // Load encounter charges early so we can pre-screen for cannabis-risk
+    // codes regardless of which path this run takes (no coverage / cache
+    // hit / fresh check).
+    const encounterCharges = await prisma.charge.findMany({
+      where: { encounterId },
+      select: { cptCode: true, icd10Codes: true },
+    });
+    const cannabisCoverageWarnings = screenCannabisCoverageRisks(encounterCharges);
+    if (cannabisCoverageWarnings.length > 0) {
+      trace.step("cannabis coverage risk pre-screen", {
+        warningCount: cannabisCoverageWarnings.length,
+      });
+    }
+
     if (!coverage) {
       ctx.log("warn", "No active primary coverage found");
       trace.conclude({ confidence: 0.95, summary: "No active coverage — patient may be self-pay." });
@@ -89,6 +175,7 @@ export const eligibilityBenefitsAgent: Agent<
         usedCache: false,
         blocked: true,
         blockReason: "No active primary coverage",
+        cannabisCoverageWarnings,
       };
     }
 
@@ -98,12 +185,19 @@ export const eligibilityBenefitsAgent: Agent<
       eligibilityStatus: coverage.eligibilityStatus,
     });
 
-    // ── Check for valid cached snapshot (< 24 hours old) ────────
+    // ── Check for valid cached snapshot (per-payer TTL) ─────────
+    // Even if the stored expiresAt is still in the future, we re-enforce
+    // the per-payer TTL at read time so a stale-but-unexpired commercial
+    // snapshot doesn't linger past its 4h window. This is the "enforce at
+    // both read and write" contract.
+    const ttlMs = ttlForPayer(coverage.payerName);
+    const freshestAcceptableCheckedAt = new Date(Date.now() - ttlMs);
     const cachedSnapshot = await prisma.eligibilitySnapshot.findFirst({
       where: {
         patientId,
         coverageId: coverage.id,
         expiresAt: { gt: new Date() },
+        checkedAt: { gte: freshestAcceptableCheckedAt },
       },
       orderBy: { checkedAt: "desc" },
     });
@@ -155,6 +249,7 @@ export const eligibilityBenefitsAgent: Agent<
         usedCache: true,
         blocked: !cachedSnapshot.eligible,
         blockReason: cachedSnapshot.eligible ? null : "Patient not eligible per cached snapshot",
+        cannabisCoverageWarnings,
       };
     }
 
@@ -201,7 +296,10 @@ export const eligibilityBenefitsAgent: Agent<
         priorAuthRequired,
         referralRequired: false,
         networkStatus,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h TTL
+        // Enforce the same per-payer TTL on write so downstream readers
+        // see an honest expiresAt even if they skip the read-side TTL
+        // enforcement above.
+        expiresAt: new Date(Date.now() + ttlMs),
       },
     });
 
@@ -277,6 +375,7 @@ export const eligibilityBenefitsAgent: Agent<
       usedCache: false,
       blocked: !eligible,
       blockReason: eligible ? null : `Coverage not active: ${coverage.eligibilityStatus}`,
+      cannabisCoverageWarnings,
     };
   },
 };

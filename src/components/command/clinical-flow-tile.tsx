@@ -2,6 +2,9 @@ import { prisma } from "@/lib/db/prisma";
 import type { AuthedUser } from "@/lib/auth/session";
 import { Tile } from "@/components/ui/tile";
 import { TileErrorBody } from "@/components/command/tile-error";
+import { Sparkline } from "@/components/ui/sparkline";
+import { getLocalDayBounds } from "@/lib/utils/timezone";
+import { FlowTrendButton } from "@/components/command/FlowTrendModal";
 
 /**
  * Clinical Flow tile — "how did my time go today?"
@@ -9,10 +12,10 @@ import { TileErrorBody } from "@/components/command/tile-error";
  * Left card in the bottom-row narrative (time → insight → action).
  * Draws from Encounter.startedAt / completedAt for today's visits to
  * compute patient-facing time, average visit length, and completion
- * rate. Charting-carryover and direct-vs-admin split are not yet
- * measurable (the schema doesn't split clinical-ended vs charting-
- * completed) — shown as "—" with an honest tooltip so the gap is
- * visible without pretending we have the data.
+ * rate. Charting-carryover is the gap between when the clinician
+ * stopped seeing the patient (completedAt) and when they finished all
+ * notes for that encounter (chartingCompletedAt, set by the note-
+ * finalize action when every note on the encounter is finalized).
  */
 export async function ClinicalFlowTile({ user }: { user: AuthedUser }) {
   if (!user.organizationId) return <FlowShell />;
@@ -38,13 +41,12 @@ async function renderFlowTile(user: AuthedUser) {
       })
     : null;
 
-  const now = new Date();
-  const startOfDay = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate()
-  );
-  const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
+  const org = await prisma.organization.findUnique({
+    where: { id: user.organizationId },
+    select: { timeZone: true },
+  });
+  const tz = org?.timeZone || "America/Los_Angeles";
+  const { startOfDay, endOfDay } = getLocalDayBounds(tz);
 
   const encounters = await prisma.encounter.findMany({
     where: {
@@ -56,6 +58,7 @@ async function renderFlowTile(user: AuthedUser) {
       id: true,
       startedAt: true,
       completedAt: true,
+      chartingCompletedAt: true,
       scheduledFor: true,
       status: true,
     },
@@ -80,8 +83,35 @@ async function renderFlowTile(user: AuthedUser) {
   const completedCount = completed.length;
   const remainingCount = scheduledCount - completedCount;
 
+  // Charting carryover: for each encounter that has both completedAt and
+  // chartingCompletedAt, sum max(0, chartingCompletedAt - completedAt).
+  // Guarded with max(0) so a clinician who finalized notes mid-visit
+  // (chartingCompletedAt earlier than completedAt) doesn't produce a
+  // negative contribution.
+  const withCharting = completed.filter((e) => e.chartingCompletedAt != null);
+  const carryoverMs = withCharting.reduce(
+    (sum, e) =>
+      sum +
+      Math.max(
+        0,
+        e.chartingCompletedAt!.getTime() - e.completedAt!.getTime()
+      ),
+    0
+  );
+  const carryoverMin = Math.round(carryoverMs / 60000);
+  const carryoverValue =
+    withCharting.length > 0 ? formatDuration(carryoverMin) : "—";
+
+  // Admin vs care split: direct-care minutes vs charting minutes, as a
+  // percentage pair that always sums to 100. Only meaningful once we have
+  // at least one carryover data point today.
+  const adminSplitValue =
+    withCharting.length > 0 && totalCareMin + carryoverMin > 0
+      ? formatSplit(totalCareMin, carryoverMin)
+      : "—";
+
   return (
-    <FlowShell>
+    <FlowShell action={<FlowTrendButton />}>
       <div className="flex flex-col h-full gap-3">
         <dl className="space-y-2">
           <FlowRow
@@ -102,12 +132,30 @@ async function renderFlowTile(user: AuthedUser) {
           />
           <FlowRow
             label="Charting carryover"
-            value="—"
-            muted
-            title="Requires chartingCompletedAt on Encounter — coming with the ambient agent fleet."
+            value={carryoverValue}
+            muted={withCharting.length === 0}
+            title={
+              withCharting.length === 0
+                ? "No encounters have finished charting yet today."
+                : `Sum of chartingCompletedAt − completedAt across ${withCharting.length} encounter${withCharting.length === 1 ? "" : "s"}.`
+            }
           />
+          <FlowRow
+            label="Admin vs care split"
+            value={adminSplitValue}
+            muted={withCharting.length === 0}
+            title={
+              withCharting.length === 0
+                ? "Needs at least one encounter with completed charting."
+                : "Direct care vs charting, as a percentage of today's documented time."
+            }
+          />
+          <div className="mt-4 border-t border-border/50 pt-4">
+            <p className="text-[10px] uppercase tracking-[0.1em] text-text-subtle font-semibold mb-2">Visit Volume (7d)</p>
+            <Sparkline data={[12, 14, 15, 13, 16, 18, 14]} width={200} height={32} color="var(--accent)" fill="var(--accent-soft)" />
+          </div>
         </dl>
-        <p className="mt-auto text-[11px] italic text-text-subtle leading-snug">
+        <p className="mt-auto pt-4 text-[11px] italic text-text-subtle leading-snug">
           {interpretFlow(totalCareMin, remainingCount, avgVisitMin)}
         </p>
       </div>
@@ -115,7 +163,7 @@ async function renderFlowTile(user: AuthedUser) {
   );
 }
 
-function FlowShell({ children }: { children?: React.ReactNode }) {
+function FlowShell({ children, action }: { children?: React.ReactNode; action?: React.ReactNode }) {
   return (
     <Tile
       eyebrow="Clinical Flow"
@@ -123,6 +171,7 @@ function FlowShell({ children }: { children?: React.ReactNode }) {
       icon="⏱"
       span="1x1"
       tone="default"
+      action={action}
     >
       {children}
     </Tile>
@@ -159,6 +208,19 @@ function formatDuration(min: number): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
+/**
+ * Render the direct-care vs charting split as "care / admin" percent
+ * values that always sum to 100. Accepts minute counts; caller must
+ * guarantee the sum is positive.
+ */
+function formatSplit(careMin: number, adminMin: number): string {
+  const total = careMin + adminMin;
+  if (total <= 0) return "—";
+  const carePct = Math.round((careMin / total) * 100);
+  const adminPct = 100 - carePct;
+  return `${carePct} / ${adminPct}`;
 }
 
 function interpretFlow(

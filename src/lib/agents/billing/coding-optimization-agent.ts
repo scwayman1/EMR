@@ -187,6 +187,12 @@ Rules:
 - If documentation does NOT support the current code, recommend a downgrade.
 - ICD-10 codes must be at the highest specificity the documentation supports.
 - Cannabis counseling: use Z71.3 or relevant F12.x codes.
+
+Cannabis-specific coding rules (these OVERRIDE the generic rules above when they conflict):
+- F12 severity gate: DO NOT upgrade F12.10 (unspecified, uncomplicated) to F12.20 (dependence) unless the documentation explicitly notes (a) at least 2 DSM-5 criteria met from the severity table AND (b) functional impact — missed work, relationships, school, inability to cut down after trying. If either is missing, keep the lower specificity and note the gap in rationale.
+- Z71.89 bundling warning: when a Z71.89 counseling code is billed alongside an E/M for a commercial payer, include a modifier-25 check. If the payer's policy does not honor mod-25 on Z71 services, recommend dropping the Z71 line and documenting counseling time inside the E/M.
+- 99406 / 99407 are NOT for cannabis counseling. Those CPTs are tobacco-cessation specific. For cannabis counseling use Z71.89 plus the time-based E/M level. If the current coding has 99406/99407 tied to an F12/Z71 diagnosis, flag it as a mis-code.
+- E/M uplift on F12-only diagnoses requires documented medical decision-making. Do NOT upgrade 99213→99214 for cannabis-only visits unless the Assessment or Plan documents moderate MDM (≥2 chronic conditions addressed, prescription drug management, or moderate risk of morbidity).
 - Return ONLY valid JSON.`;
 
     let optimized = false;

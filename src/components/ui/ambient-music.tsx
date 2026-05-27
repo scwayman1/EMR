@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 /**
  * Ambient Music Player — a subtle floating button that plays
@@ -9,6 +9,11 @@ import { useState, useRef, useCallback } from "react";
  * Uses the Web Audio API to generate a gentle ambient tone
  * (no external audio file needed). In production, this would
  * load a real MP3/OGG of classical music.
+ *
+ * Bug fix (2026-04-26): properly handles AudioContext suspension
+ * when the user navigates away and back. The browser auto-suspends
+ * the context when the tab loses visibility; we now resume it
+ * before attempting any gain ramps or stops.
  */
 export function AmbientMusicPlayer() {
   const [playing, setPlaying] = useState(false);
@@ -16,63 +21,133 @@ export function AmbientMusicPlayer() {
   const nodesRef = useRef<{
     osc1: OscillatorNode;
     osc2: OscillatorNode;
+    lfo: OscillatorNode;
     gain: GainNode;
   } | null>(null);
+  const fadingRef = useRef(false);
+
+  // Clean up on unmount — stop any playing audio
+  useEffect(() => {
+    return () => {
+      try {
+        nodesRef.current?.osc1.stop();
+        nodesRef.current?.osc2.stop();
+        nodesRef.current?.lfo.stop();
+      } catch {
+        /* already stopped */
+      }
+      nodesRef.current = null;
+      ctxRef.current?.close().catch(() => {});
+      ctxRef.current = null;
+    };
+  }, []);
+
+  const stop = useCallback(async () => {
+    if (fadingRef.current) return; // already fading out
+    fadingRef.current = true;
+
+    const ctx = ctxRef.current;
+    const nodes = nodesRef.current;
+
+    if (ctx && nodes) {
+      // Resume context if browser suspended it (e.g. tab was hidden)
+      if (ctx.state === "suspended") {
+        try {
+          await ctx.resume();
+        } catch {
+          /* context may be closed — fall through to cleanup */
+        }
+      }
+
+      try {
+        // Fade out over 500ms
+        nodes.gain.gain.cancelScheduledValues(ctx.currentTime);
+        nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, ctx.currentTime);
+        nodes.gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+      } catch {
+        /* gain node may be disconnected */
+      }
+
+      setTimeout(() => {
+        try {
+          nodes.osc1.stop();
+          nodes.osc2.stop();
+          nodes.lfo.stop();
+        } catch {
+          /* already stopped */
+        }
+        nodesRef.current = null;
+        ctx.close().catch(() => {});
+        ctxRef.current = null;
+        fadingRef.current = false;
+      }, 600);
+    } else {
+      // No context/nodes — just clean up refs
+      nodesRef.current = null;
+      if (ctx) {
+        ctx.close().catch(() => {});
+        ctxRef.current = null;
+      }
+      fadingRef.current = false;
+    }
+
+    setPlaying(false);
+  }, []);
+
+  const start = useCallback(() => {
+    // Tear down any existing context first (defensive)
+    try {
+      nodesRef.current?.osc1.stop();
+      nodesRef.current?.osc2.stop();
+      nodesRef.current?.lfo.stop();
+    } catch {
+      /* noop */
+    }
+    nodesRef.current = null;
+    ctxRef.current?.close().catch(() => {});
+
+    const ctx = new AudioContext();
+    ctxRef.current = ctx;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 1);
+    gain.connect(ctx.destination);
+
+    // Two gentle sine waves that create a warm pad
+    const osc1 = ctx.createOscillator();
+    osc1.type = "sine";
+    osc1.frequency.value = 174; // Solfeggio frequency — grounding
+    osc1.connect(gain);
+    osc1.start();
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = "sine";
+    osc2.frequency.value = 261.63; // Middle C
+    osc2.connect(gain);
+    osc2.start();
+
+    // Gentle modulation for movement
+    const lfo = ctx.createOscillator();
+    lfo.type = "sine";
+    lfo.frequency.value = 0.1; // Very slow
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 2;
+    lfo.connect(lfoGain);
+    lfoGain.connect(osc1.frequency);
+    lfo.start();
+
+    nodesRef.current = { osc1, osc2, lfo, gain };
+    setPlaying(true);
+  }, []);
 
   const toggle = useCallback(() => {
     if (playing) {
-      // Stop
-      if (nodesRef.current) {
-        nodesRef.current.gain.gain.linearRampToValueAtTime(
-          0,
-          (ctxRef.current?.currentTime ?? 0) + 0.5,
-        );
-        setTimeout(() => {
-          nodesRef.current?.osc1.stop();
-          nodesRef.current?.osc2.stop();
-          nodesRef.current = null;
-          ctxRef.current?.close();
-          ctxRef.current = null;
-        }, 600);
-      }
-      setPlaying(false);
+      stop();
     } else {
-      // Start ambient tone
-      const ctx = new AudioContext();
-      ctxRef.current = ctx;
-
-      const gain = ctx.createGain();
-      gain.gain.value = 0;
-      gain.gain.linearRampToValueAtTime(0.03, ctx.currentTime + 1);
-      gain.connect(ctx.destination);
-
-      // Two gentle sine waves that create a warm pad
-      const osc1 = ctx.createOscillator();
-      osc1.type = "sine";
-      osc1.frequency.value = 174; // Solfeggio frequency — grounding
-      osc1.connect(gain);
-      osc1.start();
-
-      const osc2 = ctx.createOscillator();
-      osc2.type = "sine";
-      osc2.frequency.value = 261.63; // Middle C
-      osc2.connect(gain);
-      osc2.start();
-
-      // Gentle modulation for movement
-      const lfo = ctx.createOscillator();
-      lfo.type = "sine";
-      lfo.frequency.value = 0.1; // Very slow
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.value = 2;
-      lfo.connect(lfoGain);
-      lfoGain.connect(osc1.frequency);
-      lfo.start();
-
-      nodesRef.current = { osc1, osc2, gain };
-      setPlaying(true);
+      start();
     }
-  }, [playing]);
+  }, [playing, start, stop]);
 
   return (
     <button

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { PatientSectionNav } from "@/components/shell/PatientSectionNav";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LeafSprig, EditorialRule, Eyebrow } from "@/components/ui/ornament";
+import { Tabs, TabList, Trigger, Panel } from "@/components/ui/tabs";
 import {
   CANNABINOIDS,
   TERPENES,
@@ -28,9 +30,21 @@ const EVIDENCE_TONE: Record<string, "success" | "info" | "warning" | "neutral"> 
   anecdotal: "neutral",
 };
 
+const TAB_VALUES: readonly Tab[] = ["conditions", "cannabinoids", "terpenes", "delivery"];
+
+function parseTab(raw: string | null): Tab | null {
+  if (!raw) return null;
+  return (TAB_VALUES as readonly string[]).includes(raw) ? (raw as Tab) : null;
+}
+
 export default function LearnPage() {
-  const [tab, setTab] = useState<Tab>("conditions");
+  const searchParams = useSearchParams();
+  const initialTab = parseTab(searchParams.get("tab")) ?? "conditions";
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [search, setSearch] = useState("");
+  // Note: deep-link sync between Education hub tabs and this page is
+  // handled by the Tabs primitive via `urlParam="tab"` below — no manual
+  // useEffect reconciliation needed.
 
   const searchResults = useMemo(() => {
     if (search.length < 2) return null;
@@ -39,7 +53,7 @@ export default function LearnPage() {
 
   return (
     <PageShell maxWidth="max-w-[960px]">
-      <PatientSectionNav section="health" />
+      <PatientSectionNav section="chatLearn" />
 
       <div className="mb-8">
         <Eyebrow className="mb-3">Educational Library</Eyebrow>
@@ -111,33 +125,27 @@ export default function LearnPage() {
       )}
 
       {/* ── Tab bar ────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-b border-border mb-8 overflow-x-auto">
-        {([
-          { key: "conditions" as Tab, label: "By Condition", count: CONDITION_GUIDES.length },
-          { key: "cannabinoids" as Tab, label: "Cannabinoids", count: CANNABINOIDS.length },
-          { key: "terpenes" as Tab, label: "Terpenes", count: TERPENES.length },
-          { key: "delivery" as Tab, label: "Delivery Methods", count: DELIVERY_METHODS.length },
-        ]).map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`relative px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
-              tab === t.key
-                ? "text-accent"
-                : "text-text-muted hover:text-text"
-            }`}
-          >
-            {t.label}
-            <span className="ml-1.5 text-xs text-text-subtle">{t.count}</span>
-            {tab === t.key && (
-              <span className="absolute bottom-0 left-2 right-2 h-0.5 bg-accent rounded-full" />
-            )}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(v) => setTab(v as Tab)}
+        urlParam="tab"
+      >
+        <TabList aria-label="Educational library sections" className="mb-8 overflow-x-auto">
+          {([
+            { key: "conditions" as Tab, label: "By Condition", count: CONDITION_GUIDES.length },
+            { key: "cannabinoids" as Tab, label: "Cannabinoids", count: CANNABINOIDS.length },
+            { key: "terpenes" as Tab, label: "Terpenes", count: TERPENES.length },
+            { key: "delivery" as Tab, label: "Delivery Methods", count: DELIVERY_METHODS.length },
+          ]).map((t) => (
+            <Trigger key={t.key} value={t.key}>
+              {t.label}
+              <span className="ml-1.5 text-xs text-text-subtle">{t.count}</span>
+            </Trigger>
+          ))}
+        </TabList>
 
       {/* ── Condition guides ───────────────────────── */}
-      {tab === "conditions" && (
+      <Panel value="conditions">
         <div className="space-y-5">
           {CONDITION_GUIDES.map((g) => (
             <Card key={g.condition} tone="raised">
@@ -195,10 +203,10 @@ export default function LearnPage() {
             </Card>
           ))}
         </div>
-      )}
+      </Panel>
 
       {/* ── Cannabinoids ───────────────────────────── */}
-      {tab === "cannabinoids" && (
+      <Panel value="cannabinoids" lazy>
         <div className="space-y-5">
           {CANNABINOIDS.map((c) => (
             <Card key={c.name} tone="raised">
@@ -226,10 +234,10 @@ export default function LearnPage() {
             </Card>
           ))}
         </div>
-      )}
+      </Panel>
 
       {/* ── Terpenes ───────────────────────────────── */}
-      {tab === "terpenes" && (
+      <Panel value="terpenes" lazy>
         <div className="space-y-5">
           {TERPENES.map((t) => (
             <Card key={t.name} tone="raised">
@@ -255,10 +263,10 @@ export default function LearnPage() {
             </Card>
           ))}
         </div>
-      )}
+      </Panel>
 
       {/* ── Delivery methods ───────────────────────── */}
-      {tab === "delivery" && (
+      <Panel value="delivery" lazy>
         <div className="space-y-5">
           {DELIVERY_METHODS.map((d) => (
             <Card key={d.name} tone="raised">
@@ -312,7 +320,8 @@ export default function LearnPage() {
             </Card>
           ))}
         </div>
-      )}
+      </Panel>
+      </Tabs>
 
       {/* ── Disclaimer ─────────────────────────────── */}
       <div className="mt-12 mb-4 text-center">

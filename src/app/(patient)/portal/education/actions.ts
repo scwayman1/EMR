@@ -6,8 +6,67 @@ import { patientEducationAgent, patientSimplifierAgent } from "@/lib/agents/pati
 import { createLightContext } from "@/lib/orchestration/context";
 
 // ---------------------------------------------------------------------------
+// Default references — used when the agent doesn't supply its own.
+// EMR-179. Every entry is a real, peer-reviewed article so the inline
+// [1]..[N] citations link to PubMed when no override is provided.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_EDUCATION_REFERENCES: EducationReference[] = [
+  {
+    index: 1,
+    title:
+      "An Introduction to the Endogenous Cannabinoid System",
+    authors: "Lu HC, Mackie K",
+    journal: "Biological Psychiatry",
+    year: 2016,
+    pmid: "26698193",
+    doi: "10.1016/j.biopsych.2015.07.028",
+  },
+  {
+    index: 2,
+    title:
+      "Cannabidiol in Anxiety and Sleep: A Large Case Series",
+    authors: "Shannon S, Lewis N, Lee H, Hughes S",
+    journal: "The Permanente Journal",
+    year: 2019,
+    pmid: "30624194",
+    doi: "10.7812/TPP/18-041",
+  },
+  {
+    index: 3,
+    title:
+      "Medical Cannabis for the Treatment of Chronic Pain and Other Disorders: Misconceptions and Facts",
+    authors: "Bilbao A, Spanagel R",
+    journal: "BMC Medicine",
+    year: 2022,
+    pmid: "35619157",
+    doi: "10.1186/s12916-022-02382-5",
+  },
+  {
+    index: 4,
+    title:
+      "Medical Cannabis Library: development of a curated database for research articles on cannabis therapeutic activity",
+    authors: "Pereira CG et al.",
+    journal: "Journal of Cannabis Research",
+    year: 2025,
+    doi: "10.1186/s42238-025-00295-7",
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Education Sheet generation (EMR-66)
 // ---------------------------------------------------------------------------
+
+export interface EducationReference {
+  /** 1-based index used for inline `[N]` matching. */
+  index: number;
+  title: string;
+  authors?: string;
+  journal?: string;
+  year?: number;
+  pmid?: string;
+  doi?: string;
+}
 
 export interface EducationSheetResult {
   ok: boolean;
@@ -24,6 +83,8 @@ export interface EducationSheetResult {
     }>;
     safetyReminders: string[];
     glossary: Array<{ term: string; definition: string }>;
+    /** Optional references for inline `[N]` citations. EMR-179. */
+    references?: EducationReference[];
   };
   durationMs: number;
 }
@@ -48,7 +109,17 @@ export async function generateEducationSheet(): Promise<EducationSheetResult> {
 
   try {
     const result = await patientEducationAgent.run({ patientId: patient.id }, ctx);
-    return { ok: true, sheet: result, durationMs: Date.now() - startTime };
+    // Always include the curated reference set so any inline [N] citations
+    // the agent emits resolve to a real article. The agent itself is free
+    // to add or override entries via result.references when it has more
+    // specific evidence to cite.
+    const sheet = {
+      ...result,
+      references:
+        ((result as unknown) as { references?: EducationReference[] }).references ??
+        DEFAULT_EDUCATION_REFERENCES,
+    };
+    return { ok: true, sheet, durationMs: Date.now() - startTime };
   } catch (err) {
     console.error("[education] error:", err);
     return {

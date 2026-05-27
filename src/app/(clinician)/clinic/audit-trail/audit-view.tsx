@@ -12,7 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
+import { useDensity, densityClass } from "@/lib/ui/density";
+import { PatientHoverCard, ProviderHoverCard } from "@/components/preview";
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -54,17 +57,17 @@ function getActionTone(action: string): "success" | "warning" | "danger" | "neut
   return "neutral";
 }
 
-function getActionColor(action: string): string {
+function getActionLeaf(action: string): string {
   const tone = getActionTone(action);
   switch (tone) {
     case "success":
-      return "bg-emerald-500";
+      return "🌿";
     case "warning":
-      return "bg-amber-500";
+      return "🌱";
     case "danger":
-      return "bg-red-500";
+      return "🍂";
     default:
-      return "bg-gray-400";
+      return "🍃";
   }
 }
 
@@ -180,8 +183,10 @@ export function AuditTrailView({
     URL.revokeObjectURL(url);
   }, [filteredLogs]);
 
+  const { density } = useDensity();
+
   return (
-    <div>
+    <div className={densityClass(density)}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-10">
         <div className="max-w-2xl">
@@ -266,26 +271,28 @@ export function AuditTrailView({
               <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
                 From
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={dateFrom}
-                onChange={(e) => {
-                  setDateFrom(e.target.value);
+                onChange={(v) => {
+                  setDateFrom(v);
                   setCurrentPage(1);
                 }}
+                placeholder="From date"
+                max={dateTo || undefined}
               />
             </div>
             <div>
               <label className="text-[10px] text-text-subtle uppercase tracking-wider mb-1 block">
                 To
               </label>
-              <Input
-                type="date"
+              <DatePicker
                 value={dateTo}
-                onChange={(e) => {
-                  setDateTo(e.target.value);
+                onChange={(v) => {
+                  setDateTo(v);
                   setCurrentPage(1);
                 }}
+                placeholder="To date"
+                min={dateFrom || undefined}
               />
             </div>
           </div>
@@ -335,7 +342,10 @@ export function AuditTrailView({
 
                     return (
                       <tr key={log.id} className="group">
-                        <td className="py-3 px-5" colSpan={6}>
+                        <td
+                          className="py-3 px-5 [.density-dense_&]:py-1.5 [.density-dense_&]:px-3"
+                          colSpan={6}
+                        >
                           <div className="flex items-start gap-4">
                             {/* Expand button */}
                             <button
@@ -362,13 +372,13 @@ export function AuditTrailView({
                               </svg>
                             </button>
 
-                            {/* Color dot */}
+                            {/* Action leaf */}
                             <span
-                              className={cn(
-                                "mt-1.5 h-2 w-2 rounded-full shrink-0",
-                                getActionColor(log.action),
-                              )}
-                            />
+                              aria-hidden="true"
+                              className="mt-0.5 text-[11px] leading-none shrink-0"
+                            >
+                              {getActionLeaf(log.action)}
+                            </span>
 
                             {/* Content */}
                             <div className="flex-1 min-w-0">
@@ -384,6 +394,12 @@ export function AuditTrailView({
                                     <span className="font-mono text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
                                       {log.actorAgent}
                                     </span>
+                                  ) : log.actorUserId ? (
+                                    <ProviderHoverCard userId={log.actorUserId}>
+                                      <span className="font-medium cursor-default">
+                                        {log.actorName}
+                                      </span>
+                                    </ProviderHoverCard>
                                   ) : (
                                     <span className="font-medium">
                                       {log.actorName}
@@ -405,11 +421,18 @@ export function AuditTrailView({
                                     <span className="font-medium text-text-subtle">
                                       {log.subjectType}
                                     </span>
-                                    {log.subjectId && (
+                                    {log.subjectId &&
+                                    log.subjectType.toLowerCase() === "patient" ? (
+                                      <PatientHoverCard patientId={log.subjectId}>
+                                        <span className="font-mono text-[10px] ml-1 cursor-default underline-offset-2 hover:underline">
+                                          {log.subjectId.slice(0, 12)}
+                                        </span>
+                                      </PatientHoverCard>
+                                    ) : log.subjectId ? (
                                       <span className="font-mono text-[10px] ml-1">
                                         {log.subjectId.slice(0, 12)}
                                       </span>
-                                    )}
+                                    ) : null}
                                   </span>
                                 )}
                               </div>
@@ -497,19 +520,19 @@ export function AuditTrailView({
       {/* Legend */}
       <div className="mt-6 flex items-center gap-6 text-xs text-text-muted">
         <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          <span aria-hidden="true">🌿</span>
           Reads
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <span aria-hidden="true">🌱</span>
           Writes
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-red-500" />
+          <span aria-hidden="true">🍂</span>
           Deletes
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-gray-400" />
+          <span aria-hidden="true">🍃</span>
           Other
         </div>
       </div>

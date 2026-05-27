@@ -1,31 +1,199 @@
-// Middleware — pass-through.
+// Middleware — multi-domain routing for Leafmart + Leafjourney.
 //
-// Clerk was scaffolded in an earlier commit but is not yet wired in prod
-// (AUTH_PROVIDER=iron-session). The previous version imported Clerk at the
-// top of this file, which forced @clerk/nextjs to initialize during Next.js
-// boot — combined with the Clerk v7 / Next 14 peer-dep mismatch, this was
-// causing the web server to fail to bind a port on Render, triggering
-// "Timed out while running your code" deploy cancellations.
+// How it works:
+// 1. Reads the Host header to determine which brand is being accessed
+// 2. For leafmart.com requests, internally rewrites "/" → "/leafmart",
+//    "/products/x" → "/leafmart/products/x", etc.
+// 3. The user never sees "/leafmart/" in their URL bar
+// 4. For leafjourney.com (or localhost), passes through normally
 //
-// Until Clerk is actually enabled, keep this file Clerk-free. Route
-// protection continues to live at the layout level via `requireUser()`.
-//
-// To re-enable Clerk later:
-//   1. Ensure @clerk/nextjs is compatible with the installed Next version
-//   2. Restore the clerkMiddleware + createRouteMatcher wiring
-//   3. Guard the Clerk import behind `AUTH_PROVIDER === "clerk"` via dynamic import
+// Domain config:
+//   leafmart.com / www.leafmart.com / theleafmart.com / www.theleafmart.com → Leafmart
+//   Everything else → Leafjourney (EMR)
 
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
-export default function middleware(_req: NextRequest) {
-  return NextResponse.next();
+/** Hostnames that should resolve to the Leafmart storefront */
+const LEAFMART_HOSTS = [
+  "leafmart.com",
+  "www.leafmart.com",
+  "theleafmart.com",
+  "www.theleafmart.com",
+  "leafmart.localhost",
+];
+
+/** Hostnames that should resolve to the LeafNerd data product */
+const LEAFNERD_HOSTS = [
+  "leafnerd.leafjourney.com",
+  "leafnerd.localhost",
+];
+
+/** Paths that should NOT be rewritten (shared infra) */
+const SHARED_PATHS = [
+  "/api/",
+  "/_next/",
+  "/favicon.ico",
+  "/icon.svg",
+];
+
+function isLeafmartHost(host: string): boolean {
+  // Strip port for localhost comparison
+  const hostname = host.split(":")[0];
+  return LEAFMART_HOSTS.includes(hostname);
 }
+
+function isLeafnerdHost(host: string): boolean {
+  const hostname = host.split(":")[0];
+  return LEAFNERD_HOSTS.includes(hostname);
+}
+
+function isSharedPath(pathname: string): boolean {
+  return SHARED_PATHS.some((p) => pathname.startsWith(p));
+}
+
+// Auth model: Clerk's middleware attaches session state to the request,
+// but does NOT auto-protect routes. Per-page protection happens in the
+// route handlers and Server Components via requireUser() / requireRole()
+// from @/lib/auth/session and the new requireApiAuth() in @/lib/auth/api-gate.
+// The middleware below only adds two cross-cutting concerns: (1) coarse
+// auth gate on the onboarding-controller surface, (2) origin check on
+// admin mutations.
+//
+// (A previous version of this file declared `isPublicRoute = createRouteMatcher`
+// matching every path, with a confused comment. It was never invoked.
+// Removed in chore/middleware-dead-route-matcher.)
+
+// EMR-428 — Practice Onboarding Controller surfaces. Coarse gate: must be
+// signed in. The route handlers/pages do the real role check via
+// `requireImplementationAdmin()` (defense in depth — middleware runs on the
+// edge and can't reach Prisma for the membership/role join).
+const isControllerSurface = createRouteMatcher([
+  "/onboarding/wizard(.*)",
+  "/api/configs(.*)",
+  "/templates(.*)",
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  const host = req.headers.get("host") || "";
+  const { pathname } = req.nextUrl;
+
+  // Skip shared paths (API, static assets)
+  if (isSharedPath(pathname)) {
+    // /api/configs is a controller surface even though it lives under /api —
+    // we still want to gate it. Don't early-return for it.
+    if (!pathname.startsWith("/api/configs")) {
+      return NextResponse.next();
+    }
+  }
+
+  // ── EMR-428: Practice Onboarding Controller gate ─────────
+  // Coarse check: require an authenticated session. Non-admins who slip past
+  // here are stopped by `requireImplementationAdmin()` in the route handler.
+  //
+  // EMR-410 NOTE: Modality enforcement does NOT live here. Modality state is
+  // per-practice and requires a Prisma read against PracticeConfiguration —
+  // which is unavailable from the edge runtime. Routes that touch a modality
+  // call `requireModalityEnabled()` from `@/lib/modality/api-guard` at the
+  // top of the handler. This middleware intentionally stays modality-agnostic.
+  if (isControllerSurface(req)) {
+    const { userId } = await auth();
+    if (!userId) {
+      // For API routes: 403 JSON (no redirect — would break clients).
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          { error: "FORBIDDEN", message: "Authentication required." },
+          { status: 403 },
+        );
+      }
+      // For page routes: send to the friendly forbidden surface.
+      const url = req.nextUrl.clone();
+      url.pathname = "/forbidden";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    // Authenticated — fall through to per-route role check downstream.
+  }
+
+  // ── Origin check for state-changing /api/admin requests ──
+  // Defense-in-depth against CSRF. Clerk's session cookie is SameSite=Lax,
+  // which blocks the easiest cross-site form-post attack but does NOT
+  // block fetch() from a controlled origin. The admin routes mutate
+  // privilege grants and practice config — the cost of a bypass is high
+  // enough that we want a second check beyond cookie SameSite.
+  //
+  // We accept either:
+  //   - An exact match against APP_URL (set in env), or
+  //   - The Origin matches the current request's Host (fetch-from-same-page).
+  //
+  // Webhooks under /api/webhooks/** are NOT covered here — those have
+  // signature verification and explicitly accept cross-origin posts.
+  if (
+    pathname.startsWith("/api/admin/") &&
+    req.method !== "GET" &&
+    req.method !== "HEAD" &&
+    req.method !== "OPTIONS"
+  ) {
+    const origin = req.headers.get("origin");
+    const appUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const sameHost = origin
+      ? (() => {
+          try {
+            return new URL(origin).host === host;
+          } catch {
+            return false;
+          }
+        })()
+      : false;
+    const matchesAppUrl = origin && appUrl && origin === appUrl.replace(/\/$/, "");
+
+    if (!origin || (!sameHost && !matchesAppUrl)) {
+      return NextResponse.json(
+        {
+          error: "FORBIDDEN",
+          message: "Origin mismatch — admin mutations require same-origin requests.",
+        },
+        { status: 403 },
+      );
+    }
+  }
+
+  // ── Leafmart domain routing ──────────────────────────────
+  if (isLeafmartHost(host)) {
+    if (pathname.startsWith("/leafmart")) {
+      const cleanPath = pathname.replace(/^\/leafmart/, "") || "/";
+      const url = req.nextUrl.clone();
+      url.pathname = cleanPath;
+      return NextResponse.redirect(url, 308);
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = `/leafmart${pathname === "/" ? "" : pathname}`;
+    const response = NextResponse.rewrite(url);
+    response.headers.set("x-leafmart-brand", "leafmart");
+    return response;
+  }
+
+  // ── LeafNerd domain routing ──────────────────────────────
+  if (isLeafnerdHost(host)) {
+    if (pathname.startsWith("/leafnerd")) {
+      const cleanPath = pathname.replace(/^\/leafnerd/, "") || "/";
+      const url = req.nextUrl.clone();
+      url.pathname = cleanPath;
+      return NextResponse.redirect(url, 308);
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = `/leafnerd${pathname === "/" ? "" : pathname}`;
+    const response = NextResponse.rewrite(url);
+    response.headers.set("x-leafnerd-brand", "leafnerd");
+    return response;
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run on API routes
     "/(api|trpc)(.*)",
   ],
 };

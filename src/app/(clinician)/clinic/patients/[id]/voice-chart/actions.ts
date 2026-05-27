@@ -6,9 +6,26 @@ import { resolveModelClient } from "@/lib/orchestration/model-client";
 import {
   buildExtractionPrompt,
   formatTranscript,
+  type ScribeFormatOptions,
   type TranscriptSegment,
 } from "@/lib/domain/voice-chart";
+import {
+  findSummaryStyle,
+  findTemplate,
+  findTone,
+  type ScribeSummaryStyleId,
+  type ScribeTemplateId,
+  type ScribeToneId,
+} from "@/lib/domain/scribe-templates";
 import type { NoteBlockType } from "@/lib/domain/notes";
+import {
+  redactPii,
+  scanForHallucinations,
+  freezeNoteSnapshot,
+  type NoteSnapshot,
+} from "@/lib/agents/guardrails/note-guardrails";
+import { ensureConsentDisclaimerBlock } from "@/lib/clinical/ai-consent-disclaimer";
+import { logger } from "@/lib/observability/log";
 
 // ── Result types ───────────────────────────────────────────────
 
@@ -24,7 +41,14 @@ interface ProcessResultOk {
   noteId: string;
   blocks: NoteBlock[];
   confidence: number;
+  templateId: ScribeTemplateId;
+  toneId: ScribeToneId;
+  summaryStyleId: ScribeSummaryStyleId;
+  sectionOrder: NoteBlockType[];
+  documentHeader: string;
 }
+
+export interface ProcessTranscriptOptions extends ScribeFormatOptions {}
 
 interface ProcessResultError {
   ok: false;
@@ -61,6 +85,37 @@ function ageFromDob(dob: Date): number {
   return age;
 }
 
+async function requireEncounterForPatient(
+  encounterId: string,
+  patientId: string,
+  organizationId: string,
+) {
+  const encounter = await prisma.encounter.findFirst({
+    where: {
+      id: encounterId,
+      patientId,
+      organizationId,
+      patient: { deletedAt: null },
+    },
+    select: { id: true, patientId: true, organizationId: true },
+  });
+  if (!encounter) throw new Error("Encounter not found.");
+  return encounter;
+}
+
+async function requireEncounterInCurrentOrg(encounterId: string, organizationId: string) {
+  const encounter = await prisma.encounter.findFirst({
+    where: {
+      id: encounterId,
+      organizationId,
+      patient: { deletedAt: null },
+    },
+    select: { id: true, patientId: true, organizationId: true },
+  });
+  if (!encounter) throw new Error("Encounter not found.");
+  return encounter;
+}
+
 // ── Actions ────────────────────────────────────────────────────
 
 /**
@@ -70,10 +125,18 @@ function ageFromDob(dob: Date): number {
 export async function processTranscript(
   encounterId: string,
   transcript: string,
-  patientId: string
+  patientId: string,
+  options: ProcessTranscriptOptions = {},
 ): Promise<ProcessResult> {
   try {
     const user = await requireUser();
+
+    // Resolve the requested scribe template / tone / summary style.
+    // Each lookup falls back to a sane default when an id is missing
+    // or unrecognized, so older callers that pass nothing still work.
+    const template = findTemplate(options.templateId ?? "soap");
+    const tone = findTone(options.toneId ?? template.defaultTone);
+    const summaryStyle = findSummaryStyle(options.summaryStyleId ?? "structured");
 
     // Load patient with chart summary
     const patient = await prisma.patient.findFirst({
@@ -87,6 +150,15 @@ export async function processTranscript(
 
     if (!patient) {
       return { ok: false, error: "Patient not found." };
+    }
+
+    try {
+      await requireEncounterForPatient(encounterId, patientId, user.organizationId!);
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Encounter not found.",
+      };
     }
 
     // Build patient context string
@@ -117,9 +189,30 @@ CHART SUMMARY:
 ${summaryMd}
 `.trim();
 
-    // Call model with the extraction prompt
+    // EMR-131: Pre-model PII redaction. Strip names, phone, SSN, email,
+    // MRN-shaped tokens, and DOBs from the transcript before the model
+    // sees it. The structured note that comes back can still reference
+    // the patient (the chart UI re-hydrates the name from the patient
+    // row), so the model never needs the literal PII.
+    const knownNames = [
+      patient.firstName,
+      patient.lastName,
+      `${patient.firstName} ${patient.lastName}`,
+    ].filter((n): n is string => Boolean(n && n.length > 1));
+    const { redacted: scrubbedTranscript, counts: redactionCounts } = redactPii(
+      transcript,
+      knownNames,
+    );
+
+    // Call model with the extraction prompt (against the scrubbed transcript).
+    // The template/tone/summary-style triple shapes both the prompt and
+    // the section ordering of the returned blocks.
     const model = resolveModelClient();
-    const prompt = buildExtractionPrompt(transcript, patientContext);
+    const prompt = buildExtractionPrompt(scrubbedTranscript, patientContext, {
+      templateId: template.id,
+      toneId: tone.id,
+      summaryStyleId: summaryStyle.id,
+    });
 
     const modelResponse = await model.complete(prompt, {
       maxTokens: 1024,
@@ -156,27 +249,37 @@ ${summaryMd}
           heading: "Summary",
           body:
             parsed.summary ??
+            template.mockSummary.summary ??
             `${patient.firstName} ${patient.lastName} presented for a visit.`,
         },
         {
           type: "findings" as const,
           heading: "Relevant findings",
-          body: parsed.findings ?? "See transcript.",
+          body:
+            parsed.findings ??
+            template.mockSummary.findings ??
+            "See transcript.",
         },
         {
           type: "assessment" as const,
           heading: "Assessment",
-          body: parsed.assessment,
+          body: parsed.assessment ?? template.mockSummary.assessment,
         },
         {
           type: "plan" as const,
           heading: "Plan",
-          body: parsed.plan ?? "-- draft, pending clinician input --",
+          body:
+            parsed.plan ??
+            template.mockSummary.plan ??
+            "-- draft, pending clinician input --",
         },
         {
           type: "followUp" as const,
           heading: "Follow-up",
-          body: parsed.followUp ?? "Schedule follow-up as appropriate.",
+          body:
+            parsed.followUp ??
+            template.mockSummary.followUp ??
+            "Schedule follow-up as appropriate.",
         },
       ];
 
@@ -185,56 +288,127 @@ ${summaryMd}
         blocks[2] = { ...blocks[2], metadata: { suggestedCodes } };
       }
     } else {
-      // Fallback: model returned plain text
+      // Fallback: model returned plain text. Seed the draft from the
+      // selected template's mock summary so the clinician sees a
+      // realistically-shaped note for the chosen format instead of
+      // an empty SOAP skeleton.
       confidence = 0.5;
       blocks = [
         {
           type: "summary" as const,
           heading: "Summary",
-          body: `${patient.firstName} ${patient.lastName} presented for a visit.`,
+          body:
+            template.mockSummary.summary ||
+            `${patient.firstName} ${patient.lastName} presented for a visit.`,
         },
         {
           type: "findings" as const,
           heading: "Relevant findings",
-          body: modelResponse || "Unable to extract findings from transcript.",
+          body:
+            template.mockSummary.findings ||
+            modelResponse ||
+            "Unable to extract findings from transcript.",
         },
         {
           type: "assessment" as const,
           heading: "Assessment",
-          body: "-- draft, pending clinician review --",
+          body:
+            template.mockSummary.assessment ||
+            "-- draft, pending clinician review --",
         },
         {
           type: "plan" as const,
           heading: "Plan",
-          body: "-- draft, pending clinician input --",
+          body:
+            template.mockSummary.plan ||
+            "-- draft, pending clinician input --",
         },
         {
           type: "followUp" as const,
           heading: "Follow-up",
-          body: "Schedule follow-up as appropriate.",
+          body:
+            template.mockSummary.followUp ||
+            "Schedule follow-up as appropriate.",
         },
       ];
     }
 
-    // Persist the draft note
+    // EMR-131: Hallucination scan over the draft. Conservative — flags
+    // sentences whose content has no overlap with the redacted
+    // transcript or chart context. Surfaced inline in the editor.
+    const hallucination = scanForHallucinations(
+      blocks,
+      scrubbedTranscript,
+      patientContext,
+    );
+
+    // EMR-784: Voice/ambient AI scribe must always carry the patient
+    // verbal-consent disclaimer at the top of the draft. Added after the
+    // hallucination scan so its boilerplate copy doesn't pollute the report.
+    blocks = ensureConsentDisclaimerBlock(blocks);
+    const guardrails = {
+      redactionCounts,
+      hallucinationConfidence: hallucination.confidence,
+      flaggedSpans: hallucination.flags,
+    };
+
+    // Reorder blocks per the template's section order so the note
+    // editor renders them in the order Heidi-style templates expect
+    // (e.g. SOAP vs. consult letter vs. progress note differ here).
+    const orderedBlocks = template.sectionOrder
+      .map((sectionType) => blocks.find((b) => b.type === sectionType))
+      .filter((b): b is NoteBlock => Boolean(b));
+
+    // Persist the draft note with guardrail + template metadata baked
+    // in so the editor and the snapshot freeze on finalize can read
+    // it back. Template metadata lets the editor render the right
+    // header and section ordering without re-deriving from the prompt.
     const note = await prisma.note.create({
       data: {
         encounterId,
         status: "draft",
         aiDrafted: true,
-        aiConfidence: confidence,
-        blocks: blocks as any,
+        aiConfidence: Math.min(confidence, hallucination.confidence),
+        blocks: [
+          ...orderedBlocks,
+          {
+            type: "metadata" as any,
+            heading: "_scribe",
+            body: "",
+            metadata: {
+              templateId: template.id,
+              templateLabel: template.label,
+              documentHeader: template.documentHeader,
+              toneId: tone.id,
+              toneLabel: tone.label,
+              summaryStyleId: summaryStyle.id,
+              summaryStyleLabel: summaryStyle.label,
+              sectionOrder: template.sectionOrder,
+            },
+          },
+          {
+            type: "metadata" as any,
+            heading: "_guardrails",
+            body: "",
+            metadata: { guardrails, transcriptPreview: scrubbedTranscript.slice(0, 4000) },
+          },
+        ] as any,
       },
     });
 
     return {
       ok: true,
       noteId: note.id,
-      blocks,
-      confidence,
+      blocks: orderedBlocks,
+      confidence: Math.min(confidence, hallucination.confidence),
+      templateId: template.id,
+      toneId: tone.id,
+      summaryStyleId: summaryStyle.id,
+      sectionOrder: template.sectionOrder,
+      documentHeader: template.documentHeader,
     };
   } catch (err) {
-    console.error("[processTranscript]", err);
+    logger.error({ event: "clinic.voice_chart.process_transcript_failed", err });
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Failed to process transcript.",
@@ -249,7 +423,8 @@ export async function saveTranscriptToEncounter(
   encounterId: string,
   transcript: TranscriptSegment[]
 ): Promise<void> {
-  await requireUser();
+  const user = await requireUser();
+  await requireEncounterInCurrentOrg(encounterId, user.organizationId!);
 
   await prisma.encounter.update({
     where: { id: encounterId },

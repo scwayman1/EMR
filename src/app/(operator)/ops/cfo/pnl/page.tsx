@@ -1,0 +1,200 @@
+import { requireUser } from "@/lib/auth/session";
+import { PageShell, PageHeader } from "@/components/shell/PageHeader";
+import { Card, CardContent } from "@/components/ui/card";
+import { Eyebrow } from "@/components/ui/ornament";
+import { Badge } from "@/components/ui/badge";
+import { rangeForPeriod, priorRange } from "@/lib/finance/period";
+import { buildPnl } from "@/lib/finance/pnl";
+import { fmtMoney, fmtPct, changeBadgeText } from "@/lib/finance/formatting";
+import { CfoTabs, GenerateReportButton, StatementSection } from "../components";
+
+export const metadata = { title: "P&L · CFO" };
+export const dynamic = "force-dynamic";
+
+export default async function PnlPage({ searchParams }: { searchParams?: { period?: string } }) {
+  const user = await requireUser();
+  const orgId = user.organizationId!;
+  const period = (searchParams?.period as any) || "weekly";
+
+  const range = rangeForPeriod(period, new Date());
+  const prior = priorRange(range);
+  const [pnl, priorPnl] = await Promise.all([
+    buildPnl(orgId, range),
+    buildPnl(orgId, prior),
+  ]);
+
+  const lines: Array<{ label: string; current: number; prior: number; sign: 1 | -1 }> = [
+    { label: "Revenue", current: pnl.totals.revenueCents, prior: priorPnl.totals.revenueCents, sign: 1 },
+    { label: "Cost of goods", current: pnl.totals.cogsCents, prior: priorPnl.totals.cogsCents, sign: -1 },
+    { label: "Gross profit", current: pnl.totals.grossProfitCents, prior: priorPnl.totals.grossProfitCents, sign: 1 },
+    { label: "Operating expenses", current: pnl.totals.opexCents, prior: priorPnl.totals.opexCents, sign: -1 },
+    { label: "Operating income", current: pnl.totals.operatingIncomeCents, prior: priorPnl.totals.operatingIncomeCents, sign: 1 },
+    { label: "Depreciation & amortization", current: pnl.totals.daCents, prior: priorPnl.totals.daCents, sign: -1 },
+    { label: "Interest & financing", current: pnl.totals.interestCents, prior: priorPnl.totals.interestCents, sign: -1 },
+    { label: "Income & excise tax", current: pnl.totals.taxesCents, prior: priorPnl.totals.taxesCents, sign: -1 },
+    { label: "Net income", current: pnl.totals.netIncomeCents, prior: priorPnl.totals.netIncomeCents, sign: 1 },
+  ];
+
+  return (
+    <PageShell maxWidth="max-w-[1320px]">
+      <PageHeader
+        eyebrow="CFO · Profit & Loss"
+        title={`${range.label} P&L`}
+        description="Accrual revenue (collected this period) less cost of goods, operating expenses, depreciation, interest, and tax."
+        actions={<GenerateReportButton period={period} />}
+      />
+      <CfoTabs active="pnl" />
+
+      {/* Summary bar */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-10">
+        <SummaryStat label="Revenue" current={pnl.totals.revenueCents} prior={priorPnl.totals.revenueCents} biggerIsBetter />
+        <SummaryStat label="Gross margin" current={pnl.totals.grossMarginPct} prior={priorPnl.totals.grossMarginPct} biggerIsBetter unit="pct" />
+        <SummaryStat label="EBITDA" current={pnl.totals.ebitdaCents} prior={priorPnl.totals.ebitdaCents} biggerIsBetter />
+        <SummaryStat label="Net income" current={pnl.totals.netIncomeCents} prior={priorPnl.totals.netIncomeCents} biggerIsBetter />
+        <SummaryStat label="Net margin" current={pnl.totals.netMarginPct} prior={priorPnl.totals.netMarginPct} biggerIsBetter unit="pct" />
+      </div>
+
+      {/* Detail statement */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-10">
+        <StatementSection
+          title="Revenue"
+          totalCents={pnl.totals.revenueCents}
+          totalLabel="Total revenue"
+          lines={pnl.sections.revenue.lines.map((l) => ({
+            label: l.label,
+            amountCents: l.amountCents,
+            detail: `${l.itemCount} record${l.itemCount !== 1 ? "s" : ""}`,
+          }))}
+          emphasized
+        />
+        <StatementSection
+          title="Cost of goods & services"
+          totalCents={pnl.sections.cogs.totalCents}
+          totalLabel="Total COGS"
+          lines={pnl.sections.cogs.lines.map((l) => ({
+            label: l.label,
+            amountCents: l.amountCents,
+            detail: `${l.itemCount} expense${l.itemCount !== 1 ? "s" : ""}`,
+          }))}
+        />
+        <StatementSection
+          title="Operating expenses"
+          totalCents={pnl.sections.operatingExpenses.totalCents}
+          totalLabel="Total operating expenses"
+          lines={pnl.sections.operatingExpenses.lines.map((l) => ({
+            label: l.label,
+            amountCents: l.amountCents,
+            detail: `${l.itemCount} entr${l.itemCount !== 1 ? "ies" : "y"}`,
+          }))}
+        />
+        <StatementSection
+          title="Depreciation & amortization"
+          totalCents={pnl.sections.depreciationAmortization.totalCents}
+          totalLabel="Total D&A (non-cash)"
+          lines={pnl.sections.depreciationAmortization.lines.map((l) => ({
+            label: l.label,
+            amountCents: l.amountCents,
+          }))}
+        />
+        <StatementSection
+          title="Interest & financing"
+          totalCents={pnl.sections.nonOperating.totalCents}
+          totalLabel="Total non-operating"
+          lines={pnl.sections.nonOperating.lines.map((l) => ({
+            label: l.label,
+            amountCents: l.amountCents,
+          }))}
+        />
+        <StatementSection
+          title="Income & excise tax"
+          totalCents={pnl.sections.taxes.totalCents}
+          totalLabel="Total tax"
+          lines={pnl.sections.taxes.lines.map((l) => ({
+            label: l.label,
+            amountCents: l.amountCents,
+          }))}
+        />
+      </div>
+
+      {/* Side by side: this period vs. prior */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">This period vs. prior</Eyebrow>
+        <Card tone="raised">
+          <CardContent className="pt-5 pb-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-[0.12em] text-text-subtle border-b border-border/60">
+                  <th className="text-left py-2 font-medium">Line</th>
+                  <th className="text-right py-2 font-medium">This {range.period}</th>
+                  <th className="text-right py-2 font-medium">Prior {prior.period}</th>
+                  <th className="text-right py-2 font-medium">Δ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {lines.map((row) => {
+                  const delta = row.current - row.prior;
+                  const pct = row.prior !== 0 ? (delta / Math.abs(row.prior)) * 100 : null;
+                  const change = changeBadgeText(pct, row.sign === 1);
+                  return (
+                    <tr key={row.label}>
+                      <td className="py-2 text-text">{row.label}</td>
+                      <td className="py-2 text-right tabular-nums text-text">{fmtMoney(row.current)}</td>
+                      <td className="py-2 text-right tabular-nums text-text-muted">{fmtMoney(row.prior)}</td>
+                      <td className="py-2 text-right">
+                        <Badge tone={change.tone === "good" ? "success" : change.tone === "bad" ? "danger" : "neutral"} className="text-[10px]">
+                          {change.text}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Memo lines */}
+      <div className="mb-10">
+        <Eyebrow className="mb-4">Memo</Eyebrow>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <MemoTile label="Charges billed" value={fmtMoney(pnl.memo.chargesBilledCents)} hint="Gross charges (accrual)" />
+          <MemoTile label="Charges collected" value={fmtPct(pnl.memo.chargesCollectedRatePct)} hint="Of charges billed" />
+          <MemoTile label="Active claims" value={String(pnl.memo.activeClaims)} hint="Open across all stages" />
+          <MemoTile label="Active orders" value={String(pnl.memo.activeOrders)} hint="Marketplace orders this period" />
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
+function SummaryStat({ label, current, prior, biggerIsBetter, unit = "cents" }: { label: string; current: number; prior: number; biggerIsBetter?: boolean; unit?: "cents" | "pct" }) {
+  const value = unit === "cents" ? fmtMoney(current, { compact: true }) : fmtPct(current);
+  const pct = prior !== 0 ? Math.round(((current - prior) / Math.abs(prior)) * 1000) / 10 : null;
+  const change = changeBadgeText(pct, biggerIsBetter ?? true);
+  return (
+    <Card tone="raised">
+      <CardContent className="pt-5 pb-5">
+        <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">{label}</p>
+        <p className="font-display text-2xl text-text tabular-nums mt-1.5">{value}</p>
+        {pct !== null && (
+          <Badge tone={change.tone === "good" ? "success" : change.tone === "bad" ? "danger" : "neutral"} className="text-[9px] mt-2">
+            {change.text} vs prior
+          </Badge>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MemoTile({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-4">
+        <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle">{label}</p>
+        <p className="font-display text-xl text-text tabular-nums mt-1">{value}</p>
+        <p className="text-[11px] text-text-subtle mt-1">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}

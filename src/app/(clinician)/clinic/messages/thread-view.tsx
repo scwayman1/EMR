@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
@@ -13,6 +12,7 @@ import {
 import { resolveAgentMeta } from "@/lib/agents/ui-registry";
 import { ClinicReplyCompose } from "./compose";
 import { formatRelative } from "@/lib/utils/format";
+import { CallLaunchButtons } from "@/components/communications/call-launch-buttons";
 
 // ---------- Types matching the serialized data from the server ----------
 
@@ -28,6 +28,7 @@ interface MessageData {
 }
 
 interface PatientData {
+  id: string;
   firstName: string;
   lastName: string;
 }
@@ -45,48 +46,10 @@ interface Props {
   currentUserId: string;
 }
 
-function PhoneIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-    </svg>
-  );
-}
-
-function VideoIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polygon points="23 7 16 12 23 17 23 7" />
-      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-    </svg>
-  );
-}
-
 export function ClinicMessagesView({ threads, currentUserId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeThreadId = searchParams.get("thread");
-  const [callToast, setCallToast] = useState<string | null>(null);
 
   const activeThread = threads.find((t) => t.id === activeThreadId) ?? null;
 
@@ -176,36 +139,12 @@ export function ClinicMessagesView({ threads, currentUserId }: Props) {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCallToast("Voice calling coming soon");
-                      setTimeout(() => setCallToast(null), 2500);
-                    }}
-                    className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
-                    aria-label="Voice call"
-                  >
-                    <PhoneIcon />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCallToast("Video calling coming soon");
-                      setTimeout(() => setCallToast(null), 2500);
-                    }}
-                    className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
-                    aria-label="Video call"
-                  >
-                    <VideoIcon />
-                  </button>
-                </div>
+                <CallLaunchButtons
+                  patientId={activeThread.patient.id}
+                  messageThreadId={activeThread.id}
+                  counterpartyName={`${activeThread.patient.firstName} ${activeThread.patient.lastName}`}
+                />
               </div>
-              {callToast && (
-                <div className="mt-2 text-xs text-text-muted bg-surface-muted rounded-lg px-3 py-2 text-center">
-                  {callToast}
-                </div>
-              )}
             </div>
 
             {/* Draft-ready banner above the messages — visible heads-up when

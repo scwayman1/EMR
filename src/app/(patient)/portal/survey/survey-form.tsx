@@ -177,7 +177,7 @@ function NpsSelector({
   );
 }
 
-/* ── Star Rating ─────────────────────────────────── */
+/* ── Leaf Rating (EMR-277, was StarRating) ───────── */
 
 function StarRating({
   value,
@@ -191,27 +191,29 @@ function StarRating({
 
   return (
     <div className="flex items-center gap-1" onMouseLeave={() => setHovered(null)}>
-      {[1, 2, 3, 4, 5].map((star) => (
+      {[1, 2, 3, 4, 5].map((leaf) => (
         <button
-          key={star}
+          key={leaf}
           type="button"
-          onClick={() => onChange(star)}
-          onMouseEnter={() => setHovered(star)}
+          onClick={() => onChange(leaf)}
+          onMouseEnter={() => setHovered(leaf)}
+          aria-label={`${leaf} leaf${leaf === 1 ? "" : "s"}`}
           className="p-1 transition-transform hover:scale-110"
         >
           <svg
             width="28"
             height="28"
             viewBox="0 0 24 24"
-            fill={star <= displayValue ? "currentColor" : "none"}
+            fill={leaf <= displayValue ? "currentColor" : "none"}
             stroke="currentColor"
             strokeWidth="1.5"
+            strokeLinejoin="round"
             className={cn(
               "transition-colors",
-              star <= displayValue ? "text-amber-400" : "text-gray-300",
+              leaf <= displayValue ? "text-[var(--leaf,#3a7d44)]" : "text-gray-300",
             )}
           >
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            <path d="M12 2C12 2 10 6 8 8C6 10 4 11 2 11C4 13 6 13 8 14C6 16 5 18 5 21C7 19 9 18 11 17C11 19 11 21 12 22C13 21 13 19 13 17C15 18 17 19 19 21C19 18 18 16 16 14C18 13 20 13 22 11C20 11 18 10 16 8C14 6 12 2 12 2Z" />
           </svg>
         </button>
       ))}

@@ -1,6 +1,10 @@
 // State Registry API Integration
 // Connects state compliance forms to real state medical cannabis registry systems.
-// Each state has a different API/portal. This module provides a unified interface.
+// Each state has a different API/portal. This module provides a unified interface
+// for the UI; the per-state submission logic lives in
+// `src/lib/integrations/state-registries/`.
+
+import { submitToStateRegistry } from "@/lib/integrations/state-registries";
 
 export type RegistryStatus = "connected" | "pending" | "error" | "not_configured";
 
@@ -122,8 +126,8 @@ export const STATE_REGISTRIES: StateRegistryConfig[] = [
 ];
 
 /**
- * Submit a certification to a state registry.
- * In production, this calls the state's API. For now, simulates submission.
+ * Submit a certification to a state registry. Delegates to the per-state
+ * integration module under `src/lib/integrations/state-registries/`.
  */
 export async function submitToRegistry(
   stateCode: string,
@@ -131,7 +135,6 @@ export async function submitToRegistry(
   providerCredentials: { registryId?: string; npi?: string; licenseNumber?: string }
 ): Promise<SubmissionResult> {
   const registry = STATE_REGISTRIES.find((r) => r.stateCode === stateCode);
-
   if (!registry) {
     return {
       success: false,
@@ -140,64 +143,19 @@ export async function submitToRegistry(
     };
   }
 
-  if (registry.status === "not_configured") {
-    // Simulate a successful submission for demo purposes
-    const confirmationNumber = `${stateCode}-${Date.now().toString(36).toUpperCase()}`;
-    const expDate = new Date();
-    expDate.setDate(expDate.getDate() + registry.renewalPeriodDays);
+  const result = await submitToStateRegistry({
+    stateCode,
+    formData,
+    providerCredentials,
+  });
 
-    return {
-      success: true,
-      confirmationNumber,
-      registryPatientId: `REG-${Math.random().toString(36).slice(2, 10).toUpperCase()}`,
-      expirationDate: expDate.toISOString().slice(0, 10),
-      submittedAt: new Date().toISOString(),
-    };
-  }
-
-  // Production: call the real state API
-  if (registry.apiEndpoint) {
-    try {
-      const res = await fetch(`${registry.apiEndpoint}/certifications`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          providerCredentials,
-        }),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.text();
-        return {
-          success: false,
-          errors: [`Registry API error: ${res.status} — ${errBody}`],
-          submittedAt: new Date().toISOString(),
-        };
-      }
-
-      const result = await res.json();
-      return {
-        success: true,
-        confirmationNumber: result.confirmationNumber,
-        registryPatientId: result.patientId,
-        expirationDate: result.expirationDate,
-        submittedAt: new Date().toISOString(),
-      };
-    } catch (err) {
-      return {
-        success: false,
-        errors: [`Network error: ${err instanceof Error ? err.message : "Unknown error"}`],
-        submittedAt: new Date().toISOString(),
-      };
-    }
-  }
-
-  // Non-electronic states: mark as "submitted" (physician must mail/fax)
   return {
-    success: true,
-    confirmationNumber: `MANUAL-${Date.now().toString(36).toUpperCase()}`,
-    submittedAt: new Date().toISOString(),
+    success: result.success,
+    confirmationNumber: result.confirmationNumber,
+    registryPatientId: result.registryPatientId,
+    expirationDate: result.expirationDate,
+    errors: result.errors,
+    submittedAt: result.submittedAt,
   };
 }
 
