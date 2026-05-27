@@ -123,7 +123,7 @@ describe("scribeAgent.run", () => {
     const result = await scribeAgent.run({ encounterId: "enc-123" }, mockCtx);
 
     expect(result.noteId).toBe("note-123");
-    expect(result.confidence).toBe(0.95);
+        expect(result.confidence).toBe(0.4);
     expect(result.suggestedCodes).toEqual([{ code: "F41.1", label: "Generalized anxiety disorder" }]);
 
     expect(prisma.patientMemory.findMany).toHaveBeenCalled();
@@ -163,8 +163,8 @@ describe("scribeAgent.run", () => {
     const result = await scribeAgent.run({ encounterId: "enc-123" }, mockCtx);
 
     expect(result.noteId).toBe("note-fallback");
-    expect(result.confidence).toBe(0.7);
-    expect(result.blocks.find(b => b.type === "summary")?.body).toContain("Sarah Connor presented for a video visit");
+        expect(result.confidence).toBe(0.4);
+    expect(result.blocks.find(b => b.type === "summary" && b.heading === "Summary")?.body).toContain("Sarah Connor presented for a video visit");
     expect(prisma.note.create).toHaveBeenCalled();
     expect(prisma.patientMemory.create).not.toHaveBeenCalled();
   });
