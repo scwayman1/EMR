@@ -1,3 +1,5 @@
+// SAFE: dead-export-allowed reason="Route integrity regression helper used by tests"
+
 export function normalizeAppHref(href: string): string {
   const path = href.split(/[?#]/)[0] || "/";
   return path.length > 1 ? path.replace(/\/+$/, "") : "/";
