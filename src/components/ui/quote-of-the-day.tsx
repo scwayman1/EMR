@@ -29,10 +29,17 @@ export function QuoteWelcomeModal({ userName }: { userName?: string }) {
 
   if (!quote || !visible) return null;
 
+  const dismissModal = () => {
+    setVisible(false);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("emr:welcome:dismissed"));
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-500 opacity-100"
-      onClick={() => setVisible(false)}
+      onClick={dismissModal}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
@@ -44,6 +51,7 @@ export function QuoteWelcomeModal({ userName }: { userName?: string }) {
           background:
             "linear-gradient(135deg, var(--surface-raised), var(--surface))",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div
           aria-hidden="true"
@@ -63,7 +71,7 @@ export function QuoteWelcomeModal({ userName }: { userName?: string }) {
           </blockquote>
           <p className="text-sm text-text-muted mt-5">— {quote.author}</p>
           <button
-            onClick={() => setVisible(false)}
+            onClick={dismissModal}
             className="mt-8 text-xs text-text-subtle hover:text-text transition-colors uppercase tracking-wider"
           >
             Continue &rarr;
