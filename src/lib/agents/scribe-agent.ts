@@ -5,16 +5,21 @@ import { writeAgentAudit } from "@/lib/orchestration/context";
 import { ensureConsentDisclaimerBlock } from "@/lib/clinical/ai-consent-disclaimer";
 import { startReasoning } from "./memory/agent-reasoning";
 import { formatPersonaForPrompt, resolvePersona } from "./persona";
+import {
+  recallMemories,
+  recordMemory,
+  formatMemoriesForPrompt,
+} from "./memory/patient-memory";
+import {
+  recallObservations,
+  formatObservationsForPrompt,
+} from "./memory/clinical-observation";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Try to extract and parse JSON from a model response.
- * The model may wrap the JSON in markdown code fences.
- */
-function tryParseJSON(text: string): any | null {
+export function tryParseJSON(text: string): any | null {
   const jsonMatch =
     text.match(/```(?:json)?\s*([\s\S]*?)```/) ||
     text.match(/(\{[\s\S]*\})/);
@@ -132,6 +137,43 @@ export const scribeAgent: Agent<
 
     const patient = encounter.patient;
     ctx.assertCan("read.patient");
+
+    // ── Step 1b: Recall memories and observations about the patient ──
+    const memories = await recallMemories(patient.id, {
+      kinds: [
+        "concern",
+        "working",
+        "not_working",
+        "preference",
+        "trajectory",
+        "observation",
+      ],
+      limit: 24,
+    });
+    trace.step("recalled patient memories", {
+      count: memories.length,
+      kinds: [...new Set(memories.map((m) => m.kind))],
+    });
+    trace.source(
+      "memories",
+      memories.map((m) => m.id),
+    );
+
+    const recentObservations = await recallObservations(patient.id, {
+      onlyUnacknowledged: true,
+      limit: 8,
+    });
+    trace.step("recalled recent observations", {
+      count: recentObservations.length,
+      urgentCount: recentObservations.filter((o) => o.severity === "urgent").length,
+    });
+    trace.source(
+      "observations",
+      recentObservations.map((o) => o.id),
+    );
+
+    const memoryBlock = formatMemoriesForPrompt(memories);
+    const observationsBlock = formatObservationsForPrompt(recentObservations);
 
     // Vulnerability detection — drives the safety-rules block below and the
     // confidence ceiling. A note for a vulnerable patient (pediatric,
@@ -276,6 +318,12 @@ PRESENTING CONCERNS: ${patient.presentingConcerns ?? "Not documented"}
 
 TREATMENT GOALS: ${patient.treatmentGoals ?? "Not documented"}
 
+WHAT WE ALREADY KNOW ABOUT THIS PERSON (longitudinal memory):
+${memoryBlock}
+
+WHAT THE CARE TEAM HAS BEEN NOTICING RECENTLY:
+${observationsBlock}
+
 CANNABIS HISTORY:
 ${cannabisHistory}
 
@@ -347,7 +395,8 @@ Return ONLY valid JSON in this exact format:
   "suggestedCodes": [
     { "code": "ICD-10 code", "label": "Description" }
   ],
-  "confidence": 0.85
+  "confidence": 0.85,
+  "newMemory": null | { "kind": "preference" | "observation" | "trajectory" | "working" | "not_working" | "concern", "content": "1-2 sentence narrative to remember about this patient going forward", "tags": ["..."] }
 }
 
 Important guidelines:
@@ -357,6 +406,7 @@ Important guidelines:
 - Include relevant ICD-10 codes in suggestedCodes
 - Set confidence between 0.0 and 1.0 based on how much context was available
 - If a PRE-VISIT INTELLIGENCE BRIEFING is provided above, USE IT: incorporate the risk flags into the Assessment, the talking points into the Plan, and reference trend data in the Findings. The briefing represents the physician's pre-visit analysis.
+- If this visit reveals anything worth remembering about the patient (preference, working/not working interventions, new concerns, etc.), capture it in newMemory. Otherwise, return null.
 
 Non-negotiable safety rules (these OVERRIDE every other guideline):
 1. Allergies are absolute. Never recommend a product that contains a listed allergen or a known cross-reactant. If a proposed product might contain an allergen, write "-- to be confirmed with the physician --" instead of the product name.
@@ -556,9 +606,35 @@ Non-negotiable safety rules (these OVERRIDE every other guideline):
 
     ctx.log("info", "Note draft created", { noteId: note.id, confidence });
 
+    // ── Step 8: Write a new memory if the LLM flagged something worth remembering ──
+    if (parsed && typeof parsed === "object" && parsed.newMemory) {
+      try {
+        await recordMemory({
+          patientId: patient.id,
+          kind: parsed.newMemory.kind,
+          content: parsed.newMemory.content,
+          tags: parsed.newMemory.tags ?? [],
+          source: "scribe",
+          sourceKind: "agent",
+          confidence: 0.65,
+          metadata: {
+            derivedFromEncounterId: encounterId,
+            noteId: note.id,
+          },
+        });
+        trace.step("recorded new patient memory", {
+          kind: parsed.newMemory.kind,
+        });
+      } catch (err) {
+        ctx.log("warn", "Failed to record patient memory in Scribe", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
     trace.conclude({
       confidence,
-      summary: `Drafted a ${blocks.length}-block SOAP note at ${Math.round(confidence * 100)}% confidence. ${suggestedCodes.length > 0 ? `Suggested ${suggestedCodes.length} ICD-10 codes.` : ""}`,
+      summary: `Drafted a ${blocks.length}-block SOAP note at ${Math.round(confidence * 100)}% confidence. ${suggestedCodes.length > 0 ? `Suggested ${suggestedCodes.length} ICD-10 codes.` : ""}${parsed?.newMemory ? " Recorded new patient memory." : ""}`,
     });
     await trace.persist();
 
