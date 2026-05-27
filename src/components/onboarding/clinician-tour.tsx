@@ -151,10 +151,28 @@ export function ClinicianTour() {
   useEffect(() => {
     if (pathname !== "/clinic") return;
     if (readStored()) return;
-    // Defer to next frame so the destination DOM is mounted before we
-    // measure the first anchor.
-    const id = requestAnimationFrame(() => setOpen(true));
-    return () => cancelAnimationFrame(id);
+
+    // Check if the Quote Welcome Modal is active in the current session.
+    // If emr-quote-welcome-shown is not set, the modal will display, so
+    // we wait for the dismissal event.
+    const isQuoteShowing =
+      typeof window !== "undefined" &&
+      !window.sessionStorage.getItem("emr-quote-welcome-shown");
+
+    if (isQuoteShowing) {
+      const handleWelcomeDismissed = () => {
+        requestAnimationFrame(() => setOpen(true));
+      };
+      window.addEventListener("emr:welcome:dismissed", handleWelcomeDismissed);
+      return () => {
+        window.removeEventListener("emr:welcome:dismissed", handleWelcomeDismissed);
+      };
+    } else {
+      // Defer to next frame so the destination DOM is mounted before we
+      // measure the first anchor.
+      const id = requestAnimationFrame(() => setOpen(true));
+      return () => cancelAnimationFrame(id);
+    }
   }, [pathname]);
 
   // Listen for replay events fired by the keyboard help modal.
