@@ -563,11 +563,24 @@ export class ConfigurableModelClient implements ModelClient {
     if (this.resolvedClientPromise) return this.resolvedClientPromise;
 
     this.resolvedClientPromise = (async () => {
+      let orgId = this.organizationId;
+      if (!orgId) {
+        try {
+          const { getCurrentUser } = await import("@/lib/auth/session");
+          const user = await getCurrentUser();
+          if (user?.organizationId) {
+            orgId = user.organizationId;
+          }
+        } catch {
+          // Safe fallback in static / worker contexts
+        }
+      }
+
       let dbConfig: any = null;
-      if (this.organizationId) {
+      if (orgId) {
         try {
           dbConfig = await prisma.practiceConfiguration.findFirst({
-            where: { organizationId: this.organizationId },
+            where: { organizationId: orgId },
             orderBy: { version: "desc" },
           });
         } catch (e) {

@@ -12,52 +12,29 @@ export type DraftSummary = {
   updatedAt: string | null;
   publishedAt: string | null;
 };
-
 /**
- * TODO(EMR-409 / EMR-435): replace with the real query once the
- * `practiceConfiguration` model + filters are defined.
+ * Returns all PracticeConfiguration drafts for an organization, decorated with their practice names.
  */
 export async function listDraftsForOrganization(
   organizationId: string,
 ): Promise<DraftSummary[]> {
-  const client = prisma as unknown as {
-    practiceConfiguration?: {
-      findMany: (args: {
-        where: { organizationId: string };
-        orderBy?: { updatedAt: "desc" };
-        select?: Record<string, true>;
-      }) => Promise<
-        Array<{
-          id: string;
-          name?: string | null;
-          updatedAt?: Date | string | null;
-          publishedAt?: Date | string | null;
-        }>
-      >;
-    };
-  };
-
-  if (!client.practiceConfiguration?.findMany) {
-    // Pre-EMR-409: no model yet, no drafts to list.
-    return [];
-  }
-
-  const rows = await client.practiceConfiguration.findMany({
+  const rows = await prisma.practiceConfiguration.findMany({
     where: { organizationId },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, updatedAt: true, publishedAt: true },
+    select: { id: true, practiceId: true, updatedAt: true, publishedAt: true },
   });
+
+  const practices = await prisma.practice.findMany({
+    where: { organizationId },
+    select: { id: true, name: true },
+  });
+  const practiceMap = new Map(practices.map((p) => [p.id, p.name]));
 
   return rows.map((r) => ({
     id: r.id,
-    name: r.name ?? null,
-    updatedAt:
-      r.updatedAt instanceof Date
-        ? r.updatedAt.toISOString()
-        : (r.updatedAt ?? null),
-    publishedAt:
-      r.publishedAt instanceof Date
-        ? r.publishedAt.toISOString()
-        : (r.publishedAt ?? null),
+    name: r.practiceId === "pending" ? "New Practice (Pending)" : (practiceMap.get(r.practiceId) ?? "Unknown Practice"),
+    updatedAt: r.updatedAt.toISOString(),
+    publishedAt: r.publishedAt?.toISOString() ?? null,
   }));
 }
+
