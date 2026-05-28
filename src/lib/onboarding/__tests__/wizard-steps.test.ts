@@ -22,10 +22,7 @@ describe("Onboarding Wizard Steps Reachability", () => {
 
     // All downstream steps must be unreachable
     for (let i = 1; i < WIZARD_STEPS.length; i++) {
-      expect(WIZARD_STEPS[i].isReachable(draft, completed)).toBe(
-        false,
-        `Step ${WIZARD_STEPS[i].id} should not be reachable on a fresh draft`
-      );
+      expect(WIZARD_STEPS[i].isReachable(draft, completed)).toBe(false);
     }
   });
 
