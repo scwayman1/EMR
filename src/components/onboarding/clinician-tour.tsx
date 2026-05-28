@@ -149,7 +149,10 @@ export function ClinicianTour() {
   // mission control home), only when the flag is absent. Subsequent renders
   // are no-ops because the flag is set on completion/skip.
   useEffect(() => {
-    if (pathname !== "/clinic") return;
+    if (pathname !== "/clinic") {
+      setOpen(false);
+      return;
+    }
     if (readStored()) return;
 
     // Check if the Quote Welcome Modal is active in the current session.
@@ -157,7 +160,7 @@ export function ClinicianTour() {
     // we wait for the dismissal event.
     const isQuoteShowing =
       typeof window !== "undefined" &&
-      !window.sessionStorage.getItem("emr-quote-welcome-shown");
+      ((window as any).__emr_quote_showing || !window.sessionStorage.getItem("emr-quote-welcome-shown"));
 
     if (isQuoteShowing) {
       const handleWelcomeDismissed = () => {
