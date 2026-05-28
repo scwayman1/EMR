@@ -94,6 +94,7 @@ jobs:
     name: Automated Tests (Staging)
     needs: deploy_staging
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,3 +113,47 @@ jobs:
           BASE_URL: ${{ secrets.STAGING_URL }}
           TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+
+  deploy_production:
+    name: Deploy to Production
+    needs: test_staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Trigger Render Production Deploy
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.RENDER_PRODUCTION_DEPLOY_HOOK }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          timeout: '60000'
+
+      - name: Wait for production /api/health to report this commit
+        env:
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          MAX_ATTEMPTS=72   # 72 * 10s = 12 minutes
+          INTERVAL=10
+          ATTEMPT=0
+          LAST_COMMIT=""
+
+          echo "Waiting for production to report commit ${EXPECTED_SHA}..."
+          while [ "${ATTEMPT}" -lt "${MAX_ATTEMPTS}" ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            BODY="$(curl -fsS --max-time 8 "${PRODUCTION_URL%/}/api/health" || true)"
+            if [ -n "${BODY}" ]; then
+              LAST_COMMIT="$(printf '%s' "${BODY}" | jq -r '.commit // empty' 2>/dev/null || true)"
+              if [ "${LAST_COMMIT}" = "${EXPECTED_SHA}" ]; then
+                echo "Production is on ${EXPECTED_SHA} (attempt ${ATTEMPT})."
+                exit 0
+              fi
+            fi
+            echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: live commit=${LAST_COMMIT:-<none>}; sleeping ${INTERVAL}s..."
+            sleep "${INTERVAL}"
+          done
+
+          echo "::error::Production did not report commit ${EXPECTED_SHA} after $((MAX_ATTEMPTS * INTERVAL))s. Last seen: ${LAST_COMMIT:-<none>}."
+          exit 1
