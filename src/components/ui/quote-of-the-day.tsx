@@ -20,11 +20,15 @@ export function QuoteWelcomeModal({ userName }: { userName?: string }) {
     const shown = sessionStorage.getItem(key);
     if (shown) return;
 
+    (window as any).__emr_quote_showing = true;
     sessionStorage.setItem(key, "1");
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
     // Slight delay for smooth entrance
     const t = setTimeout(() => setVisible(true), 300);
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      (window as any).__emr_quote_showing = false;
+    };
   }, []);
 
   if (!quote || !visible) return null;
@@ -32,6 +36,7 @@ export function QuoteWelcomeModal({ userName }: { userName?: string }) {
   const dismissModal = () => {
     setVisible(false);
     if (typeof window !== "undefined") {
+      (window as any).__emr_quote_showing = false;
       window.dispatchEvent(new CustomEvent("emr:welcome:dismissed"));
     }
   };
