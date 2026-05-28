@@ -34,13 +34,22 @@ import type {
 } from "./wizard-types";
 
 /** Default reachability: prior step must be complete (or first step). */
+/** Default reachability: prior step must be complete and reachable. */
 function priorComplete(priorId: WizardStepId | null) {
   return (
-    _draft: Partial<PracticeConfiguration>,
+    draft: Partial<PracticeConfiguration>,
     completedSteps: Set<WizardStepId>,
   ): boolean => {
     if (priorId === null) return true;
-    return completedSteps.has(priorId);
+    if (!completedSteps.has(priorId)) return false;
+
+    // Transitively verify that the prior step is also reachable.
+    // This prevents bypassing early incomplete steps when downstream
+    // steps are trivially/always complete (e.g. step 5, step 6-8 default arrays, etc).
+    const priorStep = WIZARD_STEPS.find((step) => step.id === priorId);
+    if (!priorStep) return false;
+
+    return priorStep.isReachable(draft, completedSteps);
   };
 }
 
@@ -77,8 +86,10 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     isComplete: (draft) =>
       typeof draft.organizationId === "string" &&
       draft.organizationId.length > 0 &&
+      draft.organizationId !== "pending" &&
       typeof draft.practiceId === "string" &&
-      draft.practiceId.length > 0,
+      draft.practiceId.length > 0 &&
+      draft.practiceId !== "pending",
     isReachable: () => true,
     Component: Step1OrgPractice,
   },
@@ -87,20 +98,41 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     title: "Select specialty",
     description: "Choose the clinical specialty this practice serves.",
     isComplete: (draft) => draft.selectedSpecialty != null,
-    isReachable: (draft) =>
-      Boolean(draft.organizationId) && Boolean(draft.practiceId),
+    isReachable: (draft, completedSteps) =>
+      priorComplete("org-and-practice")(draft, completedSteps) &&
+      Boolean(draft.organizationId) &&
+      draft.organizationId !== "pending" &&
+      Boolean(draft.practiceId) &&
+      draft.practiceId !== "pending",
     Component: Step2Specialty,
   },
-  step3CareModelDefinition,
-  step4EnableModalitiesDefinition,
-  step5DisableModalitiesDefinition,
+  {
+    ...step3CareModelDefinition,
+    isReachable: (draft, completedSteps) =>
+      priorComplete("select-specialty")(draft, completedSteps) &&
+      (step3CareModelDefinition.isReachable ? step3CareModelDefinition.isReachable(draft, completedSteps) : true),
+  },
+  {
+    ...step4EnableModalitiesDefinition,
+    isReachable: (draft, completedSteps) =>
+      priorComplete("select-care-model")(draft, completedSteps) &&
+      (step4EnableModalitiesDefinition.isReachable ? step4EnableModalitiesDefinition.isReachable(draft, completedSteps) : true),
+  },
+  {
+    ...step5DisableModalitiesDefinition,
+    isReachable: (draft, completedSteps) =>
+      priorComplete("select-care-model")(draft, completedSteps) &&
+      (step5DisableModalitiesDefinition.isReachable ? step5DisableModalitiesDefinition.isReachable(draft, completedSteps) : true),
+  },
   {
     id: "apply-workflows",
     title: "Apply workflows",
     description:
       "Apply the workflow templates that match the selected care model.",
     isComplete: (draft) => Array.isArray(draft.workflowTemplateIds),
-    isReachable: priorComplete("disable-modalities"),
+    isReachable: (draft, completedSteps) =>
+      priorComplete("disable-modalities")(draft, completedSteps) &&
+      completedSteps.has("enable-modalities"),
     canSkip: true,
     Component: Step6ApplyWorkflows,
   },
@@ -131,7 +163,8 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     isComplete: (draft) =>
       typeof draft.patientShellTemplateId === "string" &&
       draft.patientShellTemplateId.length > 0,
-    isReachable: (draft) =>
+    isReachable: (draft, completedSteps) =>
+      priorComplete("apply-roles")(draft, completedSteps) &&
       Array.isArray(draft.rolePermissionTemplateIds) &&
       draft.rolePermissionTemplateIds.length > 0,
     Component: Step9PatientShell,
@@ -145,10 +178,15 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
       typeof draft.physicianShellTemplateId === "string" &&
       draft.physicianShellTemplateId.length > 0,
     isReachable: (draft, completedSteps) =>
-      completedSteps.has("apply-patient-shell"),
+      priorComplete("apply-patient-shell")(draft, completedSteps),
     Component: Step10PhysicianShell,
   },
-  step11ConfigureMigrationDefinition,
+  {
+    ...step11ConfigureMigrationDefinition,
+    isReachable: (draft, completedSteps) =>
+      priorComplete("apply-physician-shell")(draft, completedSteps) &&
+      (step11ConfigureMigrationDefinition.isReachable ? step11ConfigureMigrationDefinition.isReachable(draft, completedSteps) : true),
+  },
   {
     id: "preview-physician",
     title: "Preview physician",
@@ -176,7 +214,11 @@ export const WIZARD_STEPS: WizardStepDefinition[] = [
     isComplete: () => true,
     isReachable: priorComplete("preview-patient"),
   },
-  step15PublishDefinition,
+  {
+    ...step15PublishDefinition,
+    isReachable: (draft, completedSteps) =>
+      priorComplete("preview-practice-admin")(draft, completedSteps),
+  },
 ];
 
 /** Lookup helper. */

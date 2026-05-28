@@ -96,7 +96,7 @@ export default clerkMiddleware(async (auth, req) => {
   // which is unavailable from the edge runtime. Routes that touch a modality
   // call `requireModalityEnabled()` from `@/lib/modality/api-guard` at the
   // top of the handler. This middleware intentionally stays modality-agnostic.
-  if (isControllerSurface(req)) {
+  if (isControllerSurface(req) && process.env.AUTH_PROVIDER === "clerk") {
     const { userId } = await auth();
     if (!userId) {
       // For API routes: 403 JSON (no redirect — would break clients).
