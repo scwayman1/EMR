@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Search, ArrowRight, Sparkles, Pill } from "lucide-react";
+import { Search, ArrowRight, Sparkles, Pill, Leaf, MapPin, BookOpen } from "lucide-react";
 import { Eyebrow } from "@/components/ui/ornament";
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
@@ -73,9 +73,9 @@ export default function EducationPage() {
           no login required.
         </p>
 
-        {/* EMR-617 — direct CTA for the Drug Mix standalone module so
-            patients arriving on /education can jump straight to the
-            interaction checker without first discovering the tab strip. */}
+        {/* EMR-617 / EMR-018 / EMR-017 / EMR-203 — direct CTAs for the
+            standalone modules so patients arriving on /education can jump
+            straight to a tool without first discovering the tab strip. */}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
             href="/education/drug-mix"
@@ -84,6 +84,27 @@ export default function EducationPage() {
             <Pill className="w-4 h-4" aria-hidden="true" />
             Open Drug Mix
             <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          </Link>
+          <Link
+            href="/education/strain-finder"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-border bg-white text-sm font-semibold text-text hover:border-accent hover:text-accent transition-all hover:-translate-y-0.5"
+          >
+            <Leaf className="w-4 h-4" aria-hidden="true" />
+            Strain Finder
+          </Link>
+          <Link
+            href="/education/dispensary-locator"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-border bg-white text-sm font-semibold text-text hover:border-accent hover:text-accent transition-all hover:-translate-y-0.5"
+          >
+            <MapPin className="w-4 h-4" aria-hidden="true" />
+            Dispensary Locator
+          </Link>
+          <Link
+            href="/education/trifold"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-full border border-border bg-white text-sm font-semibold text-text hover:border-accent hover:text-accent transition-all hover:-translate-y-0.5"
+          >
+            <BookOpen className="w-4 h-4" aria-hidden="true" />
+            Reference Guide
           </Link>
         </div>
       </section>

@@ -10,6 +10,7 @@ import {
   FileSearch,
   FlaskConical,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,17 @@ import {
   getCannabinoids,
   EVIDENCE_COLORS,
 } from "@/lib/domain/chatcb";
-import { searchPubMedArticles, type PubMedSearchResult } from "@/app/education/actions";
+import {
+  searchPubMedArticles,
+  trackGuideDownload,
+  type PubMedSearchResult,
+} from "@/app/education/actions";
 
 // Per EMR-370 (Dr. Patel): the canonical web home for the book is
 // freecannabiscancerbook.com.
 const KANDER_WEB_URL = "https://freecannabiscancerbook.com/";
+// EMR-202 — downloadable research PDF hosted under /public/guides.
+const KANDER_PDF_URL = "/guides/cannabis-and-cancer.pdf";
 
 export function ResearchTab() {
   const [cannabinoidFilter, setCannabinoidFilter] = useState("");
@@ -258,14 +265,30 @@ export function ResearchTab() {
             </p>
             <div className="flex flex-wrap gap-3 justify-center md:justify-start">
               <a
+                href={KANDER_PDF_URL}
+                download
+                onClick={() => void trackGuideDownload("cannabis-and-cancer")}
+                aria-label="Download the Cannabis and Cancer research PDF"
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl",
+                  "bg-white text-indigo-700 font-semibold text-sm shadow-lg shadow-indigo-900/30",
+                  "hover:bg-indigo-50 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-600",
+                  "transition-all duration-200"
+                )}
+              >
+                <Download className="w-4 h-4" strokeWidth={2.5} />
+                Download PDF
+              </a>
+              <a
                 href={KANDER_WEB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Read Cannabis and Cancer web version (opens in new tab)"
                 className={cn(
                   "inline-flex items-center justify-center gap-2 h-12 px-6 rounded-xl",
-                  "bg-white text-indigo-700 font-semibold text-sm shadow-lg shadow-indigo-900/30",
-                  "hover:bg-indigo-50 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0",
+                  "bg-indigo-500/40 text-white font-semibold text-sm border border-white/30 backdrop-blur-sm",
+                  "hover:bg-indigo-500/60 hover:-translate-y-0.5 active:translate-y-0",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-600",
                   "transition-all duration-200"
                 )}
