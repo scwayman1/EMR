@@ -12,10 +12,13 @@
  *
  * Triggering rules:
  *   • Auto-shows on the first authenticated render of `/clinic` ONLY when
- *     localStorage flag `emr.tour.clinicianV1` is absent.
+ *     localStorage flag `emr.tour.clinicianV1` is absent AND `autoStart` is
+ *     enabled. Demo / showcase surfaces pass `autoStart={false}` so the
+ *     first-run tour never ambushes a physician walkthrough.
  *   • Manual replay path: the keyboard help modal (PR #443) exposes a
  *     "Replay tour" affordance which dispatches the `emr:tour:replay`
- *     CustomEvent. This component listens for that event and re-opens.
+ *     CustomEvent. This component listens for that event and re-opens —
+ *     regardless of `autoStart`, so the tour is always available on demand.
  *
  * Anchoring:
  *   • Each step references the target by CSS selector. Most steps lean on
@@ -141,7 +144,16 @@ function writeStored(value: "completed" | "skipped" | null) {
   }
 }
 
-export function ClinicianTour() {
+export function ClinicianTour({
+  autoStart = true,
+}: {
+  /**
+   * When false, the first-run tour will NOT auto-open (manual replay still
+   * works). Used to keep the onboarding overlay off demo / physician
+   * showcase surfaces where it would hijack the workflow being demonstrated.
+   */
+  autoStart?: boolean;
+} = {}) {
   const pathname = usePathname() ?? "";
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
@@ -154,6 +166,7 @@ export function ClinicianTour() {
   // mission control home), only when the flag is absent. Subsequent renders
   // are no-ops because the flag is set on completion/skip.
   useEffect(() => {
+    if (!autoStart) return;
     if (pathname !== "/clinic") {
       setOpen(false);
       return;
@@ -181,7 +194,7 @@ export function ClinicianTour() {
       const id = requestAnimationFrame(() => setOpen(true));
       return () => cancelAnimationFrame(id);
     }
-  }, [pathname]);
+  }, [pathname, autoStart]);
 
   // Listen for replay events fired by the keyboard help modal.
   useEffect(() => {

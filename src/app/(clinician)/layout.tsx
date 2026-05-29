@@ -34,6 +34,12 @@ export default async function ClinicianLayout({
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
 
+  // The first-run clinician tour is great for a brand-new provider, but it
+  // hijacks the screen on demo / showcase logins (e.g. clinician@demo.health)
+  // where we're demonstrating the *physician workflow*, not onboarding.
+  // Suppress the auto-trigger for those accounts; manual replay still works.
+  const isDemoSurface = /@demo\.health$/i.test(user.email);
+
   const CLINIC_FLOOR_ROLES: Array<typeof user.roles[number]> = [
     "clinician",
     "midlevel",
@@ -196,7 +202,7 @@ export default async function ClinicianLayout({
       <KeyboardShortcuts />
       <CommandPalette role="clinician" userId={user.id} />
       <ConsciousnessOverlay />
-      <ClinicianTour />
+      <ClinicianTour autoStart={!isDemoSurface} />
       <InstallPrompt />
       <HelpDrawer />
       <RecentPatientsStrip userId={user.id} />

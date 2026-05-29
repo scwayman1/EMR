@@ -25,9 +25,13 @@ const COMMON_US_TIME_ZONES = [
   "Pacific/Honolulu",
 ] as const;
 
+// Tolerate pasted separators (spaces/dashes) — normalize to digits before
+// the 10-digit check so the client and server agree on what's valid.
 const npiSchema = z
   .string()
-  .regex(/^\d{10}$/u, "NPI must be exactly 10 digits")
+  .trim()
+  .transform((v) => v.replace(/\D/g, ""))
+  .refine((v) => /^\d{10}$/u.test(v), "NPI must be exactly 10 digits")
   .optional();
 
 const createPracticeSchema = z.object({

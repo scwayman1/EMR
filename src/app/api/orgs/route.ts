@@ -26,9 +26,13 @@ const COMMON_US_TIME_ZONES = [
   "Pacific/Honolulu",
 ] as const;
 
+// Tolerate pasted separators (spaces/dashes) — normalize to digits before
+// the 10-digit check so the client and server agree on what's valid.
 const npiSchema = z
   .string()
-  .regex(/^\d{10}$/u, "NPI must be exactly 10 digits")
+  .trim()
+  .transform((v) => v.replace(/\D/g, ""))
+  .refine((v) => /^\d{10}$/u.test(v), "NPI must be exactly 10 digits")
   .optional();
 
 const createOrgSchema = z.object({
@@ -48,7 +52,18 @@ const createOrgSchema = z.object({
     .string()
     .trim()
     .min(1, "Phone number is required")
-    .regex(/^\(\d{3}\) \d{3}-\d{4}$/, "Phone number must be in the format (555) 123-4567"),
+    .transform((v) => {
+      // Normalize to 10 significant digits (drop a leading US "1") then
+      // re-render canonical "(555) 123-4567". Accepts pasted formats.
+      let digits = v.replace(/\D/g, "");
+      if (digits.length === 11 && digits.startsWith("1")) digits = digits.slice(1);
+      return digits.length === 10
+        ? `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
+        : v;
+    })
+    .refine((v) => /^\(\d{3}\) \d{3}-\d{4}$/.test(v), {
+      message: "Phone number must be in the format (555) 123-4567",
+    }),
   npi: npiSchema,
   street: z.string().trim().min(1, "Street is required").max(200),
   city: z.string().trim().min(1, "City is required").max(100),

@@ -22,46 +22,6 @@ import { cn } from "@/lib/utils/cn";
 
 import type { WizardStepProps } from "@/lib/onboarding/wizard-types";
 
-export function CreateOrgInlineForm({ onCreated }: { onCreated: (orgId: string) => void }) {
-  const [loading, setLoading] = React.useState(false);
-  
-  const handleCreate = async () => {
-    setLoading(true);
-    const payload = {
-      legalName: "New Inline Org",
-      brandName: "New Inline Org",
-      primaryContactName: "Admin",
-      primaryContactEmail: "admin@example.com",
-      phone: "(555) 123-4567",
-      street: "123 Main St",
-      city: "San Francisco",
-      state: "CA",
-      postalCode: "94105",
-      timeZone: "America/Los_Angeles"
-    };
-
-    try {
-      const res = await fetch("/api/orgs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        onCreated(data.organization.id);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Button variant="secondary" size="sm" onClick={handleCreate} disabled={loading} className="mt-2">
-      {loading ? "Creating..." : "Quick Create Org"}
-    </Button>
-  );
-}
-
 // Keep this list aligned with the API route's allow-list.
 const COMMON_US_TIME_ZONES = [
   { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
@@ -75,15 +35,38 @@ const COMMON_US_TIME_ZONES = [
 
 const DEFAULT_TZ = "America/Los_Angeles";
 
-function formatPhoneNumber(value: string): string {
-  if (!value) return value;
-  const phoneNumber = value.replace(/[^\d]/g, "");
-  const len = phoneNumber.length;
-  if (len < 4) return phoneNumber;
-  if (len < 7) {
-    return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
+/**
+ * Reduce any user input to at most 10 significant phone digits. Tolerates
+ * spaces, dashes, parens, dots, and a leading US country code ("+1" / "1")
+ * so pasted numbers like "+1 (303) 555-1212" or "303.555.1212" all normalize.
+ */
+function normalizePhoneDigits(value: string): string {
+  let digits = (value ?? "").replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    digits = digits.slice(1);
   }
-  return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
+  return digits.slice(0, 10);
+}
+
+/** Canonical "(555) 123-4567" string from exactly-10 digits. */
+function toCanonicalPhone(digits: string): string {
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
+function formatPhoneNumber(value: string): string {
+  const digits = normalizePhoneDigits(value);
+  const len = digits.length;
+  if (len === 0) return "";
+  if (len < 4) return digits;
+  if (len < 7) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+  return toCanonicalPhone(digits);
+}
+
+/** Strip an NPI down to digits only — tolerates pasted spaces/dashes. */
+function normalizeNpi(value: string | undefined): string {
+  return (value ?? "").replace(/\D/g, "");
 }
 
 // --- Zod schemas (mirror server-side route validation) -----------------
@@ -92,6 +75,7 @@ const npiOptional = z
   .string()
   .trim()
   .optional()
+  .transform((v) => (v ? normalizeNpi(v) : v))
   .refine((v) => !v || /^\d{10}$/u.test(v), {
     message: "NPI must be exactly 10 digits",
   });
@@ -109,7 +93,10 @@ const orgFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Required")
-    .regex(/^\(\d{3}\) \d{3}-\d{4}$/, "Must be formatted as (555) 123-4567"),
+    .refine((v) => normalizePhoneDigits(v).length === 10, {
+      message: "Enter a 10-digit phone number",
+    })
+    .transform((v) => toCanonicalPhone(normalizePhoneDigits(v))),
   npi: npiOptional,
   street: z.string().trim().min(1, "Required"),
   city: z.string().trim().min(1, "Required"),
@@ -400,11 +387,6 @@ function PickExistingTab({
           autoComplete="off"
         />
       </FieldGroup>
-
-      <CreateOrgInlineForm onCreated={(orgId) => {
-        // Just trigger a re-fetch or clear the query
-        setQuery("");
-      }} />
 
       <div
         id="org-practice-results"
