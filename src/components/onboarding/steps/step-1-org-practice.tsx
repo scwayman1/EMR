@@ -19,6 +19,12 @@ import {
 } from "@/components/ui/card";
 import { FieldGroup, Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
+import {
+  formatPhoneNumber,
+  isValidPhone,
+  normalizePhoneDigits,
+  toCanonicalPhone,
+} from "@/lib/onboarding/phone";
 
 import type { WizardStepProps } from "@/lib/onboarding/wizard-types";
 
@@ -34,35 +40,6 @@ const COMMON_US_TIME_ZONES = [
 ] as const;
 
 const DEFAULT_TZ = "America/Los_Angeles";
-
-/**
- * Reduce any user input to at most 10 significant phone digits. Tolerates
- * spaces, dashes, parens, dots, and a leading US country code ("+1" / "1")
- * so pasted numbers like "+1 (303) 555-1212" or "303.555.1212" all normalize.
- */
-function normalizePhoneDigits(value: string): string {
-  let digits = (value ?? "").replace(/\D/g, "");
-  if (digits.length === 11 && digits.startsWith("1")) {
-    digits = digits.slice(1);
-  }
-  return digits.slice(0, 10);
-}
-
-/** Canonical "(555) 123-4567" string from exactly-10 digits. */
-function toCanonicalPhone(digits: string): string {
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
-}
-
-function formatPhoneNumber(value: string): string {
-  const digits = normalizePhoneDigits(value);
-  const len = digits.length;
-  if (len === 0) return "";
-  if (len < 4) return digits;
-  if (len < 7) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  }
-  return toCanonicalPhone(digits);
-}
 
 /** Strip an NPI down to digits only — tolerates pasted spaces/dashes. */
 function normalizeNpi(value: string | undefined): string {
@@ -93,8 +70,8 @@ const orgFormSchema = z.object({
     .string()
     .trim()
     .min(1, "Required")
-    .refine((v) => normalizePhoneDigits(v).length === 10, {
-      message: "Enter a 10-digit phone number",
+    .refine(isValidPhone, {
+      message: "Enter a valid 10-digit US phone number",
     })
     .transform((v) => toCanonicalPhone(normalizePhoneDigits(v))),
   npi: npiOptional,
