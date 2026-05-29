@@ -28,12 +28,14 @@ const mockedPrisma = vi.mocked(prisma, true) as unknown as {
   membership: { upsert: ReturnType<typeof vi.fn> };
 };
 
+// A break-glass platform operator: allowlisted, no clinical/end-user role.
+// This is the ONLY shape that should ever be auto-promoted.
 const allowlistedUser: AuthedUser = {
   id: "user_seed",
   email: "scott@leafjourney.com",
   firstName: "Scott",
   lastName: "Wayman",
-  roles: ["clinician"],
+  roles: [],
   organizationId: "org_clinic",
   organizationName: "Test Clinic",
 };
@@ -81,5 +83,28 @@ describe("bootstrapSuperAdminIfAllowlisted", () => {
 
     expect(result).toBe(false);
     expect(mockedPrisma.membership.upsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses to escalate an allowlisted CLINICIAN account", async () => {
+    // Regression: a clinician demo login on the allowlist was being silently
+    // promoted to super_admin and routed into the admin shell. Allowlist
+    // membership must not override the protected-role guard.
+    const user = { ...allowlistedUser, roles: ["clinician" as const] };
+    const result = await bootstrapSuperAdminIfAllowlisted(user);
+
+    expect(result).toBe(false);
+    expect(user.roles).not.toContain("super_admin");
+    expect(mockedPrisma.membership.upsert).not.toHaveBeenCalled();
+  });
+
+  it("refuses to escalate other end-user roles (patient / office)", async () => {
+    for (const role of ["patient", "midlevel", "back_office", "front_office"] as const) {
+      mockedPrisma.membership.upsert.mockClear();
+      const user = { ...allowlistedUser, roles: [role] };
+      const result = await bootstrapSuperAdminIfAllowlisted(user);
+
+      expect(result).toBe(false);
+      expect(mockedPrisma.membership.upsert).not.toHaveBeenCalled();
+    }
   });
 });

@@ -23,10 +23,27 @@ import "server-only";
 
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/observability/log";
+import type { Role } from "@prisma/client";
 import type { AuthedUser } from "./session";
 
 export const LEAFJOURNEY_HQ_SLUG = "leafjourney-hq";
 const LEAFJOURNEY_HQ_NAME = "LeafJourney HQ";
+
+/**
+ * Roles that must NEVER be silently escalated to platform super_admin via the
+ * bootstrap allowlist. Bootstrap is a break-glass recovery path for platform
+ * operators; a clinician / patient / office login that happens to be on the
+ * allowlist must not acquire owner-level rights (and get routed into the admin
+ * shell). Accounts holding these roles can still be granted admin explicitly
+ * through the /admin console by an existing super_admin.
+ */
+const PROTECTED_NON_ADMIN_ROLES: Role[] = [
+  "patient",
+  "clinician",
+  "midlevel",
+  "back_office",
+  "front_office",
+];
 
 /**
  * Returns the bootstrap email allowlist when bootstrap is *explicitly
@@ -94,6 +111,28 @@ export async function bootstrapSuperAdminIfAllowlisted(
   const allowlist = bootstrapAllowlist();
   if (allowlist.size === 0) return false;
   if (!allowlist.has(user.email.toLowerCase())) return false;
+
+  // Defense-in-depth: never auto-promote an account that already holds a
+  // clinical / end-user role. A clinician demo login was being silently
+  // escalated to super_admin (and routed into Practice Onboarding instead of
+  // /clinic) because its email was on the allowlist. Allowlist membership is
+  // not sufficient — the account must not be a clinician/patient/office user.
+  const protectedRole = user.roles.find((r) =>
+    PROTECTED_NON_ADMIN_ROLES.includes(r),
+  );
+  if (protectedRole) {
+    logger.warn({
+      event: "auth.bootstrap.refused_non_admin_account",
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+      blockedBy: protectedRole,
+      message:
+        "Refused super_admin bootstrap: account holds a clinical/end-user role. " +
+        "Grant admin explicitly via /admin if this is intended.",
+    });
+    return false;
+  }
 
   const hqOrgId = await ensureLeafjourneyHq();
   await prisma.membership.upsert({
