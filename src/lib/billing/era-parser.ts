@@ -163,7 +163,11 @@ export function parseEra835(payload: string): ParsedEra835 {
   let payeeName = "";
   let payeeNpi: string | null = null;
   let checkNumber = "";
-  let checkDate = new Date();
+  // Null until a date segment supplies one — BPR16 (effective date) is
+  // authoritative, DTM*405 (production date) is the fallback. We default
+  // to "now" only at return time if neither is present, so the DTM
+  // fallback below is actually reachable when BPR16 is omitted.
+  let checkDate: Date | null = null;
   let paymentMethod: ParsedEra835["paymentMethod"] = "ach";
   let totalPaymentCents = 0;
 
@@ -317,7 +321,7 @@ export function parseEra835(payload: string): ParsedEra835 {
     payeeName,
     payeeNpi,
     checkNumber,
-    checkDate,
+    checkDate: checkDate ?? new Date(),
     paymentMethod,
     totalPaymentCents,
     claimPayments,
