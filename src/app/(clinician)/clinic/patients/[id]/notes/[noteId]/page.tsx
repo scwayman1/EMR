@@ -4,9 +4,13 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatDate } from "@/lib/utils/format";
 import { NoteEditor } from "./note-editor";
+import { StaffObjectiveEditor } from "./staff-objective-editor";
 import { NoteCommentsPanel } from "@/components/collaboration/note-comments-panel";
+import { hasPermission, canDocumentObjective } from "@/lib/rbac/permissions";
+import { coerceVitals } from "@/lib/clinical/objective-vitals";
 
 interface PageProps {
   params: { id: string; noteId: string };
@@ -52,6 +56,39 @@ export default async function NoteDetailPage({ params }: PageProps) {
       (b as { heading: string }).heading !== "_guardrails",
   );
 
+  // Role-aware authoring surface. Physicians/mid-levels get the full editor;
+  // rooming staff (MAs) with only the scoped Objective capability get the
+  // vitals/exam editor; read-only viewers see a static render; anyone with no
+  // note access at all is bounced to notFound (front-office has no clinical
+  // grant and should never see chart content).
+  const canEditNotes = hasPermission(user, "notes.edit");
+  const canDocObjective = canDocumentObjective(user);
+  const canReadNotes = hasPermission(user, "notes.read");
+  if (!canEditNotes && !canDocObjective && !canReadNotes) notFound();
+
+  // Pull the Objective ("findings") block (+ any prior staff attribution) for
+  // the staff editor's initial state.
+  const findingsBlock = rawBlocks.find(
+    (b): b is Record<string, unknown> =>
+      !!b && typeof b === "object" && (b as { type?: unknown }).type === "findings",
+  ) as Record<string, unknown> | undefined;
+  const fMeta = (findingsBlock?.metadata ?? {}) as Record<string, unknown>;
+  const initialVitals = coerceVitals(fMeta.objectiveVitals);
+  const initialExam =
+    typeof fMeta.objectiveExam === "string"
+      ? fMeta.objectiveExam
+      : typeof findingsBlock?.body === "string"
+        ? (findingsBlock.body as string)
+        : "";
+  const initialAttribution =
+    fMeta.documentedByName || fMeta.documentedAt
+      ? {
+          name: typeof fMeta.documentedByName === "string" ? fMeta.documentedByName : undefined,
+          role: typeof fMeta.documentedByRole === "string" ? fMeta.documentedByRole : undefined,
+          at: typeof fMeta.documentedAt === "string" ? fMeta.documentedAt : undefined,
+        }
+      : null;
+
   // Parse coding suggestion. `icd10` is a JSON column — runtime-validate
   // that it's actually an array before handing it to the client, otherwise
   // a legacy/malformed row will crash the editor on render.
@@ -88,28 +125,66 @@ export default async function NoteDetailPage({ params }: PageProps) {
         }
       />
 
-      <NoteEditor
-        noteId={note.id}
-        patientId={params.id}
-        encounterId={note.encounterId}
-        initialBlocks={blocks}
-        status={note.status}
-        aiDrafted={note.aiDrafted}
-        aiConfidence={note.aiConfidence}
-        codingSuggestion={codingSuggestion}
-        initialDemeanor={
-          note.encounter.briefingContext &&
-          typeof note.encounter.briefingContext === "object" &&
-          "patientDemeanor" in (note.encounter.briefingContext as Record<string, unknown>)
-            ? ((note.encounter.briefingContext as Record<string, unknown>).patientDemeanor as any)
-            : null
-        }
-      />
+      {canEditNotes ? (
+        <NoteEditor
+          noteId={note.id}
+          patientId={params.id}
+          encounterId={note.encounterId}
+          initialBlocks={blocks}
+          status={note.status}
+          aiDrafted={note.aiDrafted}
+          aiConfidence={note.aiConfidence}
+          codingSuggestion={codingSuggestion}
+          initialDemeanor={
+            note.encounter.briefingContext &&
+            typeof note.encounter.briefingContext === "object" &&
+            "patientDemeanor" in (note.encounter.briefingContext as Record<string, unknown>)
+              ? ((note.encounter.briefingContext as Record<string, unknown>).patientDemeanor as any)
+              : null
+          }
+        />
+      ) : canDocObjective ? (
+        <StaffObjectiveEditor
+          noteId={note.id}
+          patientName={`${patient.firstName} ${patient.lastName}`}
+          modality={note.encounter.modality}
+          status={note.status}
+          initialVitals={initialVitals}
+          initialExam={initialExam}
+          initialAttribution={initialAttribution}
+        />
+      ) : (
+        <ReadOnlyNote blocks={blocks} />
+      )}
 
       {/* ux/comments-mentions-collab — inline collaboration on chart notes */}
       <div className="mt-8">
         <NoteCommentsPanel noteId={note.id} patientId={params.id} />
       </div>
     </PageShell>
+  );
+}
+
+/** Static, read-only note render for users with `notes.read` but no edit. */
+function ReadOnlyNote({
+  blocks,
+}: {
+  blocks: { heading: string; body: string }[];
+}) {
+  return (
+    <div className="space-y-3">
+      {blocks.map((block, i) => (
+        <Card key={i}>
+          <CardContent className="pt-5 pb-5 space-y-2">
+            <h3 className="font-display text-lg font-medium text-text tracking-tight">
+              {block.heading}
+            </h3>
+            <p className="text-sm text-text-muted leading-relaxed whitespace-pre-wrap">
+              {block.body}
+            </p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   );
 }
