@@ -2,25 +2,35 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
+import {
+  applyGrounding,
+  buildCodingPrompt,
+  overallCodingConfidence,
+  parseCodingResponse,
+  type CandidateCode,
+} from "@/lib/clinical/coding-confidence";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Try to extract and parse JSON from a model response.
- * The model may wrap the JSON in markdown code fences.
- */
-function tryParseJSON(text: string): any | null {
-  const jsonMatch =
-    text.match(/```(?:json)?\s*([\s\S]*?)```/) ||
-    text.match(/(\{[\s\S]*\})/);
-  if (!jsonMatch) return null;
-  try {
-    return JSON.parse(jsonMatch[1] || jsonMatch[0]);
-  } catch {
-    return null;
+/** Keyword fallback used when the model returns unparseable output (e.g. the StubModelClient). */
+function keywordFallbackCodes(blocks: unknown): CandidateCode[] {
+  const narrative = JSON.stringify(blocks).toLowerCase();
+  const codes: CandidateCode[] = [];
+  if (/pain/.test(narrative)) {
+    codes.push({ code: "G89.29", label: "Other chronic pain", confidence: 0.55 });
   }
+  if (/sleep|insomnia/.test(narrative)) {
+    codes.push({ code: "G47.00", label: "Insomnia, unspecified", confidence: 0.5 });
+  }
+  if (/nausea/.test(narrative)) {
+    codes.push({ code: "R11.0", label: "Nausea", confidence: 0.5 });
+  }
+  if (/anxiety/.test(narrative)) {
+    codes.push({ code: "F41.1", label: "Generalized anxiety disorder", confidence: 0.5 });
+  }
+  return codes;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,31 +105,8 @@ export const codingReadinessAgent: Agent<
     // ------------------------------------------------------------------
     // 3. Build the coding prompt and call the model
     // ------------------------------------------------------------------
-    const prompt = `You are a medical coding assistant. Review this clinical note and suggest appropriate ICD-10 diagnostic codes and an E&M evaluation/management level.
-
-CLINICAL NOTE:
-${noteText}
-
-Patient context: ${patient.presentingConcerns ?? "Not documented"}
-
-Cannabis history:
-${cannabisHistory}
-
-Return ONLY valid JSON:
-{
-  "icd10": [
-    { "code": "G89.29", "label": "Other chronic pain", "confidence": 0.85, "rationale": "Patient presents with chronic neuropathic pain post-chemo" }
-  ],
-  "emLevel": "99214",
-  "emRationale": "Moderate complexity visit with established patient, detailed history, moderate decision-making",
-  "overallConfidence": 0.75
-}
-
-Guidelines:
-- Include all relevant diagnostic codes, not just one
-- E&M codes: 99211-99215 for established, 99201-99205 for new patients
-- Cannabis-related codes may include F12.x series if applicable
-- Provide clear rationale for each code`;
+    const patientContext = `${patient.presentingConcerns ?? "Not documented"}\nCannabis history: ${cannabisHistory}`;
+    const prompt = buildCodingPrompt(noteText, patientContext);
 
     ctx.log("info", "Sending coding prompt to model", {
       promptLength: prompt.length,
@@ -131,125 +118,63 @@ Guidelines:
     });
 
     // ------------------------------------------------------------------
-    // 4. Parse model response (structured JSON or keyword fallback)
+    // 4. Parse, then GROUND each code against the documented note. A
+    //    diagnostic code only survives if its clinical concept actually
+    //    appears in the note — this kills the "code for a condition the
+    //    note never mentions" failure mode, and reconciles each surviving
+    //    code's confidence by how well it's supported.
     // ------------------------------------------------------------------
-    const parsed = tryParseJSON(modelResponse);
+    const parsedCoding = parseCodingResponse(modelResponse);
+    const candidates: CandidateCode[] = parsedCoding
+      ? parsedCoding.icd10
+      : keywordFallbackCodes(note.blocks);
+    const emLevel = parsedCoding?.emLevel ?? null;
+    const emRationale = parsedCoding?.emRationale ?? "";
 
-    let codes: z.infer<typeof output>["icd10"];
-    let emLevel: string | null;
-    let rationale: string;
+    const { kept, dropped } = applyGrounding(candidates, noteText);
+    const overall = overallCodingConfidence(kept);
 
-    if (parsed && typeof parsed === "object" && Array.isArray(parsed.icd10)) {
-      // Successful structured parse
-      codes = parsed.icd10
-        .filter(
-          (c: any) =>
-            typeof c === "object" &&
-            typeof c.code === "string" &&
-            typeof c.label === "string"
-        )
-        .map((c: any) => ({
-          code: c.code,
-          label: c.label,
-          confidence:
-            typeof c.confidence === "number"
-              ? Math.max(0, Math.min(1, c.confidence))
-              : 0.5,
-        }));
+    const codes: z.infer<typeof output>["icd10"] = kept.map((c) => ({
+      code: c.code,
+      label: c.label,
+      confidence: c.confidence,
+    }));
 
-      emLevel =
-        typeof parsed.emLevel === "string" ? parsed.emLevel : null;
+    const rationale = [
+      emRationale,
+      `Overall confidence: ${overall.toFixed(2)}.`,
+      dropped.length > 0
+        ? `Dropped ${dropped.length} code(s) unsupported by the documentation: ${dropped
+            .map((d) => `${d.code} (${d.label})`)
+            .join(", ")}.`
+        : "",
+      kept.length === 0 ? "No documented findings support a code; manual review recommended." : "",
+      "Clinician review required before any submission.",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
-      const emRationale =
-        typeof parsed.emRationale === "string"
-          ? parsed.emRationale
-          : "";
-
-      const overallConfidence =
-        typeof parsed.overallConfidence === "number"
-          ? parsed.overallConfidence.toFixed(2)
-          : "N/A";
-
-      rationale =
-        [
-          emRationale,
-          `Overall confidence: ${overallConfidence}.`,
-          "Clinician review required before any submission.",
-        ]
-          .filter(Boolean)
-          .join(" ");
-
-      ctx.log("info", "Parsed structured coding JSON from model", {
-        codeCount: codes.length,
-        emLevel,
-      });
-    } else {
-      // Fallback: keyword matching (preserves V1 behavior for StubModelClient)
-      const narrative = JSON.stringify(note.blocks).toLowerCase();
-      codes = [];
-
-      if (/pain/.test(narrative)) {
-        codes.push({
-          code: "G89.29",
-          label: "Other chronic pain",
-          confidence: 0.55,
-        });
-      }
-      if (/sleep|insomnia/.test(narrative)) {
-        codes.push({
-          code: "G47.00",
-          label: "Insomnia, unspecified",
-          confidence: 0.5,
-        });
-      }
-      if (/nausea/.test(narrative)) {
-        codes.push({
-          code: "R11.0",
-          label: "Nausea",
-          confidence: 0.5,
-        });
-      }
-      if (/anxiety/.test(narrative)) {
-        codes.push({
-          code: "F41.1",
-          label: "Generalized anxiety disorder",
-          confidence: 0.5,
-        });
-      }
-
-      emLevel = null;
-
-      rationale =
-        codes.length > 0
-          ? "Suggestions are based on narrative keywords. Clinician review required before any submission."
-          : "No clear code matches found in narrative. Manual review recommended.";
-
-      ctx.log("info", "Model returned plain text; using keyword fallback", {
-        codeCount: codes.length,
-      });
-    }
+    ctx.log("info", "Grounded coding suggestions", {
+      candidateCount: candidates.length,
+      keptCount: kept.length,
+      droppedCount: dropped.length,
+      emLevel,
+      structured: Boolean(parsedCoding),
+    });
 
     // ------------------------------------------------------------------
-    // 5. Persist the coding suggestion
+    // 5. Persist the coding suggestion (grounded codes only)
     // ------------------------------------------------------------------
     ctx.assertCan("write.coding");
 
-    // Build the full icd10 payload with rationale per code (for structured path)
-    const icd10Payload =
-      parsed && Array.isArray(parsed.icd10)
-        ? parsed.icd10
-            .filter(
-              (c: any) =>
-                typeof c === "object" && typeof c.code === "string"
-            )
-            .map((c: any) => ({
-              code: c.code,
-              label: c.label ?? "",
-              confidence:
-                typeof c.confidence === "number" ? c.confidence : 0.5,
-              rationale: c.rationale ?? undefined,
-            }))
-        : (codes as any);
+    const icd10Payload = kept.map((c) => ({
+      code: c.code,
+      label: c.label,
+      confidence: c.confidence,
+      rationale: c.rationale ?? undefined,
+      grounded: c.grounded,
+      matchedTerms: c.matchedTerms,
+    }));
 
     await prisma.codingSuggestion.upsert({
       where: { noteId },
