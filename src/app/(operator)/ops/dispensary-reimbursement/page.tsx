@@ -21,7 +21,7 @@ import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
 import { DEFAULT_CAP_CENTS } from "@/lib/dispensary";
-import { ROLE_HOME } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 
 export const metadata = { title: "Dispensary reimbursement" };
 
@@ -53,7 +53,7 @@ export default async function DispensaryReimbursementPage() {
   if (
     !user.roles.some((r) => r === "operator" || r === "practice_owner")
   ) {
-    redirect(ROLE_HOME[user.roles[0]] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
   if (!user.organizationId) {
     return (

@@ -10,7 +10,7 @@ import { redirect } from "next/navigation";
 import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { ROLE_HOME } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 import { DispensaryLocatorView } from "./dispensary-locator-view";
 
 export const metadata = { title: "Dispensary & provider locator" };
@@ -24,7 +24,7 @@ export default async function DispensaryLocatorPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
   if (!user.roles.includes("patient")) {
-    redirect(ROLE_HOME[user.roles[0]] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
 
   const patient = user.organizationId

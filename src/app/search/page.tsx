@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { prisma } from "@/lib/db/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
-import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 import type { Role } from "@prisma/client";
 import {
   GLOBAL_SEARCH_CATEGORIES,
@@ -107,7 +107,7 @@ export default async function SearchPage({
     redirect(`/sign-in?next=${encodeURIComponent(`/search?q=${q}`)}`);
   }
   if (!user.roles.some((r) => CLINIC_FLOOR_ROLES.includes(r))) {
-    redirect(ROLE_HOME[primaryRole(user.roles)] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
   const organizationId = user.organizationId;
 

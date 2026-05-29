@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
-import { primaryRole, ROLE_HOME } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 
 export const metadata = { title: "Signing you in…" };
 
@@ -16,10 +16,13 @@ export const revalidate = 0;
 // orders by membership creation date — not by privilege — so multi-role users
 // could land in the wrong shell and trip the (auth) group's missing
 // error.tsx, surfacing global-error.tsx ("Something went wrong").
+//
+// Landing uses `homeForRoles` (→ `landingRole`), which prefers the surface a
+// user actually works in. A clinician who also carries an admin role lands on
+// /clinic, not the Practice Onboarding wizard.
 export default async function PostSignInPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
 
-  const role = primaryRole(user.roles);
-  redirect(ROLE_HOME[role] ?? "/");
+  redirect(homeForRoles(user.roles));
 }

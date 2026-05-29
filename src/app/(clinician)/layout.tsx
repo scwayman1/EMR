@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
 import { SplitWorkspace } from "@/components/shell/SplitWorkspace";
 import { ContextPane } from "@/components/shell/ContextPane";
-import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
@@ -49,7 +49,7 @@ export default async function ClinicianLayout({
   ];
 
   if (!user.roles.some((r) => CLINIC_FLOOR_ROLES.includes(r))) {
-    redirect(ROLE_HOME[primaryRole(user.roles)] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
 
   const safeCount = async (fn: () => Promise<number>) => {
