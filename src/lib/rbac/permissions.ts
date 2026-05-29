@@ -46,6 +46,11 @@ export type Permission =
   // Clinical notes (SOAP, progress, telehealth, etc.).
   | "notes.read"
   | "notes.edit"
+  // Scoped Objective/vitals documentation. Narrower than `notes.edit`:
+  // lets rooming staff (MAs) document ONLY the Objective ("findings")
+  // section of a note — never the rest, never finalize. Clinicians and
+  // mid-levels carry it implicitly via `notes.edit`.
+  | "notes.objective.document"
   // Clinical history: problems list, encounter history, prior diagnoses.
   | "clinical_history.read"
   // Sensitive diagnoses (behavioral health, substance use, HIV, etc.).
@@ -94,6 +99,9 @@ const PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
     "billing.read",
     "billing.edit",
     "notes.read",
+    // MAs room patients and record vitals/exam. Scoped to the Objective
+    // section only — they still cannot author or edit the rest of the note.
+    "notes.objective.document",
     "clinical_history.read",
   ]),
 
@@ -213,6 +221,19 @@ export function requirePermission(
   if (!hasPermission(user, permission)) {
     throw new ForbiddenError({ permission, reason: "role" });
   }
+}
+
+/**
+ * Can this user document the Objective / vitals section of a note? True for
+ * full note editors (clinician, mid-level, owner — via `notes.edit`) and for
+ * rooming staff (MAs) who carry only the scoped `notes.objective.document`
+ * grant. Use this to gate the staff Objective workflow.
+ */
+export function canDocumentObjective(user: Pick<AuthedUser, "roles">): boolean {
+  return (
+    hasPermission(user, "notes.edit") ||
+    hasPermission(user, "notes.objective.document")
+  );
 }
 
 /**
