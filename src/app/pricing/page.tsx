@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/marketing/SiteHeader";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { EmrPricingComparison } from "@/components/marketing/EmrPricingComparison";
 import { PricingClient } from "./PricingClient";
 
 export const metadata = {
@@ -19,6 +20,7 @@ export default function PricingPage() {
       <SiteHeader />
       <main id="main-content">
         <PricingClient />
+        <EmrPricingComparison />
       </main>
       <SiteFooter />
     </div>

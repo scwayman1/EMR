@@ -92,6 +92,30 @@ export function rankQuestions(questions: ProductQuestion[]): ProductQuestion[] {
   });
 }
 
+/**
+ * AI summary of the most common questions for a product. Deterministic
+ * stand-in: clusters the top answered threads into a short paragraph the
+ * Q&A tab shows above the thread list. The real implementation feeds the
+ * thread corpus to the configured model; the signature stays stable.
+ */
+export function summarizeProductQuestions(questions: ProductQuestion[]): string {
+  if (questions.length === 0) {
+    return "No questions yet. Be the first to ask — our vendors and clinical team typically respond within a day.";
+  }
+  const ranked = rankQuestions(questions);
+  const answered = ranked.filter((q) => q.answers.length > 0);
+  const topics = ranked.slice(0, 3).map((q) => q.body.replace(/\?+$/, "").toLowerCase());
+  const topicList =
+    topics.length === 1
+      ? topics[0]
+      : `${topics.slice(0, -1).join(", ")} and ${topics[topics.length - 1]}`;
+  const answeredNote =
+    answered.length > 0
+      ? ` ${answered.length} of ${ranked.length} have verified answers from vendors or clinicians.`
+      : "";
+  return `Shoppers most often ask about ${topicList}.${answeredNote}`;
+}
+
 export interface SubmitQuestionInput {
   productSlug: string;
   authorName: string;
