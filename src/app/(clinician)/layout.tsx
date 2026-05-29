@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { AppShell, type NavSection } from "@/components/shell/AppShell";
 import { SplitWorkspace } from "@/components/shell/SplitWorkspace";
 import { ContextPane } from "@/components/shell/ContextPane";
-import { ROLE_HOME, primaryRole } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 import { QuoteWelcomeModal } from "@/components/ui/quote-of-the-day";
 import { BreathingBreak } from "@/components/ui/breathing-break";
 import { KeyboardShortcuts } from "@/components/ui/keyboard-shortcuts";
@@ -34,6 +34,12 @@ export default async function ClinicianLayout({
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
 
+  // The first-run clinician tour is great for a brand-new provider, but it
+  // hijacks the screen on demo / showcase logins (e.g. clinician@demo.health)
+  // where we're demonstrating the *physician workflow*, not onboarding.
+  // Suppress the auto-trigger for those accounts; manual replay still works.
+  const isDemoSurface = /@demo\.health$/i.test(user.email);
+
   const CLINIC_FLOOR_ROLES: Array<typeof user.roles[number]> = [
     "clinician",
     "midlevel",
@@ -43,7 +49,7 @@ export default async function ClinicianLayout({
   ];
 
   if (!user.roles.some((r) => CLINIC_FLOOR_ROLES.includes(r))) {
-    redirect(ROLE_HOME[primaryRole(user.roles)] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
 
   const safeCount = async (fn: () => Promise<number>) => {
@@ -196,7 +202,7 @@ export default async function ClinicianLayout({
       <KeyboardShortcuts />
       <CommandPalette role="clinician" userId={user.id} />
       <ConsciousnessOverlay />
-      <ClinicianTour />
+      <ClinicianTour autoStart={!isDemoSurface} />
       <InstallPrompt />
       <HelpDrawer />
       <RecentPatientsStrip userId={user.id} />

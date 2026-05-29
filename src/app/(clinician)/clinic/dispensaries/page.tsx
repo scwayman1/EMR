@@ -21,7 +21,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Eyebrow, LeafSprig } from "@/components/ui/ornament";
 import { getCurrentUser } from "@/lib/auth/session";
 import { listDispensariesForOrg } from "@/lib/dispensary";
-import { ROLE_HOME } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 
 export const metadata = { title: "Dispensaries" };
 
@@ -43,7 +43,7 @@ export default async function ClinicDispensariesPage() {
   if (
     !user.roles.some((r) => r === "clinician" || r === "practice_owner" || r === "operator")
   ) {
-    redirect(ROLE_HOME[user.roles[0]] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
   if (!user.organizationId) {
     return (

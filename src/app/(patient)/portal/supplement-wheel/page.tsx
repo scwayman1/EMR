@@ -11,7 +11,7 @@ import { PageHeader, PageShell } from "@/components/shell/PageHeader";
 import { Eyebrow } from "@/components/ui/ornament";
 import { SupplementWheel } from "@/components/education/SupplementWheel";
 import { getCurrentUser } from "@/lib/auth/session";
-import { ROLE_HOME } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 import { getSupplementCompounds } from "@/lib/domain/supplement-wheel-server";
 
 export const metadata = { title: "Supplement Wheel" };
@@ -20,7 +20,7 @@ export default async function SupplementWheelPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
   if (!user.roles.includes("patient")) {
-    redirect(ROLE_HOME[user.roles[0]] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
 
   const compounds = await getSupplementCompounds();

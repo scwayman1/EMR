@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { homeForRoles, primaryRole, ROLE_HOME } from "./roles";
+import { homeForRoles, landingRole, primaryRole, ROLE_HOME } from "./roles";
 
 // primaryRole picks the highest-privilege role from a user's membership set
 // and is load-bearing for post-sign-in routing — Clerk lands every user on
@@ -64,13 +64,54 @@ describe("primaryRole", () => {
   });
 });
 
+// landingRole answers a *different* question from primaryRole: not "what is
+// this user's highest privilege?" but "which surface do they actually work in
+// day to day?" The Practice Onboarding tool (home of super_admin /
+// implementation_admin) is an occasional setup task, so operational roles win
+// the landing — a physician who also carries an admin role must NOT be dumped
+// into the onboarding wizard.
+describe("landingRole", () => {
+  it("prefers the clinical surface over an admin onboarding role", () => {
+    expect(landingRole(["clinician", "super_admin"])).toBe("clinician");
+    expect(landingRole(["super_admin", "clinician"])).toBe("clinician");
+    expect(landingRole(["implementation_admin", "clinician"])).toBe("clinician");
+  });
+
+  it("prefers operational roles over admin onboarding roles", () => {
+    expect(landingRole(["practice_owner", "super_admin"])).toBe("practice_owner");
+    expect(landingRole(["front_office", "implementation_admin"])).toBe("front_office");
+  });
+
+  it("lands a pure admin on their own role", () => {
+    expect(landingRole(["super_admin"])).toBe("super_admin");
+    expect(landingRole(["implementation_admin"])).toBe("implementation_admin");
+  });
+
+  it("falls back to patient on an empty role list", () => {
+    expect(landingRole([])).toBe("patient");
+  });
+});
+
 describe("homeForRoles", () => {
-  it("routes by highest privilege rather than role array order", () => {
+  it("routes by landing precedence rather than role array order", () => {
     expect(homeForRoles(["patient", "practice_owner"])).toBe("/ops");
     expect(homeForRoles(["practice_owner", "patient"])).toBe("/ops");
   });
 
-  it("uses the primary-role fallback for empty role lists", () => {
+  it("sends a clinician+admin to the clinic, not the onboarding wizard", () => {
+    expect(homeForRoles(["clinician", "super_admin"])).toBe("/clinic");
+    expect(homeForRoles(["implementation_admin", "clinician"])).toBe("/clinic");
+  });
+
+  it("sends a pure super_admin to the HQ command center, not the onboarding tool", () => {
+    expect(homeForRoles(["super_admin"])).toBe("/admin/hq");
+  });
+
+  it("still sends a pure implementation_admin to the onboarding controller", () => {
+    expect(homeForRoles(["implementation_admin"])).toBe("/onboarding");
+  });
+
+  it("uses the patient home for empty role lists", () => {
     expect(homeForRoles([], "/sign-in")).toBe("/portal");
   });
 });

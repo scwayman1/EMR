@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Eyebrow } from "@/components/ui/ornament";
 import { getCurrentUser } from "@/lib/auth/session";
-import { ROLE_HOME } from "@/lib/rbac/roles";
+import { homeForRoles } from "@/lib/rbac/roles";
 import {
   listActiveStrains,
   rankStrains,
@@ -54,7 +54,7 @@ export default async function StrainFinderPage({
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
   if (!user.roles.includes("patient")) {
-    redirect(ROLE_HOME[user.roles[0]] ?? "/");
+    redirect(homeForRoles(user.roles));
   }
 
   const symptomsParam = searchParams?.symptoms ?? "";

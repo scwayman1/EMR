@@ -11,6 +11,11 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
 import { requireImplementationAdmin } from "@/lib/auth/super-admin";
+import {
+  isValidPhone,
+  normalizePhoneDigits,
+  toCanonicalPhone,
+} from "@/lib/onboarding/phone";
 
 export const runtime = "nodejs";
 
@@ -26,9 +31,13 @@ const COMMON_US_TIME_ZONES = [
   "Pacific/Honolulu",
 ] as const;
 
+// Tolerate pasted separators (spaces/dashes) — normalize to digits before
+// the 10-digit check so the client and server agree on what's valid.
 const npiSchema = z
   .string()
-  .regex(/^\d{10}$/u, "NPI must be exactly 10 digits")
+  .trim()
+  .transform((v) => v.replace(/\D/g, ""))
+  .refine((v) => /^\d{10}$/u.test(v), "NPI must be exactly 10 digits")
   .optional();
 
 const createOrgSchema = z.object({
@@ -48,7 +57,13 @@ const createOrgSchema = z.object({
     .string()
     .trim()
     .min(1, "Phone number is required")
-    .regex(/^\(\d{3}\) \d{3}-\d{4}$/, "Phone number must be in the format (555) 123-4567"),
+    // Mirror the client form: accept pasted formats / a leading US "1", but
+    // reject overlong input instead of truncating it into a wrong-but-valid
+    // number. Shares the exact normalization rules with the onboarding form.
+    .refine(isValidPhone, {
+      message: "Phone number must be a valid 10-digit US number",
+    })
+    .transform((v) => toCanonicalPhone(normalizePhoneDigits(v))),
   npi: npiSchema,
   street: z.string().trim().min(1, "Street is required").max(200),
   city: z.string().trim().min(1, "City is required").max(100),

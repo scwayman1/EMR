@@ -26,8 +26,12 @@ export const ROLE_HOME: Record<Role, string> = {
   operator: "/ops",
   practice_owner: "/ops",
   practice_admin: "/ops",
+  // Implementation admins live in the onboarding tool — standing up practices
+  // is their job. Super admins get the HQ command center, not the onboarding
+  // wizard: HQ is the platform-wide home base (revenue, funnel, leaderboards,
+  // activity), and they can step into onboarding from there when needed.
   implementation_admin: "/onboarding",
-  super_admin: "/onboarding",
+  super_admin: "/admin/hq",
   system: "/ops/mission-control",
   leafnerd: "/leafnerd",
 };
@@ -91,6 +95,46 @@ export function primaryRole(roles: Role[]): Role {
   return "patient";
 }
 
+/**
+ * The role whose home surface a user should LAND on after sign-in.
+ *
+ * This intentionally differs from `primaryRole`. `primaryRole` ranks by raw
+ * privilege (super_admin first) and drives permission/experience selection.
+ * Landing is a different question: which surface does this person actually
+ * *work in* day to day?
+ *
+ * The Practice Onboarding tool (`/onboarding`, home of super_admin /
+ * implementation_admin) is an occasional setup task, not a daily destination.
+ * A physician who also happens to carry an admin role was being dumped into
+ * the onboarding wizard instead of their clinical home — exactly the "practice
+ * onboarding has nothing to do with the physician workflow" breakage.
+ *
+ * So for landing we prefer operational surfaces (clinic floor + ops) over the
+ * admin roles. A *pure* admin (no operational role) still lands on their own
+ * home — the HQ console for super_admin, the onboarding tool for
+ * implementation_admin — because that genuinely is their job.
+ */
+export function landingRole(roles: Role[]): Role {
+  const order: Role[] = [
+    // Operational / daily-driver surfaces win the landing.
+    "system",
+    "practice_owner",
+    "practice_admin",
+    "operator",
+    "clinician",
+    "midlevel",
+    "back_office",
+    "front_office",
+    // Setup / admin tooling — only the landing target when nothing above applies.
+    "super_admin",
+    "implementation_admin",
+    "leafnerd",
+    "patient",
+  ];
+  for (const r of order) if (roles.includes(r)) return r;
+  return "patient";
+}
+
 export function homeForRoles(roles: Role[], fallback = "/"): string {
-  return ROLE_HOME[primaryRole(roles)] ?? fallback;
+  return ROLE_HOME[landingRole(roles)] ?? fallback;
 }
