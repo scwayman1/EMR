@@ -82,7 +82,7 @@ describe("landingRole", () => {
     expect(landingRole(["front_office", "implementation_admin"])).toBe("front_office");
   });
 
-  it("lands a pure admin on their onboarding home", () => {
+  it("lands a pure admin on their own role", () => {
     expect(landingRole(["super_admin"])).toBe("super_admin");
     expect(landingRole(["implementation_admin"])).toBe("implementation_admin");
   });
@@ -103,8 +103,11 @@ describe("homeForRoles", () => {
     expect(homeForRoles(["implementation_admin", "clinician"])).toBe("/clinic");
   });
 
-  it("still sends a pure admin to the onboarding controller", () => {
-    expect(homeForRoles(["super_admin"])).toBe("/onboarding");
+  it("sends a pure super_admin to the HQ command center, not the onboarding tool", () => {
+    expect(homeForRoles(["super_admin"])).toBe("/admin/hq");
+  });
+
+  it("still sends a pure implementation_admin to the onboarding controller", () => {
     expect(homeForRoles(["implementation_admin"])).toBe("/onboarding");
   });
 

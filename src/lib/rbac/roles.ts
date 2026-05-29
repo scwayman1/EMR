@@ -26,8 +26,12 @@ export const ROLE_HOME: Record<Role, string> = {
   operator: "/ops",
   practice_owner: "/ops",
   practice_admin: "/ops",
+  // Implementation admins live in the onboarding tool — standing up practices
+  // is their job. Super admins get the HQ command center, not the onboarding
+  // wizard: HQ is the platform-wide home base (revenue, funnel, leaderboards,
+  // activity), and they can step into onboarding from there when needed.
   implementation_admin: "/onboarding",
-  super_admin: "/onboarding",
+  super_admin: "/admin/hq",
   system: "/ops/mission-control",
   leafnerd: "/leafnerd",
 };
@@ -106,9 +110,9 @@ export function primaryRole(roles: Role[]): Role {
  * onboarding has nothing to do with the physician workflow" breakage.
  *
  * So for landing we prefer operational surfaces (clinic floor + ops) over the
- * onboarding-admin roles. A *pure* super_admin / implementation_admin (no
- * operational role) still lands on `/onboarding`, because that genuinely is
- * their job.
+ * admin roles. A *pure* admin (no operational role) still lands on their own
+ * home — the HQ console for super_admin, the onboarding tool for
+ * implementation_admin — because that genuinely is their job.
  */
 export function landingRole(roles: Role[]): Role {
   const order: Role[] = [
