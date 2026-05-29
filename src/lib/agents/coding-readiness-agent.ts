@@ -3,10 +3,9 @@ import { prisma } from "@/lib/db/prisma";
 import type { Agent } from "@/lib/orchestration/types";
 import { writeAgentAudit } from "@/lib/orchestration/context";
 import {
-  applyGrounding,
   buildCodingPrompt,
-  overallCodingConfidence,
   parseCodingResponse,
+  runConfidenceLoop,
   type CandidateCode,
 } from "@/lib/clinical/coding-confidence";
 
@@ -131,8 +130,13 @@ export const codingReadinessAgent: Agent<
     const emLevel = parsedCoding?.emLevel ?? null;
     const emRationale = parsedCoding?.emRationale ?? "";
 
-    const { kept, dropped } = applyGrounding(candidates, noteText);
-    const overall = overallCodingConfidence(kept);
+    // Aggressive confidence loop: ground → strict LLM critic (drops
+    // unsupported codes, pulls in clearly-missed ones) → iterate → floor.
+    const { kept, dropped, overall, rounds } = await runConfidenceLoop({
+      noteText,
+      candidates,
+      complete: (p, o) => ctx.model.complete(p, o),
+    });
 
     const codes: z.infer<typeof output>["icd10"] = kept.map((c) => ({
       code: c.code,
@@ -154,10 +158,11 @@ export const codingReadinessAgent: Agent<
       .filter(Boolean)
       .join(" ");
 
-    ctx.log("info", "Grounded coding suggestions", {
+    ctx.log("info", "Coding confidence loop complete", {
       candidateCount: candidates.length,
       keptCount: kept.length,
       droppedCount: dropped.length,
+      criticRounds: rounds,
       emLevel,
       structured: Boolean(parsedCoding),
     });

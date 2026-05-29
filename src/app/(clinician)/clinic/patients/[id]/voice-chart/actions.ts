@@ -26,9 +26,9 @@ import {
 } from "@/lib/agents/guardrails/note-guardrails";
 import { ensureConsentDisclaimerBlock } from "@/lib/clinical/ai-consent-disclaimer";
 import {
-  applyGrounding,
   buildCodingPrompt,
   parseCodingResponse,
+  runConfidenceLoop,
 } from "@/lib/clinical/coding-confidence";
 import { logger } from "@/lib/observability/log";
 
@@ -481,13 +481,27 @@ export async function recommendCodes(
   const patientContext = note.encounter.patient.presentingConcerns ?? "Not documented";
 
   let parsed: ReturnType<typeof parseCodingResponse> = null;
+  let kept: Awaited<ReturnType<typeof runConfidenceLoop>>["kept"] = [];
+  let dropped: Awaited<ReturnType<typeof runConfidenceLoop>>["dropped"] = [];
   try {
     const model = resolveModelClient();
-    const resp = await model.complete(buildCodingPrompt(noteText, patientContext), {
+    const complete = (p: string, o?: { maxTokens?: number; temperature?: number }) =>
+      model.complete(p, o);
+    const resp = await complete(buildCodingPrompt(noteText, patientContext), {
       maxTokens: 1024,
       temperature: 0.2,
     });
     parsed = parseCodingResponse(resp);
+    if (parsed) {
+      // Aggressive confidence loop: ground → strict critic → iterate → floor.
+      const loop = await runConfidenceLoop({
+        noteText,
+        candidates: parsed.icd10,
+        complete,
+      });
+      kept = loop.kept;
+      dropped = loop.dropped;
+    }
   } catch (err) {
     logger.warn({ event: "clinic.voice_chart.recommend_codes_failed", err });
     return { ok: false, error: "Could not generate codes right now. Please retry." };
@@ -495,7 +509,6 @@ export async function recommendCodes(
 
   if (!parsed) return { ok: true, codes: [], droppedCount: 0 };
 
-  const { kept, dropped } = applyGrounding(parsed.icd10, noteText);
   const codes: RecommendedCode[] = kept.map((c) => ({
     code: c.code,
     type: "ICD-10" as const,

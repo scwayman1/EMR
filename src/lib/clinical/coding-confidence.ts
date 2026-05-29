@@ -214,3 +214,178 @@ export function overallCodingConfidence(kept: GroundedCode[]): number {
   if (kept.length === 0) return 0;
   return clamp01(kept.reduce((s, c) => s + c.confidence, 0) / kept.length);
 }
+
+/* ── Critic pass + iterative confidence loop ───────────────────────────── */
+
+export interface CodeVerdict {
+  code: string;
+  supported: boolean;
+  confidence: number;
+  evidence?: string;
+}
+
+export interface CriticResult {
+  verdicts: CodeVerdict[];
+  missed: CandidateCode[];
+}
+
+/** Minimal model-call shape the loop depends on (injected so this stays pure/testable). */
+export type CompleteFn = (
+  prompt: string,
+  opts?: { maxTokens?: number; temperature?: number },
+) => Promise<string>;
+
+/** Strict auditor prompt: re-checks each proposed code against the note. */
+export function buildCriticPrompt(noteText: string, codes: CandidateCode[]): string {
+  const list = codes.map((c) => `- ${c.code} (${c.label})`).join("\n") || "(none)";
+  return `You are a STRICT medical coding auditor. Given the clinical note and a list of proposed ICD-10 codes, decide for EACH proposed code whether the note documents findings that clearly support it. Be conservative: if the condition is not clearly documented, mark it unsupported. Also list any diagnosis that IS clearly documented in the note but is MISSING from the list.
+
+CLINICAL NOTE:
+${noteText}
+
+PROPOSED CODES:
+${list}
+
+Return ONLY valid JSON:
+{
+  "verdicts": [
+    { "code": "G89.29", "supported": true, "confidence": 0.9, "evidence": "exact phrase from the note" }
+  ],
+  "missed": [
+    { "code": "F41.1", "label": "Generalized anxiety disorder", "confidence": 0.8, "rationale": "note documents ..." }
+  ]
+}`;
+}
+
+/** Parse a critic response; returns null when unusable. */
+export function parseCriticResponse(text: string): CriticResult | null {
+  const parsed = tryParseJSON(text);
+  if (!parsed || typeof parsed !== "object") return null;
+  const verdicts: CodeVerdict[] = Array.isArray(parsed.verdicts)
+    ? parsed.verdicts
+        .filter((v: any) => v && typeof v.code === "string")
+        .map((v: any) => ({
+          code: v.code,
+          supported: Boolean(v.supported),
+          confidence: typeof v.confidence === "number" ? clamp01(v.confidence) : 0.5,
+          evidence: typeof v.evidence === "string" ? v.evidence : undefined,
+        }))
+    : [];
+  const missed: CandidateCode[] = Array.isArray(parsed.missed)
+    ? parsed.missed
+        .filter((m: any) => m && typeof m.code === "string" && typeof m.label === "string")
+        .map((m: any) => ({
+          code: m.code,
+          label: m.label,
+          confidence: typeof m.confidence === "number" ? clamp01(m.confidence) : 0.6,
+          rationale: typeof m.rationale === "string" ? m.rationale : undefined,
+        }))
+    : [];
+  return { verdicts, missed };
+}
+
+export interface CodingLoopOptions {
+  /** Max critic rounds (regenerate-with-feedback). Default 2 (aggressive). */
+  maxCriticRounds?: number;
+  /** Drop any surviving code below this confidence. Default 0.5 (aggressive). */
+  confidenceFloor?: number;
+  /** Turn the LLM critic off and run grounding-only. Default true. */
+  enableCritic?: boolean;
+}
+
+export interface CodingLoopResult {
+  kept: GroundedCode[];
+  dropped: GroundedCode[];
+  rounds: number;
+  overall: number;
+}
+
+const codeKey = (c: { code: string }) => c.code.toUpperCase();
+const sameCodeSet = (a: GroundedCode[], b: GroundedCode[]) => {
+  if (a.length !== b.length) return false;
+  const sa = new Set(a.map(codeKey));
+  return b.every((c) => sa.has(codeKey(c)));
+};
+
+/**
+ * The aggressive confidence loop: ground candidates, then repeatedly run a
+ * strict LLM critic that drops unsupported codes and pulls in clearly-missed
+ * ones, re-grounding each round until the set stabilises (or maxCriticRounds).
+ * Finally apply a confidence floor. Pure aside from the injected `complete`.
+ */
+export async function runConfidenceLoop(args: {
+  noteText: string;
+  candidates: CandidateCode[];
+  complete: CompleteFn;
+  options?: CodingLoopOptions;
+}): Promise<CodingLoopResult> {
+  const {
+    maxCriticRounds = 2,
+    confidenceFloor = 0.5,
+    enableCritic = true,
+  } = args.options ?? {};
+
+  const dropped: GroundedCode[] = [];
+  let { kept, dropped: groundedOut } = applyGrounding(args.candidates, args.noteText);
+  dropped.push(...groundedOut);
+
+  let rounds = 0;
+  if (enableCritic) {
+    for (let i = 0; i < maxCriticRounds; i += 1) {
+      let critic: CriticResult | null = null;
+      try {
+        const resp = await args.complete(buildCriticPrompt(args.noteText, kept), {
+          maxTokens: 768,
+          temperature: 0.1,
+        });
+        critic = parseCriticResponse(resp);
+      } catch {
+        break; // critic unavailable — keep what grounding produced
+      }
+      if (!critic) break;
+      rounds += 1;
+
+      const verdict = new Map(critic.verdicts.map((v) => [codeKey(v), v]));
+      const supported: CandidateCode[] = kept
+        .filter((c) => {
+          const v = verdict.get(codeKey(c));
+          return v ? v.supported : true; // codes the critic ignored stay
+        })
+        .map((c) => {
+          const v = verdict.get(codeKey(c));
+          return {
+            code: c.code,
+            label: c.label,
+            confidence: v ? v.confidence : c.confidence,
+            rationale: v?.evidence ?? c.rationale,
+          };
+        });
+      const missed = critic.missed.filter(
+        (m) => !supported.some((s) => codeKey(s) === codeKey(m)),
+      );
+      const merged = [...supported, ...missed];
+
+      const grounded = applyGrounding(merged, args.noteText);
+      dropped.push(...grounded.dropped);
+
+      if (sameCodeSet(grounded.kept, kept) && missed.length === 0) {
+        kept = grounded.kept; // adopt corrected confidences, then stop
+        break;
+      }
+      kept = grounded.kept;
+    }
+  }
+
+  // Aggressive floor: anything we still aren't confident in is set aside.
+  const surviving: GroundedCode[] = [];
+  for (const c of kept) {
+    (c.confidence >= confidenceFloor ? surviving : dropped).push(c);
+  }
+
+  return {
+    kept: surviving,
+    dropped,
+    rounds,
+    overall: overallCodingConfidence(surviving),
+  };
+}
