@@ -30,6 +30,7 @@ import {
   PATIENT_DEMEANOR_OPTIONS,
   type PatientDemeanor,
 } from "@/lib/domain/notes";
+import { advanceVisitState } from "@/lib/domain/visit-state";
 
 const blockSchema = z.object({
   heading: z.string(),
@@ -135,6 +136,15 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     }
     throw err;
   }
+
+  // Idempotent finalize — a note already finalized must NOT re-run the
+  // transition side effects. dispatch() has no dedup, so a second
+  // note.finalized / encounter.completed duplicates physician tasks, patient
+  // outreach drafts, and clinical observations. Short-circuit on the terminal
+  // state (the cosign path below is reached only by non-finalized notes).
+  if (note.status === "finalized") {
+    return { ok: true, status: "finalized" };
+  }
   // EMR-784: Before finalizing, ensure an AI-drafted note still carries
   // the patient verbal-consent disclaimer. Defends against a clinician
   // deleting it during cleanup before signing.
@@ -165,27 +175,37 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     return { ok: true, status: "pending_cosign" };
   }
 
+  // One timestamp shared by the note write, the encounter completion, and the
+  // event payloads — so DB rows and downstream automation agree on the instant.
+  const finalizedAt = new Date();
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
       ...(blocksAtFinalize ? { blocks: blocksAtFinalize as any } : {}),
       status: "finalized",
-      finalizedAt: new Date(),
+      finalizedAt,
       authorUserId: user.id,
     },
   });
 
-  // Also mark the encounter as complete
-  await prisma.encounter.update({
-    where: { id: note.encounterId },
-    data: { status: "complete", completedAt: new Date() },
-  });
+  // Move the encounter to complete through the visit-state spine.
+  // `transitioned` is true only on the actual transition into complete, so a
+  // second note finalizing on an already-complete encounter does not re-fire
+  // encounter.completed.
+  const { transitioned: encounterCompleted } = await advanceVisitState(
+    encounter,
+    "complete",
+    user.id,
+    { at: finalizedAt },
+  );
 
   // If every note for this encounter is now finalized, stamp
   // chartingCompletedAt so the Clinical Flow tile can compute carryover.
-  await markChartingCompletedIfReady(note.encounterId);
+  await markChartingCompletedIfReady(note.encounterId, finalizedAt);
 
-  // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
+  // note.finalized → Coding Agent + Physician Nudge Agent. This call is the
+  // transition into finalized (guarded above), so it fires exactly once.
   await dispatch({
     name: "note.finalized",
     noteId,
@@ -193,13 +213,16 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     finalizedBy: user.id,
   });
 
-  // Dispatch encounter.completed → triggers Patient Outreach Agent
-  await dispatch({
-    name: "encounter.completed",
-    encounterId: note.encounterId,
-    patientId: encounter.patientId,
-    completedAt: new Date(),
-  });
+  // encounter.completed → Patient Outreach / Outcome agents. Only on the
+  // transition into complete.
+  if (encounterCompleted) {
+    await dispatch({
+      name: "encounter.completed",
+      encounterId: note.encounterId,
+      patientId: encounter.patientId,
+      completedAt: finalizedAt,
+    });
+  }
 
   // In dev, run the queue inline so coding suggestions appear immediately
   if (process.env.NODE_ENV !== "production") {
@@ -216,15 +239,20 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
  * documentation-complete marker, distinct from completedAt (= when the
  * physician stopped seeing the patient).
  */
-async function markChartingCompletedIfReady(encounterId: string): Promise<void> {
+async function markChartingCompletedIfReady(
+  encounterId: string,
+  at: Date = new Date(),
+): Promise<void> {
   const unfinalized = await prisma.note.count({
     where: { encounterId, status: { not: "finalized" } },
   });
   if (unfinalized > 0) return;
 
-  await prisma.encounter.update({
-    where: { id: encounterId },
-    data: { chartingCompletedAt: new Date() },
+  // Stamp only if not already set — preserve the FIRST completion instant so a
+  // note added to an already-charted encounter doesn't rewrite history.
+  await prisma.encounter.updateMany({
+    where: { id: encounterId, chartingCompletedAt: null },
+    data: { chartingCompletedAt: at },
   });
 }
 
@@ -263,6 +291,11 @@ export async function saveAndFinalizeNote(
     }
     throw err;
   }
+  // Idempotent finalize — see finalizeNote. An already-finalized note must not
+  // re-dispatch the transition events (dispatch() has no dedup).
+  if (note.status === "finalized") {
+    return { ok: true, status: "finalized" };
+  }
   // EMR-784: AI-drafted notes (voice/ambient scribe) must keep the
   // patient verbal-consent disclaimer through finalize, even if the
   // clinician edited it out.
@@ -289,12 +322,15 @@ export async function saveAndFinalizeNote(
     return { ok: true, status: "pending_cosign" };
   }
 
+  // One shared timestamp for the note write, encounter completion, and events.
+  const finalizedAt = new Date();
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
       blocks: blocksToFinalize as any,
       status: "finalized",
-      finalizedAt: new Date(),
+      finalizedAt,
       authorUserId: user.id,
     },
   });
@@ -312,15 +348,18 @@ export async function saveAndFinalizeNote(
     });
   }
 
-  // Also mark the encounter as complete
-  await prisma.encounter.update({
-    where: { id: note.encounterId },
-    data: { status: "complete", completedAt: new Date() },
-  });
+  // Move the encounter to complete via the visit-state spine — transition-gated
+  // so encounter.completed fires exactly once.
+  const { transitioned: encounterCompleted } = await advanceVisitState(
+    encounter,
+    "complete",
+    user.id,
+    { at: finalizedAt },
+  );
 
   // If every note for this encounter is now finalized, stamp
   // chartingCompletedAt so the Clinical Flow tile can compute carryover.
-  await markChartingCompletedIfReady(note.encounterId);
+  await markChartingCompletedIfReady(note.encounterId, finalizedAt);
 
   // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
@@ -330,13 +369,16 @@ export async function saveAndFinalizeNote(
     finalizedBy: user.id,
   });
 
-  // Dispatch encounter.completed → triggers Patient Outreach Agent
-  await dispatch({
-    name: "encounter.completed",
-    encounterId: note.encounterId,
-    patientId: encounter.patientId,
-    completedAt: new Date(),
-  });
+  // Dispatch encounter.completed → triggers Patient Outreach Agent. Only on the
+  // transition into complete.
+  if (encounterCompleted) {
+    await dispatch({
+      name: "encounter.completed",
+      encounterId: note.encounterId,
+      patientId: encounter.patientId,
+      completedAt: finalizedAt,
+    });
+  }
 
   if (process.env.NODE_ENV !== "production") {
     await runTick("inline-dev", 4);

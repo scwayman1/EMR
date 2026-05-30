@@ -34,7 +34,7 @@ export default async function SuperbillPage({ params }: PageProps) {
   const encounter = await prisma.encounter.findFirst({
     where: {
       patientId: params.id,
-      status: { in: ["complete", "in_progress"] },
+      status: { in: ["complete", "in_visit", "in_progress"] },
     },
     include: {
       notes: {
