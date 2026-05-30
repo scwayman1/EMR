@@ -84,6 +84,7 @@ export default async function QueueBoardPage() {
       patientName: `${enc.patient.firstName} ${enc.patient.lastName}`,
       scheduledFor: scheduledIso,
       status: queueStatus,
+      visitStatus: enc.status,
       provider: providerName,
       modality: (enc.modality as QueueEntry["modality"]) ?? "in_person",
       reason: enc.reason ?? undefined,

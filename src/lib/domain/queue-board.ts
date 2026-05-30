@@ -9,6 +9,7 @@ export interface QueueEntry {
   patientName: string;
   scheduledFor: string;
   status: QueueStatus;
+  visitStatus?: string;
   provider?: string;
   modality: "in_person" | "video" | "phone";
   reason?: string;
