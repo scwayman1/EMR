@@ -520,9 +520,17 @@ model Document {
 
 enum EncounterStatus {
   scheduled
+  checked_in
+  info_incomplete
+  ready
+  rooming
+  roomed
+  in_visit
+  wrap_up
   in_progress
   complete
   cancelled
+  no_show
 }
 
 model Encounter {
@@ -530,10 +538,17 @@ model Encounter {
   organizationId      String
   patientId           String
   providerId          String?
+  appointmentId       String?         @unique
   status              EncounterStatus @default(scheduled)
   scheduledFor        DateTime?
+  checkedInAt         DateTime?
+  roomingStartedAt    DateTime?
+  roomedAt            DateTime?
   startedAt           DateTime?
+  wrapUpAt            DateTime?
   completedAt         DateTime?
+  cancelledAt         DateTime?
+  noShowAt            DateTime?
   chartingCompletedAt DateTime? // When the physician finalized all notes for this encounter. NULL while documentation is still in draft / incomplete.
   modality            String          @default("in_person") // in_person | video | phone
   placeOfService      String? // 2-digit POS code: 11=office, 02=telehealth
@@ -546,6 +561,7 @@ model Encounter {
   organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   patient           Patient            @relation(fields: [patientId], references: [id], onDelete: Cascade)
   provider          Provider?          @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  appointment       Appointment?       @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
   notes             Note[]
   documents         Document[]
   claims            Claim[]
@@ -555,6 +571,7 @@ model Encounter {
   @@index([patientId, status])
   @@index([providerId, scheduledFor])
   @@index([organizationId, status, createdAt])
+  @@index([organizationId, status, scheduledFor])
   // EMR-132 charting-time benchmark (clinic/patients/[id]/page.tsx#recentCharted).
   // Filters by organizationId + nulls-not-null on charting timestamps, orders
   // by chartingCompletedAt. Index audit 2026-05-09.
@@ -1705,6 +1722,7 @@ model Appointment {
 
   patient  Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   provider Provider? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  encounter Encounter?
 
   @@index([providerId, startAt])
   @@index([patientId, startAt])
