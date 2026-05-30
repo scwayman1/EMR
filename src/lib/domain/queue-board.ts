@@ -14,6 +14,8 @@ export interface QueueEntry {
   reason?: string;
   minutesWaiting?: number;
   room?: string;
+  readinessFlags?: string[];
+  handoffNote?: string;
 }
 
 export const QUEUE_STATUS_CONFIG: Record<QueueStatus, { label: string; color: string; order: number }> = {
@@ -30,4 +32,28 @@ export function calculateWaitTime(scheduledFor: string, status: QueueStatus): nu
   const scheduled = new Date(scheduledFor).getTime();
   const now = Date.now();
   return Math.max(0, Math.round((now - scheduled) / 60000));
+}
+
+export function mapEncounterStatusToQueueStatus(status: string): QueueStatus {
+  switch (status) {
+    case "checked_in":
+    case "info_incomplete":
+    case "ready":
+      return "arrived";
+    case "rooming":
+    case "roomed":
+      return "rooming";
+    case "in_visit":
+    case "in_progress":
+      return "in_visit";
+    case "wrap_up":
+      return "checkout";
+    case "complete":
+    case "cancelled":
+    case "no_show":
+      return "completed";
+    case "scheduled":
+    default:
+      return "scheduled";
+  }
 }
