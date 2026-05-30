@@ -13,6 +13,16 @@ import {
   requirePermission,
 } from "@/lib/rbac/permissions";
 import { encodeSourceRef } from "@/lib/domain/unresolved-followups";
+import {
+  advanceVisitState,
+  assignVisitProvider,
+  resolveProviderForUser,
+  selectActiveVisitEncounter,
+} from "@/lib/domain/visit-state";
+import {
+  summarizeVisitReadiness,
+  type VisitReadiness,
+} from "@/lib/clinical/visit-readiness";
 
 /**
  * Start a visit: find or create an in-progress encounter for today,
@@ -52,30 +62,44 @@ export async function startVisit(patientId: string) {
     redirect(`/clinic/patients/${patientId}?tab=notes&error=not_found`);
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  // Prefer reusing today's existing active encounter (the
+  // patient was booked, checked-in, or roomed) before minting a new one —
+  // otherwise the front desk's encounter and the physician's diverge into
+  // duplicate encounters and duplicate downstream automation. Selection +
+  // transition go through the shared visit-state spine.
+  const currentProvider = await resolveProviderForUser(user.id, user.organizationId!);
 
-  let encounter = await prisma.encounter.findFirst({
-    where: {
-      patientId,
-      organizationId: user.organizationId!,
-      status: "in_progress",
-      createdAt: { gte: todayStart, lte: todayEnd },
-    },
-  });
+  let encounter = await selectActiveVisitEncounter(patientId, user.organizationId!);
 
-  if (!encounter) {
+  if (encounter) {
+    // Advance to in-progress FIRST — idempotent, never touches briefingContext —
+    // so a reused scheduled encounter is marked "with provider" even when we
+    // short-circuit to an already-drafted note below. Otherwise the queue board
+    // would still show the patient as waiting while the doc is documenting.
+    encounter = (await advanceVisitState(encounter, "in_visit", user.id)).encounter;
+
+    // Record who is rendering this visit without stealing a scheduled
+    // encounter's ownership (claims providerId if unset; else renderingProviderId).
+    encounter = await assignVisitProvider(encounter, currentProvider?.id ?? null);
+
+    const existingNote = await prisma.note.findFirst({
+      where: { encounterId: encounter.id },
+      orderBy: { createdAt: "desc" },
+    });
+    if (existingNote) {
+      redirect(`/clinic/patients/${patientId}/notes/${existingNote.id}`);
+    }
+  } else {
     encounter = await prisma.encounter.create({
       data: {
         organizationId: user.organizationId!,
         patientId,
-        status: "in_progress",
+        status: "in_visit",
         modality: "in_person",
         reason: "Visit",
         startedAt: new Date(),
         scheduledFor: new Date(),
+        providerId: currentProvider?.id ?? undefined,
       },
     });
   }
@@ -122,6 +146,20 @@ export async function startVisit(patientId: string) {
   } else {
     redirect(`/clinic/patients/${patientId}?tab=notes&scribe=processing`);
   }
+}
+
+/**
+ * Rooming / pre-visit readiness handoff for today's encounter. Lets the chart
+ * and note-start path show the physician what the front desk and pre-visit
+ * surfaces already prepared (intake done, patient confirmed, briefing ready,
+ * emoji demeanor) before they start documenting. Read-only; gated by the same
+ * baseline chart access as opening the chart.
+ */
+export async function getVisitReadiness(patientId: string): Promise<VisitReadiness> {
+  const user = await requireUser();
+  await assertChartAccess(user, patientId);
+  const encounter = await selectActiveVisitEncounter(patientId, user.organizationId!);
+  return summarizeVisitReadiness(encounter);
 }
 
 export async function saveAllergy(patientId: string, drugName: string, reaction: string) {

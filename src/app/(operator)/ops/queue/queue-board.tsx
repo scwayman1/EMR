@@ -22,6 +22,7 @@ import {
 import { useDensity, densityClass } from "@/lib/ui/density";
 import { useConfirm } from "@/components/ui/confirm-dialog";
 import { FreshnessIndicator } from "@/components/ui/freshness-indicator";
+import { moveQueueEncounter } from "./actions";
 
 const COLUMN_ORDER: QueueStatus[] = [
   "scheduled",
@@ -56,6 +57,65 @@ function formatTime(iso: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+type QueueActionTarget =
+  | "checked_in"
+  | "info_incomplete"
+  | "ready"
+  | "rooming"
+  | "roomed"
+  | "wrap_up"
+  | "cancelled"
+  | "no_show";
+
+function visitStatusLabel(status?: string): { label: string; tone: "neutral" | "success" | "warning" | "info" } | null {
+  switch (status) {
+    case "info_incomplete":
+      return { label: "Needs info", tone: "warning" };
+    case "checked_in":
+      return { label: "Checked in", tone: "info" };
+    case "ready":
+      return { label: "Ready", tone: "success" };
+    case "rooming":
+      return { label: "Rooming", tone: "info" };
+    case "roomed":
+      return { label: "Roomed", tone: "success" };
+    case "wrap_up":
+      return { label: "Wrap-up", tone: "warning" };
+    default:
+      return null;
+  }
+}
+
+function canMoveVisit(entry: QueueEntry, target: QueueActionTarget): boolean {
+  const status = entry.visitStatus ?? entry.status;
+  switch (target) {
+    case "checked_in":
+      return status === "scheduled";
+    case "info_incomplete":
+      return status === "scheduled" || status === "checked_in";
+    case "ready":
+      return status === "scheduled" || status === "checked_in" || status === "info_incomplete";
+    case "rooming":
+      return status === "checked_in" || status === "ready";
+    case "roomed":
+      return status === "rooming" || status === "ready";
+    case "wrap_up":
+      return status === "roomed" || status === "in_visit";
+    case "cancelled":
+      return [
+        "scheduled",
+        "checked_in",
+        "info_incomplete",
+        "ready",
+        "rooming",
+        "roomed",
+        "in_visit",
+      ].includes(status);
+    case "no_show":
+      return status === "scheduled" || status === "checked_in" || status === "info_incomplete";
+  }
 }
 
 export function QueueBoard({
@@ -208,14 +268,28 @@ function QueueColumn({
 function QueueCard({ entry }: { entry: QueueEntry }) {
   const router = useRouter();
   const confirm = useConfirm();
+  const [mutating, setMutating] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const wait = entry.minutesWaiting;
   const waitClass = waitToneClass(wait);
+  const statusLabel = visitStatusLabel(entry.visitStatus);
 
-  // EMR-UX — right-click context menu so the front desk can drive the
-  // queue without ever leaving the board. Status mutations land on the
-  // existing `/api/ops/queue/[encounterId]/status` endpoint when wired;
-  // the menu currently routes to the canonical surfaces so the action
-  // surface is never silent. Cancel is the destructive last item.
+  const runMove = (target: QueueActionTarget) => {
+    setActionError(null);
+    setMutating(true);
+    void moveQueueEncounter({ encounterId: entry.encounterId, target })
+      .then((result) => {
+        if (!result.ok) {
+          setActionError(result.error ?? "Could not update the visit.");
+        }
+        router.refresh();
+      })
+      .catch(() => {
+        setActionError("Could not update the visit.");
+      })
+      .finally(() => setMutating(false));
+  };
+
   const items: ContextMenuItem[] = [
     {
       label: "Open chart",
@@ -229,18 +303,54 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
     {
       label: "Mark arrived",
       icon: ContextMenuIcons.Check,
-      disabled: entry.status !== "scheduled",
+      disabled: mutating || !canMoveVisit(entry, "checked_in"),
       onSelect: (c) => {
-        router.refresh();
+        runMove("checked_in");
+        c();
+      },
+    },
+    {
+      label: "Needs info",
+      icon: ContextMenuIcons.Calendar,
+      disabled: mutating || !canMoveVisit(entry, "info_incomplete"),
+      onSelect: (c) => {
+        runMove("info_incomplete");
+        c();
+      },
+    },
+    {
+      label: "Ready",
+      icon: ContextMenuIcons.Check,
+      disabled: mutating || !canMoveVisit(entry, "ready"),
+      onSelect: (c) => {
+        runMove("ready");
         c();
       },
     },
     {
       label: "Move to rooming",
       icon: ContextMenuIcons.Calendar,
-      disabled: entry.status === "completed",
+      disabled: mutating || !canMoveVisit(entry, "rooming"),
       onSelect: (c) => {
-        router.refresh();
+        runMove("rooming");
+        c();
+      },
+    },
+    {
+      label: "Mark roomed",
+      icon: ContextMenuIcons.Check,
+      disabled: mutating || !canMoveVisit(entry, "roomed"),
+      onSelect: (c) => {
+        runMove("roomed");
+        c();
+      },
+    },
+    {
+      label: "Send to checkout",
+      icon: ContextMenuIcons.Calendar,
+      disabled: mutating || !canMoveVisit(entry, "wrap_up"),
+      onSelect: (c) => {
+        runMove("wrap_up");
         c();
       },
     },
@@ -259,13 +369,20 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
     },
     { divider: true, label: "" },
     {
+      label: "Mark no-show",
+      icon: ContextMenuIcons.Archive,
+      disabled: mutating || !canMoveVisit(entry, "no_show"),
+      onSelect: (c) => {
+        runMove("no_show");
+        c();
+      },
+    },
+    {
       label: "Cancel visit",
       icon: ContextMenuIcons.Archive,
       danger: true,
+      disabled: mutating || !canMoveVisit(entry, "cancelled"),
       onSelect: (c) => {
-        // Close the context menu first so the confirm dialog can take focus
-        // cleanly. Then prompt — if confirmed, refresh the board so the
-        // entry drops out of the column.
         c();
         void (async () => {
           const ok = await confirm({
@@ -276,7 +393,7 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
             confirmLabel: "Cancel visit",
             cancelLabel: "Keep on queue",
           });
-          if (ok) router.refresh();
+          if (ok) runMove("cancelled");
         })();
       },
     },
@@ -304,6 +421,12 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
         </span>
       </div>
 
+      {statusLabel && (
+        <Badge tone={statusLabel.tone} className="mb-1.5">
+          {statusLabel.label}
+        </Badge>
+      )}
+
       <div className="flex items-center gap-2 text-[11px] text-text-muted tabular-nums">
         <span>{formatTime(entry.scheduledFor)}</span>
         {entry.provider && (
@@ -320,6 +443,22 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
         </p>
       )}
 
+      {!!entry.readinessFlags?.length && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {entry.readinessFlags.slice(0, 3).map((flag) => (
+            <Badge key={flag} tone="neutral" className="text-[10px]">
+              {flag}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {entry.handoffNote && (
+        <p className="mt-2 text-[11px] leading-snug text-text-muted line-clamp-2">
+          {entry.handoffNote}
+        </p>
+      )}
+
       {entry.status !== "completed" && wait != null && (
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/40">
           <span className={cn("text-[11px] tabular-nums", waitClass)}>
@@ -331,6 +470,11 @@ function QueueCard({ entry }: { entry: QueueEntry }) {
             </span>
           )}
         </div>
+      )}
+      {actionError && (
+        <p role="alert" className="mt-2 text-[11px] leading-snug text-danger">
+          {actionError}
+        </p>
       )}
       {ctx.menu}
     </Card>

@@ -311,7 +311,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   // EMR-132: most recent in-progress encounter, used to anchor the
   // ChartingTimer to wall time across page navigations.
   const activeEncounter = patient.encounters.find(
-    (e: any) => e.status === "in_progress" && e.startedAt,
+    (e: any) => ["in_visit", "in_progress"].includes(e.status) && e.startedAt,
   );
 
   // EMR-132: trailing org charting-time benchmark (median seconds from

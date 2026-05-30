@@ -96,7 +96,9 @@ export default async function ChartAssessmentsPage({ params }: PageProps) {
 
   // Encounter currently in progress, if any — we default the
   // quick-entry form to it so a typical visit flow is one click away.
-  const activeEncounter = recentEncounters.find((e) => e.status === "in_progress");
+  const activeEncounter = recentEncounters.find((e) =>
+    ["in_visit", "in_progress"].includes(e.status),
+  );
 
   const encounterOptions = recentEncounters.map((e) => ({
     id: e.id,
@@ -107,7 +109,7 @@ export default async function ChartAssessmentsPage({ params }: PageProps) {
         : e.modality === "phone"
           ? "phone"
           : "in-person",
-      e.status === "in_progress" ? "(active)" : e.reason || null,
+      ["in_visit", "in_progress"].includes(e.status) ? "(active)" : e.reason || null,
     ]
       .filter(Boolean)
       .join(" · "),
