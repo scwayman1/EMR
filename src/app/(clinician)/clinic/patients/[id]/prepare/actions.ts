@@ -5,6 +5,17 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/auth/session";
 import { dispatch } from "@/lib/orchestration/dispatch";
+import {
+  ForbiddenError,
+  assertChartAccess,
+  hasPermission,
+} from "@/lib/rbac/permissions";
+import {
+  advanceVisitState,
+  assignVisitProvider,
+  resolveProviderForUser,
+  selectActiveVisitEncounter,
+} from "@/lib/domain/visit-state";
 import { preVisitIntelligenceAgent } from "@/lib/agents/pre-visit-intelligence-agent";
 import { resolveModelClient } from "@/lib/orchestration/model-client";
 import { buildToolRegistry } from "@/lib/orchestration/tool-registry";
@@ -77,23 +88,14 @@ export async function generateBriefing(patientId: string): Promise<BriefingResul
   // attached. Passing encounterId here lets the Schedule tile's brief line
   // and any other downstream surface read the briefing the moment it's
   // generated, without waiting for the physician to start the visit.
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-
-  const encounterForBriefing = await prisma.encounter.findFirst({
-    where: {
-      patientId,
-      organizationId: user.organizationId!,
-      OR: [
-        { status: "in_progress" },
-        { scheduledFor: { gte: todayStart, lte: todayEnd } },
-      ],
-    },
-    orderBy: [{ status: "asc" }, { scheduledFor: "asc" }],
-    select: { id: true },
-  });
+  // Attach the briefing to the SAME encounter startVisitWithBriefing will
+  // later reuse — via the shared visit-state selector — so briefing data and
+  // the started visit never land on different rows (incl. same-day walk-ins,
+  // which the old in_progress-OR-scheduled query missed).
+  const encounterForBriefing = await selectActiveVisitEncounter(
+    patientId,
+    user.organizationId!,
+  );
 
   // Build a mock context that captures logs as steps
   const logs: AgentLogEntry[] = [];
@@ -189,6 +191,23 @@ export async function startVisitWithBriefing(
 ) {
   const user = await requireUser();
 
+  // EMR-786 parity with startVisit — starting a (briefed) visit requires
+  // write access to clinical notes. Front/back-office staff are denied.
+  if (!hasPermission(user, "notes.edit")) {
+    redirect(`/clinic/patients/${patientId}?tab=notes&error=unauthorized`);
+  }
+
+  // Chart-privacy gate — a doctor-only chart the user is not allowlisted for
+  // must reject start-visit even with global notes.edit.
+  try {
+    await assertChartAccess(user, patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      redirect(`/clinic/patients/${patientId}?tab=notes&error=restricted`);
+    }
+    throw err;
+  }
+
   const patient = await prisma.patient.findFirst({
     where: {
       id: patientId,
@@ -200,19 +219,11 @@ export async function startVisitWithBriefing(
     redirect(`/clinic/patients/${patientId}?tab=notes&error=not_found`);
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
+  // Reuse today's scheduled/in_progress encounter before minting a new one —
+  // same selection as startVisit, via the shared visit-state spine.
+  const currentProvider = await resolveProviderForUser(user.id, user.organizationId!);
 
-  let encounter = await prisma.encounter.findFirst({
-    where: {
-      patientId,
-      organizationId: user.organizationId!,
-      status: "in_progress",
-      createdAt: { gte: todayStart, lte: todayEnd },
-    },
-  });
+  let encounter = await selectActiveVisitEncounter(patientId, user.organizationId!);
 
   if (!encounter) {
     encounter = await prisma.encounter.create({
@@ -224,16 +235,33 @@ export async function startVisitWithBriefing(
         reason: "Visit",
         startedAt: new Date(),
         scheduledFor: new Date(),
+        providerId: currentProvider?.id ?? undefined,
         // Store the briefing context so the scribe can use it
         briefingContext: briefing ? (briefing as any) : undefined,
       },
     });
-  } else if (briefing) {
-    // Update existing encounter with briefing
-    await prisma.encounter.update({
-      where: { id: encounter.id },
-      data: { briefingContext: briefing as any },
-    });
+  } else {
+    // Capture the existing context BEFORE advancing — rooming/demeanor/intake
+    // keys written by the front desk and saveEmotionalVital must survive.
+    const existingCtx =
+      encounter.briefingContext && typeof encounter.briefingContext === "object"
+        ? (encounter.briefingContext as Record<string, unknown>)
+        : {};
+
+    // Advance the reused encounter into the visit (idempotent).
+    encounter = (await advanceVisitState(encounter, "in_visit", user.id)).encounter;
+
+    // Record the rendering provider without stealing scheduled ownership.
+    encounter = await assignVisitProvider(encounter, currentProvider?.id ?? null);
+
+    if (briefing) {
+      // MERGE, never overwrite — the scribe reads patientSummary/talkingPoints/
+      // riskFlags/sections; every other writer uses disjoint keys.
+      await prisma.encounter.update({
+        where: { id: encounter.id },
+        data: { briefingContext: { ...existingCtx, ...briefing } as any },
+      });
+    }
   }
 
   // Dispatch the scribe event
