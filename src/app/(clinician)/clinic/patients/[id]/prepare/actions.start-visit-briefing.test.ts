@@ -102,7 +102,7 @@ beforeEach(() => {
     ...data,
   }));
   mockPrisma.encounter.create.mockResolvedValue(
-    scheduledEncounter({ id: "new_enc", status: "in_visit" }),
+    scheduledEncounter({ id: "new_enc", status: "in_progress" }),
   );
   mockPrisma.note.findFirst.mockResolvedValue(null);
   mockPrisma.agentJob.findMany.mockResolvedValue([]);

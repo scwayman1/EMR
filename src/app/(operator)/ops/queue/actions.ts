@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/prisma";
-import { advanceVisitState, type VisitSpineStatus } from "@/lib/domain/visit-state";
+import { computeQueueTransition, type VisitSpineStatus } from "@/lib/domain/visit-state";
 
 const QUEUE_STATE_ROLES = new Set([
   "front_office",
@@ -63,7 +63,7 @@ export async function moveQueueEncounter(payload: z.infer<typeof TransitionSchem
     return { ok: true };
   }
 
-  const next = advanceVisitState(
+  const next = computeQueueTransition(
     encounter,
     parsed.data.target as VisitSpineStatus,
   );

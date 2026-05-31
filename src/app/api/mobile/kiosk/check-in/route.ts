@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { advanceVisitState } from "@/lib/domain/visit-state";
+import { computeQueueTransition } from "@/lib/domain/visit-state";
 import { logger } from "@/lib/observability/log";
 
 const CheckInSchema = z.object({
@@ -56,13 +56,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const next = advanceVisitState(encounter, "checked_in");
+    const next = computeQueueTransition(encounter, "checked_in");
     if (!next.ok) {
       return NextResponse.json({ error: next.error }, { status: 409 });
     }
 
-    let status = "checked_in";
-    if (encounter.status !== "checked_in") {
+    let status = next.data.status as string;
+    if (next.data.status !== encounter.status) {
       const updated = await prisma.encounter.update({
         where: { id: encounter.id },
         data: next.data as Prisma.EncounterUpdateInput,

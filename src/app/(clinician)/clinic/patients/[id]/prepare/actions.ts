@@ -230,7 +230,7 @@ export async function startVisitWithBriefing(
       data: {
         organizationId: user.organizationId!,
         patientId,
-        status: "in_visit",
+        status: "in_progress",
         modality: "in_person",
         reason: "Visit",
         startedAt: new Date(),

@@ -18,10 +18,8 @@ import {
   ACTIVE_VISIT_STATUSES,
   advanceVisitState,
   assignVisitProvider,
-  isVisitSpineStatus,
   resolveProviderForUser,
   selectActiveVisitEncounter,
-  type VisitSpineStatus,
 } from "./visit-state";
 
 const { mockPrisma } = hoisted;
@@ -35,14 +33,8 @@ function enc(over: Record<string, unknown> = {}) {
     patientId: "patient_1",
     status: "scheduled",
     scheduledFor: TODAY,
-    checkedInAt: null,
-    roomingStartedAt: null,
-    roomedAt: null,
     startedAt: null,
-    wrapUpAt: null,
     completedAt: null,
-    cancelledAt: null,
-    noShowAt: null,
     providerId: null,
     renderingProviderId: null,
     briefingContext: null,
@@ -60,97 +52,6 @@ beforeEach(() => {
   }));
 });
 
-describe("visit-state pure transitions", () => {
-  it("allows scheduled visits to check in and stamps checkedInAt once", () => {
-    const now = new Date("2026-05-30T16:00:00.000Z");
-    const result = advanceVisitState(
-      { status: "scheduled", checkedInAt: null },
-      "checked_in",
-      now,
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.status).toBe("checked_in");
-    expect(result.data.checkedInAt).toEqual(now);
-  });
-
-  it("does not replace an existing timestamp on idempotent transition", () => {
-    const checkedInAt = new Date("2026-05-30T15:45:00.000Z");
-    const now = new Date("2026-05-30T16:00:00.000Z");
-    const result = advanceVisitState(
-      { status: "checked_in", checkedInAt },
-      "checked_in",
-      now,
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.status).toBe("checked_in");
-    expect(result.data.checkedInAt).toEqual(checkedInAt);
-  });
-
-  it("rejects jumping from scheduled directly to complete", () => {
-    const result = advanceVisitState(
-      { status: "scheduled", completedAt: null },
-      "complete",
-      new Date("2026-05-30T16:00:00.000Z"),
-    );
-
-    expect(result).toEqual({
-      ok: false,
-      error: "Cannot transition visit from scheduled to complete.",
-    });
-  });
-
-  it("lets the physician start a same-day scheduled visit directly", () => {
-    const now = new Date("2026-05-30T16:00:00.000Z");
-    const result = advanceVisitState(
-      { status: "scheduled", startedAt: null },
-      "in_visit",
-      now,
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.status).toBe("in_visit");
-    expect(result.data.startedAt).toEqual(now);
-  });
-
-  it("keeps legacy in_progress compatible with the canonical active visit state", () => {
-    const now = new Date("2026-05-30T16:00:00.000Z");
-    const result = advanceVisitState(
-      { status: "in_progress", startedAt: null },
-      "in_visit",
-      now,
-    );
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.status).toBe("in_visit");
-    expect(result.data.startedAt).toEqual(now);
-  });
-
-  it("recognizes all canonical spine statuses", () => {
-    const statuses: VisitSpineStatus[] = [
-      "scheduled",
-      "checked_in",
-      "info_incomplete",
-      "ready",
-      "rooming",
-      "roomed",
-      "in_visit",
-      "wrap_up",
-      "complete",
-      "cancelled",
-      "no_show",
-    ];
-
-    expect(statuses.every(isVisitSpineStatus)).toBe(true);
-    expect(isVisitSpineStatus("in_progress")).toBe(false);
-  });
-});
-
 describe("selectActiveVisitEncounter", () => {
   it("scopes the lookup to today's non-terminal encounters for the patient + org", async () => {
     mockPrisma.encounter.findMany.mockResolvedValue([]);
@@ -160,7 +61,8 @@ describe("selectActiveVisitEncounter", () => {
     const arg = mockPrisma.encounter.findMany.mock.calls[0][0];
     expect(arg.where.patientId).toBe("patient_1");
     expect(arg.where.organizationId).toBe("org_1");
-    expect(arg.where.status).toEqual({ in: [...ACTIVE_VISIT_STATUSES] });
+    // Only scheduled + in_progress are candidates (never complete/cancelled).
+    expect(arg.where.status).toEqual({ in: ["scheduled", "in_progress"] });
   });
 
   it("returns null when there is no active encounter today", async () => {
@@ -169,7 +71,7 @@ describe("selectActiveVisitEncounter", () => {
     expect(result).toBeNull();
   });
 
-  it("reuses today's scheduled encounter so the visit is not a fresh row", async () => {
+  it("reuses today's scheduled encounter (so the visit is NOT a fresh row)", async () => {
     const scheduled = enc({ id: "sched_1", status: "scheduled" });
     mockPrisma.encounter.findMany.mockResolvedValue([scheduled]);
 
@@ -177,16 +79,7 @@ describe("selectActiveVisitEncounter", () => {
     expect(result?.id).toBe("sched_1");
   });
 
-  it("prefers an already in-visit encounter over a scheduled one", async () => {
-    const scheduled = enc({ id: "sched_1", status: "scheduled" });
-    const inVisit = enc({ id: "invisit_1", status: "in_visit" });
-    mockPrisma.encounter.findMany.mockResolvedValue([scheduled, inVisit]);
-
-    const result = await selectActiveVisitEncounter("patient_1", "org_1", { now: TODAY });
-    expect(result?.id).toBe("invisit_1");
-  });
-
-  it("still prefers legacy in_progress over a scheduled one", async () => {
+  it("prefers an already in-progress encounter over a scheduled one", async () => {
     const scheduled = enc({ id: "sched_1", status: "scheduled" });
     const inProgress = enc({ id: "inprog_1", status: "in_progress" });
     mockPrisma.encounter.findMany.mockResolvedValue([scheduled, inProgress]);
@@ -196,8 +89,8 @@ describe("selectActiveVisitEncounter", () => {
   });
 });
 
-describe("advanceVisitState database mode", () => {
-  it("transitions a scheduled encounter into in_visit and stamps startedAt", async () => {
+describe("advanceVisitState", () => {
+  it("transitions a scheduled encounter into in_progress and stamps startedAt", async () => {
     const at = new Date("2026-05-29T16:00:00.000Z");
     const { encounter, transitioned } = await advanceVisitState(
       { id: "enc_1", status: "scheduled", startedAt: null },
@@ -209,14 +102,14 @@ describe("advanceVisitState database mode", () => {
     expect(transitioned).toBe(true);
     expect(mockPrisma.encounter.update).toHaveBeenCalledWith({
       where: { id: "enc_1" },
-      data: { status: "in_visit", startedAt: at },
+      data: { status: "in_progress", startedAt: at },
     });
-    expect(encounter.status).toBe("in_visit");
+    expect(encounter.status).toBe("in_progress");
   });
 
   it("is a no-op when the encounter is already in the target status", async () => {
     const { transitioned } = await advanceVisitState(
-      { id: "enc_1", status: "in_visit", startedAt: TODAY },
+      { id: "enc_1", status: "in_progress", startedAt: TODAY },
       "in_visit",
       "user_1",
     );
@@ -224,26 +117,11 @@ describe("advanceVisitState database mode", () => {
     expect(mockPrisma.encounter.update).not.toHaveBeenCalled();
   });
 
-  it("moves a legacy in_progress encounter to the canonical in_visit status", async () => {
-    const at = new Date("2026-05-29T16:00:00.000Z");
-    await advanceVisitState(
-      { id: "enc_1", status: "in_progress", startedAt: null },
-      "in_visit",
-      "user_1",
-      { at },
-    );
-
-    expect(mockPrisma.encounter.update).toHaveBeenCalledWith({
-      where: { id: "enc_1" },
-      data: { status: "in_visit", startedAt: at },
-    });
-  });
-
-  it("completes an in_visit encounter exactly once", async () => {
+  it("completes an in_progress encounter exactly once (idempotent complete)", async () => {
     const at = new Date("2026-05-29T17:00:00.000Z");
 
     const first = await advanceVisitState(
-      { id: "enc_1", status: "in_visit", startedAt: TODAY },
+      { id: "enc_1", status: "in_progress", startedAt: TODAY },
       "complete",
       "user_1",
       { at },
@@ -254,6 +132,7 @@ describe("advanceVisitState database mode", () => {
       data: { status: "complete", completedAt: at },
     });
 
+    // Re-issuing complete on an already-complete encounter must not transition.
     const second = await advanceVisitState(
       { id: "enc_1", status: "complete", startedAt: TODAY },
       "complete",
@@ -273,7 +152,7 @@ describe("advanceVisitState database mode", () => {
     );
     const data = mockPrisma.encounter.update.mock.calls[0][0].data;
     expect(data.startedAt).toBeUndefined();
-    expect(data.status).toBe("in_visit");
+    expect(data.status).toBe("in_progress");
   });
 });
 
@@ -297,7 +176,7 @@ describe("assignVisitProvider", () => {
     expect(mockPrisma.encounter.update).not.toHaveBeenCalled();
   });
 
-  it("claims an unowned encounter", async () => {
+  it("claims an unowned encounter (providerId null → currentProviderId)", async () => {
     await assignVisitProvider(enc({ providerId: null }) as any, "prov_x");
     expect(mockPrisma.encounter.update).toHaveBeenCalledWith({
       where: { id: "enc_1" },
@@ -305,7 +184,7 @@ describe("assignVisitProvider", () => {
     });
   });
 
-  it("preserves a different owner and stamps renderingProviderId", async () => {
+  it("preserves a DIFFERENT owner and stamps renderingProviderId", async () => {
     await assignVisitProvider(
       enc({ providerId: "prov_a", renderingProviderId: null }) as any,
       "prov_b",
@@ -332,16 +211,6 @@ describe("assignVisitProvider", () => {
 
 describe("ACTIVE_VISIT_STATUSES", () => {
   it("only includes non-terminal persisted statuses", () => {
-    expect([...ACTIVE_VISIT_STATUSES]).toEqual([
-      "scheduled",
-      "checked_in",
-      "info_incomplete",
-      "ready",
-      "rooming",
-      "roomed",
-      "in_visit",
-      "wrap_up",
-      "in_progress",
-    ]);
+    expect([...ACTIVE_VISIT_STATUSES]).toEqual(["scheduled", "in_progress"]);
   });
 });
