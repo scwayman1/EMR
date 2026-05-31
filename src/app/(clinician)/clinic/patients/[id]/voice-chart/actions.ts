@@ -25,6 +25,11 @@ import {
   type NoteSnapshot,
 } from "@/lib/agents/guardrails/note-guardrails";
 import { ensureConsentDisclaimerBlock } from "@/lib/clinical/ai-consent-disclaimer";
+import {
+  buildCodingPrompt,
+  parseCodingResponse,
+  runConfidenceLoop,
+} from "@/lib/clinical/coding-confidence";
 import { logger } from "@/lib/observability/log";
 
 // ── Result types ───────────────────────────────────────────────
@@ -414,6 +419,113 @@ ${summaryMd}
       error: err instanceof Error ? err.message : "Failed to process transcript.",
     };
   }
+}
+
+// ── Billing code recommendations (grounded) ────────────────────────────
+
+export interface RecommendedCode {
+  code: string;
+  type: "ICD-10" | "CPT";
+  label: string;
+  confidence: number;
+  grounded?: boolean;
+}
+
+const EM_LABELS: Record<string, string> = {
+  "99202": "Office visit, new patient (15-29 min)",
+  "99203": "Office visit, new patient (30-44 min)",
+  "99204": "Office visit, new patient (45-59 min)",
+  "99205": "Office visit, new patient (60-74 min)",
+  "99211": "Office visit, established (minimal)",
+  "99212": "Office visit, established (10-19 min)",
+  "99213": "Office visit, established (20-29 min)",
+  "99214": "Office visit, established (30-39 min)",
+  "99215": "Office visit, established (40-54 min)",
+};
+
+/**
+ * Generate billing-code recommendations for a note, GROUNDED against the
+ * documented text — diagnostic codes whose concept isn't in the note are
+ * dropped rather than shown. Replaces the previous hardcoded placeholder
+ * codes in the voice-chart UI.
+ */
+export async function recommendCodes(
+  noteId: string,
+): Promise<
+  | { ok: true; codes: RecommendedCode[]; droppedCount: number }
+  | { ok: false; error: string }
+> {
+  const user = await requireUser();
+
+  const note = await prisma.note.findUnique({
+    where: { id: noteId },
+    include: { encounter: { include: { patient: true } } },
+  });
+  if (!note) return { ok: false, error: "Note not found." };
+  if (note.encounter.organizationId !== user.organizationId) {
+    return { ok: false, error: "Unauthorized" };
+  }
+
+  const blocks = Array.isArray(note.blocks) ? (note.blocks as any[]) : [];
+  const noteText = blocks
+    .filter(
+      (b) =>
+        b &&
+        typeof b === "object" &&
+        typeof b.heading === "string" &&
+        !b.heading.startsWith("_"),
+    )
+    .map((b) => `${b.heading}: ${b.body ?? ""}`)
+    .join("\n\n");
+
+  const patientContext = note.encounter.patient.presentingConcerns ?? "Not documented";
+
+  let parsed: ReturnType<typeof parseCodingResponse> = null;
+  let kept: Awaited<ReturnType<typeof runConfidenceLoop>>["kept"] = [];
+  let dropped: Awaited<ReturnType<typeof runConfidenceLoop>>["dropped"] = [];
+  try {
+    const model = resolveModelClient();
+    const complete = (p: string, o?: { maxTokens?: number; temperature?: number }) =>
+      model.complete(p, o);
+    const resp = await complete(buildCodingPrompt(noteText, patientContext), {
+      maxTokens: 1024,
+      temperature: 0.2,
+    });
+    parsed = parseCodingResponse(resp);
+    if (parsed) {
+      // Aggressive confidence loop: ground → strict critic → iterate → floor.
+      const loop = await runConfidenceLoop({
+        noteText,
+        candidates: parsed.icd10,
+        complete,
+      });
+      kept = loop.kept;
+      dropped = loop.dropped;
+    }
+  } catch (err) {
+    logger.warn({ event: "clinic.voice_chart.recommend_codes_failed", err });
+    return { ok: false, error: "Could not generate codes right now. Please retry." };
+  }
+
+  if (!parsed) return { ok: true, codes: [], droppedCount: 0 };
+
+  const codes: RecommendedCode[] = kept.map((c) => ({
+    code: c.code,
+    type: "ICD-10" as const,
+    label: c.label,
+    confidence: c.confidence,
+    grounded: c.grounded,
+  }));
+  if (parsed.emLevel) {
+    codes.unshift({
+      code: parsed.emLevel,
+      type: "CPT" as const,
+      label: EM_LABELS[parsed.emLevel] ?? "Evaluation & management",
+      confidence: parsed.overallConfidence ?? 0.7,
+    });
+  }
+
+  return { ok: true, codes, droppedCount: dropped.length };
 }
 
 /**
