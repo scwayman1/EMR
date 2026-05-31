@@ -10,9 +10,10 @@
 //     follow-up; this module is the interface that swap will be
 //     drop-in for. The body is just console.* with structured
 //     enrichment for now.
-//   - Server-only — must work in Node + Next.js Edge runtimes.
-//     Avoid `process.env` reads at module load (Edge restricts that
-//     to compile time); read inside the call sites.
+//   - Node-safe — works in Next.js server components, API routes,
+//     AND standalone Node workers/schedulers (tsx-executed). No
+//     server-only guard; import safety is enforced via ESLint rules
+//     on the client component boundary instead.
 //   - PHI-aware — `redact` strips known sensitive keys before
 //     emission. Add to REDACT_KEYS as new sensitive fields land.
 //
@@ -24,8 +25,6 @@
 // Bound logger for a request scope:
 //   const log = logger.with({ requestId, route: "api/admin/super-admins" });
 //   log.warn({ event: "rate_limit.hit", actor: user.id });
-
-import "server-only";
 
 type Level = "debug" | "info" | "warn" | "error";
 
