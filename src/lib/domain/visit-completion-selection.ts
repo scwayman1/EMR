@@ -113,7 +113,7 @@ export interface VisitCompletionReleaseSummary {
 export interface VisitCompletionReleasePayload {
   version: "visit-completion-release/v1";
   releaseActionLabel: "Release Care Plan";
-  mode: "review_only_mvp";
+  mode: "review_only_mvp" | "physician_release_v1";
   status: VisitCompletionReleasePayloadStatus;
   canRelease: boolean;
   summary: VisitCompletionReleaseSummary;
@@ -127,10 +127,10 @@ export interface VisitCompletionReleasePayload {
   sideEffects: {
     clinical: false;
     billing: false;
-    patientCommunication: false;
-    staffAssignment: false;
+    patientCommunication: boolean;
+    staffAssignment: boolean;
     chartWrite: false;
-    scheduling: false;
+    scheduling: boolean;
   };
 }
 
@@ -241,7 +241,7 @@ export function buildVisitCompletionReleasePayload(
   return {
     version: "visit-completion-release/v1",
     releaseActionLabel: "Release Care Plan",
-    mode: "review_only_mvp",
+    mode: "physician_release_v1",
     status: canRelease ? "ready_for_physician_release" : "blocked_needs_confirmation",
     canRelease,
     summary: {
@@ -257,14 +257,25 @@ export function buildVisitCompletionReleasePayload(
     auditEvents: sections.map((section) => auditEventForSection(section)),
     feedbackSignals: review.feedbackSignals,
     safetyCopy: bundle.safetyCopy,
-    sideEffects: {
-      clinical: false,
-      billing: false,
-      patientCommunication: false,
-      staffAssignment: false,
-      chartWrite: false,
-      scheduling: false,
-    },
+    sideEffects: releaseSideEffectsForSections(includedSections),
+  };
+}
+
+function releaseSideEffectsForSections(
+  includedSections: VisitCompletionReleaseSection[],
+): VisitCompletionReleasePayload["sideEffects"] {
+  const includedCardIds = new Set(includedSections.map((section) => section.cardId));
+  const includesOrders = includedCardIds.has("orders");
+  const includesFollowUp = includedCardIds.has("follow_up");
+  const includesPatientMessage = includedCardIds.has("patient_message");
+
+  return {
+    clinical: false,
+    billing: false,
+    patientCommunication: includesPatientMessage,
+    staffAssignment: includesOrders || includesFollowUp,
+    chartWrite: false,
+    scheduling: includesFollowUp,
   };
 }
 

@@ -103,7 +103,7 @@ function validPayload(over: Partial<VisitCompletionReleasePayload> = {}): VisitC
   return {
     version: "visit-completion-release/v1",
     releaseActionLabel: "Release Care Plan",
-    mode: "review_only_mvp",
+    mode: "physician_release_v1",
     status: "ready_for_physician_release",
     canRelease: true,
     summary: {
@@ -115,9 +115,9 @@ function validPayload(over: Partial<VisitCompletionReleasePayload> = {}): VisitC
     sideEffects: {
       clinical: false,
       billing: false,
-      patientCommunication: false,
-      scheduling: false,
-      staffAssignment: false,
+      patientCommunication: true,
+      scheduling: true,
+      staffAssignment: true,
       chartWrite: false,
     },
     includedSections: [

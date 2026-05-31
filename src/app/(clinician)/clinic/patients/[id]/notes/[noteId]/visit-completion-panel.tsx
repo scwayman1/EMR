@@ -27,6 +27,8 @@ import type {
   VisitCompletionCardId,
   VisitCompletionDataMode,
   VisitCompletionItem,
+  VisitCompletionSource,
+  VisitCompletionStatus,
   VisitCompletionTone,
 } from "@/lib/domain/visit-completion";
 import {
@@ -114,28 +116,56 @@ const statusLabel: Record<VisitCompletionCardSelectionStatus, string> = {
 
 const detailCopy: Record<
   VisitCompletionCardId,
-  { instruction: string; question: string; confirmNote: string }
+  {
+    instruction: string;
+    question: string;
+    confirmNote: string;
+    releaseWillDo: string;
+    releaseWillNotDo: string;
+  }
 > = {
   orders: {
     instruction: "Review proposed orders, screenings, and care-gap items before release.",
     question: "Are these suggested orders and care actions appropriate for this visit?",
     confirmNote: "Orders reviewed in the card detail panel.",
+    releaseWillDo: "Creates a back-office task with reviewed order suggestions.",
+    releaseWillNotDo: "Does not place clinical orders automatically.",
   },
   follow_up: {
     instruction: "Confirm interval, routing, scheduling handoff, and any patient link.",
     question: "Is this follow-up handoff clinically and operationally correct?",
     confirmNote: "Follow-up plan reviewed in the card detail panel.",
+    releaseWillDo: "Creates a front-office scheduling task from the reviewed follow-up plan.",
+    releaseWillNotDo: "Does not book an appointment or text the patient automatically.",
   },
   patient_message: {
     instruction: "Preview the patient-facing plan, channel, print needs, and translation needs.",
     question: "Is this communication ready to include in the care plan release review?",
     confirmNote: "Patient communication reviewed in the card detail panel.",
+    releaseWillDo: "Creates an AI-drafted patient message in the patient thread.",
+    releaseWillNotDo: "Does not send a portal message automatically.",
   },
   practice_readiness: {
     instruction: "Confirm coding, documentation, prior authorization, and staff-task checks.",
     question: "Are the practice readiness checks acceptable for release review?",
     confirmNote: "Practice readiness reviewed in the card detail panel.",
+    releaseWillDo: "Stores readiness decisions with the release record for audit and follow-up.",
+    releaseWillNotDo: "Does not submit billing or change coding automatically.",
   },
+};
+
+const itemSourceLabel: Record<VisitCompletionSource, string> = {
+  note: "note",
+  coding: "coding",
+  problem_list: "problem list",
+  encounter: "encounter",
+  heuristic: "heuristic",
+};
+
+const itemStatusLabel: Record<VisitCompletionStatus, string> = {
+  suggested: "Suggested",
+  needs_review: "Needs review",
+  unavailable: "Unavailable",
 };
 
 function isResolvedStatus(status: VisitCompletionCardSelectionStatus): boolean {
@@ -436,14 +466,19 @@ export function VisitCompletionPanel({
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
             {isReleased
               ? "Audited physician actions have been durably saved and task handoffs are routed to queues."
-              : "AI prepares the next actions; no clinical, billing, messaging, scheduling, staffing, or chart action happens from this MVP panel."}
+              : "AI prepares the next actions; Release Care Plan creates only reviewed tasks, drafts, and audit records after physician approval."}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            {isReleased
+              ? "No additional orders, messages, billing, scheduling, staffing, or chart writes can be triggered from this locked view."
+              : "It does not place clinical orders, send patient messages, submit billing, book appointments, or overwrite chart data."}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
             Learns from approvals, edits, removals, and deferrals.
           </p>
         </div>
         <Badge tone={isReleased ? "success" : "highlight"} className="shrink-0">
-          {isReleased ? "Released" : "Review-only MVP"}
+          {isReleased ? "Released" : "Physician release required"}
         </Badge>
       </div>
     </section>
@@ -735,48 +770,79 @@ function VisitCompletionCardDetailPanel({
           <p className="text-sm font-semibold text-text">{copy.question}</p>
           <ul className="mt-3 space-y-2">
             {card.items.map((item) => (
-              <li key={item.id} className="flex gap-2 text-sm leading-relaxed text-text-muted">
-                <span
-                  className={cn("mt-2 h-2 w-2 shrink-0 rounded-full", toneDot[item.tone])}
-                  aria-hidden="true"
-                />
-                <span>
-                  {item.label}
-                  {item.reason && (
-                    <span className="mt-1 block text-xs text-text-subtle">
-                      Source: {item.reason}
-                    </span>
-                  )}
-                </span>
-              </li>
+              <VisitCompletionDetailItem key={item.id} item={item} />
             ))}
           </ul>
         </div>
 
-        <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
-            Confirmation state
-          </p>
-          <p className="mt-2 text-sm font-semibold text-text">
-            {resolved ? "Resolved for release review" : "Confirmation required before release."}
-          </p>
-          <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            Confirmation stays local in this MVP. No order, message, billing, scheduling,
-            staff task, or chart write is sent from this panel.
-          </p>
-          {cardState.confirmationNote && (
-            <p className="mt-3 rounded-md border border-accent/20 bg-accent-soft/45 px-3 py-2 text-xs leading-relaxed text-text-muted">
-              Confirmation note: {cardState.confirmationNote}
+        <div className="space-y-3">
+          <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+              What release will do
             </p>
-          )}
-          {cardState.editNote && (
-            <p className="mt-3 rounded-md border border-highlight/30 bg-highlight-soft px-3 py-2 text-xs leading-relaxed text-text-muted">
-              Edit note: {cardState.editNote}
+            <p className="mt-2 text-sm font-semibold text-text">{copy.releaseWillDo}</p>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              {copy.releaseWillNotDo}
             </p>
-          )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+              Confirmation state
+            </p>
+            <p className="mt-2 text-sm font-semibold text-text">
+              {resolved ? "Resolved for release review" : "Confirmation required before release."}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              Nothing is routed until the physician releases the care plan. Release creates only
+              the reviewed task, draft, and audit artifacts described above.
+            </p>
+            {cardState.confirmationNote && (
+              <p className="mt-3 rounded-md border border-accent/20 bg-accent-soft/45 px-3 py-2 text-xs leading-relaxed text-text-muted">
+                Confirmation note: {cardState.confirmationNote}
+              </p>
+            )}
+            {cardState.editNote && (
+              <p className="mt-3 rounded-md border border-highlight/30 bg-highlight-soft px-3 py-2 text-xs leading-relaxed text-text-muted">
+                Edit note: {cardState.editNote}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
+  );
+}
+
+function VisitCompletionDetailItem({ item }: { item: VisitCompletionItem }) {
+  return (
+    <li className="rounded-md border border-border bg-surface px-3 py-2">
+      <div className="flex gap-2 text-sm leading-relaxed text-text">
+        <span
+          className={cn("mt-2 h-2 w-2 shrink-0 rounded-full", toneDot[item.tone])}
+          aria-hidden="true"
+        />
+        <div className="min-w-0">
+          <p>{item.label}</p>
+          {item.reason && (
+            <p className="mt-1 text-xs leading-relaxed text-text-subtle">{item.reason}</p>
+          )}
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <Badge tone={toneBadge[item.tone]}>{itemStatusLabel[item.status]}</Badge>
+        <Badge tone="neutral">Source: {itemSourceLabel[item.source]}</Badge>
+        {typeof item.confidence === "number" && (
+          <Badge tone="neutral">Confidence {Math.round(item.confidence * 100)}%</Badge>
+        )}
+        {item.requiresPhysicianApproval && (
+          <Badge tone="accent">Physician approval required</Badge>
+        )}
+      </div>
+      <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-text-subtle">
+        Item evidence
+      </p>
+    </li>
   );
 }
 
@@ -860,11 +926,12 @@ function VisitCompletionReviewPanel({
               : "Confirmation required before release."}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            Release is staged for review only in this MVP.
+            Release creates only reviewed tasks, drafts, and audit records after physician
+            approval.
           </p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            Review-only; no order, message, billing, scheduling, staff task, or chart write is
-            sent.
+            It does not place clinical orders, send patient messages, submit billing, book
+            appointments, or overwrite chart data.
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
@@ -880,7 +947,7 @@ function VisitCompletionReviewPanel({
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
               Selected for release
             </p>
-            <Badge tone="accent">Local review state only</Badge>
+            <Badge tone="accent">Physician release required</Badge>
           </div>
           <ReviewSectionList sections={review.selectedSections} onSelectCard={onSelectCard} />
         </div>
@@ -946,12 +1013,16 @@ function FinalReleaseReviewPanel({
           <h3 className="mt-1 text-lg font-semibold text-text">Structured release payload</h3>
           <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text-muted">
             {payload.canRelease
-              ? "Release Care Plan is staged for final physician review."
+              ? "Release Care Plan is ready for final physician review."
               : "Release Care Plan is blocked until every card has an explicit physician disposition."}
           </p>
           <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-muted">
-            Payload is review-only and creates no clinical, billing, messaging, scheduling,
-            staff, or chart side effects.
+            Release Care Plan creates reviewed tasks/drafts and an audit record after physician
+            approval.
+          </p>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-muted">
+            It does not place clinical orders, send patient messages, submit billing, book
+            appointments, or overwrite chart data.
           </p>
         </div>
 
@@ -1077,7 +1148,7 @@ function PayloadSafetyFlag({ label, value }: { label: string; value: boolean }) 
   return (
     <div className="rounded-md border border-border bg-surface px-3 py-2">
       <dt className="font-medium text-text">{label}</dt>
-      <dd className="mt-1">{value ? "Side effect enabled" : "No side effect"}</dd>
+      <dd className="mt-1">{value ? "Draft/task artifact" : "No direct action"}</dd>
     </div>
   );
 }

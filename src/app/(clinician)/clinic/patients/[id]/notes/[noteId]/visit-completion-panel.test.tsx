@@ -56,7 +56,9 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Preview message");
     expect(str).toContain("Create staff tasks");
     expect(str).toContain("Review selected actions");
-    expect(str).toContain("Release is staged for review only in this MVP.");
+    expect(str).toContain(
+      "Release creates only reviewed tasks, drafts, and audit records after physician approval.",
+    );
     expect(str).toContain("No actions have been released.");
     expect(str).toContain("Selected for release");
     expect(str).toContain("Open release review");
@@ -66,6 +68,13 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Click in to confirm");
     expect(str).toContain("Confirm this card");
     expect(str).toContain("Open details");
+    expect(str).toContain("What release will do");
+    expect(str).toContain("Creates a back-office task with reviewed order suggestions.");
+    expect(str).toContain("Does not place clinical orders automatically.");
+    expect(str).toContain("Item evidence");
+    expect(str).toContain("Source: heuristic");
+    expect(str).toContain("Confidence 72%");
+    expect(str).toContain("Physician approval required");
     expect(str).toContain("Final release review");
     expect(str).toContain("Structured release payload");
     expect(str).toContain("Preview release payload");
@@ -73,10 +82,10 @@ describe("VisitCompletionPanel", () => {
       "Release Care Plan is blocked until every card has an explicit physician disposition.",
     );
     expect(str).toContain(
-      "Payload is review-only and creates no clinical, billing, messaging, scheduling, staff, or chart side effects.",
+      "Release Care Plan creates reviewed tasks/drafts and an audit record after physician approval.",
     );
     expect(str).toContain(
-      "Review-only; no order, message, billing, scheduling, staff task, or chart write is sent.",
+      "It does not place clinical orders, send patient messages, submit billing, book appointments, or overwrite chart data.",
     );
     expect(str).toContain("Physician remains in control.");
     expect(str).toContain("Learns from approvals, edits, removals, and deferrals.");
@@ -104,7 +113,7 @@ describe("VisitCompletionPanel", () => {
     const releasedPayload: VisitCompletionReleasePayload = {
       version: "visit-completion-release/v1",
       releaseActionLabel: "Release Care Plan",
-      mode: "review_only_mvp",
+      mode: "physician_release_v1",
       status: "ready_for_physician_release",
       canRelease: true,
       summary: {
@@ -116,9 +125,9 @@ describe("VisitCompletionPanel", () => {
       sideEffects: {
         clinical: false,
         billing: false,
-        patientCommunication: false,
-        scheduling: false,
-        staffAssignment: false,
+        patientCommunication: true,
+        scheduling: true,
+        staffAssignment: true,
         chartWrite: false,
       },
       includedSections: [
@@ -162,4 +171,3 @@ describe("VisitCompletionPanel", () => {
     expect(str).not.toContain("Release Care Plan</button>");
   });
 });
-

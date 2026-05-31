@@ -161,7 +161,7 @@ export function buildVisitCompletionBundle(
     safetyCopy:
       "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.",
     mockedDataNotice:
-      "Draft suggestions only. This MVP prepares the review surface without submitting orders, messages, billing, scheduling, staff assignments, or chart writes.",
+      "Draft suggestions only. Release creates reviewed staff tasks, draft patient communication, and an audit record; it does not place orders, send messages, submit billing, book appointments, or overwrite chart data.",
     summary: buildSummary(cards),
     releaseEnabled: cards.some((card) => card.items.length > 0),
     learningLoop,
@@ -490,6 +490,6 @@ function action(
     requiresPhysicianApproval: true,
     sideEffect: "none",
     placeholderCopy:
-      "Review-only MVP. This control records no orders, messages, billing, scheduling, staffing, or chart writes.",
+      "Physician review required. This control stages the card disposition; Release Care Plan is the only action that creates reviewed tasks, drafts, and audit records.",
   };
 }

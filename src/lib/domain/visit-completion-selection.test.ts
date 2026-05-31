@@ -183,7 +183,7 @@ describe("visit completion selection state", () => {
 
     expect(payload.version).toBe("visit-completion-release/v1");
     expect(payload.releaseActionLabel).toBe("Release Care Plan");
-    expect(payload.mode).toBe("review_only_mvp");
+    expect(payload.mode).toBe("physician_release_v1");
     expect(payload.canRelease).toBe(false);
     expect(payload.status).toBe("blocked_needs_confirmation");
     expect(payload.blockingCardIds).toEqual([
@@ -204,7 +204,7 @@ describe("visit completion selection state", () => {
     expect(payload.auditEvents.every((event) => event.requiresPhysicianApproval)).toBe(true);
   });
 
-  it("builds a review-only release payload after all cards are resolved", () => {
+  it("builds a physician-release payload after all cards are resolved", () => {
     const initial = initializeVisitCompletionSelection(bundle);
     const confirmedOrders = applyVisitCompletionAction(bundle, initial, {
       type: "confirm_card",
@@ -229,6 +229,7 @@ describe("visit completion selection state", () => {
     const payload = buildVisitCompletionReleasePayload(bundle, deferredReadiness);
 
     expect(payload.canRelease).toBe(true);
+    expect(payload.mode).toBe("physician_release_v1");
     expect(payload.status).toBe("ready_for_physician_release");
     expect(payload.blockingCardIds).toEqual([]);
     expect(payload.includedSections.map((section) => section.cardId)).toEqual([
@@ -244,6 +245,14 @@ describe("visit completion selection state", () => {
       includedCards: 3,
       heldOutCards: 1,
       unresolvedCards: 0,
+    });
+    expect(payload.sideEffects).toEqual({
+      clinical: false,
+      billing: false,
+      patientCommunication: true,
+      staffAssignment: true,
+      chartWrite: false,
+      scheduling: true,
     });
     expect(payload.auditEvents).toEqual(
       expect.arrayContaining([
