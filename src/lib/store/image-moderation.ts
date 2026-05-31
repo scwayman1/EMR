@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="EMR-306 deterministic moderation stand-in; real vision-model wiring lands when runVisionModeration is implemented"
 // EMR-306 — AI safety moderation for review photos.
 //
 // Every customer-uploaded review image runs through this gate before it
