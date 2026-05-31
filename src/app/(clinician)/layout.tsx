@@ -148,11 +148,13 @@ export default async function ClinicianLayout({
         { label: "Messages", href: "/clinic/messages" },
         // EMR-165: unified sign-off queue rolls up labs + refills +
         // notes + messages — clinician's single place to clear the day.
-        { 
-          label: "Sign-off", 
+        {
+          label: "Sign-off",
           href: "/clinic/sign-off",
           badge: computeApprovalsBadge({ pendingCount, emergencyCount }) // Or a combined badge
         },
+        // EMR-915: kiosk→phone lobby intake/consent waiting to be accepted into the chart.
+        { label: "Lobby submissions", href: "/clinic/lobby-submissions" },
       ],
     },
     {
