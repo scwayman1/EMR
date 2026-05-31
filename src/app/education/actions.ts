@@ -1,5 +1,6 @@
 "use server";
 
+import { logger } from "@/lib/observability/log";
 import { resolveModelClient } from "@/lib/orchestration/model-client";
 import {
   buildChatCBSystemPrompt,
@@ -27,6 +28,17 @@ export async function fetchComboWheelCompounds(): Promise<ComboWheelCompound[]> 
 export interface ChatCBResponse {
   answer: string;
   citations: Citation[];
+}
+
+/**
+ * EMR-202 — record a guide/PDF download so the education team can see
+ * which resources patients actually open. Emitted as a structured log
+ * event (no PHI); analytics pipelines pick it up from there.
+ */
+export async function trackGuideDownload(guideId: string): Promise<void> {
+  const id = guideId.trim().slice(0, 120);
+  if (!id) return;
+  logger.info({ event: "education.guide.download", guideId: id });
 }
 
 /**
