@@ -11,6 +11,8 @@ import { StaffObjectiveEditor } from "./staff-objective-editor";
 import { NoteCommentsPanel } from "@/components/collaboration/note-comments-panel";
 import { hasPermission, canDocumentObjective } from "@/lib/rbac/permissions";
 import { coerceVitals } from "@/lib/clinical/objective-vitals";
+import { buildVisitCompletionBundle } from "@/lib/domain/visit-completion";
+import { VisitCompletionPanel } from "./visit-completion-panel";
 
 interface PageProps {
   params: { id: string; noteId: string };
@@ -42,6 +44,14 @@ export default async function NoteDetailPage({ params }: PageProps) {
   if (note.encounter.patientId !== params.id) notFound();
 
   const patient = note.encounter.patient;
+  const futureAppointment = await prisma.appointment.findFirst({
+    where: {
+      patientId: params.id,
+      startAt: { gt: new Date() },
+      status: { notIn: ["cancelled", "no_show"] },
+    },
+    select: { id: true },
+  });
 
   // Parse blocks — they are stored as JSON. Strip the internal `_guardrails`
   // metadata block planted by the scribe agent: it carries hallucination /
@@ -130,6 +140,15 @@ export default async function NoteDetailPage({ params }: PageProps) {
         rationale: note.codingSuggestion.rationale,
       }
     : null;
+  const visitCompletionBundle =
+    note.status === "finalized"
+      ? buildVisitCompletionBundle({
+          patientFirstName: patient.firstName,
+          blocks,
+          codingSuggestion,
+          hasFutureAppointment: Boolean(futureAppointment),
+        })
+      : null;
 
   return (
     <PageShell maxWidth="max-w-[900px]">
@@ -186,6 +205,10 @@ export default async function NoteDetailPage({ params }: PageProps) {
         />
       ) : (
         <ReadOnlyNote blocks={blocks} />
+      )}
+
+      {visitCompletionBundle && (
+        <VisitCompletionPanel bundle={visitCompletionBundle} />
       )}
 
       {/* ux/comments-mentions-collab — inline collaboration on chart notes */}
