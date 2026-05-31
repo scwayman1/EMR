@@ -1,3 +1,4 @@
+// SAFE: dead-export-allowed reason="EMR-917 foundation engine; readiness/gate consumer is the next slice in the build sequence"
 /**
  * EMR-917 — Clinical Assessment Rules Engine (Tier 1 + Tier 3).
  *
