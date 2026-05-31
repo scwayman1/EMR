@@ -55,6 +55,15 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Click in to confirm");
     expect(str).toContain("Confirm this card");
     expect(str).toContain("Open details");
+    expect(str).toContain("Final release review");
+    expect(str).toContain("Structured release payload");
+    expect(str).toContain("Preview release payload");
+    expect(str).toContain(
+      "Release Care Plan is blocked until every card has an explicit physician disposition.",
+    );
+    expect(str).toContain(
+      "Payload is review-only and creates no clinical, billing, messaging, scheduling, staff, or chart side effects.",
+    );
     expect(str).toContain(
       "Review-only; no order, message, billing, scheduling, staff task, or chart write is sent.",
     );

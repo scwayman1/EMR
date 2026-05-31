@@ -30,9 +30,11 @@ import type {
 } from "@/lib/domain/visit-completion";
 import {
   applyVisitCompletionAction,
+  buildVisitCompletionReleasePayload,
   buildVisitCompletionReview,
   initializeVisitCompletionSelection,
   type VisitCompletionCardSelectionStatus,
+  type VisitCompletionReleasePayload,
   type VisitCompletionReview,
   type VisitCompletionSelectionAction,
   type VisitCompletionSelectionState,
@@ -146,9 +148,14 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
   );
   const [editingCardId, setEditingCardId] = React.useState<VisitCompletionCardId | null>(null);
   const [editDraft, setEditDraft] = React.useState("");
+  const [releasePayloadOpen, setReleasePayloadOpen] = React.useState(true);
 
   const review = React.useMemo(
     () => buildVisitCompletionReview(bundle, selectionState),
+    [bundle, selectionState],
+  );
+  const releasePayload = React.useMemo(
+    () => buildVisitCompletionReleasePayload(bundle, selectionState),
     [bundle, selectionState],
   );
 
@@ -313,6 +320,12 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
           onSelectCard={(cardId) => setActiveCardId(cardId)}
         />
       )}
+
+      <FinalReleaseReviewPanel
+        payload={releasePayload}
+        isOpen={releasePayloadOpen}
+        onToggle={() => setReleasePayloadOpen((open) => !open)}
+      />
 
       <div className="mx-5 mb-5 flex flex-col gap-3 rounded-lg border border-highlight/35 bg-highlight-soft px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
@@ -762,6 +775,147 @@ function VisitCompletionReviewPanel({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function FinalReleaseReviewPanel({
+  payload,
+  isOpen,
+  onToggle,
+}: {
+  payload: VisitCompletionReleasePayload;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="mx-5 mb-5 rounded-lg border border-border bg-surface px-4 py-4 shadow-sm lg:mx-6 lg:px-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-subtle">
+              Final release review
+            </p>
+            <Badge tone={payload.canRelease ? "success" : "warning"}>
+              {payload.canRelease ? "Ready" : "Blocked"}
+            </Badge>
+          </div>
+          <h3 className="mt-1 text-lg font-semibold text-text">Structured release payload</h3>
+          <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text-muted">
+            {payload.canRelease
+              ? "Release Care Plan is staged for final physician review."
+              : "Release Care Plan is blocked until every card has an explicit physician disposition."}
+          </p>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-text-muted">
+            Payload is review-only and creates no clinical, billing, messaging, scheduling,
+            staff, or chart side effects.
+          </p>
+        </div>
+
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={onToggle}
+          title="Preview the structured release payload"
+          leadingIcon={<FileText className="h-3.5 w-3.5" />}
+        >
+          Preview release payload
+        </Button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-2 text-center md:grid-cols-4">
+        <ReviewMetric label="Included" value={payload.summary.includedCards} />
+        <ReviewMetric label="Held out" value={payload.summary.heldOutCards} />
+        <ReviewMetric label="Unresolved" value={payload.summary.unresolvedCards} />
+        <ReviewMetric label="Audit events" value={payload.auditEvents.length} />
+      </div>
+
+      {isOpen && (
+        <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+              Ready cards
+            </p>
+            <ReleasePayloadSectionList
+              sections={payload.includedSections}
+              emptyCopy="No cards are ready for release yet."
+            />
+          </div>
+
+          <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+              Held-out or unresolved cards
+            </p>
+            <ReleasePayloadSectionList
+              sections={[...payload.heldOutSections, ...payload.unresolvedSections]}
+              emptyCopy="No held-out or unresolved cards."
+            />
+          </div>
+
+          <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                Payload safety contract
+              </p>
+              <Badge tone="highlight">{payload.mode}</Badge>
+            </div>
+            <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-text-muted md:grid-cols-3">
+              <PayloadSafetyFlag label="Clinical" value={payload.sideEffects.clinical} />
+              <PayloadSafetyFlag label="Billing" value={payload.sideEffects.billing} />
+              <PayloadSafetyFlag
+                label="Patient message"
+                value={payload.sideEffects.patientCommunication}
+              />
+              <PayloadSafetyFlag label="Scheduling" value={payload.sideEffects.scheduling} />
+              <PayloadSafetyFlag label="Staff task" value={payload.sideEffects.staffAssignment} />
+              <PayloadSafetyFlag label="Chart write" value={payload.sideEffects.chartWrite} />
+            </dl>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReleasePayloadSectionList({
+  sections,
+  emptyCopy,
+}: {
+  sections: VisitCompletionReleasePayload["includedSections"];
+  emptyCopy: string;
+}) {
+  if (sections.length === 0) {
+    return <p className="mt-3 text-sm text-text-muted">{emptyCopy}</p>;
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      {sections.map((section) => (
+        <div key={section.cardId} className="rounded-md border border-border bg-surface px-3 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-text">{section.title}</p>
+            <Badge tone={statusBadgeTone[section.status]}>{statusLabel[section.status]}</Badge>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            {section.labels.slice(0, 2).join("; ")}
+            {section.labels.length > 2 ? `; +${section.labels.length - 2} more` : ""}
+          </p>
+          {(section.confirmationNote || section.editNote) && (
+            <p className="mt-2 text-xs leading-relaxed text-text-subtle">
+              {section.confirmationNote ?? section.editNote}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PayloadSafetyFlag({ label, value }: { label: string; value: boolean }) {
+  return (
+    <div className="rounded-md border border-border bg-surface px-3 py-2">
+      <dt className="font-medium text-text">{label}</dt>
+      <dd className="mt-1">{value ? "Side effect enabled" : "No side effect"}</dd>
     </div>
   );
 }

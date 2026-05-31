@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildVisitCompletionBundle } from "./visit-completion";
 import {
   applyVisitCompletionAction,
+  buildVisitCompletionReleasePayload,
   buildVisitCompletionReview,
   initializeVisitCompletionSelection,
 } from "./visit-completion-selection";
@@ -174,5 +175,95 @@ describe("visit completion selection state", () => {
     expect(finalReview.resolvedCardCount).toBe(4);
     expect(finalReview.needsConfirmationCount).toBe(0);
     expect(finalReview.isReadyForRelease).toBe(true);
+  });
+
+  it("builds a blocked release payload until every card has an explicit disposition", () => {
+    const initial = initializeVisitCompletionSelection(bundle);
+    const payload = buildVisitCompletionReleasePayload(bundle, initial);
+
+    expect(payload.version).toBe("visit-completion-release/v1");
+    expect(payload.releaseActionLabel).toBe("Release Care Plan");
+    expect(payload.mode).toBe("review_only_mvp");
+    expect(payload.canRelease).toBe(false);
+    expect(payload.status).toBe("blocked_needs_confirmation");
+    expect(payload.blockingCardIds).toEqual([
+      "orders",
+      "follow_up",
+      "patient_message",
+      "practice_readiness",
+    ]);
+    expect(payload.sideEffects).toEqual({
+      clinical: false,
+      billing: false,
+      patientCommunication: false,
+      staffAssignment: false,
+      chartWrite: false,
+      scheduling: false,
+    });
+    expect(payload.auditEvents).toHaveLength(4);
+    expect(payload.auditEvents.every((event) => event.requiresPhysicianApproval)).toBe(true);
+  });
+
+  it("builds a review-only release payload after all cards are resolved", () => {
+    const initial = initializeVisitCompletionSelection(bundle);
+    const confirmedOrders = applyVisitCompletionAction(bundle, initial, {
+      type: "confirm_card",
+      cardId: "orders",
+      confirmationNote: "Orders confirmed.",
+    });
+    const confirmedFollowUp = applyVisitCompletionAction(bundle, confirmedOrders, {
+      type: "confirm_card",
+      cardId: "follow_up",
+      confirmationNote: "Follow-up handoff confirmed.",
+    });
+    const editedPatientMessage = applyVisitCompletionAction(bundle, confirmedFollowUp, {
+      type: "edit_card",
+      cardId: "patient_message",
+      note: "Use simpler language.",
+    });
+    const deferredReadiness = applyVisitCompletionAction(bundle, editedPatientMessage, {
+      type: "defer_card",
+      cardId: "practice_readiness",
+    });
+
+    const payload = buildVisitCompletionReleasePayload(bundle, deferredReadiness);
+
+    expect(payload.canRelease).toBe(true);
+    expect(payload.status).toBe("ready_for_physician_release");
+    expect(payload.blockingCardIds).toEqual([]);
+    expect(payload.includedSections.map((section) => section.cardId)).toEqual([
+      "orders",
+      "follow_up",
+      "patient_message",
+    ]);
+    expect(payload.heldOutSections.map((section) => section.cardId)).toEqual([
+      "practice_readiness",
+    ]);
+    expect(payload.summary).toEqual({
+      totalCards: 4,
+      includedCards: 3,
+      heldOutCards: 1,
+      unresolvedCards: 0,
+    });
+    expect(payload.auditEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          cardId: "orders",
+          eventType: "visit_completion.card_confirmed",
+          disposition: "include",
+        }),
+        expect.objectContaining({
+          cardId: "patient_message",
+          eventType: "visit_completion.card_edited",
+          disposition: "include",
+          note: "Use simpler language.",
+        }),
+        expect.objectContaining({
+          cardId: "practice_readiness",
+          eventType: "visit_completion.card_deferred",
+          disposition: "hold_out",
+        }),
+      ]),
+    );
   });
 });

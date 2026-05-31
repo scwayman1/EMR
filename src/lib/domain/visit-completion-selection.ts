@@ -69,6 +69,71 @@ export interface VisitCompletionReview {
   hasChartWriteSideEffects: false;
 }
 
+export type VisitCompletionReleasePayloadStatus =
+  | "blocked_needs_confirmation"
+  | "ready_for_physician_release";
+
+export type VisitCompletionReleaseDisposition =
+  | "include"
+  | "remove"
+  | "hold_out"
+  | "unresolved";
+
+export interface VisitCompletionReleaseSection {
+  cardId: VisitCompletionCardId;
+  title: string;
+  status: VisitCompletionCardSelectionStatus;
+  disposition: VisitCompletionReleaseDisposition;
+  labels: string[];
+  editNote?: string;
+  confirmationNote?: string;
+  requiresPhysicianApproval: true;
+}
+
+export interface VisitCompletionReleaseAuditEvent {
+  cardId: VisitCompletionCardId;
+  eventType:
+    | "visit_completion.card_needs_confirmation"
+    | "visit_completion.card_confirmed"
+    | "visit_completion.card_edited"
+    | "visit_completion.card_removed"
+    | "visit_completion.card_deferred";
+  disposition: VisitCompletionReleaseDisposition;
+  note?: string;
+  requiresPhysicianApproval: true;
+}
+
+export interface VisitCompletionReleaseSummary {
+  totalCards: number;
+  includedCards: number;
+  heldOutCards: number;
+  unresolvedCards: number;
+}
+
+export interface VisitCompletionReleasePayload {
+  version: "visit-completion-release/v1";
+  releaseActionLabel: "Release Care Plan";
+  mode: "review_only_mvp";
+  status: VisitCompletionReleasePayloadStatus;
+  canRelease: boolean;
+  summary: VisitCompletionReleaseSummary;
+  includedSections: VisitCompletionReleaseSection[];
+  heldOutSections: VisitCompletionReleaseSection[];
+  unresolvedSections: VisitCompletionReleaseSection[];
+  blockingCardIds: VisitCompletionCardId[];
+  auditEvents: VisitCompletionReleaseAuditEvent[];
+  feedbackSignals: VisitCompletionReviewSignal[];
+  safetyCopy: VisitCompletionBundle["safetyCopy"];
+  sideEffects: {
+    clinical: false;
+    billing: false;
+    patientCommunication: false;
+    staffAssignment: false;
+    chartWrite: false;
+    scheduling: false;
+  };
+}
+
 export function initializeVisitCompletionSelection(
   bundle: VisitCompletionBundle,
 ): VisitCompletionSelectionState {
@@ -160,6 +225,49 @@ export function buildVisitCompletionReview(
   };
 }
 
+export function buildVisitCompletionReleasePayload(
+  bundle: VisitCompletionBundle,
+  state: VisitCompletionSelectionState,
+): VisitCompletionReleasePayload {
+  const review = buildVisitCompletionReview(bundle, state);
+  const sections = bundle.cards.map((card) => releaseSectionForCard(card, state));
+  const includedSections = sections.filter((section) => section.disposition === "include");
+  const heldOutSections = sections.filter((section) =>
+    ["remove", "hold_out"].includes(section.disposition),
+  );
+  const unresolvedSections = sections.filter((section) => section.disposition === "unresolved");
+  const canRelease = unresolvedSections.length === 0;
+
+  return {
+    version: "visit-completion-release/v1",
+    releaseActionLabel: "Release Care Plan",
+    mode: "review_only_mvp",
+    status: canRelease ? "ready_for_physician_release" : "blocked_needs_confirmation",
+    canRelease,
+    summary: {
+      totalCards: sections.length,
+      includedCards: includedSections.length,
+      heldOutCards: heldOutSections.length,
+      unresolvedCards: unresolvedSections.length,
+    },
+    includedSections,
+    heldOutSections,
+    unresolvedSections,
+    blockingCardIds: unresolvedSections.map((section) => section.cardId),
+    auditEvents: sections.map((section) => auditEventForSection(section)),
+    feedbackSignals: review.feedbackSignals,
+    safetyCopy: bundle.safetyCopy,
+    sideEffects: {
+      clinical: false,
+      billing: false,
+      patientCommunication: false,
+      staffAssignment: false,
+      chartWrite: false,
+      scheduling: false,
+    },
+  };
+}
+
 function statusForAction(
   type: Exclude<VisitCompletionSelectionAction["type"], "edit_card" | "confirm_card">,
 ): VisitCompletionCardSelectionStatus {
@@ -187,6 +295,66 @@ function sectionForCard(
     editNote: cardState.editNote,
     confirmationNote: cardState.confirmationNote,
   };
+}
+
+function releaseSectionForCard(
+  card: VisitCompletionCard,
+  state: VisitCompletionSelectionState,
+): VisitCompletionReleaseSection {
+  const section = sectionForCard(card, state);
+
+  return {
+    ...section,
+    disposition: dispositionForStatus(section.status),
+    requiresPhysicianApproval: true,
+  };
+}
+
+function dispositionForStatus(
+  status: VisitCompletionCardSelectionStatus,
+): VisitCompletionReleaseDisposition {
+  switch (status) {
+    case "confirmed":
+    case "edited":
+      return "include";
+    case "removed":
+      return "remove";
+    case "deferred":
+      return "hold_out";
+    case "selected":
+    case "approved":
+      return "unresolved";
+  }
+}
+
+function auditEventForSection(
+  section: VisitCompletionReleaseSection,
+): VisitCompletionReleaseAuditEvent {
+  return {
+    cardId: section.cardId,
+    eventType: eventTypeForStatus(section.status),
+    disposition: section.disposition,
+    note: section.editNote ?? section.confirmationNote,
+    requiresPhysicianApproval: true,
+  };
+}
+
+function eventTypeForStatus(
+  status: VisitCompletionCardSelectionStatus,
+): VisitCompletionReleaseAuditEvent["eventType"] {
+  switch (status) {
+    case "confirmed":
+      return "visit_completion.card_confirmed";
+    case "edited":
+      return "visit_completion.card_edited";
+    case "removed":
+      return "visit_completion.card_removed";
+    case "deferred":
+      return "visit_completion.card_deferred";
+    case "selected":
+    case "approved":
+      return "visit_completion.card_needs_confirmation";
+  }
 }
 
 function isSelectedForReleaseStatus(status: VisitCompletionCardSelectionStatus): boolean {
