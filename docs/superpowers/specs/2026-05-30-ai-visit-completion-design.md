@@ -163,6 +163,22 @@ Responsibilities:
 
 The existing note editor is already doing too much. The panel should be a separate component and the route page should pass the projected bundle alongside `codingSuggestion`.
 
+## AI Toolchain and Learning Loop
+
+AI Visit Completion should plug into the existing agent learning spine instead of becoming an isolated suggestion widget.
+
+The app already has `AgentFeedback` and `recordFeedback()` for approve, approve-with-edits, reject, and dismiss signals. The visit-completion bundle should expose metadata that maps physician actions onto those signals:
+
+- **Release Care Plan** → `approved`
+- **Approve all suggested actions** → `approved`
+- **Edit item** → `approved_with_edits`
+- **Remove item** → `rejected`
+- **Defer item** → `dismissed`
+
+The first UI slice can ship with this metadata and visible learning-loop language while persistence remains staged. The next release action should record the physician's choices with note id, reviewer id, organization id, selected items, and optional edit/reason text. These rows become the recursive improvement loop for future suggestions, physician preference learning, and agent-quality reporting.
+
+Feedback capture must never block care-plan release. If feedback persistence fails, the clinical or operational action should still proceed and log a warning.
+
 ## Release Behavior
 
 The first implementation can make **Release Care Plan** a staged client action with clear disabled/degraded states if back-end mutation support is not ready.
