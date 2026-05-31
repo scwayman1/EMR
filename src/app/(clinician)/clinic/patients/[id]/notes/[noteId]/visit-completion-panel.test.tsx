@@ -49,6 +49,12 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("No actions have been released.");
     expect(str).toContain("Selected for release");
     expect(str).toContain("Open release review");
+    expect(str).toContain("Release readiness");
+    expect(str).toContain("0 of 4 cards resolved");
+    expect(str).toContain("Confirmation required before release.");
+    expect(str).toContain("Click in to confirm");
+    expect(str).toContain("Confirm this card");
+    expect(str).toContain("Open details");
     expect(str).toContain(
       "Review-only; no order, message, billing, scheduling, staff task, or chart write is sent.",
     );

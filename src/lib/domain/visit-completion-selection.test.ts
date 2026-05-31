@@ -129,4 +129,50 @@ describe("visit completion selection state", () => {
       expect.arrayContaining(["RTC in 6 weeks recommended. No appointment currently scheduled."]),
     );
   });
+
+  it("requires every card to be clicked into and resolved before release readiness", () => {
+    const initial = initializeVisitCompletionSelection(bundle);
+    const initialReview = buildVisitCompletionReview(bundle, initial);
+
+    expect(initialReview.totalCardCount).toBe(4);
+    expect(initialReview.resolvedCardCount).toBe(0);
+    expect(initialReview.needsConfirmationCount).toBe(4);
+    expect(initialReview.isReadyForRelease).toBe(false);
+    expect(initialReview.needsConfirmationSections.map((section) => section.cardId)).toEqual([
+      "orders",
+      "follow_up",
+      "patient_message",
+      "practice_readiness",
+    ]);
+
+    const confirmedOrders = applyVisitCompletionAction(bundle, initial, {
+      type: "confirm_card",
+      cardId: "orders",
+      confirmationNote: "Orders reviewed in the detail panel.",
+    });
+    const removedFollowUp = applyVisitCompletionAction(bundle, confirmedOrders, {
+      type: "remove_card",
+      cardId: "follow_up",
+    });
+    const editedPatientMessage = applyVisitCompletionAction(bundle, removedFollowUp, {
+      type: "edit_card",
+      cardId: "patient_message",
+      note: "Tell Miguel to complete labs before the follow-up.",
+    });
+    const deferredReadiness = applyVisitCompletionAction(bundle, editedPatientMessage, {
+      type: "defer_card",
+      cardId: "practice_readiness",
+    });
+
+    const finalReview = buildVisitCompletionReview(bundle, deferredReadiness);
+
+    expect(deferredReadiness.cardStates.orders).toMatchObject({
+      status: "confirmed",
+      confirmationNote: "Orders reviewed in the detail panel.",
+    });
+    expect(finalReview.confirmedSections.map((section) => section.cardId)).toEqual(["orders"]);
+    expect(finalReview.resolvedCardCount).toBe(4);
+    expect(finalReview.needsConfirmationCount).toBe(0);
+    expect(finalReview.isReadyForRelease).toBe(true);
+  });
 });

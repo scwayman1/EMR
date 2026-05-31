@@ -89,20 +89,52 @@ const statusBadgeTone: Record<
   VisitCompletionCardSelectionStatus,
   "neutral" | "success" | "warning" | "danger" | "info"
 > = {
-  selected: "info",
-  approved: "success",
+  selected: "warning",
+  approved: "warning",
+  confirmed: "success",
   edited: "warning",
   removed: "danger",
   deferred: "neutral",
 };
 
 const statusLabel: Record<VisitCompletionCardSelectionStatus, string> = {
-  selected: "Selected for release",
-  approved: "Approved locally",
-  edited: "Edited locally",
+  selected: "Confirmation required",
+  approved: "Approved; confirm",
+  confirmed: "Confirmed",
+  edited: "Edited; resolved",
   removed: "Removed",
   deferred: "Deferred",
 };
+
+const detailCopy: Record<
+  VisitCompletionCardId,
+  { instruction: string; question: string; confirmNote: string }
+> = {
+  orders: {
+    instruction: "Review proposed orders, screenings, and care-gap items before release.",
+    question: "Are these suggested orders and care actions appropriate for this visit?",
+    confirmNote: "Orders reviewed in the card detail panel.",
+  },
+  follow_up: {
+    instruction: "Confirm interval, routing, scheduling handoff, and any patient link.",
+    question: "Is this follow-up handoff clinically and operationally correct?",
+    confirmNote: "Follow-up plan reviewed in the card detail panel.",
+  },
+  patient_message: {
+    instruction: "Preview the patient-facing plan, channel, print needs, and translation needs.",
+    question: "Is this communication ready to include in the care plan release review?",
+    confirmNote: "Patient communication reviewed in the card detail panel.",
+  },
+  practice_readiness: {
+    instruction: "Confirm coding, documentation, prior authorization, and staff-task checks.",
+    question: "Are the practice readiness checks acceptable for release review?",
+    confirmNote: "Practice readiness reviewed in the card detail panel.",
+  },
+};
+
+function isResolvedStatus(status: VisitCompletionCardSelectionStatus): boolean {
+  return ["confirmed", "edited", "removed", "deferred"].includes(status);
+}
 
 export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
   const [selectionState, setSelectionState] = React.useState<VisitCompletionSelectionState>(() =>
@@ -121,13 +153,31 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
   );
 
   const activeCard = bundle.cards.find((card) => card.id === activeCardId) ?? bundle.cards[0];
+  const activeCardState =
+    activeCard !== undefined
+      ? (selectionState.cardStates[activeCard.id] ?? { status: "selected" })
+      : undefined;
 
   function applyLocalAction(action: VisitCompletionSelectionAction) {
     setSelectionState((current) => applyVisitCompletionAction(bundle, current, action));
   }
 
+  function openCardDetails(cardId: VisitCompletionCardId) {
+    setActiveCardId(cardId);
+    setReleaseReviewOpen(true);
+  }
+
+  function confirmCard(card: VisitCompletionCard) {
+    applyLocalAction({
+      type: "confirm_card",
+      cardId: card.id,
+      confirmationNote: detailCopy[card.id].confirmNote,
+    });
+    setReleaseReviewOpen(true);
+  }
+
   function handleCardAction(card: VisitCompletionCard, action: VisitCompletionAction) {
-    setActiveCardId(card.id);
+    openCardDetails(card.id);
 
     switch (action.proposedActionType) {
       case "approve":
@@ -137,15 +187,12 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
       case "print":
       case "create_staff_task":
         applyLocalAction({ type: "approve_card", cardId: card.id });
-        setReleaseReviewOpen(true);
         return;
       case "remove":
         applyLocalAction({ type: "remove_card", cardId: card.id });
-        setReleaseReviewOpen(true);
         return;
       case "defer":
         applyLocalAction({ type: "defer_card", cardId: card.id });
-        setReleaseReviewOpen(true);
         return;
       case "edit":
         setEditingCardId(card.id);
@@ -154,7 +201,6 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
       case "order_review":
       case "coding_review":
       case "view_checks":
-        setReleaseReviewOpen(true);
         return;
     }
   }
@@ -224,6 +270,7 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
             key={card.id}
             card={card}
             cardState={selectionState.cardStates[card.id] ?? { status: "selected" }}
+            isActive={activeCardId === card.id}
             isEditing={editingCardId === card.id}
             editDraft={editDraft}
             onEditDraftChange={setEditDraft}
@@ -232,10 +279,32 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
               setEditingCardId(null);
               setEditDraft("");
             }}
+            onOpenDetails={() => openCardDetails(card.id)}
             onAction={(action) => handleCardAction(card, action)}
           />
         ))}
       </div>
+
+      {activeCard && activeCardState && (
+        <VisitCompletionCardDetailPanel
+          card={activeCard}
+          cardState={activeCardState}
+          onConfirm={() => confirmCard(activeCard)}
+          onEdit={() => {
+            openCardDetails(activeCard.id);
+            setEditingCardId(activeCard.id);
+            setEditDraft(selectionState.cardStates[activeCard.id]?.editNote ?? "");
+          }}
+          onRemove={() => {
+            openCardDetails(activeCard.id);
+            applyLocalAction({ type: "remove_card", cardId: activeCard.id });
+          }}
+          onDefer={() => {
+            openCardDetails(activeCard.id);
+            applyLocalAction({ type: "defer_card", cardId: activeCard.id });
+          }}
+        />
+      )}
 
       {releaseReviewOpen && (
         <VisitCompletionReviewPanel
@@ -290,14 +359,21 @@ function ReleaseCarePlanButton({
       </Button>
       <div className="mt-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-text">No actions have been released.</p>
-          <Badge tone={isOpen ? "accent" : "neutral"}>
-            {isOpen ? "Review open" : "Review closed"}
+          <p className="text-sm font-semibold text-text">Release readiness</p>
+          <Badge tone={review.isReadyForRelease ? "success" : isOpen ? "warning" : "neutral"}>
+            {review.isReadyForRelease ? "Ready" : isOpen ? "Review open" : "Review closed"}
           </Badge>
         </div>
         <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          {review.selectedCount} selected for release, {review.deferredCount} deferred,{" "}
-          {review.removedCount} removed.
+          {review.resolvedCardCount} of {review.totalCardCount} cards resolved.
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-text-muted">
+          {review.isReadyForRelease
+            ? "Ready for physician release review."
+            : "Confirmation required before release."}
+        </p>
+        <p className="mt-1 text-xs leading-relaxed text-text-muted">
+          No actions have been released.
         </p>
       </div>
     </div>
@@ -307,29 +383,35 @@ function ReleaseCarePlanButton({
 function SuggestedActionCard({
   card,
   cardState,
+  isActive,
   isEditing,
   editDraft,
   onEditDraftChange,
   onSaveEdit,
   onCancelEdit,
+  onOpenDetails,
   onAction,
 }: {
   card: VisitCompletionCard;
   cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId];
+  isActive: boolean;
   isEditing: boolean;
   editDraft: string;
   onEditDraftChange: (value: string) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
+  onOpenDetails: () => void;
   onAction: (action: VisitCompletionAction) => void;
 }) {
   const Icon = cardIcons[card.id];
   const needsReview = card.items.some((item) => item.tone !== "neutral");
+  const needsConfirmation = !isResolvedStatus(cardState.status);
 
   return (
     <article
       className={cn(
         "flex min-h-[300px] flex-col overflow-hidden rounded-lg border bg-surface transition",
+        isActive && "border-accent/45 shadow-sm ring-1 ring-accent/15",
         cardState.status === "removed"
           ? "border-danger/30 bg-red-50/30"
           : cardState.status === "deferred"
@@ -357,6 +439,11 @@ function SuggestedActionCard({
           </div>
         </div>
         <p className="mt-2 text-xs leading-relaxed text-text-muted">{card.subtitle}</p>
+        {needsConfirmation && (
+          <p className="mt-2 text-xs font-medium text-[color:var(--highlight-hover)]">
+            Click in to confirm before release.
+          </p>
+        )}
       </div>
 
       <ul className="flex-1 space-y-3 px-4 py-4">
@@ -394,8 +481,154 @@ function SuggestedActionCard({
         </div>
       )}
 
+      <div className="border-t border-border/60 px-4 py-3">
+        <Button
+          size="sm"
+          variant={isActive ? "secondary" : "ghost"}
+          className={cn(
+            "h-8 rounded-md px-2.5 text-xs",
+            isActive && "border-accent/25 bg-accent-soft text-accent hover:bg-accent-soft",
+          )}
+          onClick={onOpenDetails}
+          title={`Open ${card.title} details`}
+          leadingIcon={<Eye className="h-3.5 w-3.5" />}
+        >
+          Open details
+        </Button>
+      </div>
+
       <VisitCompletionActionList actions={card.actions} onAction={onAction} />
     </article>
+  );
+}
+
+function VisitCompletionCardDetailPanel({
+  card,
+  cardState,
+  onConfirm,
+  onEdit,
+  onRemove,
+  onDefer,
+}: {
+  card: VisitCompletionCard;
+  cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId];
+  onConfirm: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+  onDefer: () => void;
+}) {
+  const Icon = cardIcons[card.id];
+  const copy = detailCopy[card.id];
+  const resolved = isResolvedStatus(cardState.status);
+
+  return (
+    <div className="mx-5 mb-5 rounded-lg border border-border bg-surface px-4 py-4 shadow-sm lg:mx-6 lg:px-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex gap-3">
+          <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-subtle">
+                Click in to confirm
+              </p>
+              <Badge tone={statusBadgeTone[cardState.status]}>{statusLabel[cardState.status]}</Badge>
+            </div>
+            <h3 className="mt-1 text-lg font-semibold text-text">{card.title} confirmation</h3>
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text-muted">
+              {copy.instruction}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onConfirm}
+            title="Confirm this card for release review"
+            leadingIcon={<Check className="h-3.5 w-3.5" />}
+          >
+            Confirm this card
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onEdit}
+            title="Edit this card locally before release"
+            leadingIcon={<Pencil className="h-3.5 w-3.5" />}
+          >
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onRemove}
+            title="Remove this card from the release review"
+            leadingIcon={<X className="h-3.5 w-3.5" />}
+          >
+            Remove
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDefer}
+            title="Defer this card without rejecting the concept"
+            leadingIcon={<Clock3 className="h-3.5 w-3.5" />}
+          >
+            Defer
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_0.9fr]">
+        <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+          <p className="text-sm font-semibold text-text">{copy.question}</p>
+          <ul className="mt-3 space-y-2">
+            {card.items.map((item) => (
+              <li key={item.id} className="flex gap-2 text-sm leading-relaxed text-text-muted">
+                <span
+                  className={cn("mt-2 h-2 w-2 shrink-0 rounded-full", toneDot[item.tone])}
+                  aria-hidden="true"
+                />
+                <span>
+                  {item.label}
+                  {item.reason && (
+                    <span className="mt-1 block text-xs text-text-subtle">
+                      Source: {item.reason}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+            Confirmation state
+          </p>
+          <p className="mt-2 text-sm font-semibold text-text">
+            {resolved ? "Resolved for release review" : "Confirmation required before release."}
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            Confirmation stays local in this MVP. No order, message, billing, scheduling,
+            staff task, or chart write is sent from this panel.
+          </p>
+          {cardState.confirmationNote && (
+            <p className="mt-3 rounded-md border border-accent/20 bg-accent-soft/45 px-3 py-2 text-xs leading-relaxed text-text-muted">
+              Confirmation note: {cardState.confirmationNote}
+            </p>
+          )}
+          {cardState.editNote && (
+            <p className="mt-3 rounded-md border border-highlight/30 bg-highlight-soft px-3 py-2 text-xs leading-relaxed text-text-muted">
+              Edit note: {cardState.editNote}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -469,6 +702,15 @@ function VisitCompletionReviewPanel({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <p className="text-sm font-semibold text-text">Review selected actions</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+            Release readiness
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            {review.resolvedCardCount} of {review.totalCardCount} cards resolved.{" "}
+            {review.isReadyForRelease
+              ? "Ready for physician release review."
+              : "Confirmation required before release."}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
             Release is staged for review only in this MVP.
           </p>
@@ -478,9 +720,9 @@ function VisitCompletionReviewPanel({
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
-          <ReviewMetric label="Selected" value={review.selectedCount} />
-          <ReviewMetric label="Deferred" value={review.deferredCount} />
-          <ReviewMetric label="Removed" value={review.removedCount} />
+          <ReviewMetric label="Resolved" value={review.resolvedCardCount} />
+          <ReviewMetric label="Needs confirm" value={review.needsConfirmationCount} />
+          <ReviewMetric label="Held out" value={review.deferredSections.length + review.removedSections.length} />
         </div>
       </div>
 
@@ -504,7 +746,8 @@ function VisitCompletionReviewPanel({
               {activeCard?.title ?? "No action selected"}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-text-muted">
-              Use the card controls to approve, edit, remove, or defer before release.
+              Open details to confirm, or use the card controls to edit, remove, or defer before
+              release.
             </p>
           </div>
           <div className="rounded-lg border border-border bg-surface px-4 py-3">
