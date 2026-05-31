@@ -335,4 +335,19 @@ describe("releaseVisitCompletion server action", () => {
     expect(result).toEqual({ ok: false, error: "Visit completion has already been released." });
     expect(mockPrisma.visitCompletion.create).not.toHaveBeenCalled();
   });
+
+  it("handles a duplicate release race without creating downstream side effects", async () => {
+    mockPrisma.visitCompletion.findUnique.mockResolvedValue(null);
+    mockPrisma.visitCompletion.create.mockRejectedValue({
+      code: "P2002",
+      message: "Unique constraint failed on the fields: (`noteId`)",
+    });
+
+    const result = await releaseVisitCompletion("note_1", validPayload());
+
+    expect(result).toEqual({ ok: false, error: "Visit completion has already been released." });
+    expect(mockPrisma.task.create).not.toHaveBeenCalled();
+    expect(mockPrisma.message.create).not.toHaveBeenCalled();
+    expect(mockPrisma.auditLog.create).not.toHaveBeenCalled();
+  });
 });
