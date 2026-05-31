@@ -62,6 +62,23 @@ export interface PrevisitSnapshot {
 // Pure mapping
 // ---------------------------------------------------------------------------
 
+/**
+ * Consent freshness policy, in days (`null` = the consent never expires).
+ *
+ * Defaults to `null`/`null` so this change is behaviour-preserving: existing
+ * signed consents keep satisfying the gate exactly as before. Turning freshness
+ * ON (the plan's recommendation — visit/treatment ~365d, telehealth per-visit)
+ * is a one-line product decision tracked in EMR-913 + the plan doc §1, made here
+ * so the policy lives in one place rather than scattered through callers.
+ */
+export const CONSENT_FRESHNESS_POLICY: {
+  visitConsentMaxAgeDays: number | null;
+  telehealthConsentMaxAgeDays: number | null;
+} = {
+  visitConsentMaxAgeDays: null,
+  telehealthConsentMaxAgeDays: null,
+};
+
 /** A consent is "telehealth" if its template name mentions telehealth/virtual. */
 function isTelehealthConsent(name: string): boolean {
   return /telehealth|telemedicine|virtual/i.test(name);
@@ -109,6 +126,8 @@ export function mapSnapshotToGateInput(snapshot: PrevisitSnapshot): IntakeGateIn
     consent: {
       visitConsentSignedAt: latestSignedAt(snapshot.consents, isVisitConsent),
       telehealthConsentSignedAt: latestSignedAt(snapshot.consents, isTelehealthConsent),
+      visitConsentMaxAgeDays: CONSENT_FRESHNESS_POLICY.visitConsentMaxAgeDays,
+      telehealthConsentMaxAgeDays: CONSENT_FRESHNESS_POLICY.telehealthConsentMaxAgeDays,
     },
     insurance: {
       coverageVerified: hasVerifiedCoverage(snapshot.coverages),
@@ -141,9 +160,9 @@ export interface PrevisitReadiness {
  */
 export function evaluatePrevisitReadiness(
   snapshot: PrevisitSnapshot,
-  _now: Date,
+  now: Date,
 ): PrevisitReadiness {
-  const gate = evaluateIntakeGate(mapSnapshotToGateInput(snapshot));
+  const gate = evaluateIntakeGate(mapSnapshotToGateInput(snapshot), now);
   const missingRequiredIds = gate.requirements
     .filter((r) => r.blocking && !r.satisfied)
     .map((r) => r.id);
@@ -253,6 +272,17 @@ export interface AppointmentReadiness {
 /**
  * Load + evaluate readiness for an appointment in one call. Returns null when
  * the appointment can't be found. The returned readiness is PHI-free.
+ *
+ * CANONICAL SOURCE OF TRUTH (EMR-913). This is *the* answer to "is this patient
+ * ready for this visit / what's still missing." Every surface — the pre-visit
+ * nudge engine (sendDuePrevisitCompletionReminders), the patient portal "get
+ * ready" banner, the clinician readiness dashboard, and the kiosk/lobby
+ * completion flow — must read readiness from here (or `evaluatePrevisitReadiness`
+ * for an in-memory snapshot), NOT from the chart-completeness score
+ * (intake-agent's 0–100 on ChartSummary) and NOT from ad-hoc `briefingContext`
+ * signals. Chart completeness is an *input* to a productive visit, not a
+ * parallel definition of "ready" — keeping one definition here is what stops the
+ * three readiness notions from drifting apart again.
  */
 export async function getAppointmentReadiness(
   appointmentId: string,

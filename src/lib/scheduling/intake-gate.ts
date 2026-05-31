@@ -57,6 +57,14 @@ export interface IntakeGateInput {
   consent: {
     visitConsentSignedAt: Date | null;
     telehealthConsentSignedAt: Date | null;
+    /**
+     * Max age (days) for the visit consent to still count as fresh. A consent
+     * older than this is treated as unsatisfied — the patient must re-sign.
+     * `null`/omitted means the consent never expires (the legacy behaviour).
+     */
+    visitConsentMaxAgeDays?: number | null;
+    /** Max age (days) for the telehealth consent. `null`/omitted = never expires. */
+    telehealthConsentMaxAgeDays?: number | null;
   };
   insurance: {
     coverageVerified: boolean;
@@ -98,6 +106,8 @@ export const IntakeGateInputSchema = z.object({
   consent: z.object({
     visitConsentSignedAt: z.date().nullable(),
     telehealthConsentSignedAt: z.date().nullable(),
+    visitConsentMaxAgeDays: z.number().positive().nullable().optional(),
+    telehealthConsentMaxAgeDays: z.number().positive().nullable().optional(),
   }),
   insurance: z.object({
     coverageVerified: z.boolean(),
@@ -112,7 +122,10 @@ export const IntakeGateInputSchema = z.object({
  * issued — booking page (EMR-206), waitlist fill (EMR-210), and the slot
  * recommender's confirm path.
  */
-export function evaluateIntakeGate(input: IntakeGateInput): IntakeGateResult {
+export function evaluateIntakeGate(
+  input: IntakeGateInput,
+  now: Date = new Date(),
+): IntakeGateResult {
   const reqs: GateRequirement[] = [];
 
   reqs.push({
@@ -161,9 +174,16 @@ export function evaluateIntakeGate(input: IntakeGateInput): IntakeGateResult {
   });
 
   // Visit consent always required; telehealth consent only for virtual visits.
+  // A consent counts only if it is signed AND still fresh per its max-age window
+  // (a null/omitted window means it never expires — the legacy behaviour).
   const consentOk =
-    input.consent.visitConsentSignedAt instanceof Date &&
-    (!input.isVirtual || input.consent.telehealthConsentSignedAt instanceof Date);
+    isConsentFresh(input.consent.visitConsentSignedAt, input.consent.visitConsentMaxAgeDays, now) &&
+    (!input.isVirtual ||
+      isConsentFresh(
+        input.consent.telehealthConsentSignedAt,
+        input.consent.telehealthConsentMaxAgeDays,
+        now,
+      ));
   reqs.push({
     id: "consent",
     label: input.isVirtual ? "Visit + telehealth consent" : "Visit consent",
@@ -207,6 +227,25 @@ export function evaluateIntakeGate(input: IntakeGateInput): IntakeGateResult {
     : `Complete ${blockingUnsatisfied.length} step${blockingUnsatisfied.length === 1 ? "" : "s"} before confirming: ${blockingUnsatisfied.map((r) => r.label).join(", ")}.`;
 
   return { allowConfirm, requirements: reqs, blockReason, completionPct };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A consent satisfies the gate when it is signed and — if a freshness window is
+ * configured — was signed within `maxAgeDays` of `now`. A `null`/`undefined`
+ * window means the consent never expires. A future `signedAt` (clock skew) is
+ * treated as fresh rather than failing the patient.
+ */
+function isConsentFresh(
+  signedAt: Date | null | undefined,
+  maxAgeDays: number | null | undefined,
+  now: Date,
+): boolean {
+  if (!(signedAt instanceof Date)) return false;
+  if (maxAgeDays == null) return true;
+  const ageMs = now.getTime() - signedAt.getTime();
+  return ageMs <= maxAgeDays * DAY_MS;
 }
 
 function hasMeaningfulRecord(value: unknown): boolean {
