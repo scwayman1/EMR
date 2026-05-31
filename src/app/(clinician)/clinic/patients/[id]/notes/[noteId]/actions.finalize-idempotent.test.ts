@@ -65,7 +65,7 @@ function note(over: Record<string, unknown> = {}) {
     aiDrafted: false,
     blocks: [],
     authorUserId: null,
-    encounter: { id: "enc_1", patientId: "patient_1", status: "in_visit" },
+    encounter: { id: "enc_1", patientId: "patient_1", status: "in_progress" },
     ...over,
   };
 }
@@ -75,7 +75,7 @@ function encounter(over: Record<string, unknown> = {}) {
     id: "enc_1",
     organizationId: "org_1",
     patientId: "patient_1",
-    status: "in_visit",
+    status: "in_progress",
     startedAt: new Date("2026-05-29T15:00:00.000Z"),
     completedAt: null,
     ...over,

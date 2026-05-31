@@ -35,7 +35,7 @@ export default async function TelehealthPage({ params }: PageProps) {
     where: {
       patientId: params.id,
       modality: "video",
-      status: { in: ["scheduled", "in_visit", "in_progress"] },
+      status: { in: ["scheduled", "in_progress"] },
     },
     orderBy: { scheduledFor: "desc" },
   });

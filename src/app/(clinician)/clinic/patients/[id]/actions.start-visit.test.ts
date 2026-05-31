@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * Hardening sprint — physician visit spine.
- * startVisit must reuse today's existing active encounter
+ * startVisit must reuse today's existing scheduled/in_progress encounter
  * instead of minting a duplicate, and expose a readiness handoff.
  */
 const hoisted = vi.hoisted(() => {
@@ -97,7 +97,7 @@ beforeEach(() => {
     id: where.id,
     ...data,
   }));
-  mockPrisma.encounter.create.mockResolvedValue(scheduledEncounter({ id: "new_enc", status: "in_visit" }));
+  mockPrisma.encounter.create.mockResolvedValue(scheduledEncounter({ id: "new_enc", status: "in_progress" }));
   mockPrisma.note.findFirst.mockResolvedValue(null);
   mockPrisma.agentJob.findMany.mockResolvedValue([]);
   dispatchMock.mockResolvedValue([]);
@@ -122,16 +122,16 @@ describe("startVisit — encounter selection", () => {
 
     await expect(startVisit("patient_1")).rejects.toThrow(/notes\/note_9/);
 
-    // The encounter must be marked with-provider even though we jump to the note.
+    // The encounter must be marked in-progress even though we jump to the note.
     expect(mockPrisma.encounter.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "sched_1" },
-        data: expect.objectContaining({ status: "in_visit" }),
+        data: expect.objectContaining({ status: "in_progress" }),
       }),
     );
   });
 
-  it("creates a fresh in_visit encounter only when none exists today", async () => {
+  it("creates a fresh in_progress encounter only when none exists today", async () => {
     mockPrisma.encounter.findMany.mockResolvedValue([]);
 
     await expect(startVisit("patient_1")).rejects.toThrow(/redirect:/);
