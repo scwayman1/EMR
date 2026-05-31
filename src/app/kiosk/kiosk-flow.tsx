@@ -6,6 +6,7 @@ import {
   kioskSearchPatients,
   getKioskCheckInContext,
   kioskCheckIn,
+  issueKioskHandoff,
   type KioskPatientHit,
   type KioskCheckInContext,
 } from "./actions";
@@ -24,6 +25,7 @@ import {
 type Step =
   | { kind: "search" }
   | { kind: "confirm"; hit: KioskPatientHit }
+  | { kind: "handoff"; firstName: string; qrUrl: string; lobbyUrl: string }
   | { kind: "done"; context: KioskCheckInContext | null; alreadyCheckedIn: boolean };
 
 const MIN_QUERY_LENGTH = 3;
@@ -65,6 +67,18 @@ export function KioskFlow() {
         onDone={(context, alreadyCheckedIn) =>
           setStep({ kind: "done", context, alreadyCheckedIn })
         }
+        onHandoff={(firstName, qrUrl, lobbyUrl) =>
+          setStep({ kind: "handoff", firstName, qrUrl, lobbyUrl })
+        }
+      />
+    );
+  }
+  if (step.kind === "handoff") {
+    return (
+      <HandoffStep
+        firstName={step.firstName}
+        qrUrl={step.qrUrl}
+        onReset={() => setStep({ kind: "search" })}
       />
     );
   }
@@ -156,12 +170,15 @@ function ConfirmStep({
   hit,
   onBack,
   onDone,
+  onHandoff,
 }: {
   hit: KioskPatientHit;
   onBack: () => void;
   onDone: (context: KioskCheckInContext | null, alreadyCheckedIn: boolean) => void;
+  onHandoff: (firstName: string, qrUrl: string, lobbyUrl: string) => void;
 }) {
   const [isPending, startTransition] = useTransition();
+  const [handoffPending, startHandoff] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   function handleConfirm() {
@@ -177,7 +194,20 @@ function ConfirmStep({
     });
   }
 
+  function handlePhoneHandoff() {
+    setError(null);
+    startHandoff(async () => {
+      const result = await issueKioskHandoff(hit.id);
+      if (!result.ok || !result.qrUrl || !result.lobbyUrl) {
+        setError(result.error ?? "Couldn't start the phone hand-off. Please continue here.");
+        return;
+      }
+      onHandoff(hit.firstName, result.qrUrl, result.lobbyUrl);
+    });
+  }
+
   const dob = formatDob(hit.dob);
+  const busy = isPending || handoffPending;
 
   return (
     <div className="space-y-6">
@@ -192,13 +222,65 @@ function ConfirmStep({
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <div className="flex flex-col gap-3">
-        <Button size="lg" variant="primary" onClick={handleConfirm} disabled={isPending}>
+        <Button size="lg" variant="primary" onClick={handleConfirm} disabled={busy}>
           {isPending ? "Checking you in…" : "Yes, check me in"}
         </Button>
-        <Button size="lg" variant="ghost" onClick={onBack} disabled={isPending}>
+        <Button size="lg" variant="secondary" onClick={handlePhoneHandoff} disabled={busy}>
+          {handoffPending ? "Preparing…" : "Continue on my phone"}
+        </Button>
+        <Button size="lg" variant="ghost" onClick={onBack} disabled={busy}>
           No, that&rsquo;s not me
         </Button>
       </div>
+    </div>
+  );
+}
+
+function HandoffStep({
+  firstName,
+  qrUrl,
+  onReset,
+}: {
+  firstName: string;
+  qrUrl: string;
+  onReset: () => void;
+}) {
+  // Reset to search after a dwell so the kiosk is free for the next walk-in
+  // once this patient has scanned and walked away with their phone.
+  useEffect(() => {
+    const t = setTimeout(onReset, 60_000);
+    return () => clearTimeout(t);
+  }, [onReset]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-3xl text-text tracking-tight">
+          Continue on your phone, {firstName}
+        </h2>
+        <p className="text-text-muted mt-2">
+          Point your phone&rsquo;s camera at the code, then finish your check-in from your seat.
+        </p>
+      </div>
+
+      <div className="flex justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={qrUrl}
+          alt="QR code to continue check-in on your phone"
+          width={280}
+          height={280}
+          className="rounded-2xl border border-border bg-white p-3"
+        />
+      </div>
+
+      <p className="text-xs text-text-subtle">
+        We&rsquo;ll text you a code to confirm it&rsquo;s you. This code expires in 10 minutes.
+      </p>
+
+      <Button size="lg" variant="ghost" onClick={onReset}>
+        Done
+      </Button>
     </div>
   );
 }
