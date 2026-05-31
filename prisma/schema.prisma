@@ -4964,6 +4964,30 @@ model FreezeToken {
 }
 
 // --------------------------------------------------------------
+// EMR-915 — one-time SMS codes (kiosk→phone hand-off identity challenge).
+// Short-lived (minutes). The code is never stored in plaintext — only its
+// SHA-256 hash — and is sent to the patient solely over SMS. `purpose` scopes
+// a code to one flow so it can't be replayed elsewhere. No FK relation: these
+// are throwaway rows that expire on their own; `patientId` is just an indexed
+// scope key.
+// --------------------------------------------------------------
+
+model SmsOtpCode {
+  id          String    @id @default(cuid())
+  patientId   String
+  purpose     String // e.g. "kiosk_lobby_handoff"
+  codeHash    String // SHA-256 of the numeric code
+  expiresAt   DateTime
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([patientId, purpose])
+  @@index([expiresAt])
+}
+
+// --------------------------------------------------------------
 // EMR-107 — ChatCB AI Coach
 // --------------------------------------------------------------
 
