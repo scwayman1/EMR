@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Check,
   ClipboardCheck,
@@ -39,9 +40,12 @@ import {
   type VisitCompletionSelectionAction,
   type VisitCompletionSelectionState,
 } from "@/lib/domain/visit-completion-selection";
+import { releaseVisitCompletion } from "./actions";
 
 interface VisitCompletionPanelProps {
   bundle: VisitCompletionBundle;
+  releasedPayload?: VisitCompletionReleasePayload | null;
+  noteId: string;
 }
 
 const cardIcons: Record<VisitCompletionCardId, React.ComponentType<{ className?: string }>> = {
@@ -138,17 +142,107 @@ function isResolvedStatus(status: VisitCompletionCardSelectionStatus): boolean {
   return ["confirmed", "edited", "removed", "deferred"].includes(status);
 }
 
-export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
-  const [selectionState, setSelectionState] = React.useState<VisitCompletionSelectionState>(() =>
-    initializeVisitCompletionSelection(bundle),
+export function VisitCompletionPanel({
+  bundle,
+  releasedPayload,
+  noteId,
+}: VisitCompletionPanelProps) {
+  const router = useRouter();
+  const [localReleasedPayload, setLocalReleasedPayload] = React.useState<VisitCompletionReleasePayload | null>(
+    releasedPayload ?? null
   );
-  const [releaseReviewOpen, setReleaseReviewOpen] = React.useState(true);
+
+  const [selectionState, setSelectionState] = React.useState<VisitCompletionSelectionState>(() => {
+    if (releasedPayload) {
+      const cardStates = {} as VisitCompletionSelectionState["cardStates"];
+      for (const section of releasedPayload.includedSections) {
+        cardStates[section.cardId] = {
+          status: section.status,
+          editNote: section.editNote,
+          confirmationNote: section.confirmationNote,
+        };
+      }
+      for (const section of releasedPayload.heldOutSections) {
+        cardStates[section.cardId] = {
+          status: section.status,
+          editNote: section.editNote,
+          confirmationNote: section.confirmationNote,
+        };
+      }
+      for (const section of releasedPayload.unresolvedSections) {
+        cardStates[section.cardId] = {
+          status: section.status,
+          editNote: section.editNote,
+          confirmationNote: section.confirmationNote,
+        };
+      }
+      return { cardStates };
+    }
+    return initializeVisitCompletionSelection(bundle);
+  });
+
+  const [releaseReviewOpen, setReleaseReviewOpen] = React.useState(!releasedPayload);
   const [activeCardId, setActiveCardId] = React.useState<VisitCompletionCardId>(
     bundle.cards[0]?.id ?? "orders",
   );
   const [editingCardId, setEditingCardId] = React.useState<VisitCompletionCardId | null>(null);
   const [editDraft, setEditDraft] = React.useState("");
-  const [releasePayloadOpen, setReleasePayloadOpen] = React.useState(true);
+  const [releasePayloadOpen, setReleasePayloadOpen] = React.useState(!releasedPayload);
+
+  const [isReleasing, startReleaseTransition] = React.useTransition();
+  const [releaseError, setReleaseError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (releasedPayload) {
+      setLocalReleasedPayload(releasedPayload);
+      const cardStates = {} as VisitCompletionSelectionState["cardStates"];
+      for (const section of releasedPayload.includedSections) {
+        cardStates[section.cardId] = {
+          status: section.status,
+          editNote: section.editNote,
+          confirmationNote: section.confirmationNote,
+        };
+      }
+      for (const section of releasedPayload.heldOutSections) {
+        cardStates[section.cardId] = {
+          status: section.status,
+          editNote: section.editNote,
+          confirmationNote: section.confirmationNote,
+        };
+      }
+      for (const section of releasedPayload.unresolvedSections) {
+        cardStates[section.cardId] = {
+          status: section.status,
+          editNote: section.editNote,
+          confirmationNote: section.confirmationNote,
+        };
+      }
+      setSelectionState({ cardStates });
+      setReleaseReviewOpen(false);
+      setReleasePayloadOpen(false);
+    }
+  }, [releasedPayload]);
+
+  const handleRelease = () => {
+    setReleaseError(null);
+    startReleaseTransition(async () => {
+      try {
+        const result = await releaseVisitCompletion(noteId, releasePayload);
+        if (result.ok) {
+          setLocalReleasedPayload(releasePayload);
+          setReleasePayloadOpen(false);
+          setReleaseReviewOpen(false);
+          router.refresh();
+        } else {
+          setReleaseError(result.error);
+        }
+      } catch (err: any) {
+        setReleaseError(err?.message || "An unexpected error occurred during release.");
+      }
+    });
+  };
+
+  const isReleased = Boolean(localReleasedPayload);
 
   const review = React.useMemo(
     () => buildVisitCompletionReview(bundle, selectionState),
@@ -256,6 +350,7 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
           review={review}
           isOpen={releaseReviewOpen}
           onToggle={() => setReleaseReviewOpen((open) => !open)}
+          isReleased={isReleased}
         />
       </div>
 
@@ -288,6 +383,7 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
             }}
             onOpenDetails={() => openCardDetails(card.id)}
             onAction={(action) => handleCardAction(card, action)}
+            isReleased={isReleased}
           />
         ))}
       </div>
@@ -310,6 +406,7 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
             openCardDetails(activeCard.id);
             applyLocalAction({ type: "defer_card", cardId: activeCard.id });
           }}
+          isReleased={isReleased}
         />
       )}
 
@@ -325,21 +422,28 @@ export function VisitCompletionPanel({ bundle }: VisitCompletionPanelProps) {
         payload={releasePayload}
         isOpen={releasePayloadOpen}
         onToggle={() => setReleasePayloadOpen((open) => !open)}
+        isReleasing={isReleasing}
+        releaseError={releaseError}
+        onRelease={handleRelease}
+        isReleased={isReleased}
       />
 
       <div className="mx-5 mb-5 flex flex-col gap-3 rounded-lg border border-highlight/35 bg-highlight-soft px-4 py-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-text">Physician remains in control.</p>
+          <p className="text-sm font-semibold text-text">
+            {isReleased ? "Care Plan released." : "Physician remains in control."}
+          </p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            AI prepares the next actions; no clinical, billing, messaging, scheduling,
-            staffing, or chart action happens from this MVP panel.
+            {isReleased
+              ? "Audited physician actions have been durably saved and task handoffs are routed to queues."
+              : "AI prepares the next actions; no clinical, billing, messaging, scheduling, staffing, or chart action happens from this MVP panel."}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
             Learns from approvals, edits, removals, and deferrals.
           </p>
         </div>
-        <Badge tone="highlight" className="shrink-0">
-          Review-only MVP
+        <Badge tone={isReleased ? "success" : "highlight"} className="shrink-0">
+          {isReleased ? "Released" : "Review-only MVP"}
         </Badge>
       </div>
     </section>
@@ -351,12 +455,37 @@ function ReleaseCarePlanButton({
   review,
   isOpen,
   onToggle,
+  isReleased,
 }: {
   bundle: VisitCompletionBundle;
   review: VisitCompletionReview;
   isOpen: boolean;
   onToggle: () => void;
+  isReleased: boolean;
 }) {
+  if (isReleased) {
+    return (
+      <div className="w-full lg:w-[320px]">
+        <Button
+          size="md"
+          className="w-full"
+          disabled
+          leadingIcon={<Check className="h-4 w-4" />}
+        >
+          Care Plan Released
+        </Button>
+        <div className="mt-3 rounded-lg border border-success/35 bg-success-soft px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-text">Release status</p>
+            <Badge tone="success">Released</Badge>
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            Care actions have been durably saved and routed.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="w-full lg:w-[320px]">
       <Button
@@ -404,6 +533,7 @@ function SuggestedActionCard({
   onCancelEdit,
   onOpenDetails,
   onAction,
+  isReleased,
 }: {
   card: VisitCompletionCard;
   cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId];
@@ -415,6 +545,7 @@ function SuggestedActionCard({
   onCancelEdit: () => void;
   onOpenDetails: () => void;
   onAction: (action: VisitCompletionAction) => void;
+  isReleased: boolean;
 }) {
   const Icon = cardIcons[card.id];
   const needsReview = card.items.some((item) => item.tone !== "neutral");
@@ -510,7 +641,7 @@ function SuggestedActionCard({
         </Button>
       </div>
 
-      <VisitCompletionActionList actions={card.actions} onAction={onAction} />
+      {!isReleased && <VisitCompletionActionList actions={card.actions} onAction={onAction} />}
     </article>
   );
 }
@@ -522,6 +653,7 @@ function VisitCompletionCardDetailPanel({
   onEdit,
   onRemove,
   onDefer,
+  isReleased,
 }: {
   card: VisitCompletionCard;
   cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId];
@@ -529,6 +661,7 @@ function VisitCompletionCardDetailPanel({
   onEdit: () => void;
   onRemove: () => void;
   onDefer: () => void;
+  isReleased: boolean;
 }) {
   const Icon = cardIcons[card.id];
   const copy = detailCopy[card.id];
@@ -555,44 +688,46 @@ function VisitCompletionCardDetailPanel({
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={onConfirm}
-            title="Confirm this card for release review"
-            leadingIcon={<Check className="h-3.5 w-3.5" />}
-          >
-            Confirm this card
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onEdit}
-            title="Edit this card locally before release"
-            leadingIcon={<Pencil className="h-3.5 w-3.5" />}
-          >
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onRemove}
-            title="Remove this card from the release review"
-            leadingIcon={<X className="h-3.5 w-3.5" />}
-          >
-            Remove
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onDefer}
-            title="Defer this card without rejecting the concept"
-            leadingIcon={<Clock3 className="h-3.5 w-3.5" />}
-          >
-            Defer
-          </Button>
-        </div>
+        {!isReleased && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={onConfirm}
+              title="Confirm this card for release review"
+              leadingIcon={<Check className="h-3.5 w-3.5" />}
+            >
+              Confirm this card
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onEdit}
+              title="Edit this card locally before release"
+              leadingIcon={<Pencil className="h-3.5 w-3.5" />}
+            >
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onRemove}
+              title="Remove this card from the release review"
+              leadingIcon={<X className="h-3.5 w-3.5" />}
+            >
+              Remove
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDefer}
+              title="Defer this card without rejecting the concept"
+              leadingIcon={<Clock3 className="h-3.5 w-3.5" />}
+            >
+              Defer
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1fr_0.9fr]">
@@ -783,10 +918,18 @@ function FinalReleaseReviewPanel({
   payload,
   isOpen,
   onToggle,
+  isReleasing,
+  releaseError,
+  onRelease,
+  isReleased,
 }: {
   payload: VisitCompletionReleasePayload;
   isOpen: boolean;
   onToggle: () => void;
+  isReleasing: boolean;
+  releaseError: string | null;
+  onRelease: () => void;
+  isReleased: boolean;
 }) {
   return (
     <div className="mx-5 mb-5 rounded-lg border border-border bg-surface px-4 py-4 shadow-sm lg:mx-6 lg:px-5">
@@ -812,15 +955,34 @@ function FinalReleaseReviewPanel({
           </p>
         </div>
 
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={onToggle}
-          title="Preview the structured release payload"
-          leadingIcon={<FileText className="h-3.5 w-3.5" />}
-        >
-          Preview release payload
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onToggle}
+            title="Preview the structured release payload"
+            leadingIcon={<FileText className="h-3.5 w-3.5" />}
+          >
+            Preview release payload
+          </Button>
+          {!isReleased && (
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={!payload.canRelease || isReleasing}
+              onClick={onRelease}
+              title="Release Care Plan"
+              leadingIcon={isReleasing ? <span className="animate-spin mr-1">⌛</span> : <Check className="h-3.5 w-3.5" />}
+            >
+              {isReleasing ? "Releasing..." : "Release Care Plan"}
+            </Button>
+          )}
+        </div>
+        {releaseError && (
+          <div className="mt-3 w-full rounded-md border border-danger/30 bg-red-50/50 px-3 py-2 text-xs text-danger">
+            {releaseError}
+          </div>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-center md:grid-cols-4">

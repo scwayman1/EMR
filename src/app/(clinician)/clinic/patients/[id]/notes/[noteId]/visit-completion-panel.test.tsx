@@ -1,8 +1,19 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { buildVisitCompletionBundle } from "@/lib/domain/visit-completion";
 import { VisitCompletionPanel } from "./visit-completion-panel";
+import type { VisitCompletionReleasePayload } from "@/lib/domain/visit-completion-selection";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    refresh: vi.fn(),
+  }),
+}));
+
+vi.mock("./actions", () => ({
+  releaseVisitCompletion: vi.fn(),
+}));
 
 function dump(node: React.ReactElement | null): string {
   return renderToStaticMarkup(node);
@@ -26,7 +37,7 @@ describe("VisitCompletionPanel", () => {
       },
     });
 
-    const str = dump(<VisitCompletionPanel bundle={bundle} />);
+    const str = dump(<VisitCompletionPanel bundle={bundle} noteId="note_1" />);
 
     expect(str).toContain("AI Visit Completion");
     expect(str).toContain("Suggested Next Best Actions");
@@ -69,6 +80,86 @@ describe("VisitCompletionPanel", () => {
     );
     expect(str).toContain("Physician remains in control.");
     expect(str).toContain("Learns from approvals, edits, removals, and deferrals.");
-    expect(str).not.toContain("disabled=\"\"");
+    // The Release Care Plan button should be disabled because not all cards are resolved
+    expect(str).toContain("disabled");
+  });
+
+  it("renders the released state and locks controls when releasedPayload is provided", () => {
+    const bundle = buildVisitCompletionBundle({
+      patientFirstName: "Miguel",
+      hasFutureAppointment: false,
+      blocks: [
+        {
+          heading: "Plan",
+          body: "Return to clinic in 6 weeks after medication adjustment.",
+        },
+      ],
+      codingSuggestion: {
+        emLevel: "99214",
+        rationale: "Chronic condition management with medication adjustment.",
+        icd10: [{ code: "G89.29", label: "Chronic pain", confidence: 0.88 }],
+      },
+    });
+
+    const releasedPayload: VisitCompletionReleasePayload = {
+      version: "visit-completion-release/v1",
+      releaseActionLabel: "Release Care Plan",
+      mode: "review_only_mvp",
+      status: "ready_for_physician_release",
+      canRelease: true,
+      summary: {
+        totalCards: 4,
+        includedCards: 4,
+        heldOutCards: 0,
+        unresolvedCards: 0,
+      },
+      sideEffects: {
+        clinical: false,
+        billing: false,
+        patientCommunication: false,
+        scheduling: false,
+        staffAssignment: false,
+        chartWrite: false,
+      },
+      includedSections: [
+        {
+          cardId: "orders" as const,
+          title: "Suggested Orders",
+          status: "confirmed" as const,
+          disposition: "include",
+          labels: ["Order CBC", "Order BMP"],
+          confirmationNote: "Approved",
+          requiresPhysicianApproval: true,
+        },
+      ],
+      heldOutSections: [],
+      unresolvedSections: [],
+      blockingCardIds: [],
+      auditEvents: [],
+      feedbackSignals: [],
+      safetyCopy: "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.",
+    };
+
+    const str = dump(
+      <VisitCompletionPanel
+        bundle={bundle}
+        releasedPayload={releasedPayload}
+        noteId="note_1"
+      />
+    );
+
+    // Released status checks
+    expect(str).toContain("Care Plan Released");
+    expect(str).toContain("Released");
+    expect(str).toContain("Care actions have been durably saved and routed.");
+    expect(str).toContain("Care Plan released.");
+    expect(str).toContain(
+      "Audited physician actions have been durably saved and task handoffs are routed to queues."
+    );
+
+    // UI components lock down check (buttons like Confirm this card or release action CTA should not render or should be disabled)
+    expect(str).not.toContain("Confirm this card");
+    expect(str).not.toContain("Release Care Plan</button>");
   });
 });
+

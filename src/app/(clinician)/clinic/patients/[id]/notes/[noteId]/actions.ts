@@ -31,6 +31,7 @@ import {
   type PatientDemeanor,
 } from "@/lib/domain/notes";
 import { advanceVisitState } from "@/lib/domain/visit-state";
+import type { VisitCompletionReleasePayload } from "@/lib/domain/visit-completion-selection";
 
 const blockSchema = z.object({
   heading: z.string(),
@@ -680,4 +681,155 @@ Return ONLY the refined text — no JSON, no markdown, no explanation. Just the 
       code: "unknown",
     };
   }
+}
+
+export async function releaseVisitCompletion(
+  noteId: string,
+  payload: VisitCompletionReleasePayload,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await requireUser();
+
+  if (!hasPermission(user, "notes.edit")) {
+    return { ok: false, error: "Forbidden: read-only access to notes" };
+  }
+
+  const note = await prisma.note.findUnique({
+    where: { id: noteId },
+    include: { encounter: true },
+  });
+  if (!note) return { ok: false, error: "Note not found" };
+
+  if (note.status !== "finalized") {
+    return { ok: false, error: "This note is not finalized and cannot be completed." };
+  }
+
+  // Verify org access
+  const encounter = await prisma.encounter.findFirst({
+    where: {
+      id: note.encounterId,
+      organizationId: user.organizationId!,
+    },
+  });
+  if (!encounter) return { ok: false, error: "Unauthorized" };
+
+  // Chart privacy gate
+  try {
+    await assertChartAccess(user, encounter.patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Forbidden: chart is restricted" };
+    }
+    throw err;
+  }
+
+  if (!payload.canRelease) {
+    return { ok: false, error: "Release is blocked; unresolved sections remain." };
+  }
+
+  // Idempotency: verify no existing release
+  const existing = await prisma.visitCompletion.findUnique({
+    where: { noteId },
+  });
+  if (existing) {
+    return { ok: false, error: "Visit completion has already been released." };
+  }
+
+  // Run the release inside a transaction to ensure all side-effects and DB entries land atomically
+  await prisma.$transaction(async (tx) => {
+    // 1. Create the VisitCompletion record
+    await tx.visitCompletion.create({
+      data: {
+        noteId,
+        organizationId: user.organizationId!,
+        patientId: encounter.patientId,
+        releasedById: user.id,
+        payload: payload as any,
+      },
+    });
+
+    // 2. Suggested Orders: Create a Task for the back-office order queue
+    const ordersSection = payload.includedSections.find((s) => s.cardId === "orders");
+    if (ordersSection && ordersSection.labels.length > 0) {
+      await tx.task.create({
+        data: {
+          organizationId: user.organizationId!,
+          patientId: encounter.patientId,
+          title: `Orders: ${ordersSection.labels.join(", ")}`,
+          description: `Suggested orders released by physician.\n\nNote: ${
+            ordersSection.editNote || ordersSection.confirmationNote || "Approved"
+          }`,
+          status: "open",
+          assigneeRole: "back_office",
+        },
+      });
+    }
+
+    // 3. Follow-Up Plan: Create a Task for front-office scheduling
+    const followUpSection = payload.includedSections.find((s) => s.cardId === "follow_up");
+    if (followUpSection && followUpSection.labels.length > 0) {
+      await tx.task.create({
+        data: {
+          organizationId: user.organizationId!,
+          patientId: encounter.patientId,
+          title: `Follow-Up: ${followUpSection.labels.join(", ")}`,
+          description: `Follow-up plan released by physician.\n\nNote: ${
+            followUpSection.editNote || followUpSection.confirmationNote || "Approved"
+          }`,
+          status: "open",
+          assigneeRole: "front_office",
+        },
+      });
+    }
+
+    // 4. Patient Communication: Create a draft Message to the patient
+    const commsSection = payload.includedSections.find((s) => s.cardId === "patient_message");
+    if (commsSection && commsSection.labels.length > 0) {
+      const thread = await tx.messageThread.findFirst({
+        where: { patientId: encounter.patientId },
+        orderBy: { lastMessageAt: "desc" },
+      });
+      const threadId =
+        thread?.id ??
+        (
+          await tx.messageThread.create({
+            data: {
+              patientId: encounter.patientId,
+              subject: "Care Plan & Next Steps",
+              lastMessageAt: new Date(),
+            },
+          })
+        ).id;
+
+      await tx.message.create({
+        data: {
+          threadId,
+          senderUserId: user.id,
+          status: "draft",
+          body: commsSection.editNote || commsSection.confirmationNote || commsSection.labels.join("\n"),
+          aiDrafted: true,
+          sentAt: null,
+        },
+      });
+    }
+
+    // 5. Create audit log entry (minimize PHI)
+    await tx.auditLog.create({
+      data: {
+        organizationId: user.organizationId!,
+        actorUserId: user.id,
+        action: "visit_completion.released",
+        subjectType: "VisitCompletion",
+        subjectId: noteId,
+        metadata: {
+          totalCards: payload.summary.totalCards,
+          includedCards: payload.summary.includedCards,
+          heldOutCards: payload.summary.heldOutCards,
+          version: payload.version,
+        } as any,
+      },
+    });
+  });
+
+  revalidatePath(`/clinic/patients/${encounter.patientId}`);
+  return { ok: true };
 }

@@ -36,6 +36,7 @@ export default async function NoteDetailPage({ params }: PageProps) {
         },
       },
       codingSuggestion: true,
+      visitCompletion: true,
     },
   });
 
@@ -149,7 +150,9 @@ export default async function NoteDetailPage({ params }: PageProps) {
           hasFutureAppointment: Boolean(futureAppointment),
         })
       : null;
-
+  const releasedPayload = note.visitCompletion
+    ? (note.visitCompletion.payload as any)
+    : null;
   return (
     <PageShell maxWidth="max-w-[900px]">
       <PageHeader
@@ -194,6 +197,7 @@ export default async function NoteDetailPage({ params }: PageProps) {
               ? ((note.encounter.briefingContext as Record<string, unknown>).patientDemeanor as any)
               : null
           }
+          releasedPayload={releasedPayload}
         />
       ) : canDocObjective ? (
         <StaffObjectiveEditor
@@ -210,7 +214,11 @@ export default async function NoteDetailPage({ params }: PageProps) {
       )}
 
       {!canEditNotes && visitCompletionBundle && (
-        <VisitCompletionPanel bundle={visitCompletionBundle} />
+        <VisitCompletionPanel
+          bundle={visitCompletionBundle}
+          releasedPayload={releasedPayload}
+          noteId={note.id}
+        />
       )}
 
       {/* ux/comments-mentions-collab — inline collaboration on chart notes */}
