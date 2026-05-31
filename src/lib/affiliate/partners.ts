@@ -29,6 +29,11 @@ const JOINT_DECISION_NOTE =
   "Adding any product to your regimen is a joint decision between you and your care team. Bring this product up at your next visit so we can document it and watch for interactions.";
 
 export const AFFILIATE_PARTNERS: AffiliatePartnerInfo[] = [
+  // EMR-204 — PhytoRx and Flower Powered are flagged as unconfirmed
+  // partners and held back from public surfaces until a real partnership
+  // is in place. Marked `archived` so `listAffiliatePartners()` and every
+  // store/leafmart partner section (which filter on `active`) skip them.
+  // Re-activate by flipping status to `active` once confirmed.
   {
     slug: "phytorx",
     name: "PhytoRx",
@@ -37,7 +42,7 @@ export const AFFILIATE_PARTNERS: AffiliatePartnerInfo[] = [
     description:
       "Physician-formulated CBD + CBG beverage concentrates for pain and recovery. Fast-absorbing emulsion technology developed with clinical input.",
     category: "Beverages",
-    status: "active",
+    status: "archived",
     disclaimerText: DEFAULT_DISCLAIMER,
     jointDecisionNote: JOINT_DECISION_NOTE,
     utmSource: "leafjourney",
@@ -51,7 +56,7 @@ export const AFFILIATE_PARTNERS: AffiliatePartnerInfo[] = [
     description:
       "Full line of CBD-only wellness products. Topicals, balms, and creams. Third-party tested, physician-recommended.",
     category: "Topicals",
-    status: "active",
+    status: "archived",
     disclaimerText: DEFAULT_DISCLAIMER,
     jointDecisionNote: JOINT_DECISION_NOTE,
     utmSource: "leafjourney",

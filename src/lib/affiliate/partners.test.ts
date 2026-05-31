@@ -21,6 +21,14 @@ describe("affiliate partners registry", () => {
     expect(list.every((p) => p.status === "active")).toBe(true);
   });
 
+  // EMR-204 — PhytoRx and Flower Powered are unconfirmed and must not
+  // surface on public partner sections until a real partnership exists.
+  it("excludes unconfirmed partners (PhytoRx, Flower Powered) from public list", () => {
+    const publicSlugs = listAffiliatePartners().map((p) => p.slug);
+    expect(publicSlugs).not.toContain("phytorx");
+    expect(publicSlugs).not.toContain("flower-powered-products");
+  });
+
   it("every partner ships a disclaimer + joint decision note", () => {
     for (const p of AFFILIATE_PARTNERS) {
       expect(p.disclaimerText.length).toBeGreaterThan(20);

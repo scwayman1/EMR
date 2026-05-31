@@ -1,60 +1,132 @@
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
+import { computeQueueTransition } from "@/lib/domain/visit-state";
 import { logger } from "@/lib/observability/log";
 
-// EMR-029: Patient Kiosk App API
-// Receives check-in payloads from the front-desk iPad kiosk. Updates the patient's
-// wait state and alerts the clinician.
+const CheckInSchema = z.object({
+  encounterId: z.string().min(1),
+  patientId: z.string().min(1),
+  signedForms: z.unknown().optional(),
+});
 
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get("authorization") ?? "";
     const secret = process.env.KIOSK_SECRET ?? "";
-    
+
     if (process.env.NODE_ENV === "production" && authHeader !== `Bearer ${secret}`) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const payload = await req.json();
-
-    if (!payload.encounterId || !payload.patientId) {
+    const parsed = CheckInSchema.safeParse(await req.json());
+    if (!parsed.success) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // 1. Move the Encounter into the active queue.
-    // Schema's EncounterStatus enum doesn't have a dedicated `arrived` value yet;
-    // `in_progress` is the closest fit until the schema gains an explicit waiting-room state.
-    const encounter = await prisma.encounter.update({
-      where: { id: payload.encounterId },
-      data: {
-        status: "in_progress",
-        updatedAt: new Date()
-      }
+    const payload = parsed.data;
+    const encounter = await prisma.encounter.findFirst({
+      where: {
+        id: payload.encounterId,
+        patientId: payload.patientId,
+      },
+      include: {
+        patient: {
+          select: {
+            id: true,
+            intakeAnswers: true,
+            organizationId: true,
+          },
+        },
+      },
     });
 
-    // 2. Append forms if they signed any on the kiosk
-    if (payload.signedForms) {
-      await prisma.patient.update({
-        where: { id: payload.patientId },
+    if (!encounter) {
+      return NextResponse.json(
+        { error: "Encounter not found for patient" },
+        { status: 404 },
+      );
+    }
+
+    if (encounter.organizationId !== encounter.patient.organizationId) {
+      return NextResponse.json(
+        { error: "Encounter organization mismatch" },
+        { status: 409 },
+      );
+    }
+
+    const next = computeQueueTransition(encounter, "checked_in");
+    if (!next.ok) {
+      return NextResponse.json({ error: next.error }, { status: 409 });
+    }
+
+    let status = next.data.status as string;
+    if (next.data.status !== encounter.status) {
+      const updated = await prisma.encounter.update({
+        where: { id: encounter.id },
+        data: next.data as Prisma.EncounterUpdateInput,
+      });
+      status = updated.status;
+
+      await prisma.auditLog.create({
         data: {
-          intakeAnswers: payload.signedForms
-        }
+          organizationId: encounter.organizationId,
+          actorUserId: null,
+          action: "encounter.kiosk_check_in.completed",
+          subjectType: "Encounter",
+          subjectId: encounter.id,
+          metadata: {
+            from: encounter.status,
+            to: "checked_in",
+            channel: "kiosk",
+          },
+        },
       });
     }
 
-    logger.info({ 
-      event: "kiosk.check_in.success", 
-      encounterId: encounter.id, 
-      patientId: payload.patientId 
+    if (payload.signedForms !== undefined) {
+      await prisma.patient.update({
+        where: { id: encounter.patient.id },
+        data: {
+          intakeAnswers: mergeSignedForms(
+            encounter.patient.intakeAnswers,
+            payload.signedForms,
+          ) as Prisma.InputJsonValue,
+        },
+      });
+    }
+
+    logger.info({
+      event: "kiosk.check_in.success",
+      encounterId: encounter.id,
+      patientId: payload.patientId,
     });
 
-    return NextResponse.json({ 
-      success: true, 
-      status: "arrived"
+    return NextResponse.json({
+      success: true,
+      status,
     });
 
   } catch (error) {
     logger.error({ event: "kiosk.check_in.failed", error });
     return NextResponse.json({ error: "Failed to process kiosk check-in" }, { status: 500 });
   }
+}
+
+function mergeSignedForms(intakeAnswers: unknown, signedForms: unknown): Record<string, unknown> {
+  const current = isRecord(intakeAnswers) ? intakeAnswers : {};
+  const existingForms = isRecord(current.signedForms) ? current.signedForms : {};
+
+  return {
+    ...current,
+    signedForms: {
+      ...existingForms,
+      ...(isRecord(signedForms) ? signedForms : { value: signedForms }),
+    },
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

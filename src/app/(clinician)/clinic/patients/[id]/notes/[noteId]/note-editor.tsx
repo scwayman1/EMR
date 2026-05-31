@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +20,13 @@ import {
   type NoteBlockType,
 } from "@/lib/domain/notes";
 import { LeafSprig } from "@/components/ui/ornament";
-import { DictateButton, useDictation } from "@/components/ui/dictation";
+import { DictateButton } from "@/components/ui/dictation";
+import { SoapDictation } from "@/components/clinical/SoapDictation";
 import {
-  applyMedicalFixups,
-  splitIntoApsoSections,
-} from "@/lib/clinical/voice-dictation";
+  ensureSoapBlocks,
+  mergeDictatedBody,
+  OBJECTIVE_DICTATION_PREF_KEY,
+} from "@/lib/clinical/dictation-routing";
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { NoteTemplatePicker, type PickerBlock } from "@/components/clinical/note-template-picker";
 import { NOTE_BLOCK_LABELS as NB_LABELS } from "@/lib/domain/notes";
@@ -164,22 +166,61 @@ export function NoteEditor({
 
   const isEditable = currentStatus === "draft" || currentStatus === "needs_review";
 
-  // EMR-135 — "Dictate full note": one continuous dictation stream that the
-  // clinician narrates with spoken section cues ("Subjective… Assessment…
-  // Plan…"). We accumulate the running transcript, normalize medical
-  // vocabulary, and split it into APSO sections so it can be routed into the
-  // matching blocks on an explicit Apply (never silently). Objective stays
-  // human-authored per the Dr. Patel directive, so we surface any
-  // objective-cued speech for manual entry rather than writing it.
-  const [apsoTranscript, setApsoTranscript] = useState("");
-  const handleApsoFinal = useCallback((text: string) => {
-    setApsoTranscript((prev) => `${prev}${prev && !/\s$/.test(prev) ? " " : ""}${text}`);
+  // Whole-visit dictation (SOAP routing). The Objective opt-in is a
+  // per-physician setting (default off — staff document vitals), stored in the
+  // same `emr.prefs.v1.*` localStorage namespace the Preferences page uses.
+  const [objectiveDictation, setObjectiveDictation] = useState(false);
+  useEffect(() => {
+    try {
+      setObjectiveDictation(
+        window.localStorage.getItem(OBJECTIVE_DICTATION_PREF_KEY) === "1",
+      );
+    } catch {
+      /* private mode — keep default off */
+    }
   }, []);
-  const apsoDictation = useDictation({ onFinal: handleApsoFinal });
-  const sectioned = useMemo(
-    () => splitIntoApsoSections(applyMedicalFixups(apsoTranscript)),
-    [apsoTranscript],
-  );
+  const objectiveDictationRef = useRef(objectiveDictation);
+  useEffect(() => {
+    objectiveDictationRef.current = objectiveDictation;
+  }, [objectiveDictation]);
+  // Snapshot of each block's body when dictation starts, so streaming updates
+  // append to a stable base instead of compounding on every chunk.
+  const dictationBaseRef = useRef<Partial<Record<NoteBlockType, string>>>({});
+
+  function handleObjectiveToggle(next: boolean) {
+    setObjectiveDictation(next);
+    try {
+      window.localStorage.setItem(OBJECTIVE_DICTATION_PREF_KEY, next ? "1" : "0");
+    } catch {
+      /* private mode — toggle still applies for this session */
+    }
+  }
+
+  function handleDictationStart() {
+    setBlocks((prev) => {
+      const ensured = ensureSoapBlocks(prev, objectiveDictationRef.current) as NoteBlock[];
+      const base: Partial<Record<NoteBlockType, string>> = {};
+      for (const b of ensured) if (b.type) base[b.type] = b.body;
+      dictationBaseRef.current = base;
+      return ensured;
+    });
+  }
+
+  function handleDictationSections(
+    byType: Partial<Record<NoteBlockType, string>>,
+  ) {
+    setBlocks((prev) =>
+      prev.map((b) => {
+        if (b.type && byType[b.type] !== undefined) {
+          return {
+            ...b,
+            body: mergeDictatedBody(dictationBaseRef.current[b.type] ?? "", byType[b.type]!),
+          };
+        }
+        return b;
+      }),
+    );
+  }
 
   function updateBlock(index: number, field: "heading" | "body", value: string) {
     setBlocks((prev) => {
@@ -187,47 +228,6 @@ export function NoteEditor({
       next[index] = { ...next[index], [field]: value };
       return next;
     });
-  }
-
-  // Append routed text to the first block of a given APSO type, additively
-  // (existing content is preserved). Returns whether a target block existed.
-  function appendToBlockType(type: NoteBlockType, text: string): boolean {
-    const clean = text.trim();
-    if (!clean) return false;
-    let applied = false;
-    setBlocks((prev) => {
-      const idx = prev.findIndex((b) => b.type === type);
-      if (idx === -1) return prev;
-      applied = true;
-      const next = [...prev];
-      const body = next[idx].body ?? "";
-      const sep = body.trim() ? "\n\n" : "";
-      next[idx] = { ...next[idx], body: `${body}${sep}${clean}` };
-      return next;
-    });
-    return applied;
-  }
-
-  // Route the dictated sections into their blocks. Subjective absorbs any
-  // pre-cue ("unfiled") preamble. Objective is intentionally left for the
-  // clinician to type from the preview.
-  function applyApsoDictation() {
-    if (apsoDictation.status === "listening") apsoDictation.stop();
-    const subjective = [sectioned.unfiled, sectioned.subjective]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-    appendToBlockType("summary", subjective);
-    appendToBlockType("assessment", sectioned.assessment);
-    appendToBlockType("plan", sectioned.plan);
-    setApsoTranscript("");
-    setSaveMessage("Dictation routed into the note");
-    setTimeout(() => setSaveMessage(null), 2000);
-  }
-
-  function clearApsoDictation() {
-    if (apsoDictation.status === "listening") apsoDictation.stop();
-    setApsoTranscript("");
   }
 
   // EMR-174 — applying a template overwrites the current blocks. Picker
@@ -434,6 +434,17 @@ export function NoteEditor({
         />
       </div>
 
+      {/* Whole-visit dictation → SOAP. Speak the visit with section cues and
+          each block fills itself. Objective is a per-physician setting. */}
+      {isEditable && (
+        <SoapDictation
+          includeObjective={objectiveDictation}
+          onToggleObjective={handleObjectiveToggle}
+          onStart={handleDictationStart}
+          onSections={handleDictationSections}
+        />
+      )}
+
       {/* Emotional vitals — EMR-134: emoji demeanor scale persisted to encounter */}
       {isEditable && (
         <div className="flex items-center gap-3 flex-wrap">
@@ -466,88 +477,6 @@ export function NoteEditor({
             </span>
           )}
         </div>
-      )}
-
-      {/* Dictate full note — EMR-135: one stream, auto-routed to APSO
-          sections via spoken cues. Per-section mics (below) remain for
-          targeted dictation. */}
-      {isEditable && apsoDictation.status !== "unsupported" && (
-        <Card tone="ambient">
-          <CardContent className="py-4 space-y-3">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={apsoDictation.toggle}
-                  disabled={apsoDictation.status === "denied"}
-                  aria-pressed={apsoDictation.status === "listening"}
-                  className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    apsoDictation.status === "listening"
-                      ? "bg-danger/15 text-danger animate-pulse"
-                      : "bg-surface-muted text-text-subtle hover:bg-accent/10 hover:text-accent border border-border/40"
-                  } disabled:opacity-50`}
-                >
-                  <span aria-hidden="true">🎙</span>
-                  {apsoDictation.status === "listening"
-                    ? "Stop dictating"
-                    : "Dictate full note"}
-                </button>
-                <span className="text-[11px] text-text-subtle">
-                  {apsoDictation.status === "denied"
-                    ? "Microphone permission denied"
-                    : "Say “Subjective…”, “Assessment…”, “Plan…” to route as you speak"}
-                </span>
-              </div>
-              {apsoTranscript.trim() && (
-                <div className="flex items-center gap-2">
-                  <Button size="sm" variant="secondary" onClick={clearApsoDictation}>
-                    Clear
-                  </Button>
-                  <Button size="sm" variant="primary" onClick={applyApsoDictation}>
-                    Apply to note
-                  </Button>
-                </div>
-              )}
-            </div>
-            {apsoTranscript.trim() && (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    // Subjective absorbs any pre-cue preamble, matching Apply.
-                    [
-                      "Subjective",
-                      [sectioned.unfiled, sectioned.subjective].filter(Boolean).join(" "),
-                    ],
-                    ["Assessment", sectioned.assessment],
-                    ["Plan", sectioned.plan],
-                  ] as const
-                ).map(([label, text]) =>
-                  text.trim() ? (
-                    <div
-                      key={label}
-                      className="rounded-md border border-border/50 bg-surface/60 px-3 py-2"
-                    >
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-accent font-medium mb-1">
-                        {label}
-                      </p>
-                      <p className="text-xs text-text-muted leading-relaxed">{text}</p>
-                    </div>
-                  ) : null,
-                )}
-                {sectioned.objective.trim() && (
-                  <div className="rounded-md border border-border/50 bg-surface/60 px-3 py-2 sm:col-span-2">
-                    <p className="text-[10px] uppercase tracking-[0.12em] text-text-subtle font-medium mb-1">
-                      Objective — enter manually
-                    </p>
-                    <p className="text-xs text-text-muted leading-relaxed">
-                      {sectioned.objective}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
       )}
 
       {/* Note blocks */}
@@ -587,9 +516,11 @@ export function NoteEditor({
                       omitForObjective={block.type === "findings"}
                       placeholder="Note content. Use the toolbar or type / for block commands."
                       aria-label={`${block.heading} body`}
-                      textareaClassName={block.type === "findings" ? "" : "pr-10"}
+                      textareaClassName={
+                        block.type !== "findings" || objectiveDictation ? "pr-10" : ""
+                      }
                     />
-                    {block.type !== "findings" && (
+                    {(block.type !== "findings" || objectiveDictation) && (
                       <DictateButton
                         onText={(text) => {
                           const sep = block.body && !/\s$/.test(block.body) ? " " : "";

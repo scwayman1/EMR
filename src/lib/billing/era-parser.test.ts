@@ -91,6 +91,22 @@ describe("parseEra835", () => {
     expect(era.claimPayments[0].totalPaidCents).toBeLessThan(0);
   });
 
+  it("uses the BPR16 effective date as the check date", () => {
+    const era = parseEra835(MINIMAL_835);
+    expect(era.checkDate).toEqual(new Date(Date.UTC(2006, 2, 10)));
+  });
+
+  it("falls back to the DTM*405 production date when BPR16 is omitted", () => {
+    // Drop the trailing BPR16 effective date (last element of the BPR
+    // segment) so the parser must fall back to DTM*405 (20060310).
+    const noBprDate = MINIMAL_835.replace(
+      "DA*98765*20060310~",
+      "DA*98765~",
+    );
+    const era = parseEra835(noBprDate);
+    expect(era.checkDate).toEqual(new Date(Date.UTC(2006, 2, 10)));
+  });
+
   it("throws Era835ParseError when TRN trace is missing", () => {
     const broken = MINIMAL_835.replace("TRN*1*EFT12345*1234567890~", "");
     expect(() => parseEra835(broken)).toThrow(Era835ParseError);

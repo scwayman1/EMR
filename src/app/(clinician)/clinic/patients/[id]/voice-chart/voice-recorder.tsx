@@ -23,6 +23,8 @@ import {
   startVoiceEncounter,
   processTranscript,
   saveTranscriptToEncounter,
+  recommendCodes,
+  type RecommendedCode,
 } from "./actions";
 import { saveAndFinalizeNote } from "../notes/[noteId]/actions";
 
@@ -561,8 +563,9 @@ export function VoiceRecorder({
 
   // Billing & Sign-off States
   const [acceptedCodes, setAcceptedCodes] = useState<string[]>([]);
+  const [billingCodes, setBillingCodes] = useState<RecommendedCode[]>([]);
+  const [codesLoading, setCodesLoading] = useState(false);
   const [isSignOffModalOpen, setIsSignOffModalOpen] = useState(false);
-  const [signOffPassword, setSignOffPassword] = useState("");
   const [signOffError, setSignOffError] = useState<string | null>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
 
@@ -762,6 +765,17 @@ export function VoiceRecorder({
         setDocumentHeader(result.documentHeader);
         setSectionOrder(result.sectionOrder);
         setState("complete");
+
+        // Generate grounded billing codes for this note (replaces the old
+        // hardcoded placeholder list). Fire-and-forget; the panel shows a
+        // loading state until it resolves.
+        setCodesLoading(true);
+        setBillingCodes([]);
+        void recommendCodes(result.noteId)
+          .then((res) => {
+            if (res.ok) setBillingCodes(res.codes);
+          })
+          .finally(() => setCodesLoading(false));
       } else {
         setError(result.error);
         setState("idle");
@@ -1452,30 +1466,23 @@ export function VoiceRecorder({
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {[
-                      {
-                        code: "99214",
-                        type: "CPT",
-                        desc: "Outpatient visit, 30-39 min",
-                        conf: "95%",
-                      },
-                      {
-                        code: "G89.3",
-                        type: "ICD-10",
-                        desc: "Neoplasm related pain (chronic)",
-                        conf: "92%",
-                      },
-                      {
-                        code: "F51.01",
-                        type: "ICD-10",
-                        desc: "Primary insomnia",
-                        conf: "88%",
-                      },
-                    ].map((item) => {
+                    {codesLoading && (
+                      <p className="text-xs text-text-subtle py-2">
+                        Analyzing the note for supported codes…
+                      </p>
+                    )}
+                    {!codesLoading && billingCodes.length === 0 && (
+                      <p className="text-xs text-text-subtle py-2">
+                        No codes are clearly supported by the documentation yet.
+                        Add detail to the note and re-run, or code manually.
+                      </p>
+                    )}
+                    {billingCodes.map((item) => {
                       const isAccepted = acceptedCodes.includes(item.code);
+                      const pct = Math.round(item.confidence * 100);
                       return (
                         <div
-                          key={item.code}
+                          key={`${item.type}-${item.code}`}
                           className="flex items-center justify-between p-3 rounded-lg border border-border bg-surface-muted"
                         >
                           <div className="space-y-1">
@@ -1486,11 +1493,20 @@ export function VoiceRecorder({
                               <span className="font-mono font-bold text-sm text-text">
                                 {item.code}
                               </span>
-                              <span className="text-[10px] text-success font-semibold">
-                                ({item.conf} match)
+                              <span
+                                className={cn(
+                                  "text-[10px] font-semibold",
+                                  pct >= 80
+                                    ? "text-success"
+                                    : pct >= 60
+                                      ? "text-warning"
+                                      : "text-text-subtle",
+                                )}
+                              >
+                                ({pct}% supported)
                               </span>
                             </div>
-                            <p className="text-xs text-text-subtle">{item.desc}</p>
+                            <p className="text-xs text-text-subtle">{item.label}</p>
                           </div>
                           <button
                             onClick={() => {
@@ -1555,7 +1571,7 @@ export function VoiceRecorder({
         </div>
       )}
 
-      {/* ── Sign-off Password Modal ────────────────── */}
+      {/* ── Sign-off Confirmation Modal ────────────────── */}
       {isSignOffModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface p-6 rounded-xl border border-border shadow-2xl max-w-md w-full space-y-4 animate-in fade-in zoom-in-95 duration-150 text-left">
@@ -1563,33 +1579,22 @@ export function VoiceRecorder({
               <span className="text-2xl">✍️</span>
               <div>
                 <h3 className="font-display font-semibold text-text text-base">
-                  Clinician Sign-off Signature
+                  Clinician Sign-off Confirmation
                 </h3>
                 <p className="text-xs text-text-subtle">
-                  Enter your clinician password to sign this medical record.
+                  Are you sure you want to finalize and sign this clinical note? This action is legally binding.
                 </p>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-text block">Password Required</label>
-              <input
-                type="password"
-                value={signOffPassword}
-                onChange={(e) => setSignOffPassword(e.target.value)}
-                placeholder="Enter password (e.g. password)"
-                className="w-full text-sm text-text bg-surface border border-border rounded-lg p-2.5 focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-              {signOffError && (
-                <p className="text-xs text-danger font-medium">{signOffError}</p>
-              )}
-            </div>
+            {signOffError && (
+              <p className="text-xs text-danger font-medium">{signOffError}</p>
+            )}
 
             <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
               <button
                 onClick={() => {
                   setIsSignOffModalOpen(false);
-                  setSignOffPassword("");
                   setSignOffError(null);
                 }}
                 className="px-4 py-2 text-sm font-semibold border border-border rounded-lg text-text-muted hover:text-text hover:bg-surface-muted transition-colors"
@@ -1599,15 +1604,6 @@ export function VoiceRecorder({
               </button>
               <button
                 onClick={async () => {
-                  if (!signOffPassword) {
-                    setSignOffError("Password is required.");
-                    return;
-                  }
-                  // Allow password or password123, or any password for clinician credential signing
-                  if (signOffPassword !== "password" && signOffPassword !== "password123") {
-                    setSignOffError("Invalid password. Please check your credentials.");
-                    return;
-                  }
                   await handleFinalizeAndSign();
                 }}
                 className="px-4 py-2 text-sm font-semibold rounded-lg bg-accent text-accent-ink hover:opacity-90 transition-colors flex items-center gap-2"

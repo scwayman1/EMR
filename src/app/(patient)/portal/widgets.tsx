@@ -338,7 +338,7 @@ export async function RhythmsWidget({ userId }: { userId: string }) {
             </p>
             <HealthRings 
               checkinProgress={hasCheckedInToday ? 1 : 0} 
-              adherenceProgress={latestAdherence !== null ? latestAdherence / 100 : 0.2} 
+              adherenceProgress={latestAdherence !== undefined ? latestAdherence / 100 : 0.2}
               intakeProgress={intakeComplete / 100} 
               size={120} 
               strokeWidth={12} 

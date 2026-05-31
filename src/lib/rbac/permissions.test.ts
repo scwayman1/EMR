@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Role } from "@prisma/client";
 import {
+  canDocumentObjective,
   canEditSection,
   canViewSection,
   ForbiddenError,
@@ -73,6 +74,26 @@ describe("hasPermission — clinician", () => {
 
   it("can manage chart privacy", () => {
     expect(hasPermission(user("clinician"), "chart.privacy.manage")).toBe(true);
+  });
+});
+
+describe("canDocumentObjective — staffing workflow", () => {
+  it("back_office (MAs) can document Objective but still cannot edit the note", () => {
+    const u = user("back_office");
+    expect(hasPermission(u, "notes.objective.document")).toBe(true);
+    expect(canDocumentObjective(u)).toBe(true);
+    // Scoped: must NOT grant full note editing.
+    expect(hasPermission(u, "notes.edit")).toBe(false);
+  });
+
+  it("front_office cannot document the Objective", () => {
+    expect(canDocumentObjective(user("front_office"))).toBe(false);
+    expect(hasPermission(user("front_office"), "notes.objective.document")).toBe(false);
+  });
+
+  it("clinicians and mid-levels can document Objective via notes.edit", () => {
+    expect(canDocumentObjective(user("clinician"))).toBe(true);
+    expect(canDocumentObjective(user("midlevel"))).toBe(true);
   });
 });
 

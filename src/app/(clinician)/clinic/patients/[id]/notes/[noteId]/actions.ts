@@ -6,9 +6,15 @@ import { requireUser } from "@/lib/auth/session";
 import {
   ForbiddenError,
   assertChartAccess,
+  canDocumentObjective,
   hasPermission,
   requiresCosignature,
 } from "@/lib/rbac/permissions";
+import { primaryRole } from "@/lib/rbac/roles";
+import {
+  composeObjectiveBody,
+  type Vitals,
+} from "@/lib/clinical/objective-vitals";
 import { dispatch } from "@/lib/orchestration/dispatch";
 import { runTick } from "@/lib/orchestration/runner";
 import {
@@ -24,6 +30,7 @@ import {
   PATIENT_DEMEANOR_OPTIONS,
   type PatientDemeanor,
 } from "@/lib/domain/notes";
+import { advanceVisitState } from "@/lib/domain/visit-state";
 
 const blockSchema = z.object({
   heading: z.string(),
@@ -129,6 +136,15 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     }
     throw err;
   }
+
+  // Idempotent finalize — a note already finalized must NOT re-run the
+  // transition side effects. dispatch() has no dedup, so a second
+  // note.finalized / encounter.completed duplicates physician tasks, patient
+  // outreach drafts, and clinical observations. Short-circuit on the terminal
+  // state (the cosign path below is reached only by non-finalized notes).
+  if (note.status === "finalized") {
+    return { ok: true, status: "finalized" };
+  }
   // EMR-784: Before finalizing, ensure an AI-drafted note still carries
   // the patient verbal-consent disclaimer. Defends against a clinician
   // deleting it during cleanup before signing.
@@ -159,27 +175,37 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     return { ok: true, status: "pending_cosign" };
   }
 
+  // One timestamp shared by the note write, the encounter completion, and the
+  // event payloads — so DB rows and downstream automation agree on the instant.
+  const finalizedAt = new Date();
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
       ...(blocksAtFinalize ? { blocks: blocksAtFinalize as any } : {}),
       status: "finalized",
-      finalizedAt: new Date(),
+      finalizedAt,
       authorUserId: user.id,
     },
   });
 
-  // Also mark the encounter as complete
-  await prisma.encounter.update({
-    where: { id: note.encounterId },
-    data: { status: "complete", completedAt: new Date() },
-  });
+  // Move the encounter to complete through the visit-state spine.
+  // `transitioned` is true only on the actual transition into complete, so a
+  // second note finalizing on an already-complete encounter does not re-fire
+  // encounter.completed.
+  const { transitioned: encounterCompleted } = await advanceVisitState(
+    encounter,
+    "complete",
+    user.id,
+    { at: finalizedAt },
+  );
 
   // If every note for this encounter is now finalized, stamp
   // chartingCompletedAt so the Clinical Flow tile can compute carryover.
-  await markChartingCompletedIfReady(note.encounterId);
+  await markChartingCompletedIfReady(note.encounterId, finalizedAt);
 
-  // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
+  // note.finalized → Coding Agent + Physician Nudge Agent. This call is the
+  // transition into finalized (guarded above), so it fires exactly once.
   await dispatch({
     name: "note.finalized",
     noteId,
@@ -187,13 +213,16 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
     finalizedBy: user.id,
   });
 
-  // Dispatch encounter.completed → triggers Patient Outreach Agent
-  await dispatch({
-    name: "encounter.completed",
-    encounterId: note.encounterId,
-    patientId: encounter.patientId,
-    completedAt: new Date(),
-  });
+  // encounter.completed → Patient Outreach / Outcome agents. Only on the
+  // transition into complete.
+  if (encounterCompleted) {
+    await dispatch({
+      name: "encounter.completed",
+      encounterId: note.encounterId,
+      patientId: encounter.patientId,
+      completedAt: finalizedAt,
+    });
+  }
 
   // In dev, run the queue inline so coding suggestions appear immediately
   if (process.env.NODE_ENV !== "production") {
@@ -210,15 +239,20 @@ export async function finalizeNote(noteId: string): Promise<SaveNoteResult> {
  * documentation-complete marker, distinct from completedAt (= when the
  * physician stopped seeing the patient).
  */
-async function markChartingCompletedIfReady(encounterId: string): Promise<void> {
+async function markChartingCompletedIfReady(
+  encounterId: string,
+  at: Date = new Date(),
+): Promise<void> {
   const unfinalized = await prisma.note.count({
     where: { encounterId, status: { not: "finalized" } },
   });
   if (unfinalized > 0) return;
 
-  await prisma.encounter.update({
-    where: { id: encounterId },
-    data: { chartingCompletedAt: new Date() },
+  // Stamp only if not already set — preserve the FIRST completion instant so a
+  // note added to an already-charted encounter doesn't rewrite history.
+  await prisma.encounter.updateMany({
+    where: { id: encounterId, chartingCompletedAt: null },
+    data: { chartingCompletedAt: at },
   });
 }
 
@@ -257,6 +291,11 @@ export async function saveAndFinalizeNote(
     }
     throw err;
   }
+  // Idempotent finalize — see finalizeNote. An already-finalized note must not
+  // re-dispatch the transition events (dispatch() has no dedup).
+  if (note.status === "finalized") {
+    return { ok: true, status: "finalized" };
+  }
   // EMR-784: AI-drafted notes (voice/ambient scribe) must keep the
   // patient verbal-consent disclaimer through finalize, even if the
   // clinician edited it out.
@@ -283,12 +322,15 @@ export async function saveAndFinalizeNote(
     return { ok: true, status: "pending_cosign" };
   }
 
+  // One shared timestamp for the note write, encounter completion, and events.
+  const finalizedAt = new Date();
+
   await prisma.note.update({
     where: { id: noteId },
     data: {
       blocks: blocksToFinalize as any,
       status: "finalized",
-      finalizedAt: new Date(),
+      finalizedAt,
       authorUserId: user.id,
     },
   });
@@ -306,15 +348,18 @@ export async function saveAndFinalizeNote(
     });
   }
 
-  // Also mark the encounter as complete
-  await prisma.encounter.update({
-    where: { id: note.encounterId },
-    data: { status: "complete", completedAt: new Date() },
-  });
+  // Move the encounter to complete via the visit-state spine — transition-gated
+  // so encounter.completed fires exactly once.
+  const { transitioned: encounterCompleted } = await advanceVisitState(
+    encounter,
+    "complete",
+    user.id,
+    { at: finalizedAt },
+  );
 
   // If every note for this encounter is now finalized, stamp
   // chartingCompletedAt so the Clinical Flow tile can compute carryover.
-  await markChartingCompletedIfReady(note.encounterId);
+  await markChartingCompletedIfReady(note.encounterId, finalizedAt);
 
   // Dispatch note.finalized → triggers Coding Agent + Physician Nudge Agent
   await dispatch({
@@ -324,13 +369,16 @@ export async function saveAndFinalizeNote(
     finalizedBy: user.id,
   });
 
-  // Dispatch encounter.completed → triggers Patient Outreach Agent
-  await dispatch({
-    name: "encounter.completed",
-    encounterId: note.encounterId,
-    patientId: encounter.patientId,
-    completedAt: new Date(),
-  });
+  // Dispatch encounter.completed → triggers Patient Outreach Agent. Only on the
+  // transition into complete.
+  if (encounterCompleted) {
+    await dispatch({
+      name: "encounter.completed",
+      encounterId: note.encounterId,
+      patientId: encounter.patientId,
+      completedAt: finalizedAt,
+    });
+  }
 
   if (process.env.NODE_ENV !== "production") {
     await runTick("inline-dev", 4);
@@ -422,6 +470,126 @@ export async function saveEmotionalVital(
 
   revalidatePath(`/clinic/patients/${encounter.patientId}`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Objective / vitals staffing workflow
+// ---------------------------------------------------------------------------
+// Rooming staff (MAs) document the Objective section before the physician
+// sees the patient. This action is scoped to the "findings" block ONLY —
+// it never touches Assessment/Plan/Subjective and never finalizes — gated by
+// the `notes.objective.document` capability (canDocumentObjective).
+
+const vitalsSchema = z.object({
+  systolic: z.number().min(0).max(400).nullable().optional(),
+  diastolic: z.number().min(0).max(300).nullable().optional(),
+  heartRate: z.number().min(0).max(400).nullable().optional(),
+  temperature: z.number().min(50).max(115).nullable().optional(),
+  tempUnit: z.enum(["F", "C"]).optional(),
+  respiratoryRate: z.number().min(0).max(120).nullable().optional(),
+  spo2: z.number().min(0).max(100).nullable().optional(),
+  weight: z.number().min(0).max(2000).nullable().optional(),
+  weightUnit: z.enum(["lb", "kg"]).optional(),
+  pain: z.number().min(0).max(10).nullable().optional(),
+});
+
+const objectiveDocSchema = z.object({
+  vitals: vitalsSchema,
+  exam: z.string().max(8000),
+});
+
+export async function saveObjectiveDocumentation(
+  noteId: string,
+  input: { vitals: Vitals; exam: string },
+): Promise<SaveNoteResult> {
+  const user = await requireUser();
+
+  // Scoped capability — MAs carry this without full `notes.edit`.
+  if (!canDocumentObjective(user)) {
+    return { ok: false, error: "Forbidden: cannot document the Objective section" };
+  }
+
+  const parsed = objectiveDocSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid vitals or exam input" };
+  }
+
+  const note = await prisma.note.findUnique({
+    where: { id: noteId },
+    include: { encounter: true },
+  });
+  if (!note) return { ok: false, error: "Note not found" };
+
+  const encounter = await prisma.encounter.findFirst({
+    where: { id: note.encounterId, organizationId: user.organizationId! },
+  });
+  if (!encounter) return { ok: false, error: "Unauthorized" };
+
+  try {
+    await assertChartAccess(user, encounter.patientId);
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: "Forbidden: chart is restricted" };
+    }
+    throw err;
+  }
+
+  if (note.status === "finalized") {
+    return { ok: false, error: "This note is signed and can no longer be edited." };
+  }
+
+  const body = composeObjectiveBody(parsed.data);
+  const attribution = {
+    objectiveVitals: parsed.data.vitals,
+    objectiveExam: parsed.data.exam,
+    documentedByUserId: user.id,
+    documentedByName: `${user.firstName} ${user.lastName}`.trim(),
+    documentedByRole: primaryRole(user.roles),
+    documentedAt: new Date().toISOString(),
+  };
+
+  // Merge into ONLY the findings block; every other block is preserved
+  // byte-for-byte (including the internal _scribe / _guardrails blocks).
+  const existing: any[] = Array.isArray(note.blocks) ? (note.blocks as any[]) : [];
+  let found = false;
+  const nextBlocks = existing.map((b) => {
+    if (b && typeof b === "object" && (b as any).type === "findings") {
+      found = true;
+      return {
+        ...b,
+        heading: (b as any).heading ?? "Objective",
+        body,
+        metadata: { ...((b as any).metadata ?? {}), ...attribution },
+      };
+    }
+    return b;
+  });
+  if (!found) {
+    nextBlocks.push({ type: "findings", heading: "Objective", body, metadata: attribution });
+  }
+
+  await prisma.note.update({
+    where: { id: noteId },
+    data: { blocks: nextBlocks as any },
+  });
+
+  // Audit the staff PHI write (non-physician documenting on the chart).
+  await prisma.auditLog.create({
+    data: {
+      organizationId: user.organizationId!,
+      actorUserId: user.id,
+      action: "note.objective.documented",
+      subjectType: "Note",
+      subjectId: noteId,
+      metadata: {
+        documentedByRole: attribution.documentedByRole,
+        vitals: parsed.data.vitals as any,
+      },
+    },
+  });
+
+  revalidatePath(`/clinic/patients/${encounter.patientId}`);
+  return { ok: true, status: note.status };
 }
 
 // ---------------------------------------------------------------------------

@@ -4,11 +4,17 @@ import { PageShell } from "@/components/shell/PageHeader";
 import { QueueBoard } from "./queue-board";
 import {
   calculateWaitTime,
+  mapEncounterStatusToQueueStatus,
   type QueueEntry,
-  type QueueStatus,
 } from "@/lib/domain/queue-board";
 
 export const metadata = { title: "Today's Queue" };
+
+type RoomingContext = {
+  room?: string;
+  readinessFlags?: string[];
+  handoffNote?: string;
+};
 
 /**
  * Front-desk Queue Board — server component.
@@ -41,7 +47,14 @@ export default async function QueueBoardPage() {
         { completedAt: { gte: startOfDay, lt: endOfDay } },
       ],
     },
-    include: {
+    select: {
+      id: true,
+      status: true,
+      scheduledFor: true,
+      createdAt: true,
+      modality: true,
+      reason: true,
+      briefingContext: true,
       patient: { select: { id: true, firstName: true, lastName: true } },
       provider: {
         select: {
@@ -52,18 +65,8 @@ export default async function QueueBoardPage() {
     orderBy: { scheduledFor: "asc" },
   });
 
-  // Map raw encounter rows into the QueueEntry shape the client expects.
-  // EncounterStatus is a 3-value enum (scheduled | in_progress | complete).
-  // We surface those into the broader QueueStatus vocabulary so the kanban
-  // has somewhere to put each card today; the empty intermediate columns
-  // (arrived / rooming / checkout) stand ready for future state hooks.
   const entries: QueueEntry[] = encounters.map((enc) => {
-    const queueStatus: QueueStatus =
-      enc.status === "complete"
-        ? "completed"
-        : enc.status === "in_progress"
-          ? "in_visit"
-          : "scheduled";
+    const queueStatus = mapEncounterStatusToQueueStatus(enc.status);
 
     const scheduledIso =
       enc.scheduledFor?.toISOString() ?? enc.createdAt.toISOString();
@@ -73,6 +76,7 @@ export default async function QueueBoardPage() {
       : undefined;
 
     const minutesWaiting = calculateWaitTime(scheduledIso, queueStatus) ?? undefined;
+    const rooming = readRoomingContext(enc.briefingContext);
 
     return {
       encounterId: enc.id,
@@ -80,10 +84,14 @@ export default async function QueueBoardPage() {
       patientName: `${enc.patient.firstName} ${enc.patient.lastName}`,
       scheduledFor: scheduledIso,
       status: queueStatus,
+      visitStatus: enc.status,
       provider: providerName,
       modality: (enc.modality as QueueEntry["modality"]) ?? "in_person",
       reason: enc.reason ?? undefined,
       minutesWaiting,
+      room: rooming?.room,
+      readinessFlags: rooming?.readinessFlags,
+      handoffNote: rooming?.handoffNote,
     };
   });
 
@@ -92,4 +100,24 @@ export default async function QueueBoardPage() {
       <QueueBoard entries={entries} loadedAt={new Date().toISOString()} />
     </PageShell>
   );
+}
+
+function readRoomingContext(value: unknown): RoomingContext | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+
+  const rooming = (value as { rooming?: unknown }).rooming;
+  if (!rooming || typeof rooming !== "object" || Array.isArray(rooming)) {
+    return undefined;
+  }
+
+  const raw = rooming as RoomingContext;
+  return {
+    room: typeof raw.room === "string" ? raw.room : undefined,
+    readinessFlags: Array.isArray(raw.readinessFlags)
+      ? raw.readinessFlags.filter((flag): flag is string => typeof flag === "string")
+      : undefined,
+    handoffNote: typeof raw.handoffNote === "string" ? raw.handoffNote : undefined,
+  };
 }

@@ -63,6 +63,12 @@ import { BirthdayBadge } from "@/components/patient/birthday-badge";
 import { logger } from "@/lib/observability/log";
 import { BirthdayBanner } from "./birthday-banner";
 import { MessagePatientDock } from "@/app/(clinician)/clinic/messages/dock-compose";
+import {
+  formatDemographicValue,
+  formatEmergencyContact,
+  formatInsuranceMemberId,
+  formatInsurancePlan,
+} from "@/lib/patient/chart-demographics";
 // UX inline editing — Notion / Linear-style click-to-edit on chart
 // demographics + insurance. See src/components/ui/inline-edit.tsx.
 import { InlineDemographicsCard } from "./inline-demographics-card";
@@ -311,7 +317,7 @@ export default async function PatientChartPage({ params, searchParams }: PagePro
   // EMR-132: most recent in-progress encounter, used to anchor the
   // ChartingTimer to wall time across page navigations.
   const activeEncounter = patient.encounters.find(
-    (e: any) => e.status === "in_progress" && e.startedAt,
+    (e: any) => ["in_visit", "in_progress"].includes(e.status) && e.startedAt,
   );
 
   // EMR-132: trailing org charting-time benchmark (median seconds from
@@ -946,14 +952,15 @@ function DemographicsTab({
   const intake = (patient.intakeAnswers ?? {}) as Record<string, any>;
   const pmh = pastConditions;
   const psh = pastSurgeries;
-  const sex = intake.sex ?? intake.gender ?? "Not recorded";
-  const race = intake.race ?? intake.ethnicity ?? "Not recorded";
-  const maritalStatus = intake.maritalStatus ?? "Not recorded";
+  const sex = formatDemographicValue(intake.sex ?? intake.gender);
+  const race = formatDemographicValue(intake.race ?? intake.ethnicity);
+  const maritalStatus = formatDemographicValue(intake.maritalStatus);
   const allergies = intake.allergies ?? patient.chartSummary?.allergies ?? "None documented";
-  const uniqueThing = intake.uniqueThing ?? intake.aboutYou ?? null;
-  const insurancePlan = intake.insurancePlan ?? intake.insurance ?? "Not on file";
-  const insuranceId = intake.insuranceId ?? intake.memberId ?? null;
-  const emergencyContact = intake.emergencyContact ?? null;
+  const uniqueThing =
+    formatDemographicValue(intake.uniqueThing ?? intake.aboutYou, "") || null;
+  const insurancePlan = formatInsurancePlan(intake);
+  const insuranceId = formatInsuranceMemberId(intake);
+  const emergencyContact = formatEmergencyContact(intake.emergencyContact);
 
   return (
     <div className="space-y-6">
@@ -1061,10 +1068,7 @@ function DemographicsTab({
               <DemoField label="Marital status" value={maritalStatus} />
               <DemoField label="Patient ID" value={patient.id.slice(0, 12).toUpperCase()} mono />
               {emergencyContact && (
-                <DemoField
-                  label="Emergency contact"
-                  value={typeof emergencyContact === "string" ? emergencyContact : `${emergencyContact.name} — ${emergencyContact.phone}`}
-                />
+                <DemoField label="Emergency contact" value={emergencyContact} />
               )}
               {age != null && (
                 <DemoField label="Age" value={`${age} (${ageBand})`} />
