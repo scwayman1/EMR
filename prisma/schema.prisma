@@ -5011,6 +5011,26 @@ model KioskLobbySession {
 }
 
 // --------------------------------------------------------------
+// EMR-915 — the "claim ticket" minted at the kiosk and encoded in the QR.
+// Stores only the SHA-256 hash of the HMAC-signed token (never the raw token).
+// Single-use via `redeemedAt`; consumed when the /kiosk/lobby route mints a
+// lobby session. patientId/organizationId are scope keys (no FK; short-lived).
+// --------------------------------------------------------------
+
+model KioskHandoffToken {
+  id             String    @id @default(cuid())
+  patientId      String
+  organizationId String
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  redeemedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([patientId])
+  @@index([expiresAt])
+}
+
+// --------------------------------------------------------------
 // EMR-107 — ChatCB AI Coach
 // --------------------------------------------------------------
 
