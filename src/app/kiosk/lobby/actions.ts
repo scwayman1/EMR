@@ -1,6 +1,7 @@
 "use server";
 
 import type { Prisma } from "@prisma/client";
+import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { logger } from "@/lib/observability/log";
@@ -9,12 +10,20 @@ import {
   consumeHandoffToken,
 } from "@/lib/check-in/kiosk-handoff";
 import { issueOtpCode, verifyOtpCode } from "@/lib/check-in/otp";
-import { verifyCheckInIdentity } from "@/lib/check-in/identity-challenge";
+import { DEFAULT_TEMPLATES } from "@/lib/domain/consent-forms";
 import {
   createKioskLobbySession,
   setKioskLobbyCookie,
   getLobbyScopeFor,
 } from "@/lib/check-in/kiosk-lobby-session";
+
+/** Constant-time string equality; rejects empty / length-mismatched inputs. */
+function timingSafeStrEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length === 0 || ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
 
 // Server actions for the public kiosk→phone LOBBY.
 //
@@ -113,27 +122,18 @@ export async function lobbyVerifyIdentity(
 
   const patient = await prisma.patient.findFirst({
     where: { id: v.patientId, organizationId: v.organizationId, deletedAt: null },
-    select: { dateOfBirth: true, lastName: true, phone: true },
+    select: { dateOfBirth: true },
   });
   if (!patient || !patient.dateOfBirth) {
     return { ok: false, error: "We couldn't verify your details. Please see the front desk." };
   }
 
-  // DOB first (pure, timing-safe via the shared identity challenge), then the
-  // SMS code (DB-backed, bounded). We run the DOB leg through
-  // verifyCheckInIdentity with smsCode=null/lastName-fallback DISABLED — passing
-  // a non-empty smsCode expectation would force dob_sms mode and require the
-  // code here too, but the bounded attempt accounting lives in verifyOtpCode, so
-  // we only assert the DOB leg here and defer the code to verifyOtpCode below.
+  // Two independent factors, checked separately for clarity (EMR-915 review):
+  //   1. DOB — a low-entropy possession-adjacent check, compared constant-time.
+  //   2. The SMS code — the real credential, with bounded/expiring attempts
+  //      accounted in verifyOtpCode.
   const expectedDob = patient.dateOfBirth.toISOString().slice(0, 10);
-  const dobAttempt = dateOfBirth.trim();
-  const dobResult = verifyCheckInIdentity(
-    // smsCode === code makes this a self-consistent dob_sms check of the DOB leg;
-    // the real, attempt-counted code check is verifyOtpCode.
-    { dateOfBirth: expectedDob, lastName: patient.lastName, smsCode: code, hasPhone: true },
-    { dateOfBirth: dobAttempt, smsCode: code },
-  );
-  if (!dobResult.ok) {
+  if (!timingSafeStrEqual(dateOfBirth.trim(), expectedDob)) {
     await auditLobby(v.organizationId, v.patientId, "kiosk.lobby.identity.failed", {
       step: "dob",
     });
@@ -216,6 +216,16 @@ export async function lobbySubmitIntake(
     reportedBenefits: splitList(parsed.data.reportedBenefits),
   };
 
+  // Idempotent: a re-submit supersedes the prior un-reviewed intake rather than
+  // piling up pending rows for staff (EMR-915 review — single pending per kind).
+  await prisma.kioskLobbySubmission.deleteMany({
+    where: {
+      patientId: identity.patientId,
+      organizationId: identity.organizationId,
+      kind: "intake",
+      status: "pending",
+    },
+  });
   await prisma.kioskLobbySubmission.create({
     data: {
       patientId: identity.patientId,
@@ -241,10 +251,9 @@ export async function lobbySubmitIntake(
 
 const consentSchema = z.object({
   templateId: z.string().min(1).max(120),
-  templateName: z.string().min(1).max(200),
-  version: z.string().min(1).max(40),
   responses: z.record(z.union([z.string(), z.boolean()])),
-  signatureData: z.string().max(500_000).optional(),
+  // Typical canvas signatures are well under this; the cap stops payload bloat.
+  signatureData: z.string().max(200_000).optional(),
 });
 
 /**
@@ -261,6 +270,25 @@ export async function lobbySubmitConsent(
   const parsed = consentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Please complete the required fields." };
 
+  // The template must be a real, current one — never trust a client-supplied
+  // templateId/name/version (EMR-915 review). Name + version are resolved from
+  // the catalog so the staged record + audit reflect exactly what was presented.
+  const template = DEFAULT_TEMPLATES.find((t) => t.id === parsed.data.templateId);
+  if (!template) {
+    return { ok: false, error: "That consent form isn't recognized. Please see the front desk." };
+  }
+
+  // Idempotent per template: a re-sign of the SAME form supersedes its prior
+  // un-reviewed submission; different forms each keep their own pending row.
+  await prisma.kioskLobbySubmission.deleteMany({
+    where: {
+      patientId: identity.patientId,
+      organizationId: identity.organizationId,
+      kind: "consent",
+      status: "pending",
+      payload: { path: ["templateId"], equals: template.id },
+    },
+  });
   await prisma.kioskLobbySubmission.create({
     data: {
       patientId: identity.patientId,
@@ -268,9 +296,9 @@ export async function lobbySubmitConsent(
       kind: "consent",
       status: "pending",
       payload: {
-        templateId: parsed.data.templateId,
-        templateName: parsed.data.templateName,
-        version: parsed.data.version,
+        templateId: template.id,
+        templateName: template.name,
+        version: template.version,
         responses: parsed.data.responses,
         signatureData: parsed.data.signatureData ?? null,
       },
@@ -279,8 +307,10 @@ export async function lobbySubmitConsent(
 
   await auditLobby(identity.organizationId, identity.patientId, "kiosk.lobby.submission.staged", {
     kind: "consent",
-    // PHI-free: which template, not its contents.
-    templateId: parsed.data.templateId,
+    // PHI-free: which template + version (for reconstruction), not its contents.
+    templateId: template.id,
+    templateName: template.name,
+    version: template.version,
   });
 
   return { ok: true };
