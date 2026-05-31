@@ -10,12 +10,35 @@ export type VisitCompletionSource =
   | "problem_list"
   | "encounter"
   | "heuristic";
+export type VisitCompletionDataMode =
+  | "mvp_mock"
+  | "deterministic_heuristic"
+  | "agent_output";
+export type VisitCompletionStatus = "suggested" | "needs_review" | "unavailable";
+export type VisitCompletionProposedActionType =
+  | "order_review"
+  | "approve"
+  | "remove"
+  | "edit"
+  | "defer"
+  | "send_to_staff"
+  | "send_to_patient"
+  | "text_scheduling_link"
+  | "print"
+  | "coding_review"
+  | "create_staff_task"
+  | "view_checks";
 
 export interface VisitCompletionItem {
   id: string;
   label: string;
   tone: VisitCompletionTone;
   source: VisitCompletionSource;
+  dataMode: VisitCompletionDataMode;
+  status: VisitCompletionStatus;
+  proposedActionType: VisitCompletionProposedActionType;
+  requiresPhysicianApproval: true;
+  confidence?: number;
   reason?: string;
 }
 
@@ -23,6 +46,10 @@ export interface VisitCompletionAction {
   id: string;
   label: string;
   variant: "primary" | "secondary";
+  proposedActionType: VisitCompletionProposedActionType;
+  requiresPhysicianApproval: true;
+  sideEffect: "none";
+  placeholderCopy: string;
 }
 
 export interface VisitCompletionCard {
@@ -52,9 +79,12 @@ export interface VisitCompletionLearningLoop {
 
 export interface VisitCompletionBundle {
   sectionLabel: "AI Visit Completion";
-  heading: "Suggested Next Best Actions";
+  strategyLabel: "Suggested Next Best Actions";
+  heading: "Suggested next actions before sign-off";
   primaryActionLabel: "Release Care Plan";
-  supportActionLabel: "Approve all suggested actions";
+  selectionLabel: "Select Care Actions";
+  safetyCopy: "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.";
+  mockedDataNotice: string;
   summary: string;
   releaseEnabled: boolean;
   learningLoop: VisitCompletionLearningLoop;
@@ -124,9 +154,14 @@ export function buildVisitCompletionBundle(
 
   return {
     sectionLabel: "AI Visit Completion",
-    heading: "Suggested Next Best Actions",
+    strategyLabel: "Suggested Next Best Actions",
+    heading: "Suggested next actions before sign-off",
     primaryActionLabel: "Release Care Plan",
-    supportActionLabel: "Approve all suggested actions",
+    selectionLabel: "Select Care Actions",
+    safetyCopy:
+      "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.",
+    mockedDataNotice:
+      "Draft suggestions only. This MVP prepares the review surface without submitting orders, messages, billing, scheduling, staff assignments, or chart writes.",
     summary: buildSummary(cards),
     releaseEnabled: cards.some((card) => card.items.length > 0),
     learningLoop,
@@ -148,14 +183,24 @@ function buildOrdersCard(text: string): VisitCompletionCard {
 
   const items: VisitCompletionItem[] = diabetes
     ? [
-        item("a1c-due", "A1C if due or worsening control noted", "neutral", "heuristic"),
+        item("a1c-due", "A1C", "neutral", "heuristic", "mvp_mock", "order_review"),
         item(
           "urine-albumin",
-          "Urine albumin/creatinine screening if due",
+          "Urine albumin/creatinine",
           "neutral",
           "heuristic",
+          "mvp_mock",
+          "order_review",
         ),
-        item("renal-metabolic", "CMP / creatinine / eGFR check if due", "neutral", "heuristic"),
+        item("renal-metabolic", "CMP/eGFR", "neutral", "heuristic", "mvp_mock", "order_review"),
+        item(
+          "lipid-panel",
+          "Lipid panel if due",
+          "neutral",
+          "heuristic",
+          "mvp_mock",
+          "order_review",
+        ),
       ]
     : [
         item(
@@ -163,6 +208,8 @@ function buildOrdersCard(text: string): VisitCompletionCard {
           medication ? "Medication refill check" : "Medication and regimen review",
           "neutral",
           "heuristic",
+          "deterministic_heuristic",
+          "order_review",
         ),
         item(
           "education-monitoring",
@@ -171,6 +218,8 @@ function buildOrdersCard(text: string): VisitCompletionCard {
             : "Education or monitoring instruction from today’s plan",
           pain ? "warning" : "neutral",
           "note",
+          "deterministic_heuristic",
+          "order_review",
         ),
       ];
 
@@ -180,9 +229,11 @@ function buildOrdersCard(text: string): VisitCompletionCard {
     subtitle: "Based on today's assessment and active problems.",
     items,
     actions: [
-      action("review_orders", "Review", "primary"),
-      action("remove_item", "Remove", "secondary"),
-      action("edit_item", "Edit", "secondary"),
+      action("review_orders", "Review orders", "primary", "order_review"),
+      action("approve_item", "Approve", "secondary", "approve"),
+      action("remove_item", "Remove", "secondary", "remove"),
+      action("edit_item", "Edit", "secondary", "edit"),
+      action("defer_item", "Defer", "secondary", "defer"),
     ],
   };
 }
@@ -191,15 +242,20 @@ function buildFollowUpCard(text: string, hasFutureAppointment: boolean): VisitCo
   const mentionsFollowUp =
     /\b(return to clinic|rtc|follow[-\s]?up|next visit|recheck|see (?:you|patient) in)\b/.test(text) ||
     /\bin \d+\s*(?:day|days|week|weeks|month|months)\b/.test(text);
+  const followUpInterval = text.match(/\bin\s+(\d+\s*(?:day|days|week|weeks|month|months))\b/)?.[1];
 
   const items: VisitCompletionItem[] = [];
   if (mentionsFollowUp && !hasFutureAppointment) {
     items.push(
       item(
         "follow-up-missing",
-        "Plan implies follow-up; no appointment scheduled",
+        followUpInterval
+          ? `RTC in ${followUpInterval} recommended. No appointment currently scheduled.`
+          : "Plan implies follow-up; no appointment scheduled.",
         "alert",
         "note",
+        "deterministic_heuristic",
+        "send_to_staff",
         "Follow-up language appears in the finalized plan.",
       ),
       item(
@@ -207,6 +263,8 @@ function buildFollowUpCard(text: string, hasFutureAppointment: boolean): VisitCo
         "Send scheduling task to front desk before patient leaves",
         "neutral",
         "heuristic",
+        "deterministic_heuristic",
+        "send_to_staff",
       ),
     );
   } else if (mentionsFollowUp) {
@@ -216,6 +274,8 @@ function buildFollowUpCard(text: string, hasFutureAppointment: boolean): VisitCo
         "Follow-up mentioned and appointment already scheduled",
         "neutral",
         "encounter",
+        "deterministic_heuristic",
+        "send_to_staff",
       ),
     );
   } else {
@@ -225,6 +285,8 @@ function buildFollowUpCard(text: string, hasFutureAppointment: boolean): VisitCo
         "Confirm follow-up timing before releasing the care plan",
         "warning",
         "heuristic",
+        "deterministic_heuristic",
+        "edit",
       ),
     );
   }
@@ -235,8 +297,10 @@ function buildFollowUpCard(text: string, hasFutureAppointment: boolean): VisitCo
     subtitle: "Recommended next touchpoint and scheduling handoff.",
     items,
     actions: [
-      action("send_to_staff", "Send to staff", "primary"),
-      action("defer_item", "Defer", "secondary"),
+      action("send_to_front_desk", "Send to front desk", "primary", "send_to_staff"),
+      action("text_scheduling_link", "Text scheduling link", "secondary", "text_scheduling_link"),
+      action("edit_interval", "Edit interval", "secondary", "edit"),
+      action("defer_item", "Defer", "secondary", "defer"),
     ],
   };
 }
@@ -247,13 +311,18 @@ function buildPatientMessageCard(
 ): VisitCompletionCard {
   const hasLabs = /\b(lab|labs|a1c|cmp|lipid|urine)\b/.test(text);
   const hasEducation = /\b(goal|education|instructions|monitor|treatment)\b/.test(text);
+  const hasFollowUp = /\b(return to clinic|rtc|follow[-\s]?up|next visit|recheck)\b/.test(text);
 
   const items: VisitCompletionItem[] = [
     item(
       "portal-summary",
-      `Portal summary drafted for ${patientFirstName}`,
+      hasLabs || hasFollowUp
+        ? "Portal summary drafted with lab instructions and follow-up timing."
+        : `Portal summary drafted for ${patientFirstName} with plain-language next steps.`,
       "neutral",
       "heuristic",
+      "mvp_mock",
+      "send_to_patient",
     ),
     item(
       "next-steps",
@@ -262,12 +331,21 @@ function buildPatientMessageCard(
         : "Patient message includes plain-language next steps",
       "neutral",
       "note",
+      "deterministic_heuristic",
+      "send_to_patient",
     ),
   ];
 
   if (hasEducation) {
     items.push(
-      item("education", "Education handoff ready for portal or print", "neutral", "heuristic"),
+      item(
+        "education",
+        "Education handoff ready for portal or print",
+        "neutral",
+        "heuristic",
+        "deterministic_heuristic",
+        "send_to_patient",
+      ),
     );
   }
 
@@ -277,9 +355,11 @@ function buildPatientMessageCard(
     subtitle: "Plain-language summary ready for portal or print.",
     items,
     actions: [
-      action("preview_message", "Preview", "primary"),
-      action("translate_message", "Translate", "secondary"),
-      action("print_summary", "Print", "secondary"),
+      action("preview_message", "Preview message", "primary", "send_to_patient"),
+      action("edit_message", "Edit", "secondary", "edit"),
+      action("send_to_portal", "Send to portal", "secondary", "send_to_patient"),
+      action("print_summary", "Print", "secondary", "print"),
+      action("defer_item", "Defer", "secondary", "defer"),
     ],
   };
 }
@@ -287,7 +367,16 @@ function buildPatientMessageCard(
 function buildPracticeReadinessCard(
   codingSuggestion: VisitCompletionCodingSuggestion | null,
 ): VisitCompletionCard {
-  const items: VisitCompletionItem[] = [];
+  const items: VisitCompletionItem[] = [
+    item(
+      "practice-readiness-overview",
+      "Coding support, prior auth risk, documentation gaps, and staff tasks.",
+      "neutral",
+      "heuristic",
+      "mvp_mock",
+      "view_checks",
+    ),
+  ];
 
   if (!codingSuggestion) {
     items.push(
@@ -296,6 +385,8 @@ function buildPracticeReadinessCard(
         "No coding suggestion yet",
         "warning",
         "coding",
+        "deterministic_heuristic",
+        "coding_review",
         "Coding Readiness Agent has not attached metadata to this note yet.",
       ),
     );
@@ -307,6 +398,8 @@ function buildPracticeReadinessCard(
           `Suggested E/M: ${codingSuggestion.emLevel}`,
           "neutral",
           "coding",
+          "agent_output",
+          "coding_review",
         ),
       );
     }
@@ -317,6 +410,8 @@ function buildPracticeReadinessCard(
           `ICD-10 candidate: ${candidate.code} ${candidate.label}`,
           "neutral",
           "coding",
+          "agent_output",
+          "coding_review",
         ),
       );
     }
@@ -327,6 +422,8 @@ function buildPracticeReadinessCard(
           "Coding rationale available for review",
           "neutral",
           "coding",
+          "agent_output",
+          "coding_review",
           codingSuggestion.rationale,
         ),
       );
@@ -336,11 +433,13 @@ function buildPracticeReadinessCard(
   return {
     id: "practice_readiness",
     title: "Practice Readiness",
-    subtitle: "Coding, documentation, and operational checks.",
+    subtitle: "Coding, documentation, prior auth, billing readiness, and staff task checks.",
     items,
     actions: [
-      action("view_checks", "View checks", "primary"),
-      action("edit_note", "Edit note", "secondary"),
+      action("view_checks", "View checks", "primary", "view_checks"),
+      action("review_coding", "Review coding", "secondary", "coding_review"),
+      action("create_staff_tasks", "Create staff tasks", "secondary", "create_staff_task"),
+      action("defer_item", "Defer", "secondary", "defer"),
     ],
   };
 }
@@ -359,15 +458,38 @@ function item(
   label: string,
   tone: VisitCompletionTone,
   source: VisitCompletionSource,
+  dataMode: VisitCompletionDataMode,
+  proposedActionType: VisitCompletionProposedActionType,
   reason?: string,
 ): VisitCompletionItem {
-  return { id, label, tone, source, reason };
+  return {
+    id,
+    label,
+    tone,
+    source,
+    dataMode,
+    status: tone === "alert" ? "needs_review" : "suggested",
+    proposedActionType,
+    requiresPhysicianApproval: true,
+    confidence: dataMode === "agent_output" ? undefined : 0.72,
+    reason,
+  };
 }
 
 function action(
   id: string,
   label: string,
   variant: VisitCompletionAction["variant"],
+  proposedActionType: VisitCompletionProposedActionType,
 ): VisitCompletionAction {
-  return { id, label, variant };
+  return {
+    id,
+    label,
+    variant,
+    proposedActionType,
+    requiresPhysicianApproval: true,
+    sideEffect: "none",
+    placeholderCopy:
+      "Review-only MVP. This control records no orders, messages, billing, scheduling, staffing, or chart writes.",
+  };
 }

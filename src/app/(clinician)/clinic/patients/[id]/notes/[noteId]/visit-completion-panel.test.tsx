@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import * as React from "react";
-import util from "util";
+import { renderToStaticMarkup } from "react-dom/server";
 import { buildVisitCompletionBundle } from "@/lib/domain/visit-completion";
 import { VisitCompletionPanel } from "./visit-completion-panel";
 
 function dump(node: React.ReactElement | null): string {
-  return util.inspect(node, { depth: null });
+  return renderToStaticMarkup(node);
 }
 
 describe("VisitCompletionPanel", () => {
@@ -30,11 +30,22 @@ describe("VisitCompletionPanel", () => {
 
     expect(str).toContain("AI Visit Completion");
     expect(str).toContain("Suggested Next Best Actions");
+    expect(str).toContain("Suggested next actions before sign-off");
     expect(str).toContain("Release Care Plan");
+    expect(str).toContain("Select Care Actions");
     expect(str).toContain("Suggested Orders");
     expect(str).toContain("Follow-Up Plan");
     expect(str).toContain("Patient Communication");
     expect(str).toContain("Practice Readiness");
+    expect(str).toContain(
+      "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.",
+    );
+    expect(str).toContain("Review orders");
+    expect(str).toContain("Send to front desk");
+    expect(str).toContain("Preview message");
+    expect(str).toContain("Create staff tasks");
+    expect(str).toContain("Review selected actions");
+    expect(str).toContain("Release is staged for review only in this MVP.");
     expect(str).toContain("Physician remains in control.");
     expect(str).toContain("Learns from approvals, edits, removals, and deferrals.");
   });

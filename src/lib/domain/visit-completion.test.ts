@@ -22,15 +22,67 @@ describe("buildVisitCompletionBundle", () => {
     });
 
     expect(bundle.sectionLabel).toBe("AI Visit Completion");
-    expect(bundle.heading).toBe("Suggested Next Best Actions");
+    expect(bundle.strategyLabel).toBe("Suggested Next Best Actions");
+    expect(bundle.heading).toBe("Suggested next actions before sign-off");
     expect(bundle.primaryActionLabel).toBe("Release Care Plan");
-    expect(bundle.supportActionLabel).toBe("Approve all suggested actions");
+    expect(bundle.selectionLabel).toBe("Select Care Actions");
+    expect(bundle.safetyCopy).toBe(
+      "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.",
+    );
     expect(bundle.cards.map((card) => card.id)).toEqual([
       "orders",
       "follow_up",
       "patient_message",
       "practice_readiness",
     ]);
+  });
+
+  it("exposes safe placeholder action affordances for every card", () => {
+    const bundle = buildVisitCompletionBundle({
+      patientFirstName: "Miguel",
+      blocks: followUpBlocks,
+      codingSuggestion: null,
+      hasFutureAppointment: false,
+    });
+
+    const labelsFor = (id: string) =>
+      bundle.cards.find((card) => card.id === id)?.actions.map((action) => action.label);
+
+    expect(labelsFor("orders")).toEqual(["Review orders", "Approve", "Remove", "Edit", "Defer"]);
+    expect(labelsFor("follow_up")).toEqual([
+      "Send to front desk",
+      "Text scheduling link",
+      "Edit interval",
+      "Defer",
+    ]);
+    expect(labelsFor("patient_message")).toEqual([
+      "Preview message",
+      "Edit",
+      "Send to portal",
+      "Print",
+      "Defer",
+    ]);
+    expect(labelsFor("practice_readiness")).toEqual([
+      "View checks",
+      "Review coding",
+      "Create staff tasks",
+      "Defer",
+    ]);
+
+    expect(bundle.cards.flatMap((card) => card.actions)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Send to portal",
+          requiresPhysicianApproval: true,
+          sideEffect: "none",
+        }),
+        expect.objectContaining({
+          label: "Create staff tasks",
+          requiresPhysicianApproval: true,
+          sideEffect: "none",
+        }),
+      ]),
+    );
   });
 
   it("exposes learning-loop metadata for physician action feedback", () => {
@@ -75,8 +127,28 @@ describe("buildVisitCompletionBundle", () => {
 
     expect(bundle.cards.find((card) => card.id === "follow_up")?.items[0]).toMatchObject({
       tone: "alert",
-      label: "Plan implies follow-up; no appointment scheduled",
+      label: "RTC in 6 weeks recommended. No appointment currently scheduled.",
+      requiresPhysicianApproval: true,
+      dataMode: "deterministic_heuristic",
     });
+  });
+
+  it("uses the MVP/mock diabetes order set without creating real clinical actions", () => {
+    const bundle = buildVisitCompletionBundle({
+      patientFirstName: "Miguel",
+      blocks: followUpBlocks,
+      codingSuggestion: null,
+      hasFutureAppointment: true,
+    });
+
+    expect(bundle.cards.find((card) => card.id === "orders")?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "A1C", dataMode: "mvp_mock" }),
+        expect.objectContaining({ label: "Urine albumin/creatinine", dataMode: "mvp_mock" }),
+        expect.objectContaining({ label: "CMP/eGFR", dataMode: "mvp_mock" }),
+        expect.objectContaining({ label: "Lipid panel if due", dataMode: "mvp_mock" }),
+      ]),
+    );
   });
 
   it("uses coding suggestions for practice readiness", () => {
@@ -110,10 +182,14 @@ describe("buildVisitCompletionBundle", () => {
       hasFutureAppointment: true,
     });
 
-    expect(bundle.cards.find((card) => card.id === "practice_readiness")?.items[0]).toMatchObject({
-      label: "No coding suggestion yet",
-      tone: "warning",
-    });
+    expect(bundle.cards.find((card) => card.id === "practice_readiness")?.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "No coding suggestion yet",
+          tone: "warning",
+        }),
+      ]),
+    );
     expect(bundle.summary).toContain("billing readiness check");
   });
 });

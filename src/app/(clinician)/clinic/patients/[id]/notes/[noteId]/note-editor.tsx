@@ -30,6 +30,8 @@ import {
 import { MarkdownEditor } from "@/components/ui/markdown-editor";
 import { NoteTemplatePicker, type PickerBlock } from "@/components/clinical/note-template-picker";
 import { NOTE_BLOCK_LABELS as NB_LABELS } from "@/lib/domain/notes";
+import { buildVisitCompletionBundle } from "@/lib/domain/visit-completion";
+import { VisitCompletionPanel } from "./visit-completion-panel";
 
 interface NoteBlock {
   type?: NoteBlockType;
@@ -48,7 +50,9 @@ interface HallucinationFlag {
 interface NoteEditorProps {
   noteId: string;
   patientId: string;
+  patientFirstName: string;
   encounterId: string;
+  hasFutureAppointment: boolean;
   initialBlocks: NoteBlock[];
   status: string;
   aiDrafted: boolean;
@@ -98,7 +102,9 @@ function scrubMessage(raw: string): string {
 export function NoteEditor({
   noteId,
   patientId,
+  patientFirstName,
   encounterId,
+  hasFutureAppointment,
   initialBlocks,
   status,
   aiDrafted,
@@ -165,6 +171,15 @@ export function NoteEditor({
   }
 
   const isEditable = currentStatus === "draft" || currentStatus === "needs_review";
+  const visitCompletionBundle =
+    currentStatus === "finalized"
+      ? buildVisitCompletionBundle({
+          patientFirstName,
+          blocks,
+          codingSuggestion,
+          hasFutureAppointment,
+        })
+      : null;
 
   // Whole-visit dictation (SOAP routing). The Objective opt-in is a
   // per-physician setting (default off — staff document vitals), stored in the
@@ -700,6 +715,8 @@ export function NoteEditor({
           </CardContent>
         </Card>
       )}
+
+      {visitCompletionBundle && <VisitCompletionPanel bundle={visitCompletionBundle} />}
     </div>
   );
 }

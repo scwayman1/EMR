@@ -177,7 +177,9 @@ export default async function NoteDetailPage({ params }: PageProps) {
         <NoteEditor
           noteId={note.id}
           patientId={params.id}
+          patientFirstName={patient.firstName}
           encounterId={note.encounterId}
+          hasFutureAppointment={Boolean(futureAppointment)}
           initialBlocks={blocks}
           status={note.status}
           aiDrafted={note.aiDrafted}
@@ -207,7 +209,7 @@ export default async function NoteDetailPage({ params }: PageProps) {
         <ReadOnlyNote blocks={blocks} />
       )}
 
-      {visitCompletionBundle && (
+      {!canEditNotes && visitCompletionBundle && (
         <VisitCompletionPanel bundle={visitCompletionBundle} />
       )}
 
