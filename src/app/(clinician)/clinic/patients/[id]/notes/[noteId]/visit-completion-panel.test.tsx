@@ -26,7 +26,7 @@ describe("VisitCompletionPanel", () => {
       },
     });
 
-    const str = dump(VisitCompletionPanel({ bundle }));
+    const str = dump(<VisitCompletionPanel bundle={bundle} />);
 
     expect(str).toContain("AI Visit Completion");
     expect(str).toContain("Suggested Next Best Actions");
@@ -46,7 +46,14 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Create staff tasks");
     expect(str).toContain("Review selected actions");
     expect(str).toContain("Release is staged for review only in this MVP.");
+    expect(str).toContain("No actions have been released.");
+    expect(str).toContain("Selected for release");
+    expect(str).toContain("Open release review");
+    expect(str).toContain(
+      "Review-only; no order, message, billing, scheduling, staff task, or chart write is sent.",
+    );
     expect(str).toContain("Physician remains in control.");
     expect(str).toContain("Learns from approvals, edits, removals, and deferrals.");
+    expect(str).not.toContain("disabled=\"\"");
   });
 });
