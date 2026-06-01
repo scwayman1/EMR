@@ -72,3 +72,8 @@ update_render_env.js
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# QA swarm runtime artifacts (reports, logs, screenshots) — keep the scripts, drop the output
+scripts/qa-swarm/reports/
+scripts/qa-swarm/logs/
+scripts/qa-swarm/.runtime/
