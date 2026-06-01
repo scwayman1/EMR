@@ -370,11 +370,30 @@ function buildPracticeReadinessCard(
   const items: VisitCompletionItem[] = [
     item(
       "practice-readiness-overview",
-      "Coding support, prior auth risk, documentation gaps, and staff tasks.",
+      "Practice Readiness feedback: coding, documentation, prior auth, and staff routing checks.",
       "neutral",
       "heuristic",
       "mvp_mock",
       "view_checks",
+      "AI summarizes operational checks here so the physician can release intent without doing back-office translation.",
+    ),
+    item(
+      "documentation-gap",
+      "Documentation gap: add medication risk discussion if dose changes proceed",
+      "warning",
+      "heuristic",
+      "deterministic_heuristic",
+      "coding_review",
+      "This strengthens billing readiness and makes the clinical reasoning easier for staff to follow.",
+    ),
+    item(
+      "staff-routing",
+      "Staff task draft: confirm pharmacy and monitor prior-auth need before fulfillment",
+      "neutral",
+      "heuristic",
+      "deterministic_heuristic",
+      "create_staff_task",
+      "This turns the physician's plan into a reviewable staff handoff without silently assigning work.",
     ),
   ];
 

@@ -56,13 +56,18 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Preview message");
     expect(str).toContain("Create staff tasks");
     expect(str).toContain("Review selected actions");
+    expect(str).toContain("Progress toward release");
+    expect(str).toContain("Next suggested step");
+    expect(str).toContain("Review Practice Readiness");
+    expect(str).toContain("Practice Readiness feedback");
+    expect(str).toContain("Documentation gap");
     expect(str).toContain(
       "Release creates only reviewed tasks, drafts, and audit records after physician approval.",
     );
     expect(str).toContain("No actions have been released.");
     expect(str).toContain("Selected for release");
-    expect(str).toContain("Open release review");
     expect(str).toContain("Release readiness");
+    expect(str).toContain("Final release review");
     expect(str).toContain("0 of 4 cards resolved");
     expect(str).toContain("Confirmation required before release.");
     expect(str).toContain("Click in to confirm");
@@ -91,6 +96,9 @@ describe("VisitCompletionPanel", () => {
     );
     expect(str).toContain("Physician remains in control.");
     expect(str).toContain("Learns from approvals, edits, removals, and deferrals.");
+    expect(str.lastIndexOf("Release Care Plan</button>")).toBeGreaterThan(
+      str.indexOf("Review selected actions"),
+    );
     // The Release Care Plan button should be disabled because not all cards are resolved
     expect(str).toContain("disabled");
   });

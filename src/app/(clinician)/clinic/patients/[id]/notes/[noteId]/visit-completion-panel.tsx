@@ -362,7 +362,7 @@ export function VisitCompletionPanel({
       aria-labelledby="ai-visit-completion-heading"
       className="mt-8 overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
     >
-      <div className="flex flex-col gap-5 border-b border-border/70 bg-surface-muted/60 px-5 py-5 lg:flex-row lg:items-start lg:justify-between lg:px-6">
+      <div className="border-b border-border/70 bg-surface-muted/60 px-5 py-5 lg:px-6">
         <div className="max-w-3xl">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
@@ -384,14 +384,6 @@ export function VisitCompletionPanel({
             {bundle.safetyCopy}
           </p>
         </div>
-
-        <ReleaseCarePlanButton
-          bundle={bundle}
-          review={review}
-          isOpen={releaseReviewOpen}
-          onToggle={() => setReleaseReviewOpen((open) => !open)}
-          isReleased={isReleased}
-        />
       </div>
 
       <div className="border-b border-border/70 px-5 py-4 lg:px-6">
@@ -458,6 +450,13 @@ export function VisitCompletionPanel({
         />
       )}
 
+      <VisitCompletionProgressPanel
+        cards={bundle.cards}
+        review={review}
+        isReleased={isReleased}
+        onSelectCard={openCardDetails}
+      />
+
       <FinalReleaseReviewPanel
         payload={releasePayload}
         isOpen={releasePayloadOpen}
@@ -492,78 +491,6 @@ export function VisitCompletionPanel({
         </Badge>
       </div>
     </section>
-  );
-}
-
-function ReleaseCarePlanButton({
-  bundle,
-  review,
-  isOpen,
-  onToggle,
-  isReleased,
-}: {
-  bundle: VisitCompletionBundle;
-  review: VisitCompletionReview;
-  isOpen: boolean;
-  onToggle: () => void;
-  isReleased: boolean;
-}) {
-  if (isReleased) {
-    return (
-      <div className="w-full lg:w-[320px]">
-        <Button
-          size="md"
-          className="w-full"
-          disabled
-          leadingIcon={<Check className="h-4 w-4" />}
-        >
-          Care Plan Released
-        </Button>
-        <div className="mt-3 rounded-lg border border-success/35 bg-success-soft px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-text">Release status</p>
-            <Badge tone="success">Released</Badge>
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            Care actions have been durably saved and routed.
-          </p>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="w-full lg:w-[320px]">
-      <Button
-        size="md"
-        className="w-full"
-        aria-disabled={!bundle.releaseEnabled}
-        aria-label="Open release review"
-        onClick={onToggle}
-        title="Open release review"
-        leadingIcon={<Check className="h-4 w-4" />}
-      >
-        {bundle.primaryActionLabel}
-      </Button>
-      <div className="mt-3 rounded-lg border border-border bg-surface px-4 py-3 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-text">Release readiness</p>
-          <Badge tone={review.isReadyForRelease ? "success" : isOpen ? "warning" : "neutral"}>
-            {review.isReadyForRelease ? "Ready" : isOpen ? "Review open" : "Review closed"}
-          </Badge>
-        </div>
-        <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          {review.resolvedCardCount} of {review.totalCardCount} cards resolved.
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          {review.isReadyForRelease
-            ? "Ready for physician release review."
-            : "Confirmation required before release."}
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-text-muted">
-          No actions have been released.
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -1013,6 +940,138 @@ function VisitCompletionReviewPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+function VisitCompletionProgressPanel({
+  cards,
+  review,
+  isReleased,
+  onSelectCard,
+}: {
+  cards: VisitCompletionCard[];
+  review: VisitCompletionReview;
+  isReleased: boolean;
+  onSelectCard: (cardId: VisitCompletionCardId) => void;
+}) {
+  const progressPercent =
+    review.totalCardCount === 0
+      ? 0
+      : Math.round((review.resolvedCardCount / review.totalCardCount) * 100);
+  const displayedProgressPercent = isReleased ? 100 : progressPercent;
+  const practiceReadinessNext = review.needsConfirmationSections.find(
+    (section) => section.cardId === "practice_readiness",
+  );
+  const nextSection = isReleased
+    ? undefined
+    : practiceReadinessNext ?? review.needsConfirmationSections[0];
+  const nextLabel =
+    isReleased
+      ? "Care Plan Released"
+      : nextSection?.cardId === "practice_readiness"
+      ? "Review Practice Readiness"
+      : nextSection
+        ? `Review ${nextSection.title}`
+        : "Final release review";
+
+  return (
+    <div className="mx-5 mb-5 rounded-lg border border-accent/20 bg-surface px-4 py-4 shadow-sm lg:mx-6 lg:px-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-text-subtle">
+              Progress toward release
+            </p>
+            <Badge tone={isReleased ? "success" : review.isReadyForRelease ? "success" : "warning"}>
+              {isReleased
+                ? "Released"
+                : review.isReadyForRelease
+                  ? "Ready"
+                  : `${review.needsConfirmationCount} left`}
+            </Badge>
+          </div>
+          <p className="mt-2 text-sm font-semibold text-text">
+            {isReleased
+              ? "Care Plan Released"
+              : review.isReadyForRelease
+                ? "All confirmation workflows are resolved."
+                : `${review.resolvedCardCount} of ${review.totalCardCount} confirmations complete.`}
+          </p>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
+            <div
+              className="h-full rounded-full bg-accent transition-all"
+              style={{ width: `${displayedProgressPercent}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-text-muted">
+            {isReleased
+              ? "Care actions have been durably saved and routed."
+              : review.isReadyForRelease
+              ? "Release Care Plan now sits after the confirmation workflow for final physician review."
+              : "Confirm, edit, remove, or defer each card. The final release remains blocked until every card has a physician disposition. No actions have been released."}
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-highlight/35 bg-highlight-soft px-4 py-3 lg:w-[330px]">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+            Next suggested step
+          </p>
+          <p className="mt-2 text-sm font-semibold text-text">{nextLabel}</p>
+          <p className="mt-1 text-xs leading-relaxed text-text-muted">
+            {isReleased
+              ? "Audited physician actions have been durably saved and task handoffs are routed to queues."
+              : nextSection?.cardId === "practice_readiness"
+              ? "AI is flagging Practice Readiness because coding support, documentation gaps, prior auth risk, and staff tasks are easiest to clean up before release."
+              : nextSection
+                ? "AI is keeping the next unresolved card visible so the checkout flow feels like forward motion, not a scavenger hunt."
+                : "Everything is resolved. The next action is final physician release review."}
+          </p>
+          {nextSection && !isReleased && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="mt-3"
+              onClick={() => onSelectCard(nextSection.cardId)}
+              leadingIcon={<Eye className="h-3.5 w-3.5" />}
+            >
+              {nextLabel}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-4">
+        {cards.map((card) => {
+          const section = progressSectionForCard(review, card.id);
+          const status = section?.status ?? "selected";
+
+          return (
+            <button
+              key={card.id}
+              type="button"
+              className="rounded-md border border-border bg-surface-muted/35 px-3 py-2 text-left transition hover:border-accent/35 hover:bg-accent-soft/35"
+              onClick={() => onSelectCard(card.id)}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-text">{card.title}</p>
+                <Badge tone={statusBadgeTone[status]}>{statusLabel[status]}</Badge>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function progressSectionForCard(
+  review: VisitCompletionReview,
+  cardId: VisitCompletionCardId,
+) {
+  return (
+    review.selectedSections.find((section) => section.cardId === cardId) ??
+    review.removedSections.find((section) => section.cardId === cardId) ??
+    review.deferredSections.find((section) => section.cardId === cardId)
   );
 }
 
