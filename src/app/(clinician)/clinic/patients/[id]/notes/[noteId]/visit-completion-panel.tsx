@@ -41,6 +41,7 @@ import {
   type VisitCompletionReview,
   type VisitCompletionSelectionAction,
   type VisitCompletionSelectionState,
+  type VisitCompletionStructuredEdit,
 } from "@/lib/domain/visit-completion-selection";
 import { releaseVisitCompletion } from "./actions";
 
@@ -182,6 +183,28 @@ function shouldOpenDetailsFromCardActivation(target: EventTarget | null): boolea
   );
 }
 
+type VisitCompletionDrawerMode = "review" | "edit";
+
+interface VisitCompletionDrawerEditSubmission {
+  note: string;
+  selectedItemIds: string[];
+  customLabels: string[];
+  structuredEdit: VisitCompletionStructuredEdit;
+}
+
+function cardStateFromReleaseSection(
+  section: VisitCompletionReleasePayload["includedSections"][number],
+): VisitCompletionSelectionState["cardStates"][VisitCompletionCardId] {
+  return {
+    status: section.status,
+    editNote: section.editNote,
+    confirmationNote: section.confirmationNote,
+    selectedItemIds: section.selectedItemIds,
+    customLabels: section.customLabels,
+    structuredEdit: section.structuredEdit,
+  };
+}
+
 export function VisitCompletionPanel({
   bundle,
   releasedPayload,
@@ -196,25 +219,13 @@ export function VisitCompletionPanel({
     if (releasedPayload) {
       const cardStates = {} as VisitCompletionSelectionState["cardStates"];
       for (const section of releasedPayload.includedSections) {
-        cardStates[section.cardId] = {
-          status: section.status,
-          editNote: section.editNote,
-          confirmationNote: section.confirmationNote,
-        };
+        cardStates[section.cardId] = cardStateFromReleaseSection(section);
       }
       for (const section of releasedPayload.heldOutSections) {
-        cardStates[section.cardId] = {
-          status: section.status,
-          editNote: section.editNote,
-          confirmationNote: section.confirmationNote,
-        };
+        cardStates[section.cardId] = cardStateFromReleaseSection(section);
       }
       for (const section of releasedPayload.unresolvedSections) {
-        cardStates[section.cardId] = {
-          status: section.status,
-          editNote: section.editNote,
-          confirmationNote: section.confirmationNote,
-        };
+        cardStates[section.cardId] = cardStateFromReleaseSection(section);
       }
       return { cardStates };
     }
@@ -226,6 +237,7 @@ export function VisitCompletionPanel({
     bundle.cards[0]?.id ?? "orders",
   );
   const [detailsDrawerOpen, setDetailsDrawerOpen] = React.useState(false);
+  const [drawerMode, setDrawerMode] = React.useState<VisitCompletionDrawerMode>("review");
   const [editingCardId, setEditingCardId] = React.useState<VisitCompletionCardId | null>(null);
   const [editDraft, setEditDraft] = React.useState("");
   const [releasePayloadOpen, setReleasePayloadOpen] = React.useState(!releasedPayload);
@@ -238,30 +250,19 @@ export function VisitCompletionPanel({
       setLocalReleasedPayload(releasedPayload);
       const cardStates = {} as VisitCompletionSelectionState["cardStates"];
       for (const section of releasedPayload.includedSections) {
-        cardStates[section.cardId] = {
-          status: section.status,
-          editNote: section.editNote,
-          confirmationNote: section.confirmationNote,
-        };
+        cardStates[section.cardId] = cardStateFromReleaseSection(section);
       }
       for (const section of releasedPayload.heldOutSections) {
-        cardStates[section.cardId] = {
-          status: section.status,
-          editNote: section.editNote,
-          confirmationNote: section.confirmationNote,
-        };
+        cardStates[section.cardId] = cardStateFromReleaseSection(section);
       }
       for (const section of releasedPayload.unresolvedSections) {
-        cardStates[section.cardId] = {
-          status: section.status,
-          editNote: section.editNote,
-          confirmationNote: section.confirmationNote,
-        };
+        cardStates[section.cardId] = cardStateFromReleaseSection(section);
       }
       setSelectionState({ cardStates });
       setReleaseReviewOpen(false);
       setReleasePayloadOpen(false);
       setDetailsDrawerOpen(false);
+      setDrawerMode("review");
     }
   }, [releasedPayload]);
 
@@ -305,8 +306,12 @@ export function VisitCompletionPanel({
     setSelectionState((current) => applyVisitCompletionAction(bundle, current, action));
   }
 
-  function openCardDetails(cardId: VisitCompletionCardId) {
+  function openCardDetails(
+    cardId: VisitCompletionCardId,
+    mode: VisitCompletionDrawerMode = "review",
+  ) {
     setActiveCardId(cardId);
+    setDrawerMode(mode);
     setDetailsDrawerOpen(true);
     setReleaseReviewOpen(true);
   }
@@ -318,6 +323,7 @@ export function VisitCompletionPanel({
       confirmationNote: detailCopy[card.id].confirmNote,
     });
     setDetailsDrawerOpen(false);
+    setDrawerMode("review");
     setReleaseReviewOpen(true);
   }
 
@@ -341,16 +347,30 @@ export function VisitCompletionPanel({
         applyLocalAction({ type: "defer_card", cardId: card.id });
         return;
       case "edit":
-        setDetailsDrawerOpen(false);
-        setEditingCardId(card.id);
-        setEditDraft(selectionState.cardStates[card.id]?.editNote ?? "");
+        setEditingCardId(null);
+        setEditDraft("");
+        openCardDetails(card.id, "edit");
         return;
       case "order_review":
       case "coding_review":
       case "view_checks":
-        setDetailsDrawerOpen(true);
+        openCardDetails(card.id);
         return;
     }
+  }
+
+  function saveStructuredEdit(card: VisitCompletionCard, edit: VisitCompletionDrawerEditSubmission) {
+    applyLocalAction({
+      type: "edit_card",
+      cardId: card.id,
+      note: edit.note,
+      selectedItemIds: edit.selectedItemIds,
+      customLabels: edit.customLabels,
+      structuredEdit: edit.structuredEdit,
+    });
+    setDrawerMode("review");
+    setDetailsDrawerOpen(true);
+    setReleaseReviewOpen(true);
   }
 
   function saveEdit(cardId: VisitCompletionCardId) {
@@ -432,21 +452,29 @@ export function VisitCompletionPanel({
           card={activeCard}
           cardState={activeCardState}
           isOpen={detailsDrawerOpen}
-          onClose={() => setDetailsDrawerOpen(false)}
+          mode={drawerMode}
+          onClose={() => {
+            setDetailsDrawerOpen(false);
+            setDrawerMode("review");
+          }}
           onConfirm={() => confirmCard(activeCard)}
           onEdit={() => {
-            setDetailsDrawerOpen(false);
             setActiveCardId(activeCard.id);
-            setEditingCardId(activeCard.id);
-            setEditDraft(selectionState.cardStates[activeCard.id]?.editNote ?? "");
+            setEditingCardId(null);
+            setEditDraft("");
+            setDrawerMode("edit");
           }}
+          onSaveEdit={(edit) => saveStructuredEdit(activeCard, edit)}
+          onCancelEdit={() => setDrawerMode("review")}
           onRemove={() => {
             setDetailsDrawerOpen(false);
+            setDrawerMode("review");
             setActiveCardId(activeCard.id);
             applyLocalAction({ type: "remove_card", cardId: activeCard.id });
           }}
           onDefer={() => {
             setDetailsDrawerOpen(false);
+            setDrawerMode("review");
             setActiveCardId(activeCard.id);
             applyLocalAction({ type: "defer_card", cardId: activeCard.id });
           }}
@@ -659,9 +687,12 @@ export function VisitCompletionDetailsDrawer({
   card,
   cardState,
   isOpen = true,
+  mode = "review",
   onClose,
   onConfirm,
   onEdit,
+  onSaveEdit,
+  onCancelEdit,
   onRemove,
   onDefer,
   isReleased,
@@ -669,9 +700,12 @@ export function VisitCompletionDetailsDrawer({
   card: VisitCompletionCard;
   cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId];
   isOpen?: boolean;
+  mode?: VisitCompletionDrawerMode;
   onClose: () => void;
   onConfirm: () => void;
   onEdit: () => void;
+  onSaveEdit: (edit: VisitCompletionDrawerEditSubmission) => void;
+  onCancelEdit: () => void;
   onRemove: () => void;
   onDefer: () => void;
   isReleased: boolean;
@@ -679,6 +713,7 @@ export function VisitCompletionDetailsDrawer({
   const Icon = cardIcons[card.id];
   const copy = detailCopy[card.id];
   const resolved = isResolvedStatus(cardState.status);
+  const isEditing = mode === "edit" && !isReleased;
 
   if (!isOpen) {
     return null;
@@ -711,10 +746,12 @@ export function VisitCompletionDetailsDrawer({
                   id={`visit-completion-drawer-${card.id}`}
                   className="mt-1 text-lg font-semibold text-text"
                 >
-                  {card.title} confirmation
+                  {isEditing ? `Edit ${card.title}` : `${card.title} confirmation`}
                 </h3>
                 <p className="mt-1 text-sm leading-relaxed text-text-muted">
-                  {copy.instruction}
+                  {isEditing
+                    ? "Adjust the prepared action, keep only what belongs, then save it back into the release review."
+                    : copy.instruction}
                 </p>
               </div>
             </div>
@@ -733,7 +770,7 @@ export function VisitCompletionDetailsDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {!isReleased && (
+          {!isReleased && !isEditing && (
             <div className="mb-4 flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -774,54 +811,479 @@ export function VisitCompletionDetailsDrawer({
             </div>
           )}
 
-          <div className="space-y-3">
-            <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
-              <p className="text-sm font-semibold text-text">{copy.question}</p>
-              <ul className="mt-3 space-y-2">
-                {card.items.map((item) => (
-                  <VisitCompletionDetailItem key={item.id} item={item} />
-                ))}
-              </ul>
-            </div>
+          {isEditing ? (
+            <VisitCompletionStructuredEditForm
+              card={card}
+              cardState={cardState}
+              onSave={onSaveEdit}
+              onCancel={onCancelEdit}
+            />
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+                <p className="text-sm font-semibold text-text">{copy.question}</p>
+                <ul className="mt-3 space-y-2">
+                  {card.items.map((item) => (
+                    <VisitCompletionDetailItem key={item.id} item={item} />
+                  ))}
+                </ul>
+              </div>
 
-            <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
-                What release will do
-              </p>
-              <p className="mt-2 text-sm font-semibold text-text">{copy.releaseWillDo}</p>
-              <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                {copy.releaseWillNotDo}
-              </p>
-            </div>
+              <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                  What release will do
+                </p>
+                <p className="mt-2 text-sm font-semibold text-text">{copy.releaseWillDo}</p>
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                  {copy.releaseWillNotDo}
+                </p>
+              </div>
 
-            <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
-                Confirmation state
-              </p>
-              <p className="mt-2 text-sm font-semibold text-text">
-                {resolved ? "Resolved for release review" : "Confirmation required before release."}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                Nothing is routed until the physician releases the care plan. Release creates only
-                the reviewed task, draft, and audit artifacts described above.
-              </p>
-              {cardState.confirmationNote && (
-                <p className="mt-3 rounded-md border border-accent/20 bg-accent-soft/45 px-3 py-2 text-xs leading-relaxed text-text-muted">
-                  Confirmation note: {cardState.confirmationNote}
+              <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-text-subtle">
+                  Confirmation state
                 </p>
-              )}
-              {cardState.editNote && (
-                <p className="mt-3 rounded-md border border-highlight/30 bg-highlight-soft px-3 py-2 text-xs leading-relaxed text-text-muted">
-                  Edit note: {cardState.editNote}
+                <p className="mt-2 text-sm font-semibold text-text">
+                  {resolved
+                    ? "Resolved for release review"
+                    : "Confirmation required before release."}
                 </p>
-              )}
+                <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                  Nothing is routed until the physician releases the care plan. Release creates only
+                  the reviewed task, draft, and audit artifacts described above.
+                </p>
+                {cardState.confirmationNote && (
+                  <p className="mt-3 rounded-md border border-accent/20 bg-accent-soft/45 px-3 py-2 text-xs leading-relaxed text-text-muted">
+                    Confirmation note: {cardState.confirmationNote}
+                  </p>
+                )}
+                {cardState.editNote && (
+                  <p className="mt-3 rounded-md border border-highlight/30 bg-highlight-soft px-3 py-2 text-xs leading-relaxed text-text-muted">
+                    Edit note: {cardState.editNote}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </aside>
     </div>
   );
 }
+
+interface VisitCompletionStructuredEditDraft {
+  selectedItemIds: string[];
+  customLabels: string[];
+  customLabelDraft: string;
+  physicianNote: string;
+  followUpInterval: string;
+  followUpRouting: NonNullable<VisitCompletionStructuredEdit["followUpRouting"]>;
+  patientMessageDraft: string;
+  patientMessageChannel: NonNullable<VisitCompletionStructuredEdit["patientMessageChannel"]>;
+  practiceReadinessOwner: NonNullable<VisitCompletionStructuredEdit["practiceReadinessOwner"]>;
+}
+
+function VisitCompletionStructuredEditForm({
+  card,
+  cardState,
+  onSave,
+  onCancel,
+}: {
+  card: VisitCompletionCard;
+  cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId];
+  onSave: (edit: VisitCompletionDrawerEditSubmission) => void;
+  onCancel: () => void;
+}) {
+  const initialDraft = React.useMemo(
+    () => buildStructuredEditDraft(card, cardState),
+    [card, cardState],
+  );
+  const [draft, setDraft] = React.useState(initialDraft);
+
+  React.useEffect(() => {
+    setDraft(buildStructuredEditDraft(card, cardState));
+  }, [card, cardState]);
+
+  function toggleItem(itemId: string) {
+    setDraft((current) => {
+      const selected = new Set(current.selectedItemIds);
+      if (selected.has(itemId)) {
+        selected.delete(itemId);
+      } else {
+        selected.add(itemId);
+      }
+      return { ...current, selectedItemIds: Array.from(selected) };
+    });
+  }
+
+  function addCustomLabel() {
+    const label = draft.customLabelDraft.trim();
+    if (!label) return;
+    setDraft((current) => ({
+      ...current,
+      customLabels: [...current.customLabels, label],
+      customLabelDraft: "",
+    }));
+  }
+
+  function removeCustomLabel(label: string) {
+    setDraft((current) => ({
+      ...current,
+      customLabels: current.customLabels.filter((existing) => existing !== label),
+    }));
+  }
+
+  const submission = buildStructuredEditSubmission(card, draft);
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-lg border border-accent/20 bg-accent-soft/35 px-4 py-3">
+        <p className="text-sm font-semibold text-text">Included actions</p>
+        <p className="mt-1 text-xs leading-relaxed text-text-muted">
+          Keep the suggestions that belong in the release. Removed rows stay out of the released
+          staff task, draft, or readiness record.
+        </p>
+        <div className="mt-3 space-y-2">
+          {card.items.map((item) => (
+            <label
+              key={item.id}
+              className="flex gap-3 rounded-md border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-text"
+            >
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-border text-accent focus:ring-accent"
+                checked={draft.selectedItemIds.includes(item.id)}
+                onChange={() => toggleItem(item.id)}
+              />
+              <span>
+                <span className="font-medium">{item.label}</span>
+                {item.reason && (
+                  <span className="mt-1 block text-xs text-text-subtle">{item.reason}</span>
+                )}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {card.id === "follow_up" && (
+        <div className="grid gap-3 rounded-lg border border-border bg-surface-muted/35 px-4 py-3 md:grid-cols-2">
+          <label className="text-sm font-semibold text-text">
+            Follow-up interval
+            <input
+              className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.followUpInterval}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, followUpInterval: event.target.value }))
+              }
+              placeholder="6 weeks"
+            />
+          </label>
+          <label className="text-sm font-semibold text-text">
+            Scheduling handoff
+            <select
+              className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.followUpRouting}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  followUpRouting: event.target.value as VisitCompletionStructuredEditDraft["followUpRouting"],
+                }))
+              }
+            >
+              <option value="front_desk">Front desk scheduling task</option>
+              <option value="scheduling_link">Text scheduling link</option>
+              <option value="no_handoff">No scheduling handoff</option>
+            </select>
+          </label>
+        </div>
+      )}
+
+      {card.id === "patient_message" && (
+        <div className="space-y-3 rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+          <label className="text-sm font-semibold text-text">
+            Message channel
+            <select
+              className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.patientMessageChannel}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  patientMessageChannel:
+                    event.target.value as VisitCompletionStructuredEditDraft["patientMessageChannel"],
+                }))
+              }
+            >
+              <option value="portal">Portal draft</option>
+              <option value="print">Print summary</option>
+              <option value="sms">SMS scheduling note</option>
+              <option value="translation">Translation requested</option>
+            </select>
+          </label>
+          <label className="text-sm font-semibold text-text">
+            Patient message draft
+            <textarea
+              className="mt-2 min-h-36 w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal leading-relaxed text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.patientMessageDraft}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, patientMessageDraft: event.target.value }))
+              }
+            />
+          </label>
+        </div>
+      )}
+
+      {card.id === "practice_readiness" && (
+        <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+          <label className="text-sm font-semibold text-text">
+            Practice readiness owner
+            <select
+              className="mt-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.practiceReadinessOwner}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  practiceReadinessOwner:
+                    event.target.value as VisitCompletionStructuredEditDraft["practiceReadinessOwner"],
+                }))
+              }
+            >
+              <option value="back_office">Back office</option>
+              <option value="front_office">Front office</option>
+              <option value="clinician">Clinician</option>
+              <option value="billing">Billing</option>
+            </select>
+          </label>
+        </div>
+      )}
+
+      <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+        <label className="text-sm font-semibold text-text">
+          Add custom action
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              className="min-w-0 flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.customLabelDraft}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, customLabelDraft: event.target.value }))
+              }
+              placeholder="Add a reviewed action for staff or patient handoff"
+            />
+            <Button type="button" size="sm" variant="secondary" onClick={addCustomLabel}>
+              Add
+            </Button>
+          </div>
+        </label>
+        {draft.customLabels.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {draft.customLabels.map((label) => (
+              <button
+                key={label}
+                type="button"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 text-xs font-medium text-text-muted hover:border-danger/40 hover:text-danger"
+                onClick={() => removeCustomLabel(label)}
+              >
+                {label}
+                <X className="h-3 w-3" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {card.id !== "patient_message" && (
+        <div className="rounded-lg border border-border bg-surface-muted/35 px-4 py-3">
+          <label className="text-sm font-semibold text-text">
+            Physician note
+            <textarea
+              className="mt-2 min-h-24 w-full resize-y rounded-md border border-border bg-surface px-3 py-2 text-sm font-normal leading-relaxed text-text shadow-sm outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+              value={draft.physicianNote}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, physicianNote: event.target.value }))
+              }
+              placeholder="Add the physician-approved change or rationale."
+            />
+          </label>
+        </div>
+      )}
+
+      <div className="sticky bottom-0 -mx-5 -mb-4 border-t border-border bg-surface/95 px-5 py-4 backdrop-blur">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel edit
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => onSave(submission)}
+            leadingIcon={<Check className="h-3.5 w-3.5" />}
+          >
+            Save and confirm
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildStructuredEditDraft(
+  card: VisitCompletionCard,
+  cardState: VisitCompletionSelectionState["cardStates"][VisitCompletionCardId],
+): VisitCompletionStructuredEditDraft {
+  const structuredEdit = cardState.structuredEdit ?? {};
+
+  return {
+    selectedItemIds:
+      structuredEdit.selectedItemIds ?? cardState.selectedItemIds ?? card.items.map((item) => item.id),
+    customLabels: structuredEdit.customLabels ?? cardState.customLabels ?? [],
+    customLabelDraft: "",
+    physicianNote: structuredEdit.physicianNote ?? cardState.editNote ?? "",
+    followUpInterval: structuredEdit.followUpInterval ?? inferFollowUpInterval(card),
+    followUpRouting: structuredEdit.followUpRouting ?? "front_desk",
+    patientMessageDraft:
+      structuredEdit.patientMessageDraft ?? cardState.editNote ?? buildDefaultPatientMessage(card),
+    patientMessageChannel: structuredEdit.patientMessageChannel ?? "portal",
+    practiceReadinessOwner: structuredEdit.practiceReadinessOwner ?? "back_office",
+  };
+}
+
+function buildStructuredEditSubmission(
+  card: VisitCompletionCard,
+  draft: VisitCompletionStructuredEditDraft,
+): VisitCompletionDrawerEditSubmission {
+  const customLabels = normalizeDrawerLabels([
+    ...draft.customLabels,
+    ...derivedStructuredLabels(card, draft),
+    draft.customLabelDraft,
+  ]);
+  const selectedItemIds = draft.selectedItemIds.filter((itemId) =>
+    card.items.some((item) => item.id === itemId),
+  );
+  const structuredEdit: VisitCompletionStructuredEdit = {
+    selectedItemIds,
+    customLabels,
+    physicianNote: draft.physicianNote.trim() || undefined,
+  };
+
+  if (card.id === "follow_up") {
+    structuredEdit.followUpInterval = draft.followUpInterval.trim() || undefined;
+    structuredEdit.followUpRouting = draft.followUpRouting;
+  }
+
+  if (card.id === "patient_message") {
+    structuredEdit.patientMessageDraft = draft.patientMessageDraft.trim() || undefined;
+    structuredEdit.patientMessageChannel = draft.patientMessageChannel;
+  }
+
+  if (card.id === "practice_readiness") {
+    structuredEdit.practiceReadinessOwner = draft.practiceReadinessOwner;
+  }
+
+  return {
+    note: noteForStructuredEdit(card, draft),
+    selectedItemIds,
+    customLabels,
+    structuredEdit,
+  };
+}
+
+function derivedStructuredLabels(
+  card: VisitCompletionCard,
+  draft: VisitCompletionStructuredEditDraft,
+): string[] {
+  switch (card.id) {
+    case "follow_up":
+      return [
+        draft.followUpInterval.trim() ? `Follow-up interval: ${draft.followUpInterval.trim()}` : "",
+        `Scheduling handoff: ${followUpRoutingLabel[draft.followUpRouting]}`,
+      ];
+    case "patient_message":
+      return [`Patient message channel: ${patientMessageChannelLabel[draft.patientMessageChannel]}`];
+    case "practice_readiness":
+      return [`Practice readiness owner: ${practiceReadinessOwnerLabel[draft.practiceReadinessOwner]}`];
+    case "orders":
+      return [];
+  }
+}
+
+function noteForStructuredEdit(
+  card: VisitCompletionCard,
+  draft: VisitCompletionStructuredEditDraft,
+): string {
+  if (card.id === "patient_message") {
+    return draft.patientMessageDraft.trim() || "Patient message edited before release.";
+  }
+
+  const physicianNote = draft.physicianNote.trim();
+  if (physicianNote) {
+    return physicianNote;
+  }
+
+  if (card.id === "follow_up") {
+    return `Follow-up interval: ${draft.followUpInterval.trim() || "not specified"}; scheduling handoff: ${
+      followUpRoutingLabel[draft.followUpRouting]
+    }.`;
+  }
+
+  if (card.id === "practice_readiness") {
+    return `Practice readiness owner: ${practiceReadinessOwnerLabel[draft.practiceReadinessOwner]}.`;
+  }
+
+  return "Structured edits reviewed and confirmed before release.";
+}
+
+function normalizeDrawerLabels(labels: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const label of labels) {
+    const trimmed = label.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+
+  return normalized;
+}
+
+function inferFollowUpInterval(card: VisitCompletionCard): string {
+  const labelText = card.items.map((item) => item.label).join(" ");
+  return labelText.match(/\b(\d+\s*(?:day|days|week|weeks|month|months))\b/i)?.[1] ?? "6 weeks";
+}
+
+function buildDefaultPatientMessage(card: VisitCompletionCard): string {
+  const nextSteps = card.items.map((item) => `- ${item.label}`).join("\n");
+  return `Today we reviewed your care plan. Please review these next steps:\n\n${nextSteps}`;
+}
+
+const followUpRoutingLabel: Record<
+  NonNullable<VisitCompletionStructuredEdit["followUpRouting"]>,
+  string
+> = {
+  front_desk: "front desk scheduling task",
+  scheduling_link: "text scheduling link",
+  no_handoff: "no scheduling handoff",
+};
+
+const patientMessageChannelLabel: Record<
+  NonNullable<VisitCompletionStructuredEdit["patientMessageChannel"]>,
+  string
+> = {
+  portal: "portal draft",
+  print: "print summary",
+  sms: "SMS scheduling note",
+  translation: "translation requested",
+};
+
+const practiceReadinessOwnerLabel: Record<
+  NonNullable<VisitCompletionStructuredEdit["practiceReadinessOwner"]>,
+  string
+> = {
+  back_office: "back office",
+  front_office: "front office",
+  clinician: "clinician",
+  billing: "billing",
+};
 
 function VisitCompletionDetailItem({ item }: { item: VisitCompletionItem }) {
   return (

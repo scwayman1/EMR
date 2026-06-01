@@ -275,4 +275,34 @@ describe("visit completion selection state", () => {
       ]),
     );
   });
+
+  it("carries structured drawer edits into the release payload", () => {
+    const initial = initializeVisitCompletionSelection(bundle);
+    const editedOrders = applyVisitCompletionAction(bundle, initial, {
+      type: "edit_card",
+      cardId: "orders",
+      note: "A1C only today; add retinal exam referral for staff follow-up.",
+      selectedItemIds: ["a1c-due"],
+      customLabels: ["Retinal exam referral"],
+      structuredEdit: {
+        physicianNote: "A1C only today; add retinal exam referral for staff follow-up.",
+        customLabels: ["Retinal exam referral"],
+        selectedItemIds: ["a1c-due"],
+      },
+    });
+
+    const payload = buildVisitCompletionReleasePayload(bundle, editedOrders);
+    const ordersSection = payload.includedSections.find((section) => section.cardId === "orders");
+
+    expect(ordersSection).toMatchObject({
+      status: "edited",
+      labels: ["A1C", "Retinal exam referral"],
+      editNote: "A1C only today; add retinal exam referral for staff follow-up.",
+      structuredEdit: {
+        physicianNote: "A1C only today; add retinal exam referral for staff follow-up.",
+        customLabels: ["Retinal exam referral"],
+        selectedItemIds: ["a1c-due"],
+      },
+    });
+  });
 });

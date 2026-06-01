@@ -122,6 +122,8 @@ describe("VisitCompletionPanel", () => {
         onClose={() => undefined}
         onConfirm={() => undefined}
         onEdit={() => undefined}
+        onSaveEdit={() => undefined}
+        onCancelEdit={() => undefined}
         onRemove={() => undefined}
         onDefer={() => undefined}
         isReleased={false}
@@ -140,6 +142,49 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Confidence 72%");
     expect(str).toContain("Physician approval required");
     expect(str).toContain("fixed inset-y-0 right-0");
+  });
+
+  it("renders structured edit controls inside the details drawer", () => {
+    const bundle = buildVisitCompletionBundle({
+      patientFirstName: "Miguel",
+      hasFutureAppointment: false,
+      blocks: [
+        {
+          heading: "Plan",
+          body: "Repeat labs and return to clinic in 6 weeks after medication adjustment.",
+        },
+      ],
+      codingSuggestion: {
+        emLevel: "99214",
+        rationale: "Chronic condition management with medication adjustment.",
+        icd10: [{ code: "E11.9", label: "Diabetes mellitus", confidence: 0.88 }],
+      },
+    });
+
+    const str = dump(
+      <VisitCompletionDetailsDrawer
+        card={bundle.cards[1]}
+        cardState={{ status: "selected" }}
+        mode="edit"
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+        onEdit={() => undefined}
+        onSaveEdit={() => undefined}
+        onCancelEdit={() => undefined}
+        onRemove={() => undefined}
+        onDefer={() => undefined}
+        isReleased={false}
+      />,
+    );
+
+    expect(str).toContain("Edit Follow-Up Plan");
+    expect(str).toContain("Included actions");
+    expect(str).toContain("Follow-up interval");
+    expect(str).toContain("Scheduling handoff");
+    expect(str).toContain("Add custom action");
+    expect(str).toContain("Physician note");
+    expect(str).toContain("Save and confirm");
+    expect(str).toContain("Cancel edit");
   });
 
   it("renders the released state and locks controls when releasedPayload is provided", () => {

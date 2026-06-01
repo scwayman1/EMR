@@ -17,6 +17,20 @@ export interface VisitCompletionCardSelectionState {
   status: VisitCompletionCardSelectionStatus;
   editNote?: string;
   confirmationNote?: string;
+  selectedItemIds?: string[];
+  customLabels?: string[];
+  structuredEdit?: VisitCompletionStructuredEdit;
+}
+
+export interface VisitCompletionStructuredEdit {
+  selectedItemIds?: string[];
+  customLabels?: string[];
+  physicianNote?: string;
+  followUpInterval?: string;
+  followUpRouting?: "front_desk" | "scheduling_link" | "no_handoff";
+  patientMessageDraft?: string;
+  patientMessageChannel?: "portal" | "print" | "sms" | "translation";
+  practiceReadinessOwner?: "back_office" | "front_office" | "clinician" | "billing";
 }
 
 export interface VisitCompletionSelectionState {
@@ -28,7 +42,14 @@ export type VisitCompletionSelectionAction =
   | { type: "confirm_card"; cardId: VisitCompletionCardId; confirmationNote?: string }
   | { type: "remove_card"; cardId: VisitCompletionCardId }
   | { type: "defer_card"; cardId: VisitCompletionCardId }
-  | { type: "edit_card"; cardId: VisitCompletionCardId; note: string };
+  | {
+      type: "edit_card";
+      cardId: VisitCompletionCardId;
+      note: string;
+      selectedItemIds?: string[];
+      customLabels?: string[];
+      structuredEdit?: VisitCompletionStructuredEdit;
+    };
 
 export interface VisitCompletionReviewSection {
   cardId: VisitCompletionCardId;
@@ -37,6 +58,9 @@ export interface VisitCompletionReviewSection {
   labels: string[];
   editNote?: string;
   confirmationNote?: string;
+  selectedItemIds?: string[];
+  customLabels?: string[];
+  structuredEdit?: VisitCompletionStructuredEdit;
 }
 
 export interface VisitCompletionReviewSignal {
@@ -87,6 +111,9 @@ export interface VisitCompletionReleaseSection {
   labels: string[];
   editNote?: string;
   confirmationNote?: string;
+  selectedItemIds?: string[];
+  customLabels?: string[];
+  structuredEdit?: VisitCompletionStructuredEdit;
   requiresPhysicianApproval: true;
 }
 
@@ -159,7 +186,13 @@ export function applyVisitCompletionAction(
 
   switch (action.type) {
     case "edit_card":
-      nextCardState = { status: "edited", editNote: action.note.trim() };
+      nextCardState = {
+        status: "edited",
+        editNote: action.note.trim(),
+        selectedItemIds: normalizeStringList(action.selectedItemIds),
+        customLabels: normalizeStringList(action.customLabels),
+        structuredEdit: normalizeStructuredEdit(action.structuredEdit),
+      };
       break;
     case "confirm_card":
       nextCardState = {
@@ -302,10 +335,29 @@ function sectionForCard(
     cardId: card.id,
     title: card.title,
     status: cardState.status,
-    labels: card.items.map((item) => item.label),
+    labels: labelsForCard(card, cardState),
     editNote: cardState.editNote,
     confirmationNote: cardState.confirmationNote,
+    selectedItemIds: cardState.selectedItemIds,
+    customLabels: cardState.customLabels,
+    structuredEdit: cardState.structuredEdit,
   };
+}
+
+function labelsForCard(
+  card: VisitCompletionCard,
+  cardState: VisitCompletionCardSelectionState,
+): string[] {
+  const selectedItemIds = cardState.selectedItemIds;
+  const includedItemIds =
+    selectedItemIds === undefined
+      ? new Set(card.items.map((item) => item.id))
+      : new Set(selectedItemIds);
+
+  return [
+    ...card.items.filter((item) => includedItemIds.has(item.id)).map((item) => item.label),
+    ...(normalizeStringList(cardState.customLabels) ?? []),
+  ];
 }
 
 function releaseSectionForCard(
@@ -382,6 +434,36 @@ function isResolvedCardStatus(status: VisitCompletionCardSelectionStatus): boole
 
 function countLabels(sections: VisitCompletionReviewSection[]): number {
   return sections.reduce((sum, section) => sum + section.labels.length, 0);
+}
+
+function normalizeStringList(values: string[] | undefined): string[] | undefined {
+  if (!values) {
+    return undefined;
+  }
+
+  const normalized = values.map((value) => value.trim()).filter(Boolean);
+  return normalized.length > 0 ? normalized : [];
+}
+
+function normalizeStructuredEdit(
+  structuredEdit: VisitCompletionStructuredEdit | undefined,
+): VisitCompletionStructuredEdit | undefined {
+  if (!structuredEdit) {
+    return undefined;
+  }
+
+  const normalized: VisitCompletionStructuredEdit = {
+    ...structuredEdit,
+    selectedItemIds: normalizeStringList(structuredEdit.selectedItemIds),
+    customLabels: normalizeStringList(structuredEdit.customLabels),
+    physicianNote: structuredEdit.physicianNote?.trim() || undefined,
+    followUpInterval: structuredEdit.followUpInterval?.trim() || undefined,
+    patientMessageDraft: structuredEdit.patientMessageDraft?.trim() || undefined,
+  };
+
+  return Object.fromEntries(
+    Object.entries(normalized).filter(([, value]) => value !== undefined),
+  ) as VisitCompletionStructuredEdit;
 }
 
 function feedbackSignalForSection(
