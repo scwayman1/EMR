@@ -5054,6 +5054,27 @@ model KioskLobbySubmission {
   @@index([patientId, kind])
 }
 
+// EMR-917 — Tier-3 per-patient clinician override for the Clinical Assessment
+// Rules Engine. A clinician declares, for one patient + one assessment, that it
+// is required / should be skipped / is not applicable — overriding the Tier-1
+// policy default. The pure engine (assessment-rules.ts) consumes these; this is
+// the persistence layer. Scoped to the patient's org; one override per
+// (patient, assessment).
+model PatientAssessmentOverride {
+  id             String   @id @default(cuid())
+  patientId      String
+  organizationId String
+  assessmentSlug String
+  override       String // "require" | "skip" | "not_applicable"
+  reason         String?
+  setByUserId    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([patientId, assessmentSlug])
+  @@index([organizationId])
+}
+
 // --------------------------------------------------------------
 // EMR-107 — ChatCB AI Coach
 // --------------------------------------------------------------
