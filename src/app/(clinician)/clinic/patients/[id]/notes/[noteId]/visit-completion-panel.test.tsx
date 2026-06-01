@@ -3,6 +3,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { buildVisitCompletionBundle } from "@/lib/domain/visit-completion";
 import {
+  FinalReleaseReviewPanel,
   VisitCompletionDetailsDrawer,
   VisitCompletionPanel,
 } from "./visit-completion-panel";
@@ -185,6 +186,92 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("Physician note");
     expect(str).toContain("Save and confirm");
     expect(str).toContain("Cancel edit");
+  });
+
+  it("surfaces structured edits in the final release review", () => {
+    const payload: VisitCompletionReleasePayload = {
+      version: "visit-completion-release/v1",
+      releaseActionLabel: "Release Care Plan",
+      mode: "physician_release_v1",
+      status: "ready_for_physician_release",
+      canRelease: true,
+      summary: {
+        totalCards: 4,
+        includedCards: 2,
+        heldOutCards: 0,
+        unresolvedCards: 0,
+      },
+      sideEffects: {
+        clinical: false,
+        billing: false,
+        patientCommunication: true,
+        scheduling: true,
+        staffAssignment: true,
+        chartWrite: false,
+      },
+      includedSections: [
+        {
+          cardId: "follow_up",
+          title: "Follow-Up Plan",
+          status: "edited",
+          disposition: "include",
+          labels: [
+            "RTC in 6 weeks recommended. No appointment currently scheduled.",
+            "Follow-up interval: 6 weeks",
+            "Scheduling handoff: front desk scheduling task",
+          ],
+          editNote:
+            "Follow-up interval: 6 weeks; scheduling handoff: front desk scheduling task.",
+          structuredEdit: {
+            followUpInterval: "6 weeks",
+            followUpRouting: "front_desk",
+          },
+          requiresPhysicianApproval: true,
+        },
+        {
+          cardId: "patient_message",
+          title: "Patient Communication",
+          status: "edited",
+          disposition: "include",
+          labels: [
+            "Portal summary drafted with lab instructions and follow-up timing.",
+            "Patient message channel: portal draft",
+          ],
+          editNote: "Please complete labs before your 6-week follow-up.",
+          structuredEdit: {
+            patientMessageChannel: "portal",
+            patientMessageDraft: "Please complete labs before your 6-week follow-up.",
+          },
+          requiresPhysicianApproval: true,
+        },
+      ],
+      heldOutSections: [],
+      unresolvedSections: [],
+      blockingCardIds: [],
+      auditEvents: [],
+      feedbackSignals: [],
+      safetyCopy:
+        "Nothing is ordered, sent, billed, scheduled, or assigned until the physician releases the care plan.",
+    };
+
+    const str = dump(
+      <FinalReleaseReviewPanel
+        payload={payload}
+        isOpen
+        onToggle={() => undefined}
+        isReleasing={false}
+        releaseError={null}
+        onRelease={() => undefined}
+        isReleased={false}
+      />,
+    );
+
+    expect(str).toContain("Physician-edited release details");
+    expect(str).toContain("Interval: 6 weeks");
+    expect(str).toContain("Handoff: front desk scheduling task");
+    expect(str).toContain("Channel: portal draft");
+    expect(str).toContain("Patient draft edited");
+    expect(str).toContain("Please complete labs before your 6-week follow-up.");
   });
 
   it("renders the released state and locks controls when releasedPayload is provided", () => {

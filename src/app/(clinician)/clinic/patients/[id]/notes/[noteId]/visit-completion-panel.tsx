@@ -1584,7 +1584,7 @@ function progressSectionForCard(
   );
 }
 
-function FinalReleaseReviewPanel({
+export function FinalReleaseReviewPanel({
   payload,
   isOpen,
   onToggle,
@@ -1727,24 +1727,84 @@ function ReleasePayloadSectionList({
   return (
     <div className="mt-3 space-y-2">
       {sections.map((section) => (
-        <div key={section.cardId} className="rounded-md border border-border bg-surface px-3 py-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold text-text">{section.title}</p>
-            <Badge tone={statusBadgeTone[section.status]}>{statusLabel[section.status]}</Badge>
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-text-muted">
-            {section.labels.slice(0, 2).join("; ")}
-            {section.labels.length > 2 ? `; +${section.labels.length - 2} more` : ""}
-          </p>
-          {(section.confirmationNote || section.editNote) && (
-            <p className="mt-2 text-xs leading-relaxed text-text-subtle">
-              {section.confirmationNote ?? section.editNote}
-            </p>
-          )}
-        </div>
+        <ReleasePayloadSectionCard key={section.cardId} section={section} />
       ))}
     </div>
   );
+}
+
+function ReleasePayloadSectionCard({
+  section,
+}: {
+  section: VisitCompletionReleasePayload["includedSections"][number];
+}) {
+  const structuredDetails = structuredReleaseDetailsForSection(section);
+
+  return (
+    <div className="rounded-md border border-border bg-surface px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-text">{section.title}</p>
+        <Badge tone={statusBadgeTone[section.status]}>{statusLabel[section.status]}</Badge>
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-text-muted">
+        {section.labels.slice(0, 2).join("; ")}
+        {section.labels.length > 2 ? `; +${section.labels.length - 2} more` : ""}
+      </p>
+      {structuredDetails.length > 0 && (
+        <div className="mt-3 rounded-md border border-accent/20 bg-accent-soft/35 px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-accent">
+            Physician-edited release details
+          </p>
+          <ul className="mt-2 space-y-1">
+            {structuredDetails.map((detail) => (
+              <li key={detail} className="text-xs leading-relaxed text-text-muted">
+                {detail}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {(section.confirmationNote || section.editNote) && (
+        <p className="mt-2 text-xs leading-relaxed text-text-subtle">
+          {section.confirmationNote ?? section.editNote}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function structuredReleaseDetailsForSection(
+  section: VisitCompletionReleasePayload["includedSections"][number],
+): string[] {
+  const edit = section.structuredEdit;
+  if (!edit) {
+    return [];
+  }
+
+  const details: string[] = [];
+  if (edit.selectedItemIds !== undefined) {
+    details.push(`${section.labels.length} reviewed action${section.labels.length === 1 ? "" : "s"}`);
+  }
+  if (edit.followUpInterval) {
+    details.push(`Interval: ${edit.followUpInterval}`);
+  }
+  if (edit.followUpRouting) {
+    details.push(`Handoff: ${followUpRoutingLabel[edit.followUpRouting]}`);
+  }
+  if (edit.patientMessageChannel) {
+    details.push(`Channel: ${patientMessageChannelLabel[edit.patientMessageChannel]}`);
+  }
+  if (edit.patientMessageDraft) {
+    details.push("Patient draft edited");
+  }
+  if (edit.practiceReadinessOwner) {
+    details.push(`Owner: ${practiceReadinessOwnerLabel[edit.practiceReadinessOwner]}`);
+  }
+  if (edit.physicianNote) {
+    details.push("Physician note captured");
+  }
+
+  return details;
 }
 
 function PayloadSafetyFlag({ label, value }: { label: string; value: boolean }) {
