@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { buildVisitCompletionBundle } from "@/lib/domain/visit-completion";
-import { VisitCompletionPanel } from "./visit-completion-panel";
+import {
+  VisitCompletionDetailsDrawer,
+  VisitCompletionPanel,
+} from "./visit-completion-panel";
 import type { VisitCompletionReleasePayload } from "@/lib/domain/visit-completion-selection";
 
 vi.mock("next/navigation", () => ({
@@ -71,17 +74,9 @@ describe("VisitCompletionPanel", () => {
     expect(str).toContain("0 of 4 cards resolved");
     expect(str).toContain("Confirmation required before release.");
     expect(str).toContain("Click in to confirm");
-    expect(str).toContain("Confirm this card");
     expect(str).toContain("Open details");
     expect(str).toContain("aria-label=\"Open Suggested Orders details\"");
     expect(str).toContain("tabindex=\"0\"");
-    expect(str).toContain("What release will do");
-    expect(str).toContain("Creates a back-office task with reviewed order suggestions.");
-    expect(str).toContain("Does not place clinical orders automatically.");
-    expect(str).toContain("Item evidence");
-    expect(str).toContain("Source: heuristic");
-    expect(str).toContain("Confidence 72%");
-    expect(str).toContain("Physician approval required");
     expect(str).toContain("Final release review");
     expect(str).toContain("Structured release payload");
     expect(str).toContain("Preview release payload");
@@ -101,6 +96,50 @@ describe("VisitCompletionPanel", () => {
     );
     // The Release Care Plan button should be disabled because not all cards are resolved
     expect(str).toContain("disabled");
+  });
+
+  it("renders card details in a right-side drawer surface", () => {
+    const bundle = buildVisitCompletionBundle({
+      patientFirstName: "Miguel",
+      hasFutureAppointment: false,
+      blocks: [
+        {
+          heading: "Plan",
+          body: "Return to clinic in 6 weeks after medication adjustment.",
+        },
+      ],
+      codingSuggestion: {
+        emLevel: "99214",
+        rationale: "Chronic condition management with medication adjustment.",
+        icd10: [{ code: "G89.29", label: "Chronic pain", confidence: 0.88 }],
+      },
+    });
+
+    const str = dump(
+      <VisitCompletionDetailsDrawer
+        card={bundle.cards[0]}
+        cardState={{ status: "selected" }}
+        onClose={() => undefined}
+        onConfirm={() => undefined}
+        onEdit={() => undefined}
+        onRemove={() => undefined}
+        onDefer={() => undefined}
+        isReleased={false}
+      />,
+    );
+
+    expect(str).toContain("role=\"dialog\"");
+    expect(str).toContain("Review details drawer");
+    expect(str).toContain("Close details");
+    expect(str).toContain("Confirm this card");
+    expect(str).toContain("What release will do");
+    expect(str).toContain("Creates a back-office task with reviewed order suggestions.");
+    expect(str).toContain("Does not place clinical orders automatically.");
+    expect(str).toContain("Item evidence");
+    expect(str).toContain("Source: heuristic");
+    expect(str).toContain("Confidence 72%");
+    expect(str).toContain("Physician approval required");
+    expect(str).toContain("fixed inset-y-0 right-0");
   });
 
   it("renders the released state and locks controls when releasedPayload is provided", () => {
